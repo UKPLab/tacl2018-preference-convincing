@@ -60,3 +60,5 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+argumentation/argumentation/crowd_convincingness/__init__.py
+*/*/__init__.py
