@@ -12,20 +12,30 @@ def alpha(U, C, L):
     C - a list of classification labels
     L - a list of labeller IDs
     '''
-    M = float(np.unique(L).shape[0])
     N = float(np.unique(U).shape[0])
+    Uids = np.unique(U)
     
-    ulist = np.unique(U)
-    
-    Dunits = np.zeros(N, dtype=float)
-    for i, u in enumerate(U):
+    Dobs = 0.0
+    Dexpec = 0.0
+    for i, u in enumerate(Uids):
         uidxs = U==u
-        m_u = float(np.unique(L[uidxs]).shape[0])
-        C[uidxs]
+        Lu = L[uidxs]
+        m_u = Lu.shape[0]
+        Cu = C[uidxs]
         
-        for j, l in enumerate(L): 
-            Dunits[i] += 1 / (m_u - 1) * np.sum(C[j] - C) 
+        #for cuj in Cu:
+        #    Dobs += 1.0 / (m_u - 1.0) * np.sum(np.abs(cuj - Cu))
         
-    Dobs = 1 / N * np.sum(Dunits)
+        Dobs += 1.0 / (m_u - 1.0) * np.sum(np.abs(Cu[:, np.newaxis] - Cu[np.newaxis, :]))
+
+    # too much memory required            
+    # Dexpec = np.sum(np.abs(C.flatten()[:, np.newaxis] - C.flatten()[np.newaxis, :]))
+            
+    for i in range(len(U)):
+        Dexpec += np.sum(np.abs(C[i] - C)) # sum up all differences regardless of user and data unit
+        
+    Dobs = 1 / N * Dobs
+    Dexpec = Dexpec / (N * (N-1))  
     
     alpha = 1 - Dobs / Dexpec
+    return alpha
