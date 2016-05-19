@@ -3,6 +3,7 @@
 	<name>argumentation</name>
 	<comment></comment>
 	<projects>
+		<project>HeatMapBCC</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
