@@ -147,4 +147,50 @@ class GPPref(GPGrid):
         return m_post, not_m_post, v_post         
 
 if __name__ == '__main__':
-    pass
+    # Generate some data
+    
+    nx = 100
+    ny = 100
+    
+    ls = [10, 10]
+    
+    sigma = 10
+    
+    N = 100
+    K = 500 # number of pairs
+    
+    from scipy.stats import multivariate_normal as mvn
+
+    def matern_3_2(xvals, yvals, ls):
+        Kx = np.abs(xvals) * 3**0.5 / ls[0]
+        Kx = (1 + Kx) * np.exp(-Kx)
+        Ky = np.abs(yvals) * 3**0.5 / ls[1]
+        Ky = (1 + Ky) * np.exp(-Ky)        
+        K = Kx * Ky
+        return K
+    
+    # Some random feature values
+    xvals = np.random.choice(nx, N, replace=True)[:, np.newaxis]
+    yvals = np.random.choice(ny, N, replace=True)[:, np.newaxis]
+    
+    K = matern_3_2(xvals, yvals, ls)
+    
+    f = mvn.rvs(cov=K) # zero mean
+    
+    # generate pairs indices
+    pair1idxs = np.random.choice(N, K, replace=True)
+    pair2idxs = np.random.choice(N, K, replace=True)
+     
+    # generate the noisy function values for the pairs
+    f1noisy = norm.rvs(loc=f[pair1idxs], scale=sigma)
+    f2noisy = norm.rvs(loc=f[pair2idxs], scale=sigma)
+    
+    # generate the discrete labels from the noisy preferences
+    prefs = f1noisy > f2noisy
+    
+    # Create a GPPref model
+    model = GPPref(nx, ny, 0, 1, 1, ls_initial=10)
+    model.fit((xvals[pair1idxs], yvals[pair1idxs]), prefs)
+    fpred = model.predict((xvals, yvals), variance_method='sample')
+    
+    
