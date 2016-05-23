@@ -67,28 +67,54 @@ class GPPref(GPGrid):
     
     def update_jacobian(self, G_update_rate=1.0):
         z = self.f_to_z()
-        phiz = self.forward_model()
+        phiz = self.forward_model() 
         J = norm.pdf(z) / (phiz * np.sqrt(2) * self.sigma)
         J = J[:, np.newaxis]
-        s = (J == self.obs_v[np.newaxis, :]) - (J == self.obs_u[np.newaxis, :])
+        obs_idxs = np.arange(self.obs_coords.shape[0])
+        s = (self.obs_vidxs[:, np.newaxis]==obs_idxs[np.newaxis, :]) - (self.obs_uidxs[:, np.newaxis]==obs_idxs[np.newaxis, :])
         J = J * s 
         
         self.G = G_update_rate * s + (1 - G_update_rate) * self.G
         return phiz
     
-    def observations_to_z(self):
-        obs_probs = self.obs_values/self.obs_total_counts
-        self.z = obs_probs        
+    # If this is the same as parent class, can the initialisation also be the same init_obs_f?
+    #def observations_to_z(self):
+    #    obs_probs = self.obs_values/self.obs_total_counts
+    #    self.z = obs_probs        
     
     def init_obs_f(self):
         # Mean is just initialised to its prior here. Could be done faster?
-        self.obs_f = np.zeros((len(self.obsx), 1)) + self.mu0
+        self.obs_f = np.zeros((self.obs_coords.shape[0], 1)) + self.mu0
     
     def estimate_obs_noise(self):
         # Noise in observations
         self.obs_mean = (self.obs_values + self.nu0[1]) / (self.obs_total_counts + np.sum(self.nu0))
         var_obs_mean = self.obs_mean * (1-self.obs_mean) / (self.obs_total_counts + 1) # uncertainty in obs_mean
         self.Q = np.diagflat((self.obs_mean * (1 - self.obs_mean) - var_obs_mean) / self.obs_total_counts)
+       
+    def count_observations(self, obs_coords, n_obs, poscounts, totals):
+        ravelled_coords = np.ravel_multi_index(obs_coords, dims=self.dims)
+        grid_obs_counts = coo_matrix((totals, (ravelled_coords, np.ones(n_obs))), shape=(np.prod(self.dims), 1)).toarray()            
+        grid_obs_pos_counts = coo_matrix((poscounts, (ravelled_coords, np.ones(n_obs))), shape=(np.prod(self.dims), 1)).toarray()
+        
+        ravelled_coords = grid_obs_counts.nonzero()
+        self.obs_coords = np.array(np.unravel_index(ravelled_coords, shape=self.dims))
+        n_obs = self.obs_coords[0].shape[0]
+        self.obs_values = grid_obs_pos_counts[ravelled_coords][:, np.newaxis]
+        self.obs_total_counts = grid_obs_counts[ravelled_coords][:, np.newaxis]             
+       
+    def process_observations(self, obs_coords, obs_values, totals=None): 
+        # NEED TO SWAP PAIRS SO THAT THEY ALL HAVE LOWEST COORD FIRST
+        
+        # Determine the coordinates of all points that were compared
+        all_coords = np.concatenate((obs_coords[0], obs_coords[1]), axis=1) # put the arrays side-by-side
+        super(GPPref, self).process_observations(all_coords, np.ones(all_coords.shape[0]), totals)
+        
+        self.obs_v = np.in1d(obs_coords[0], self.obs_coords)
+               
+       
+    def fit(self, pair_item_1_coords, pair_item_2_coords, obs_values, totals=None, process_obs=True, update_s=True):
+        super(GPPref, self).fit((pair_item_1_coords, pair_item_2_coords), obs_values, totals, process_obs, update_s)  
         
     def predict_obs(self, variance_method='rough', expectedlog=False, return_not=False):
         ''' 
@@ -106,8 +132,8 @@ class GPPref(GPGrid):
             # this should sample different values of obs_f and put them into the forward model
             v = np.diag(self.obs_C)[:, np.newaxis]
             f_samples = norm.rvs(loc=self.obs_f, scale=np.sqrt(v), size=(len(self.obs_f.flatten()), 1000))
-            z = self.f_to_z(f_samples, self.obs_v, self.obs_u)
-            rho_samples = self.forward_model()#
+            #z = self.f_to_z(f_samples, self.obs_v, self.obs_u)
+            rho_samples = self.forward_model(f_samples, self.obs_v, self.obs_u)#
             rho_not_samples = 1 - rho_samples            
             if expectedlog:
                 rho_samples = np.log(rho_samples)
@@ -157,7 +183,7 @@ if __name__ == '__main__':
     sigma = 10
     
     N = 100
-    K = 500 # number of pairs
+    P = 500 # number of pairs
     
     from scipy.stats import multivariate_normal as mvn
 
@@ -165,7 +191,9 @@ if __name__ == '__main__':
         Kx = np.abs(xvals) * 3**0.5 / ls[0]
         Kx = (1 + Kx) * np.exp(-Kx)
         Ky = np.abs(yvals) * 3**0.5 / ls[1]
-        Ky = (1 + Ky) * np.exp(-Ky)        
+        Ky = (1 + Ky) * np.exp(-Ky)
+        if Ky.shape[1] == 1:
+            Ky = Ky.T     
         K = Kx * Ky
         return K
     
@@ -178,8 +206,8 @@ if __name__ == '__main__':
     f = mvn.rvs(cov=K) # zero mean
     
     # generate pairs indices
-    pair1idxs = np.random.choice(N, K, replace=True)
-    pair2idxs = np.random.choice(N, K, replace=True)
+    pair1idxs = np.random.choice(N, P, replace=True)
+    pair2idxs = np.random.choice(N, P, replace=True)
      
     # generate the noisy function values for the pairs
     f1noisy = norm.rvs(loc=f[pair1idxs], scale=sigma)
@@ -189,8 +217,30 @@ if __name__ == '__main__':
     prefs = f1noisy > f2noisy
     
     # Create a GPPref model
-    model = GPPref(nx, ny, 0, 1, 1, ls_initial=10)
+    model = GPPref(nx, ny, 0, 1, 1, ls_initial=[10, 10])
     model.fit((xvals[pair1idxs], yvals[pair1idxs]), prefs)
-    fpred = model.predict((xvals, yvals), variance_method='sample')
     
+    # Predict at the test locations
+    fpred, vpred = model.predict((xvals, yvals), variance_method='sample')
+    fpred = fpred.flatten()
+    vpred = vpred.flatten()
+    
+    # Evaluate the accuracy of the predictions
+    print "RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
+    print "NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
+    
+    # turn the values into predictions of preference pairs.
+    pair1idxs_test = np.random.choice(N, P, replace=True)
+    pair2idxs_test = np.random.choice(N, P, replace=True)
+    
+    rho = model.forward_model(f, pair1idxs_test, pair2idxs_test)
+    rho_pred = model.forward_model(fpred, pair1idxs_test, pair2idxs_test)
+    
+    print "Brier score of %f" % np.sqrt(np.mean((rho-rho_pred)**2))
+    print "Cross entropy error of %f" % -np.sum(rho * np.log(rho_pred) + (1-rho) * np.log(1 - rho_pred))    
+    
+#     from sklearn.metrics import f1_score, roc_auc_score
+#     print "F1 score of %f" % f1_score(rho, rho_pred)
+#     print "Accuracy of %f" % np.mean(rho==rho_pred)
+#     print "ROC of %f" % roc_auc_score(rho, rho_pred)
     
