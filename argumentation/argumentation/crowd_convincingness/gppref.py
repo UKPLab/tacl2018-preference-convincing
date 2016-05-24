@@ -7,6 +7,7 @@ Created on 18 May 2016
 from heatmapbcc import GPGrid
 import numpy as np
 from scipy.stats import norm
+from scipy.sparse import coo_matrix
 
 class GPPref(GPGrid):
     '''
@@ -92,26 +93,34 @@ class GPPref(GPGrid):
         var_obs_mean = self.obs_mean * (1-self.obs_mean) / (self.obs_total_counts + 1) # uncertainty in obs_mean
         self.Q = np.diagflat((self.obs_mean * (1 - self.obs_mean) - var_obs_mean) / self.obs_total_counts)
        
+#    def set_obs_coords(self, obs_coords):
+
+            
     def count_observations(self, obs_coords, n_obs, poscounts, totals):
-        ravelled_coords = np.ravel_multi_index(obs_coords, dims=self.dims)
-        grid_obs_counts = coo_matrix((totals, (ravelled_coords, np.ones(n_obs))), shape=(np.prod(self.dims), 1)).toarray()            
-        grid_obs_pos_counts = coo_matrix((poscounts, (ravelled_coords, np.ones(n_obs))), shape=(np.prod(self.dims), 1)).toarray()
+        ravelled_coords_0 = np.ravel_multi_index(obs_coords[0], dims=self.dims)
+        ravelled_coords_1 = np.ravel_multi_index(obs_coords[1], dims=self.dims)
+        grid_obs_counts = coo_matrix((totals, (ravelled_coords_0, ravelled_coords_1)), shape=(np.prod(self.dims), np.prod(self.dims))).toarray()            
+        grid_obs_pos_counts = coo_matrix((poscounts, (ravelled_coords_0, ravelled_coords_1)), 
+                                                      shape=(np.prod(self.dims), np.prod(self.dims))).toarray()
         
-        ravelled_coords = grid_obs_counts.nonzero()
+        nonzero_v, nonzero_u = grid_obs_counts.nonzero()
+        ravelled_coords, pref_vu = np.unique([nonzero_v, nonzero_u], return_inverse=True)
+        self.pref_v = pref_vu[:len(nonzero_v)]
+        self.pref_u = pref_vu[len(nonzero_v):]        
         self.obs_coords = np.array(np.unravel_index(ravelled_coords, shape=self.dims))
+        
         n_obs = self.obs_coords[0].shape[0]
-        self.obs_values = grid_obs_pos_counts[ravelled_coords][:, np.newaxis]
-        self.obs_total_counts = grid_obs_counts[ravelled_coords][:, np.newaxis]             
+        self.obs_values = grid_obs_pos_counts[nonzero_v, nonzero_u][:, np.newaxis]
+        self.obs_total_counts = grid_obs_counts[nonzero_v, nonzero_u][:, np.newaxis]
+        
+        return n_obs             
        
     def process_observations(self, obs_coords, obs_values, totals=None): 
         # NEED TO SWAP PAIRS SO THAT THEY ALL HAVE LOWEST COORD FIRST
         
         # Determine the coordinates of all points that were compared
-        all_coords = np.concatenate((obs_coords[0], obs_coords[1]), axis=1) # put the arrays side-by-side
-        super(GPPref, self).process_observations(all_coords, np.ones(all_coords.shape[0]), totals)
-        
-        self.obs_v = np.in1d(obs_coords[0], self.obs_coords)
-               
+        all_coords = (obs_coords[0], obs_coords[1])
+        super(GPPref, self).process_observations(all_coords, np.ones(all_coords.shape[0]), totals)               
        
     def fit(self, pair_item_1_coords, pair_item_2_coords, obs_values, totals=None, process_obs=True, update_s=True):
         super(GPPref, self).fit((pair_item_1_coords, pair_item_2_coords), obs_values, totals, process_obs, update_s)  
