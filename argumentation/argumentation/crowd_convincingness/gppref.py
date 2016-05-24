@@ -8,6 +8,7 @@ from heatmapbcc import GPGrid
 import numpy as np
 from scipy.stats import norm
 from scipy.sparse import coo_matrix
+import logging
 
 class GPPref(GPGrid):
     '''
@@ -29,8 +30,8 @@ class GPPref(GPGrid):
     # inverse Hessian of the negative log likelihood. Through moment matching self.Q with the likelihood covariance,
     # we can compute sigma?
     
-    obs_v = [] # the first items in each pair -- index to the observation coordinates in self.obsx and self.obsy
-    obs_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
+    pref_v = [] # the first items in each pair -- index to the observation coordinates in self.obsx and self.obsy
+    pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
     
     def __init__(self, nx, ny, mu0=[], shape_s0=None, rate_s0=None, s_initial=None, shape_ls=10, rate_ls=0.1, 
                  ls_initial=None, force_update_all_points=False, n_lengthscales=1):
@@ -52,10 +53,10 @@ class GPPref(GPGrid):
         if not np.any(f):
             f = self.obs_f            
         if not np.any(v):
-            v = self.obs_v
+            v = self.pref_v
         if not np.any(u):
-            u = self.obs_u
-        if np.any(self.obs_v) and np.any(self.obs_u):   
+            u = self.pref_u
+        if np.any(self.pref_v) and np.any(self.pref_u):   
             return f[v, :] - f.T[:, u] / (np.sqrt(2 * np.pi) * self.sigma)
         else: # provide the complete set of pairs
             return f - f.T / (np.sqrt(2 * np.pi) * self.sigma)
@@ -71,8 +72,8 @@ class GPPref(GPGrid):
         phiz = self.forward_model() 
         J = norm.pdf(z) / (phiz * np.sqrt(2) * self.sigma)
         J = J[:, np.newaxis]
-        obs_idxs = np.arange(self.obs_coords.shape[0])
-        s = (self.obs_vidxs[:, np.newaxis]==obs_idxs[np.newaxis, :]) - (self.obs_uidxs[:, np.newaxis]==obs_idxs[np.newaxis, :])
+        obs_idxs = np.arange(self.obs_coords.shape[0])[np.newaxis, :]
+        s = (self.pref_v[:, np.newaxis]==obs_idxs) - (self.pref_u[:, np.newaxis]==obs_idxs)
         J = J * s 
         
         self.G = G_update_rate * s + (1 - G_update_rate) * self.G
@@ -83,101 +84,159 @@ class GPPref(GPGrid):
     #    obs_probs = self.obs_values/self.obs_total_counts
     #    self.z = obs_probs        
     
-    def init_obs_f(self):
-        # Mean is just initialised to its prior here. Could be done faster?
-        self.obs_f = np.zeros((self.obs_coords.shape[0], 1)) + self.mu0
+    #def init_obs_f(self):
+    #    # Mean is just initialised to its prior here. Could be done faster?
+    #    self.obs_f = np.zeros((self.obs_coords.shape[0], 1)) + self.mu0
     
-    def estimate_obs_noise(self):
-        # Noise in observations
-        self.obs_mean = (self.obs_values + self.nu0[1]) / (self.obs_total_counts + np.sum(self.nu0))
-        var_obs_mean = self.obs_mean * (1-self.obs_mean) / (self.obs_total_counts + 1) # uncertainty in obs_mean
-        self.Q = np.diagflat((self.obs_mean * (1 - self.obs_mean) - var_obs_mean) / self.obs_total_counts)
+#     def estimate_obs_noise(self):
+#         #Noise in observations
+#         var_obs_mean = self.obs_mean * (1-self.obs_mean) / (self.obs_total_counts + 1) # uncertainty in obs_mean
+#         self.Q = np.diagflat((self.obs_mean * (1 - self.obs_mean) - var_obs_mean) / self.obs_total_counts)
        
-#    def set_obs_coords(self, obs_coords):
-
-            
+    def get_unique_locations(self, obs_coords_0, obs_coords_1):
+        coord_rows_0 = obs_coords_0.view(np.dtype((np.void, obs_coords_0.dtype.itemsize * obs_coords_0.shape[1])))
+        coord_rows_1 = obs_coords_1.view(np.dtype((np.void, obs_coords_1.dtype.itemsize * obs_coords_1.shape[1])))
+        _, uidxs, pref_vu = np.unique([coord_rows_0, coord_rows_1], return_index=True, return_inverse=True) # get unique locations
+        
+        # Record the coordinates of all points that were compared
+        obs_coords = [coord_rows_0, coord_rows_1][uidxs]
+       
+        # Record the indexes into the list of coordinates for the pairs that were compared 
+        pref_v = pref_vu[:len(coord_rows_0)]
+        pref_u = pref_vu[len(coord_rows_0):]
+        
+        return obs_coords, pref_v, pref_u  
+       
     def count_observations(self, obs_coords, n_obs, poscounts, totals):
-        ravelled_coords_0 = np.ravel_multi_index(obs_coords[0], dims=self.dims)
-        ravelled_coords_1 = np.ravel_multi_index(obs_coords[1], dims=self.dims)
-        grid_obs_counts = coo_matrix((totals, (ravelled_coords_0, ravelled_coords_1)), shape=(np.prod(self.dims), np.prod(self.dims))).toarray()            
-        grid_obs_pos_counts = coo_matrix((poscounts, (ravelled_coords_0, ravelled_coords_1)), 
+        '''
+        obs_coords - a tuple with two elements, the first containing the list of coordinates for the first items in each
+        pair, and the second containing the coordinates of the second item in the pair.
+        '''        
+        obs_coords_0 = np.array(obs_coords[0])
+        obs_coords_1 = np.array(obs_coords[1])
+        if obs_coords_0.dtype=='int': # duplicate locations should be merged and the number of duplicates counted
+            # Ravel the coordinates
+            ravelled_coords_0 = np.ravel_multi_index(obs_coords_0, dims=self.dims)
+            ravelled_coords_1 = np.ravel_multi_index(obs_coords_1, dims=self.dims)       
+            
+            # SWAP PAIRS SO THEY ALL HAVE LOWEST COORD FIRST so we can count prefs for duplicate location pairs
+            idxs_to_swap = ravelled_coords_0 < ravelled_coords_1
+            swap_coords_0 = ravelled_coords_0[idxs_to_swap]
+            ravelled_coords_0[idxs_to_swap] = ravelled_coords_1[idxs_to_swap]
+            ravelled_coords_1[idxs_to_swap] = swap_coords_0
+            
+            grid_obs_counts = coo_matrix((totals, (ravelled_coords_0, ravelled_coords_1)), shape=(np.prod(self.dims), np.prod(self.dims))).toarray()            
+            grid_obs_pos_counts = coo_matrix((poscounts, (ravelled_coords_0, ravelled_coords_1)), 
                                                       shape=(np.prod(self.dims), np.prod(self.dims))).toarray()
-        
-        nonzero_v, nonzero_u = grid_obs_counts.nonzero()
-        ravelled_coords, pref_vu = np.unique([nonzero_v, nonzero_u], return_inverse=True)
-        self.pref_v = pref_vu[:len(nonzero_v)]
-        self.pref_u = pref_vu[len(nonzero_v):]        
-        self.obs_coords = np.array(np.unravel_index(ravelled_coords, shape=self.dims))
-        
-        n_obs = self.obs_coords[0].shape[0]
-        self.obs_values = grid_obs_pos_counts[nonzero_v, nonzero_u][:, np.newaxis]
-        self.obs_total_counts = grid_obs_counts[nonzero_v, nonzero_u][:, np.newaxis]
-        
-        return n_obs             
-       
-    def process_observations(self, obs_coords, obs_values, totals=None): 
-        # NEED TO SWAP PAIRS SO THAT THEY ALL HAVE LOWEST COORD FIRST
-        
-        # Determine the coordinates of all points that were compared
-        all_coords = (obs_coords[0], obs_coords[1])
-        super(GPPref, self).process_observations(all_coords, np.ones(all_coords.shape[0]), totals)               
-       
+                                                              
+            nonzero_v, nonzero_u = grid_obs_counts.nonzero() # ravelled coordinate pairs with duplicate pairs removed
+            ravelled_coords, pref_vu = np.unique([nonzero_v, nonzero_u], return_inverse=True) # get unique locations
+            
+            # Record the coordinates of all points that were compared
+            self.obs_coords = np.array(np.unravel_index(ravelled_coords, shape=self.dims))
+            
+            # Record the indexes into the list of coordinates for the pairs that were compared 
+            self.pref_v = pref_vu[:len(nonzero_v)]
+            self.pref_u = pref_vu[len(nonzero_v):]
+                   
+            # Return the counts for each of the observed pairs
+            return grid_obs_pos_counts[nonzero_v, nonzero_u], grid_obs_counts[nonzero_v, nonzero_u]
+                    
+        elif obs_coords_0.dtype=='float': # Duplicate locations are not merged
+            self.obs_coords, self.pref_v, self.pref_u = self.get_unique_locations()
+            
+            return poscounts, totals # these remain unaltered as we have not de-duplicated            
+            
     def fit(self, pair_item_1_coords, pair_item_2_coords, obs_values, totals=None, process_obs=True, update_s=True):
         super(GPPref, self).fit((pair_item_1_coords, pair_item_2_coords), obs_values, totals, process_obs, update_s)  
         
-    def predict_obs(self, variance_method='rough', expectedlog=False, return_not=False):
-        ''' 
-        Need to change the behaviour from GPGrid because in this function we give distributions over the preference
-        labels at observed pairs of locations, whereas the function predict() returns predictions over the latent
-        function at a set of locations. This means that we cannot now use just post_rough or post_sample to obtain 
-        predictions in this method. 
+    def predict(self, pair_item_0_coords=None, pair_item_1_coords=None, variance_method='rough', max_block_size=1e5, expectedlog=False, return_not=False):
         '''
-        if variance_method=='rough' and not expectedlog:
-            z = self.f_to_z()
-            m_post = self.forward_model()
-            not_m_post = 1 - m_post
-            v_post = - 2.0 * self.sigma / (norm.pdf(z)**2/m_post**2 + norm.pdf(z)*z/m_post) # use the inverse hessian
-        else:
-            # this should sample different values of obs_f and put them into the forward model
-            v = np.diag(self.obs_C)[:, np.newaxis]
-            f_samples = norm.rvs(loc=self.obs_f, scale=np.sqrt(v), size=(len(self.obs_f.flatten()), 1000))
-            #z = self.f_to_z(f_samples, self.obs_v, self.obs_u)
-            rho_samples = self.forward_model(f_samples, self.obs_v, self.obs_u)#
-            rho_not_samples = 1 - rho_samples            
-            if expectedlog:
-                rho_samples = np.log(rho_samples)
-                rho_not_samples = np.log(rho_not_samples)
+        Evaluate the function posterior mean and variance at the given co-ordinates using the 2D squared exponential 
+        kernel
+        '''
+        # if no output_coords provided, give predictions at the fitted locations
+        if not np.any(pair_item_0_coords) and not np.any(pair_item_1_coords):
+            return self.predict_obs(variance_method, expectedlog, return_not)
+        
+        output_coords, out_pref_v, out_pref_u = self.get_unique_locations(pair_item_0_coords, pair_item_1_coords)
+        
+        nblocks, noutputs = self.init_output_arrays(output_coords, max_block_size, variance_method)
+                
+        for block in range(nblocks):
+            if self.verbose:
+                logging.debug("GPGrid predicting block %i of %i" % (block, nblocks))            
+            self.predict_block(block, max_block_size, noutputs)
+        
+        noutprefs = self.pair_item_0.shape[0]
+        
+        if variance_method=='sample':
+            m_post = np.empty((noutprefs, 1), dtype=float)
+            not_m_post = np.empty((noutprefs, 1), dtype=float)
+            v_post = np.empty((noutprefs, 1), dtype=float)        
+                    
+        # Approximate the expected value of the variable transformed through the sigmoid.
+        nblocks = int(np.ceil(float(noutprefs) / max_block_size))
+        for block in range(nblocks):
+            maxidx = (block + 1) * max_block_size
+            if maxidx > noutputs:
+                maxidx = noutputs
+            blockidxs = np.arange(block * max_block_size, maxidx, dtype=int)            
             
-            m_post = np.mean(rho_samples, axis=1)[:, np.newaxis]
-            not_m_post = np.mean(rho_not_samples, axis=1)[:, np.newaxis]
-            v_post = np.var(rho_samples, axis=1)[:, np.newaxis]
-
+            if variance_method == 'sample' or expectedlog:
+                m_post[blockidxs, :], v_post[blockidxs, :], not_m_post[blockidxs, :] = \
+                    self.post_sample(self.f[blockidxs, :], self.v[blockidxs, :], expectedlog, out_pref_v, out_pref_u)                
+        
+        if variance_method == 'rough' and not expectedlog:
+            m_post, v_post, not_m_post = self.post_rough(self.f, self.v)
+        elif variance_method == 'rough':
+            logging.warning("Switched to using sample method as expected log requested. No quick method is available.")
+            
         if return_not:
             return m_post, not_m_post, v_post
         else:
-            return m_post, v_post          
+            return m_post, v_post     
         
-    def post_rough(self, f, v):
+    def post_rough(self, f_mean, f_var, pref_v=None, pref_u=None):
         ''' 
-        When making predictions, we want to predict the latent value of each observed data point. Thus we  
-        return the expected value of f, which is simply its mean. There is no need to apply the nonlinear function as
-        we are not trying to predict the probability of a preference label here.
+        When making predictions, we want to predict the probability of each listed preference pair.
+        Use a solution given by applying the forward model to the mean of the latent function -- 
+        ignore the uncertainty in f itself, considering only the uncertainty due to the noise sigma.
         '''
-        m_post = f
-        not_m_post = -f
-        v_post = v
+        if not np.any(pref_v):
+            pref_v = self.pref_v
+        if not np.any(pref_u):
+            pref_u = self.pref_u
+        
+        z = self.f_to_z(f_mean, pref_v, pref_u)
+        m_post = self.forward_model(f_mean, pref_v, pref_u)
+        not_m_post = 1 - m_post
+        v_post = - 2.0 * self.sigma / (norm.pdf(z)**2/m_post**2 + norm.pdf(z)*z/m_post) # use the inverse hessian
         
         return m_post, not_m_post, v_post
     
-    def post_sample(self, f, v, expectedlog): 
+    def post_sample(self, f_mean, f_var, expectedlog, pref_v=None, pref_u=None): 
         ''' 
-        When making predictions, we want to predict the latent value of each observed data point. Thus we  
-        return the expected value of f, which is simply its mean. There is no need to apply the nonlinear function as
-        we are not trying to predict the probability of a preference label here.
+        When making predictions, we want to predict the probability of each listed preference pair. 
+        Use sampling to handle the nonlinearity. 
         '''
-        m_post = f
-        not_m_post = -f
-        v_post = v
+        if not np.any(pref_v):
+            pref_v = self.pref_v
+        if not np.any(pref_u):
+            pref_u = self.pref_u
+        
+        # this should sample different values of obs_f and put them into the forward model
+        #v = np.diag(self.obs_C)[:, np.newaxis]
+        f_samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(len(self.f_mean.flatten()), 1000))
+        rho_samples = self.forward_model(f_samples, self.pref_v, self.pref_u)#
+        rho_not_samples = 1 - rho_samples            
+        if expectedlog:
+            rho_samples = np.log(rho_samples)
+            rho_not_samples = np.log(rho_not_samples)
+        
+        m_post = np.mean(rho_samples, axis=1)[:, np.newaxis]
+        not_m_post = np.mean(rho_not_samples, axis=1)[:, np.newaxis]
+        v_post = np.var(rho_samples, axis=1)[:, np.newaxis]
         
         return m_post, not_m_post, v_post         
 
@@ -227,7 +286,7 @@ if __name__ == '__main__':
     
     # Create a GPPref model
     model = GPPref(nx, ny, 0, 1, 1, ls_initial=[10, 10])
-    model.fit((xvals[pair1idxs], yvals[pair1idxs]), prefs)
+    model.fit(xvals[pair1idxs], yvals[pair1idxs], prefs)
     
     # Predict at the test locations
     fpred, vpred = model.predict((xvals, yvals), variance_method='sample')
