@@ -4,7 +4,7 @@ Created on 18 May 2016
 @author: simpson
 '''
 
-from heatmapbcc import GPGrid
+from gpgrid import GPGrid, coord_arr_to_1d, coord_arr_from_1d
 import numpy as np
 from scipy.stats import norm
 from scipy.sparse import coo_matrix
@@ -57,8 +57,10 @@ class GPPref(GPGrid):
         if not np.any(u):
             u = self.pref_u
         if np.any(self.pref_v) and np.any(self.pref_u):   
-            return f[v, :] - f.T[:, u] / (np.sqrt(2 * np.pi) * self.sigma)
+            return f[v] - f[u] / (np.sqrt(2 * np.pi) * self.sigma)
         else: # provide the complete set of pairs
+            if f.ndim < 2:
+                f = f[:, np.newaxis]
             return f - f.T / (np.sqrt(2 * np.pi) * self.sigma)
     
     def forward_model(self, f=None, v=None, u=None):
@@ -94,8 +96,8 @@ class GPPref(GPGrid):
 #         self.Q = np.diagflat((self.obs_mean * (1 - self.obs_mean) - var_obs_mean) / self.obs_total_counts)
        
     def get_unique_locations(self, obs_coords_0, obs_coords_1):
-        coord_rows_0 = obs_coords_0.view(np.dtype((np.void, obs_coords_0.dtype.itemsize * obs_coords_0.shape[1])))
-        coord_rows_1 = obs_coords_1.view(np.dtype((np.void, obs_coords_1.dtype.itemsize * obs_coords_1.shape[1])))
+        coord_rows_0 = coord_arr_to_1d(obs_coords_0)
+        coord_rows_1 = coord_arr_to_1d(obs_coords_1)
         _, uidxs, pref_vu = np.unique([coord_rows_0, coord_rows_1], return_index=True, return_inverse=True) # get unique locations
         
         # Record the coordinates of all points that were compared
@@ -116,24 +118,29 @@ class GPPref(GPGrid):
         obs_coords_1 = np.array(obs_coords[1])
         if obs_coords_0.dtype=='int': # duplicate locations should be merged and the number of duplicates counted
             # Ravel the coordinates
-            ravelled_coords_0 = np.ravel_multi_index(obs_coords_0, dims=self.dims)
-            ravelled_coords_1 = np.ravel_multi_index(obs_coords_1, dims=self.dims)       
+            ravelled_coords_0 = coord_arr_to_1d(obs_coords_0)
+            ravelled_coords_1 = coord_arr_to_1d(obs_coords_1) 
             
             # SWAP PAIRS SO THEY ALL HAVE LOWEST COORD FIRST so we can count prefs for duplicate location pairs
-            idxs_to_swap = ravelled_coords_0 < ravelled_coords_1
-            swap_coords_0 = ravelled_coords_0[idxs_to_swap]
-            ravelled_coords_0[idxs_to_swap] = ravelled_coords_1[idxs_to_swap]
-            ravelled_coords_1[idxs_to_swap] = swap_coords_0
+            # get unique keys
+            uravelled_coords, keys = np.unique([ravelled_coords_0, ravelled_coords_1], return_inverse=True)
+            keys_0 = keys[:len(ravelled_coords_0)]
+            keys_1 = keys[len(ravelled_coords_0):]
+            idxs_to_swap = keys_0 < keys_1
             
-            grid_obs_counts = coo_matrix((totals, (ravelled_coords_0, ravelled_coords_1)), shape=(np.prod(self.dims), np.prod(self.dims))).toarray()            
-            grid_obs_pos_counts = coo_matrix((poscounts, (ravelled_coords_0, ravelled_coords_1)), 
-                                                      shape=(np.prod(self.dims), np.prod(self.dims))).toarray()
+            swap_coords_0 = keys_0[idxs_to_swap]
+            keys_0[idxs_to_swap] = keys_1[idxs_to_swap]
+            keys_1[idxs_to_swap] = swap_coords_0
+            
+            grid_obs_counts = coo_matrix((totals, (keys_0, keys_1)) ).toarray()            
+            grid_obs_pos_counts = coo_matrix((poscounts, (keys_0, keys_1)) ).toarray()
                                                               
-            nonzero_v, nonzero_u = grid_obs_counts.nonzero() # ravelled coordinate pairs with duplicate pairs removed
-            ravelled_coords, pref_vu = np.unique([nonzero_v, nonzero_u], return_inverse=True) # get unique locations
+            nonzero_v, nonzero_u = grid_obs_counts.nonzero() # coordinate key pairs with duplicate pairs removed
+            ukeys, pref_vu = np.unique([nonzero_v, nonzero_u], return_inverse=True) # get unique locations
             
             # Record the coordinates of all points that were compared
-            self.obs_coords = np.array(np.unravel_index(ravelled_coords, shape=self.dims))
+            self.obs_coords = coord_arr_from_1d(uravelled_coords[ukeys], obs_coords_0.dtype, 
+                                                dims=(len(ukeys), obs_coords_0.shape[1]))
             
             # Record the indexes into the list of coordinates for the pairs that were compared 
             self.pref_v = pref_vu[:len(nonzero_v)]
@@ -188,7 +195,7 @@ class GPPref(GPGrid):
                     self.post_sample(self.f[blockidxs, :], self.v[blockidxs, :], expectedlog, out_pref_v, out_pref_u)                
         
         if variance_method == 'rough' and not expectedlog:
-            m_post, v_post, not_m_post = self.post_rough(self.f, self.v)
+            m_post, v_post, not_m_post = self.post_rough(self.f, self.v, out_pref_v, out_pref_u)
         elif variance_method == 'rough':
             logging.warning("Switched to using sample method as expected log requested. No quick method is available.")
             
@@ -286,7 +293,9 @@ if __name__ == '__main__':
     
     # Create a GPPref model
     model = GPPref(nx, ny, 0, 1, 1, ls_initial=[10, 10])
-    model.fit(xvals[pair1idxs], yvals[pair1idxs], prefs)
+    pair1coords = np.concatenate((xvals[pair1idxs, :], yvals[pair1idxs, :]), axis=1)
+    pair2coords = np.concatenate((xvals[pair2idxs, :], yvals[pair2idxs, :]), axis=1)    
+    model.fit(pair1coords, pair2coords, prefs)
     
     # Predict at the test locations
     fpred, vpred = model.predict((xvals, yvals), variance_method='sample')
