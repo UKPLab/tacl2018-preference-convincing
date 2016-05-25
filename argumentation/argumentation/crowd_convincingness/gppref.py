@@ -46,40 +46,70 @@ class GPPref(GPGrid):
     def init_prior_mean_f(self, z0):
         self.mu0 = z0 # for preference learning, we pass in the latent mean directly  
     
-    def f_to_z(self, f=None, v=None, u=None):
+    def init_obs_prior(self):
+        nsamples = 50000
+        f_samples = norm.rvs(loc=self.mu0, scale=np.sqrt(1.0/self.s), size=nsamples)
+        v_samples = np.random.choice(nsamples, nsamples)
+        u_samples = np.random.choice(nsamples, nsamples)
+        rho_samples = self.forward_model(f_samples, v_samples, u_samples)
+        rho_mean = np.mean(rho_samples)
+        rho_var = np.var(rho_samples)
+        # find the beta parameters
+        a_plus_b = 1.0 / (rho_var / (rho_mean*(1 - rho_mean))) - 1
+        a = a_plus_b * rho_mean
+        b = a_plus_b * (1 - rho_mean)
+        #b = 1.0
+        #a = 1.0
+        self.nu0 = np.array([b, a])
+        logging.debug("Prior parameters for the observed pairwise preference variance are: %s" % str(self.nu0))           
+    
+    def init_obs_f(self):
+        # Mean probability at observed points given local observations
+        self.obs_f = np.zeros((self.obs_coords.shape[0], 1))
+    
+    def forward_model(self, f=None, v=None, u=None, return_g_f=False):
         '''
         f - should be of shape nobs x 1
-        '''
+        
+        This returns the probability that each pair has a value of 1, which is referred to as Phi(z) 
+        in the chu/ghahramani paper, and the latent parameter referred to as z in the chu/ghahramani paper. 
+        In this work, we use z to refer to the observations, i.e. the fraction of comparisons of a given pair with 
+        value 1, so use a different label here.
+        '''        
         if not np.any(f):
             f = self.obs_f            
         if not np.any(v):
             v = self.pref_v
         if not np.any(u):
             u = self.pref_u
-        if np.any(self.pref_v) and np.any(self.pref_u):   
-            return f[v] - f[u] / (np.sqrt(2 * np.pi) * self.sigma)
-        else: # provide the complete set of pairs
-            if f.ndim < 2:
+
+        if f.ndim < 2:
                 f = f[:, np.newaxis]
-            return f - f.T / (np.sqrt(2 * np.pi) * self.sigma)
-    
-    def forward_model(self, f=None, v=None, u=None):
-        # select only the pairs we have observed preferences for
-        z = self.f_to_z(f, v, u)
-        # gives an NobsxNobs matrix
-        return norm.cdf(z)
+        
+        if np.any(v) and np.any(u):   
+            g_f = f[v, :] - f[u, :] / (np.sqrt(2 * np.pi) * self.sigma) # gives an NobsxNobs matrix
+        else: # provide the complete set of pairs
+            g_f = f - f.T / (np.sqrt(2 * np.pi) * self.sigma)    
+                
+        phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the 
+        # With the standard GP density classifier, we can skip this step because
+        # g_f is already a probability and Phi(z) is a Bernoulli distribution.
+        if return_g_f:
+            return phi, g_f
+        else:
+            return phi 
     
     def update_jacobian(self, G_update_rate=1.0):
-        z = self.f_to_z()
-        phiz = self.forward_model() 
-        J = norm.pdf(z) / (phiz * np.sqrt(2) * self.sigma)
-        J = J[:, np.newaxis]
+        phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
+        J = norm.pdf(g_mean_f) / (phi * np.sqrt(2) * self.sigma)
         obs_idxs = np.arange(self.obs_coords.shape[0])[np.newaxis, :]
-        s = (self.pref_v[:, np.newaxis]==obs_idxs) - (self.pref_u[:, np.newaxis]==obs_idxs)
+        s = (self.pref_v[:, np.newaxis]==obs_idxs).astype(int) - (self.pref_u[:, np.newaxis]==obs_idxs).astype(int)
         J = J * s 
-        
-        self.G = G_update_rate * s + (1 - G_update_rate) * self.G
-        return phiz
+        if not np.any(self.G):
+            self.G = J
+        else:        
+            self.G = G_update_rate * J + (1 - G_update_rate) * self.G
+        return phi
     
     # If this is the same as parent class, can the initialisation also be the same init_obs_f?
     #def observations_to_z(self):
@@ -215,10 +245,9 @@ class GPPref(GPGrid):
         if not np.any(pref_u):
             pref_u = self.pref_u
         
-        z = self.f_to_z(f_mean, pref_v, pref_u)
-        m_post = self.forward_model(f_mean, pref_v, pref_u)
+        m_post, g_f = self.forward_model(f_mean, pref_v, pref_u, return_g_f=True)
         not_m_post = 1 - m_post
-        v_post = - 2.0 * self.sigma / (norm.pdf(z)**2/m_post**2 + norm.pdf(z)*z/m_post) # use the inverse hessian
+        v_post = - 2.0 * self.sigma / (norm.pdf(g_f)**2/m_post**2 + norm.pdf(g_f)*g_f/m_post) # use the inverse hessian
         
         return m_post, not_m_post, v_post
     
@@ -248,6 +277,8 @@ class GPPref(GPGrid):
         return m_post, not_m_post, v_post         
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)    
+    
     # Generate some data
     
     nx = 100
