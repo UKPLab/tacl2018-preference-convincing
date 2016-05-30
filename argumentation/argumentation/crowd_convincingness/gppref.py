@@ -4,7 +4,7 @@ Created on 18 May 2016
 @author: simpson
 '''
 
-from gpgrid import GPGrid, coord_arr_to_1d, coord_arr_from_1d
+from gpgrid import GPGrid, coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
 import numpy as np
 from scipy.stats import norm
 from scipy.sparse import coo_matrix
@@ -20,7 +20,7 @@ class GPPref(GPGrid):
     - Process_observations:
      - Observations, self.z. Observations now consist not of a count at a point, but two points and a label. 
      - self.obsx and self.obsy refer to all the locations mentioned in the observations.
-     - self.Q is the observation noise covariance at the observed locations, i.e. the  
+     - self.Q is the observation covariance at the observed locations, i.e. the  
     - Lower bound?
     '''
     
@@ -63,7 +63,14 @@ class GPPref(GPGrid):
         u_samples = np.random.choice(nsamples, nsamples)
         rho_samples = self.forward_model(f_samples, v_samples, u_samples)
         rho_mean = np.mean(rho_samples)
-        rho_var = np.var(rho_samples)
+        rho_var = np.var(rho_samples) # this doesn't work because the locations are not independent
+        
+        # calculate using the hessian
+#         phi, g_mean_f = self.forward_model(f=np.array([self.mu0]), v=[0], u=[0], 
+#                                            return_g_f=True) # first order Taylor series approximation
+#         N_over_phi = norm.pdf(g_mean_f) / phi          
+#         rho_var = self.s - (N_over_phi**2 + N_over_phi*g_mean_f)        
+#                 
         # find the beta parameters
         a_plus_b = 1.0 / (rho_var / (rho_mean*(1 - rho_mean))) - 1
         a = a_plus_b * rho_mean
@@ -77,7 +84,7 @@ class GPPref(GPGrid):
         # Mean probability at observed points given local observations
         self.obs_f = np.zeros((self.obs_coords.shape[0], 1))
     
-    def forward_model(self, f=None, v=None, u=None, return_g_f=False):
+    def forward_model(self, f=[], v=[], u=[], return_g_f=False):
         '''
         f - should be of shape nobs x 1
         
@@ -86,20 +93,20 @@ class GPPref(GPGrid):
         In this work, we use z to refer to the observations, i.e. the fraction of comparisons of a given pair with 
         value 1, so use a different label here.
         '''        
-        if not np.any(f):
+        if len(f) == 0:
             f = self.obs_f            
-        if not np.any(v):
+        if len(v) == 0:
             v = self.pref_v
-        if not np.any(u):
+        if len(u) == 0:
             u = self.pref_u
 
         if f.ndim < 2:
                 f = f[:, np.newaxis]
         
         if np.any(v) and np.any(u):   
-            g_f = f[v, :] - f[u, :] / (np.sqrt(2 * np.pi) * self.sigma) # gives an NobsxNobs matrix
+            g_f = (f[v, :] - f[u, :]) / (np.sqrt(2 * np.pi) * self.sigma) # gives an NobsxNobs matrix
         else: # provide the complete set of pairs
-            g_f = f - f.T / (np.sqrt(2 * np.pi) * self.sigma)    
+            g_f = (f - f.T) / (np.sqrt(2 * np.pi) * self.sigma)    
                 
         phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the 
         # With the standard GP density classifier, we can skip this step because
@@ -110,8 +117,9 @@ class GPPref(GPGrid):
             return phi 
     
     def update_jacobian(self, G_update_rate=1.0):
+        # this is wrong -- it's the derivative of the log here, not the derivative of the function
         phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
-        J = norm.pdf(g_mean_f) / (phi * np.sqrt(2) * self.sigma)
+        J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * (1.0/(2**0.5 * self.sigma)) #norm.pdf(g_mean_f) / (phi * np.sqrt(2) * self.sigma)
         obs_idxs = np.arange(self.obs_coords.shape[0])[np.newaxis, :]
         s = (self.pref_v[:, np.newaxis]==obs_idxs).astype(int) - (self.pref_u[:, np.newaxis]==obs_idxs).astype(int)
         J = J * s 
@@ -144,8 +152,8 @@ class GPPref(GPGrid):
         obs_coords = np.concatenate((obs_coords_0, obs_coords_1), axis=0)[uidxs]
        
         # Record the indexes into the list of coordinates for the pairs that were compared 
-        pref_v = pref_vu[:len(coord_rows_0)]
-        pref_u = pref_vu[len(coord_rows_0):]
+        pref_v = pref_vu[:obs_coords_0.shape[0]]
+        pref_u = pref_vu[obs_coords_0.shape[0]:]
         
         return obs_coords, pref_v, pref_u  
        
@@ -194,29 +202,17 @@ class GPPref(GPGrid):
             
             return poscounts, totals # these remain unaltered as we have not de-duplicated            
             
-    def fit(self, pair_item_1_coords, pair_item_2_coords, obs_values, totals=None, process_obs=True, update_s=True):
-        super(GPPref, self).fit((pair_item_1_coords, pair_item_2_coords), obs_values, totals, process_obs, update_s)  
+    def fit(self, items_1_coords, items_2_coords, obs_values, totals=None, process_obs=True, update_s=True):
+        super(GPPref, self).fit((items_1_coords, items_2_coords), obs_values, totals, process_obs, update_s)  
         
-    def predict(self, pair_item_0_coords=None, pair_item_1_coords=None, variance_method='rough', max_block_size=1e5, expectedlog=False, return_not=False):
+    def predict(self, items_0_coords=None, items_1_coords=None, variance_method='rough', max_block_size=1e5, expectedlog=False, return_not=False):
         '''
         Evaluate the function posterior mean and variance at the given co-ordinates using the 2D squared exponential 
         kernel
         '''
         # if no output_coords provided, give predictions at the fitted locations
-        if not np.any(pair_item_0_coords) and not np.any(pair_item_1_coords):
+        if not np.any(items_0_coords) and not np.any(items_1_coords):
             return self.predict_obs(variance_method, expectedlog, return_not)
-        
-        pair_item_0_coords = np.array(pair_item_0_coords)
-        if pair_item_0_coords.shape[0] == len(self.dims) and pair_item_0_coords.shape[1] != len(self.dims):
-            pair_item_0_coords = pair_item_0_coords.T
-        if not np.any(pair_item_1_coords):
-            # no items to compare against were specified. Repeat the first pair list so we can compute the latent f 
-            # values for the specified locations
-            pair_item_1_coords = pair_item_0_coords 
-        else:
-            pair_item_1_coords = np.array(pair_item_1_coords)
-            if pair_item_1_coords.shape[0] == len(self.dims) and pair_item_1_coords.shape[1] != len(self.dims):
-                pair_item_1_coords = pair_item_1_coords.T        
         
         output_coords, out_pref_v, out_pref_u = self.get_unique_locations(pair_item_0_coords, pair_item_1_coords)
         
@@ -226,8 +222,8 @@ class GPPref(GPGrid):
             if self.verbose:
                 logging.debug("GPGrid predicting block %i of %i" % (block, nblocks))            
             self.predict_block(block, max_block_size, noutputs)
-        
-        noutprefs = pair_item_0_coords.shape[0]
+
+        noutprefs = items_0_coords.shape[0]
         
         if variance_method=='sample':
             m_post = np.empty((noutprefs, 1), dtype=float)
@@ -243,11 +239,16 @@ class GPPref(GPGrid):
             blockidxs = np.arange(block * max_block_size, maxidx, dtype=int)            
             
             if variance_method == 'sample' or expectedlog:
-                m_post[blockidxs, :], v_post[blockidxs, :], not_m_post[blockidxs, :] = \
-                    self.post_sample(self.f[blockidxs, :], self.v[blockidxs, :], expectedlog, out_pref_v, out_pref_u)                
+                m_post[blockidxs, :], not_m_post[blockidxs, :], v_post[blockidxs, :] = \
+                    self.post_sample(self.f, self.v, expectedlog, out_pref_v[blockidxs], out_pref_u[blockidxs])                
+        
+        # map self.f and self.v back to the original order, i.e. f at locations in items_0_coords followed by f at
+        # locations in items_1_coords
+        self.f = self.f[[out_pref_v, out_pref_u], :]
+        self.v = self.v[[out_pref_v, out_pref_u], :]
         
         if variance_method == 'rough' and not expectedlog:
-            m_post, v_post, not_m_post = self.post_rough(self.f, self.v, out_pref_v, out_pref_u)
+            m_post, not_m_post, v_post = self.post_rough(self.f, self.v, out_pref_v, out_pref_u)
         elif variance_method == 'rough':
             logging.warning("Switched to using sample method as expected log requested. No quick method is available.")
             
@@ -285,8 +286,9 @@ class GPPref(GPGrid):
         
         # this should sample different values of obs_f and put them into the forward model
         #v = np.diag(self.obs_C)[:, np.newaxis]
-        f_samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(len(self.f_mean.flatten()), 1000))
-        rho_samples = self.forward_model(f_samples, self.pref_v, self.pref_u)#
+        f_samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(len(f_mean.flatten()), 1000))
+        rho_samples = self.forward_model(f_samples, pref_v, pref_u)
+        rho_samples = temper_extreme_probs(rho_samples)
         rho_not_samples = 1 - rho_samples            
         if expectedlog:
             rho_samples = np.log(rho_samples)
@@ -296,7 +298,7 @@ class GPPref(GPGrid):
         not_m_post = np.mean(rho_not_samples, axis=1)[:, np.newaxis]
         v_post = np.var(rho_samples, axis=1)[:, np.newaxis]
         
-        return m_post, not_m_post, v_post         
+        return m_post, not_m_post, v_post 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)    
@@ -336,24 +338,29 @@ if __name__ == '__main__':
     # generate pairs indices
     pair1idxs = np.random.choice(N, P, replace=True)
     pair2idxs = np.random.choice(N, P, replace=True)
-     
+      
     # generate the noisy function values for the pairs
-    f1noisy = norm.rvs(loc=f[pair1idxs], scale=sigma)
-    f2noisy = norm.rvs(loc=f[pair2idxs], scale=sigma)
+    f1noisy = norm.rvs(scale=sigma, size=P) + f[pair1idxs]
+    f2noisy = norm.rvs(scale=sigma, size=P) + f[pair2idxs]
     
     # generate the discrete labels from the noisy preferences
     prefs = f1noisy > f2noisy
     
     # Create a GPPref model
-    model = GPPref(nx, ny, 0, 1, 1, ls_initial=[10, 10])
+    model = GPPref(nx, ny, 0, 1, 1, ls_initial=[10, 10])    
     model.verbose = True
-    
+    model.max_iter_G = 10
+    #model.min_iter_VB = 100
+    model.conv_check_freq = 1
+    #model.conv_threshold = 1e-3 # the difference must be less than 1% of the value of the lower bound
     pair1coords = np.concatenate((xvals[pair1idxs, :], yvals[pair1idxs, :]), axis=1)
     pair2coords = np.concatenate((xvals[pair2idxs, :], yvals[pair2idxs, :]), axis=1)    
     model.fit(pair1coords, pair2coords, prefs)
     
     # Predict at the test locations
-    fpred, vpred = model.predict((xvals.flatten(), yvals.flatten()), variance_method='sample')
+    rho_pred, var_rho_pred = model.predict((xvals.flatten(), yvals.flatten()), variance_method='sample')
+    fpred = model.f[0]
+    vpred = model.v[0]
     fpred = fpred.flatten()
     vpred = vpred.flatten()
     
@@ -365,14 +372,16 @@ if __name__ == '__main__':
     pair1idxs_test = np.random.choice(N, P, replace=True)
     pair2idxs_test = np.random.choice(N, P, replace=True)
     
-    rho = model.forward_model(f, pair1idxs_test, pair2idxs_test)
+    t = (f[pair1idxs] > f[pair2idxs]).astype(int)
+    #rho = model.forward_model(f, pair1idxs_test, pair2idxs_test)
     rho_pred = model.forward_model(fpred, pair1idxs_test, pair2idxs_test)
+    rho_pred = temper_extreme_probs(rho_pred)
     
-    print "Brier score of %f" % np.sqrt(np.mean((rho-rho_pred)**2))
-    print "Cross entropy error of %f" % -np.sum(rho * np.log(rho_pred) + (1-rho) * np.log(1 - rho_pred))    
+    print "Brier score of %f" % np.sqrt(np.mean((t-rho_pred)**2))
+    print "Cross entropy error of %f" % -np.sum(t * np.log(rho_pred) + (1-t) * np.log(1 - rho_pred))    
     
-#     from sklearn.metrics import f1_score, roc_auc_score
-#     print "F1 score of %f" % f1_score(rho, rho_pred)
-#     print "Accuracy of %f" % np.mean(rho==rho_pred)
-#     print "ROC of %f" % roc_auc_score(rho, rho_pred)
+    from sklearn.metrics import f1_score, roc_auc_score
+    print "F1 score of %f" % f1_score(t, np.round(rho_pred))
+    print "Accuracy of %f" % np.mean(t==np.round(rho_pred))
+    print "ROC of %f" % roc_auc_score(t, rho_pred)
     
