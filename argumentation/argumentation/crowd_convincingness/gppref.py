@@ -214,7 +214,18 @@ class GPPref(GPGrid):
         if not np.any(items_0_coords) and not np.any(items_1_coords):
             return self.predict_obs(variance_method, expectedlog, return_not)
         
-        output_coords, out_pref_v, out_pref_u = self.get_unique_locations(pair_item_0_coords, pair_item_1_coords)
+        if not isinstance(items_0_coords, np.ndarray):
+            items_0_coords = np.array(items_0_coords)
+        if items_0_coords.ndim==2 and items_0_coords.shape[1]!=len(self.dims) and items_0_coords.shape[0]==len(self.dims):
+            items_0_coords = items_0_coords.T
+            
+        if not np.any(items_1_coords):
+            items_1_coords = items_0_coords
+        
+        if items_1_coords.ndim==2 and items_1_coords.shape[1]!=len(self.dims) and items_1_coords.shape[0]==len(self.dims):
+            items_1_coords = items_1_coords.T       
+        
+        output_coords, out_pref_v, out_pref_u = self.get_unique_locations(items_0_coords, items_1_coords)
         
         nblocks, noutputs = self.init_output_arrays(output_coords, max_block_size, variance_method)
                 
