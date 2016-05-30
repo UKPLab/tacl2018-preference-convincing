@@ -101,12 +101,12 @@ class GPPref(GPGrid):
             u = self.pref_u
 
         if f.ndim < 2:
-                f = f[:, np.newaxis]
+            f = f[:, np.newaxis]
         
-        if np.any(v) and np.any(u):   
-            g_f = (f[v, :] - f[u, :]) / (np.sqrt(2 * np.pi) * self.sigma) # gives an NobsxNobs matrix
+        if len(v) and len(u):   
+            g_f = (f[v, :] - f[u, :]) / (np.sqrt(2) * self.sigma) # gives an NobsxNobs matrix
         else: # provide the complete set of pairs
-            g_f = (f - f.T) / (np.sqrt(2 * np.pi) * self.sigma)    
+            g_f = (f - f.T) / (np.sqrt(2) * self.sigma)    
                 
         phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the 
         # With the standard GP density classifier, we can skip this step because
@@ -117,9 +117,9 @@ class GPPref(GPGrid):
             return phi 
     
     def update_jacobian(self, G_update_rate=1.0):
-        # this is wrong -- it's the derivative of the log here, not the derivative of the function
+        # Is this correct?
         phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
-        J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * (1.0/(2**0.5 * self.sigma)) #norm.pdf(g_mean_f) / (phi * np.sqrt(2) * self.sigma)
+        J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * (1.0/(np.sqrt(2) * self.sigma)) #norm.pdf(g_mean_f) / (phi * np.sqrt(2) * self.sigma)
         obs_idxs = np.arange(self.obs_coords.shape[0])[np.newaxis, :]
         s = (self.pref_v[:, np.newaxis]==obs_idxs).astype(int) - (self.pref_u[:, np.newaxis]==obs_idxs).astype(int)
         J = J * s 
@@ -146,7 +146,8 @@ class GPPref(GPGrid):
     def get_unique_locations(self, obs_coords_0, obs_coords_1):
         coord_rows_0 = coord_arr_to_1d(obs_coords_0)
         coord_rows_1 = coord_arr_to_1d(obs_coords_1)
-        _, uidxs, pref_vu = np.unique([coord_rows_0, coord_rows_1], return_index=True, return_inverse=True) # get unique locations
+        all_coord_rows = np.concatenate((coord_rows_0, coord_rows_1), axis=0)
+        _, uidxs, pref_vu = np.unique(all_coord_rows, return_index=True, return_inverse=True) # get unique locations
         
         # Record the coordinates of all points that were compared
         obs_coords = np.concatenate((obs_coords_0, obs_coords_1), axis=0)[uidxs]
@@ -155,7 +156,7 @@ class GPPref(GPGrid):
         pref_v = pref_vu[:obs_coords_0.shape[0]]
         pref_u = pref_vu[obs_coords_0.shape[0]:]
         
-        return obs_coords, pref_v, pref_u  
+        return obs_coords, pref_v, pref_u
        
     def count_observations(self, obs_coords, n_obs, poscounts, totals):
         '''
@@ -164,19 +165,25 @@ class GPPref(GPGrid):
         '''        
         obs_coords_0 = np.array(obs_coords[0])
         obs_coords_1 = np.array(obs_coords[1])
+                
         if obs_coords_0.dtype=='int': # duplicate locations should be merged and the number of duplicates counted
+            poscounts = poscounts.astype(int)
+            totals = totals.astype(int)        
+            
             # Ravel the coordinates
             ravelled_coords_0 = coord_arr_to_1d(obs_coords_0)
             ravelled_coords_1 = coord_arr_to_1d(obs_coords_1) 
             
             # SWAP PAIRS SO THEY ALL HAVE LOWEST COORD FIRST so we can count prefs for duplicate location pairs
             # get unique keys
-            uravelled_coords, keys = np.unique([ravelled_coords_0, ravelled_coords_1], return_inverse=True)
+            all_ravelled_coords = np.concatenate((ravelled_coords_0, ravelled_coords_1), axis=0)
+            uravelled_coords, keys = np.unique(all_ravelled_coords, return_inverse=True)
             keys_0 = keys[:len(ravelled_coords_0)]
             keys_1 = keys[len(ravelled_coords_0):]
             idxs_to_swap = keys_0 < keys_1
             
             swap_coords_0 = keys_0[idxs_to_swap]
+            poscounts[idxs_to_swap] = totals[idxs_to_swap] - poscounts[idxs_to_swap]
             keys_0[idxs_to_swap] = keys_1[idxs_to_swap]
             keys_1[idxs_to_swap] = swap_coords_0
             
@@ -184,7 +191,8 @@ class GPPref(GPGrid):
             grid_obs_pos_counts = coo_matrix((poscounts, (keys_0, keys_1)) ).toarray()
                                                               
             nonzero_v, nonzero_u = grid_obs_counts.nonzero() # coordinate key pairs with duplicate pairs removed
-            ukeys, pref_vu = np.unique([nonzero_v, nonzero_u], return_inverse=True) # get unique locations
+            nonzero_all = np.concatenate((nonzero_v, nonzero_u), axis=0)
+            ukeys, pref_vu = np.unique(nonzero_all, return_inverse=True) # get unique locations
             
             # Record the coordinates of all points that were compared
             self.obs_coords = coord_arr_from_1d(uravelled_coords[ukeys], obs_coords_0.dtype, 
@@ -221,12 +229,15 @@ class GPPref(GPGrid):
             
         if not np.any(items_1_coords):
             items_1_coords = items_0_coords
+            pair_items_with_self = True
+        else:
+            pair_items_with_self = False
         
         if items_1_coords.ndim==2 and items_1_coords.shape[1]!=len(self.dims) and items_1_coords.shape[0]==len(self.dims):
             items_1_coords = items_1_coords.T       
         
         output_coords, out_pref_v, out_pref_u = self.get_unique_locations(items_0_coords, items_1_coords)
-        
+                
         nblocks, noutputs = self.init_output_arrays(output_coords, max_block_size, variance_method)
                 
         for block in range(nblocks):
@@ -252,16 +263,20 @@ class GPPref(GPGrid):
             if variance_method == 'sample' or expectedlog:
                 m_post[blockidxs, :], not_m_post[blockidxs, :], v_post[blockidxs, :] = \
                     self.post_sample(self.f, self.v, expectedlog, out_pref_v[blockidxs], out_pref_u[blockidxs])                
-        
-        # map self.f and self.v back to the original order, i.e. f at locations in items_0_coords followed by f at
-        # locations in items_1_coords
-        self.f = self.f[[out_pref_v, out_pref_u], :]
-        self.v = self.v[[out_pref_v, out_pref_u], :]
-        
+                
         if variance_method == 'rough' and not expectedlog:
             m_post, not_m_post, v_post = self.post_rough(self.f, self.v, out_pref_v, out_pref_u)
         elif variance_method == 'rough':
             logging.warning("Switched to using sample method as expected log requested. No quick method is available.")
+          
+        # map self.f and self.v back to the original order, i.e. f at locations in items_0_coords followed by f at
+        # locations in items_1_coords
+        if not pair_items_with_self:
+            out_idxs = np.concatenate((out_pref_v, out_pref_u))
+        else:
+            out_idxs = out_pref_v
+        self.f = self.f[out_idxs, :]
+        self.v  = self.v[out_idxs, :]       
             
         if return_not:
             return m_post, not_m_post, v_post
@@ -321,17 +336,32 @@ if __name__ == '__main__':
     
     ls = [10, 10]
     
-    sigma = 10
+    sigma = 1
     
-    N = 100
-    P = 500 # number of pairs
+    N = 300
+    P = 500 # number of pairs for training
+    Ptest = 500 # number of pairs to test
     
-    from scipy.stats import multivariate_normal as mvn
+    s = 0.1 # inverse precision scale for the latent function.
+    
+    from scipy.stats import multivariate_normal as mvn, kendalltau
 
     def matern_3_2(xvals, yvals, ls):
-        Kx = np.abs(xvals) * 3**0.5 / ls[0]
+        
+        if xvals.ndim == 1:
+            xvals = xvals[:, np.newaxis]
+        elif xvals.shape[0] == 1 and xvals.shape[1] > 1:
+            xvals = xvals.T
+        if yvals.ndim == 1:
+            yvals = yvals[:, np.newaxis]
+        elif yvals.shape[0] == 1 and yvals.shape[1] > 1:
+            yvals = yvals.T        
+        xdists = xvals - xvals.T
+        ydists = yvals - yvals.T
+        
+        Kx = np.abs(xdists) * 3**0.5 / float(ls[0])
         Kx = (1 + Kx) * np.exp(-Kx)
-        Ky = np.abs(yvals) * 3**0.5 / ls[1]
+        Ky = np.abs(ydists) * 3**0.5 / float(ls[1])
         Ky = (1 + Ky) * np.exp(-Ky)
         if Ky.shape[1] == 1:
             Ky = Ky.T     
@@ -344,11 +374,16 @@ if __name__ == '__main__':
     
     K = matern_3_2(xvals, yvals, ls)
     
-    f = mvn.rvs(cov=K) # zero mean
+    f = mvn.rvs(cov=K/s) # zero mean
     
     # generate pairs indices
     pair1idxs = np.random.choice(N, P, replace=True)
     pair2idxs = np.random.choice(N, P, replace=True)
+    
+    # remove indexes of pairs that compare the same data points -- the correct answer is trivial
+    while(np.sum(pair1idxs==pair2idxs)):
+        matchingidxs = pair1idxs==pair2idxs
+        pair2idxs[matchingidxs] = np.random.choice(N, np.sum(matchingidxs), replace=True)    
       
     # generate the noisy function values for the pairs
     f1noisy = norm.rvs(scale=sigma, size=P) + f[pair1idxs]
@@ -358,11 +393,12 @@ if __name__ == '__main__':
     prefs = f1noisy > f2noisy
     
     # Create a GPPref model
-    model = GPPref(nx, ny, 0, 1, 1, ls_initial=[10, 10])    
-    model.verbose = True
-    model.max_iter_G = 10
+    model = GPPref(nx, ny, mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10])    
+    #model.verbose = True
+    #model.max_iter_G = 100
     #model.min_iter_VB = 100
-    model.conv_check_freq = 1
+    #model.conv_threshold_G = 1e-8
+    #model.conv_check_freq = 1
     #model.conv_threshold = 1e-3 # the difference must be less than 1% of the value of the lower bound
     pair1coords = np.concatenate((xvals[pair1idxs, :], yvals[pair1idxs, :]), axis=1)
     pair2coords = np.concatenate((xvals[pair2idxs, :], yvals[pair2idxs, :]), axis=1)    
@@ -370,29 +406,34 @@ if __name__ == '__main__':
     
     # Predict at the test locations
     rho_pred, var_rho_pred = model.predict((xvals.flatten(), yvals.flatten()), variance_method='sample')
-    fpred = model.f[0]
-    vpred = model.v[0]
-    fpred = fpred.flatten()
-    vpred = vpred.flatten()
+    fpred = model.f.flatten()
+    vpred = model.v.flatten()
     
     # Evaluate the accuracy of the predictions
-    print "RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
-    print "NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
+    #print "RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
+    #print "NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
+    print "Kendall's tau: %.3f" % kendalltau(f, fpred)[0] 
     
     # turn the values into predictions of preference pairs.
-    pair1idxs_test = np.random.choice(N, P, replace=True)
-    pair2idxs_test = np.random.choice(N, P, replace=True)
+    pair1idxs_test = np.random.choice(N, Ptest, replace=True)
+    pair2idxs_test = np.random.choice(N, Ptest, replace=True)
     
-    t = (f[pair1idxs] > f[pair2idxs]).astype(int)
-    #rho = model.forward_model(f, pair1idxs_test, pair2idxs_test)
-    rho_pred = model.forward_model(fpred, pair1idxs_test, pair2idxs_test)
+    # remove indexes of pairs that compare the same data points -- the correct answer is trivial
+    while(np.sum(pair1idxs_test==pair2idxs_test)):
+        matchingidxs = pair1idxs_test==pair2idxs_test
+        pair2idxs_test[matchingidxs] = np.random.choice(N, np.sum(matchingidxs), replace=True)
+    
+    t = (f[pair1idxs_test] > f[pair2idxs_test]).astype(int)
+    rho_pred = model.forward_model(fpred, pair1idxs_test, pair2idxs_test).flatten()
     rho_pred = temper_extreme_probs(rho_pred)
     
-    print "Brier score of %f" % np.sqrt(np.mean((t-rho_pred)**2))
-    print "Cross entropy error of %f" % -np.sum(t * np.log(rho_pred) + (1-t) * np.log(1 - rho_pred))    
+    t_pred = np.round(rho_pred)
+    
+    print "Brier score of %.3f" % np.sqrt(np.mean((t-rho_pred)**2))
+    print "Cross entropy error of %.3f" % -np.sum(t * np.log(rho_pred) + (1-t) * np.log(1 - rho_pred))    
     
     from sklearn.metrics import f1_score, roc_auc_score
-    print "F1 score of %f" % f1_score(t, np.round(rho_pred))
-    print "Accuracy of %f" % np.mean(t==np.round(rho_pred))
-    print "ROC of %f" % roc_auc_score(t, rho_pred)
+    print "F1 score of %.3f" % f1_score(t, t_pred)
+    print "Accuracy of %.3f" % np.mean(t==t_pred)
+    print "ROC of %.3f" % roc_auc_score(t, rho_pred)
     
