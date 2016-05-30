@@ -20,15 +20,9 @@ class GPPref(GPGrid):
     - Process_observations:
      - Observations, self.z. Observations now consist not of a count at a point, but two points and a label. 
      - self.obsx and self.obsy refer to all the locations mentioned in the observations.
-     - self.Q is the observation covariance at the observed locations, i.e. the  
+     - self.Q is the observation noise covariance at the observed locations, i.e. the  
     - Lower bound?
     '''
-    sigma = 1 # controls the observation noise. Is this equivalent to the output scale of f? I.e. doesn't it have the 
-    # same effect by controlling the amount of noise that is permissable at each point? If so, I think we can fix this
-    # to 1.
-    # By approximating the likelihood distribution with a Gaussian, the covariance of the approximation is the
-    # inverse Hessian of the negative log likelihood. Through moment matching self.Q with the likelihood covariance,
-    # we can compute sigma?
     
     pref_v = [] # the first items in each pair -- index to the observation coordinates in self.obsx and self.obsy
     pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
@@ -37,7 +31,23 @@ class GPPref(GPGrid):
                  ls_initial=None, force_update_all_points=False, n_lengthscales=1):
         
         if not np.any(mu0):
-            mu0 = 0            
+            mu0 = 0
+            
+        # We set the function scale and noise scale to the same value so that we assume apriori that the differences
+        # in preferences can be explained by noise in the preference pairs or the latent function. Ordering patterns 
+        # will change this balance in the posterior.  
+        
+        self.sigma = 1 # controls the observation noise. Is this equivalent to the output scale of f? I.e. doesn't it have the 
+        # same effect by controlling the amount of noise that is permissible at each point? If so, I think we can fix this
+        # to 1.
+        # By approximating the likelihood distribution with a Gaussian, the covariance of the approximation is the
+        # inverse Hessian of the negative log likelihood. Through moment matching self.Q with the likelihood covariance,
+        # we can compute sigma?
+        
+        if not np.any(shape_s0):
+            shape_s0 = 0.5
+        if not np.any(rate_s0):
+            rate_s0 = 0.5
         
         super(GPPref, self).__init__(nx, ny, mu0, shape_s0, rate_s0, s_initial, shape_ls, rate_ls, ls_initial, 
                                      force_update_all_points, n_lengthscales)
@@ -131,7 +141,7 @@ class GPPref(GPGrid):
         _, uidxs, pref_vu = np.unique([coord_rows_0, coord_rows_1], return_index=True, return_inverse=True) # get unique locations
         
         # Record the coordinates of all points that were compared
-        obs_coords = [coord_rows_0, coord_rows_1][uidxs]
+        obs_coords = np.concatenate((obs_coords_0, obs_coords_1), axis=0)[uidxs]
        
         # Record the indexes into the list of coordinates for the pairs that were compared 
         pref_v = pref_vu[:len(coord_rows_0)]
@@ -196,6 +206,18 @@ class GPPref(GPGrid):
         if not np.any(pair_item_0_coords) and not np.any(pair_item_1_coords):
             return self.predict_obs(variance_method, expectedlog, return_not)
         
+        pair_item_0_coords = np.array(pair_item_0_coords)
+        if pair_item_0_coords.shape[0] == len(self.dims) and pair_item_0_coords.shape[1] != len(self.dims):
+            pair_item_0_coords = pair_item_0_coords.T
+        if not np.any(pair_item_1_coords):
+            # no items to compare against were specified. Repeat the first pair list so we can compute the latent f 
+            # values for the specified locations
+            pair_item_1_coords = pair_item_0_coords 
+        else:
+            pair_item_1_coords = np.array(pair_item_1_coords)
+            if pair_item_1_coords.shape[0] == len(self.dims) and pair_item_1_coords.shape[1] != len(self.dims):
+                pair_item_1_coords = pair_item_1_coords.T        
+        
         output_coords, out_pref_v, out_pref_u = self.get_unique_locations(pair_item_0_coords, pair_item_1_coords)
         
         nblocks, noutputs = self.init_output_arrays(output_coords, max_block_size, variance_method)
@@ -205,7 +227,7 @@ class GPPref(GPGrid):
                 logging.debug("GPGrid predicting block %i of %i" % (block, nblocks))            
             self.predict_block(block, max_block_size, noutputs)
         
-        noutprefs = self.pair_item_0.shape[0]
+        noutprefs = pair_item_0_coords.shape[0]
         
         if variance_method=='sample':
             m_post = np.empty((noutprefs, 1), dtype=float)
@@ -324,12 +346,14 @@ if __name__ == '__main__':
     
     # Create a GPPref model
     model = GPPref(nx, ny, 0, 1, 1, ls_initial=[10, 10])
+    model.verbose = True
+    
     pair1coords = np.concatenate((xvals[pair1idxs, :], yvals[pair1idxs, :]), axis=1)
     pair2coords = np.concatenate((xvals[pair2idxs, :], yvals[pair2idxs, :]), axis=1)    
     model.fit(pair1coords, pair2coords, prefs)
     
     # Predict at the test locations
-    fpred, vpred = model.predict((xvals, yvals), variance_method='sample')
+    fpred, vpred = model.predict((xvals.flatten(), yvals.flatten()), variance_method='sample')
     fpred = fpred.flatten()
     vpred = vpred.flatten()
     
