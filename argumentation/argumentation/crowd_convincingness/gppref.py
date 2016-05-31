@@ -123,7 +123,7 @@ class GPPref(GPGrid):
         obs_idxs = np.arange(self.obs_coords.shape[0])[np.newaxis, :]
         s = (self.pref_v[:, np.newaxis]==obs_idxs).astype(int) - (self.pref_u[:, np.newaxis]==obs_idxs).astype(int)
         J = J * s 
-        if not np.any(self.G):
+        if not np.any(self.G) or self.G.shape != J.shape: # either G has not been initialised, or is from different observations:
             self.G = J
         else:        
             self.G = G_update_rate * J + (1 - G_update_rate) * self.G
