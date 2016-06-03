@@ -10,6 +10,21 @@ from scipy.stats import norm
 from scipy.sparse import coo_matrix
 import logging
 
+def get_unique_locations(obs_coords_0, obs_coords_1):
+    coord_rows_0 = coord_arr_to_1d(obs_coords_0)
+    coord_rows_1 = coord_arr_to_1d(obs_coords_1)
+    all_coord_rows = np.concatenate((coord_rows_0, coord_rows_1), axis=0)
+    _, uidxs, pref_vu = np.unique(all_coord_rows, return_index=True, return_inverse=True) # get unique locations
+    
+    # Record the coordinates of all points that were compared
+    obs_coords = np.concatenate((obs_coords_0, obs_coords_1), axis=0)[uidxs]
+   
+    # Record the indexes into the list of coordinates for the pairs that were compared 
+    pref_v = pref_vu[:obs_coords_0.shape[0]]
+    pref_u = pref_vu[obs_coords_0.shape[0]:]
+    
+    return obs_coords, pref_v, pref_u
+
 class GPPref(GPGrid):
     '''
     Preference learning with GP, with variational inference implementation.
@@ -27,7 +42,7 @@ class GPPref(GPGrid):
     pref_v = [] # the first items in each pair -- index to the observation coordinates in self.obsx and self.obsy
     pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
     
-    def __init__(self, nx, ny, mu0=[], shape_s0=None, rate_s0=None, s_initial=None, shape_ls=10, rate_ls=0.1, 
+    def __init__(self, dims, mu0=[], shape_s0=None, rate_s0=None, s_initial=None, shape_ls=10, rate_ls=0.1, 
                  ls_initial=None, force_update_all_points=False, n_lengthscales=1):
         
         if not np.any(mu0):
@@ -49,7 +64,7 @@ class GPPref(GPGrid):
         if not np.any(rate_s0):
             rate_s0 = 0.5
         
-        super(GPPref, self).__init__(nx, ny, mu0, shape_s0, rate_s0, s_initial, shape_ls, rate_ls, ls_initial, 
+        super(GPPref, self).__init__(dims, mu0, shape_s0, rate_s0, s_initial, shape_ls, rate_ls, ls_initial, 
                                      force_update_all_points, n_lengthscales)
         
         
@@ -143,21 +158,6 @@ class GPPref(GPGrid):
 #         var_obs_mean = self.obs_mean * (1-self.obs_mean) / (self.obs_total_counts + 1) # uncertainty in obs_mean
 #         self.Q = np.diagflat((self.obs_mean * (1 - self.obs_mean) - var_obs_mean) / self.obs_total_counts)
        
-    def get_unique_locations(self, obs_coords_0, obs_coords_1):
-        coord_rows_0 = coord_arr_to_1d(obs_coords_0)
-        coord_rows_1 = coord_arr_to_1d(obs_coords_1)
-        all_coord_rows = np.concatenate((coord_rows_0, coord_rows_1), axis=0)
-        _, uidxs, pref_vu = np.unique(all_coord_rows, return_index=True, return_inverse=True) # get unique locations
-        
-        # Record the coordinates of all points that were compared
-        obs_coords = np.concatenate((obs_coords_0, obs_coords_1), axis=0)[uidxs]
-       
-        # Record the indexes into the list of coordinates for the pairs that were compared 
-        pref_v = pref_vu[:obs_coords_0.shape[0]]
-        pref_u = pref_vu[obs_coords_0.shape[0]:]
-        
-        return obs_coords, pref_v, pref_u
-       
     def count_observations(self, obs_coords, n_obs, poscounts, totals):
         '''
         obs_coords - a tuple with two elements, the first containing the list of coordinates for the first items in each
@@ -165,7 +165,11 @@ class GPPref(GPGrid):
         '''        
         obs_coords_0 = np.array(obs_coords[0])
         obs_coords_1 = np.array(obs_coords[1])
-                
+        if obs_coords_0.ndim == 1:
+            obs_coords_0 = obs_coords_0[:, np.newaxis]
+        if obs_coords_1.ndim == 1:
+            obs_coords_1 = obs_coords_1[:, np.newaxis]
+                            
         if obs_coords_0.dtype=='int': # duplicate locations should be merged and the number of duplicates counted
             poscounts = poscounts.astype(int)
             totals = totals.astype(int)        
@@ -205,15 +209,16 @@ class GPPref(GPGrid):
             # Return the counts for each of the observed pairs
             return grid_obs_pos_counts[nonzero_v, nonzero_u], grid_obs_counts[nonzero_v, nonzero_u]
                     
-        elif obs_coords_0.dtype=='float': # Duplicate locations are not merged
-            self.obs_coords, self.pref_v, self.pref_u = self.get_unique_locations()
+        elif obs_coords_0.dtype=='float':
+            self.obs_coords, self.pref_v, self.pref_u = get_unique_locations(obs_coords_0, obs_coords_1)
             
             return poscounts, totals # these remain unaltered as we have not de-duplicated            
             
     def fit(self, items_1_coords, items_2_coords, obs_values, totals=None, process_obs=True, update_s=True):
         super(GPPref, self).fit((items_1_coords, items_2_coords), obs_values, totals, process_obs, update_s)  
         
-    def predict(self, items_0_coords=None, items_1_coords=None, variance_method='rough', max_block_size=1e5, expectedlog=False, return_not=False):
+    def predict(self, items_0_coords=None, items_1_coords=None, variance_method='rough', max_block_size=1e5, 
+                expectedlog=False, return_not=False):
         '''
         Evaluate the function posterior mean and variance at the given co-ordinates using the 2D squared exponential 
         kernel
@@ -236,7 +241,7 @@ class GPPref(GPGrid):
         if items_1_coords.ndim==2 and items_1_coords.shape[1]!=len(self.dims) and items_1_coords.shape[0]==len(self.dims):
             items_1_coords = items_1_coords.T       
         
-        output_coords, out_pref_v, out_pref_u = self.get_unique_locations(items_0_coords, items_1_coords)
+        output_coords, out_pref_v, out_pref_u = get_unique_locations(items_0_coords, items_1_coords)
                 
         nblocks, noutputs = self.init_output_arrays(output_coords, max_block_size, variance_method)
                 
@@ -326,11 +331,8 @@ class GPPref(GPGrid):
         
         return m_post, not_m_post, v_post 
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)    
-    
+def gen_synthetic_prefs():
     # Generate some data
-    
     nx = 100
     ny = 100
     
@@ -344,7 +346,7 @@ if __name__ == '__main__':
     
     s = 0.1 # inverse precision scale for the latent function.
     
-    from scipy.stats import multivariate_normal as mvn, kendalltau
+    from scipy.stats import multivariate_normal as mvn
 
     def matern_3_2(xvals, yvals, ls):
         
@@ -392,8 +394,17 @@ if __name__ == '__main__':
     # generate the discrete labels from the noisy preferences
     prefs = f1noisy > f2noisy
     
+    return N, Ptest, prefs, nx, ny, xvals, yvals, pair1idxs, pair2idxs, f
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)    
+    
+    from scipy.stats import kendalltau
+    
+    N, Ptest, prefs, nx, ny, xvals, yvals, pair1idxs, pair2idxs, f = gen_synthetic_prefs()
+    
     # Create a GPPref model
-    model = GPPref(nx, ny, mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10])    
+    model = GPPref([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10])    
     #model.verbose = True
     #model.max_iter_G = 100
     #model.min_iter_VB = 100
