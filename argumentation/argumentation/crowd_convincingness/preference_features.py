@@ -147,3 +147,12 @@ if __name__ == '__main__':
     model = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10])
     model.fit(personids, pair1coords, pair2coords, prefs)
     
+    from scipy.stats import kendalltau
+    
+    for p in range(Npeople):
+        print "Personality features of %i: %s" % (p, str(model.x[p]))
+        for q in range(Npeople):
+            print "Distance between personalities: %f" % np.sqrt(np.sum(model.x[p] - model.x[q])**2)**0.5
+            print "Rank correlation between preferences: %f" %  kendalltau(model.f[p], model.f[q])[0]
+            
+    
