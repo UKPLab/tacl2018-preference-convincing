@@ -42,12 +42,9 @@ class GPPref(GPGrid):
     pref_v = [] # the first items in each pair -- index to the observation coordinates in self.obsx and self.obsy
     pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
     
-    def __init__(self, dims, mu0=[], shape_s0=None, rate_s0=None, s_initial=None, shape_ls=10, rate_ls=0.1, 
+    def __init__(self, dims, mu0=0, shape_s0=None, rate_s0=None, s_initial=None, shape_ls=10, rate_ls=0.1, 
                  ls_initial=None, force_update_all_points=False, n_lengthscales=1):
         
-        if not np.any(mu0):
-            mu0 = 0
-            
         # We set the function scale and noise scale to the same value so that we assume apriori that the differences
         # in preferences can be explained by noise in the preference pairs or the latent function. Ordering patterns 
         # will change this balance in the posterior.  
@@ -59,9 +56,9 @@ class GPPref(GPGrid):
         # inverse Hessian of the negative log likelihood. Through moment matching self.Q with the likelihood covariance,
         # we can compute sigma?
         
-        if not np.any(shape_s0):
+        if shape_s0 <= 0:
             shape_s0 = 0.5
-        if not np.any(rate_s0):
+        if rate_s0 <= 0:
             rate_s0 = 0.5
         
         super(GPPref, self).__init__(dims, mu0, shape_s0, rate_s0, s_initial, shape_ls, rate_ls, ls_initial, 
@@ -224,7 +221,7 @@ class GPPref(GPGrid):
         kernel
         '''
         # if no output_coords provided, give predictions at the fitted locations
-        if not np.any(items_0_coords) and not np.any(items_1_coords):
+        if not len(items_0_coords) and not len(items_1_coords):
             return self.predict_obs(variance_method, expectedlog, return_not)
         
         if not isinstance(items_0_coords, np.ndarray):
@@ -232,11 +229,11 @@ class GPPref(GPGrid):
         if items_0_coords.ndim==2 and items_0_coords.shape[1]!=len(self.dims) and items_0_coords.shape[0]==len(self.dims):
             items_0_coords = items_0_coords.T
             
-        if not np.any(items_1_coords):
+        if items_1_coords!=None and len(items_1_coords):
+            pair_items_with_self = False            
+        else:
             items_1_coords = items_0_coords
             pair_items_with_self = True
-        else:
-            pair_items_with_self = False
         
         if items_1_coords.ndim==2 and items_1_coords.shape[1]!=len(self.dims) and items_1_coords.shape[0]==len(self.dims):
             items_1_coords = items_1_coords.T       
