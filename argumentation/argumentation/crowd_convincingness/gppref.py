@@ -135,7 +135,8 @@ class GPPref(GPGrid):
         obs_idxs = np.arange(self.obs_coords.shape[0])[np.newaxis, :]
         s = (self.pref_v[:, np.newaxis]==obs_idxs).astype(int) - (self.pref_u[:, np.newaxis]==obs_idxs).astype(int)
         J = J * s 
-        if not np.any(self.G) or self.G.shape != J.shape: # either G has not been initialised, or is from different observations:
+        if self.G is None or not np.any(self.G) or self.G.shape != J.shape: 
+            # either G has not been initialised, or is from different observations:
             self.G = J
         else:        
             self.G = G_update_rate * J + (1 - G_update_rate) * self.G
@@ -291,9 +292,9 @@ class GPPref(GPGrid):
         Use a solution given by applying the forward model to the mean of the latent function -- 
         ignore the uncertainty in f itself, considering only the uncertainty due to the noise sigma.
         '''
-        if not np.any(pref_v):
+        if pref_v is None:
             pref_v = self.pref_v
-        if not np.any(pref_u):
+        if pref_u is None:
             pref_u = self.pref_u
         
         m_post, g_f = self.forward_model(f_mean, pref_v, pref_u, return_g_f=True)
@@ -307,9 +308,9 @@ class GPPref(GPGrid):
         When making predictions, we want to predict the probability of each listed preference pair. 
         Use sampling to handle the nonlinearity. 
         '''
-        if not np.any(pref_v):
+        if pref_v is None:
             pref_v = self.pref_v
-        if not np.any(pref_u):
+        if pref_u is None:
             pref_u = self.pref_u
         
         # this should sample different values of obs_f and put them into the forward model

@@ -37,6 +37,8 @@ class PreferenceComponents(object):
         self.conv_threshold = 1e-5
         self.max_iter = 100
         
+        self.cov_type = 'matern_3_2'
+        
     def fit(self, personIDs, items_1_coords, items_2_coords, preferences):
         '''
         Learn the model with data as follows:
@@ -60,6 +62,7 @@ class PreferenceComponents(object):
         for p, person in enumerate(self.people):
             self.gppref_models[person] = GPPref(self.dims, self.mu0, self.shape_s0, self.rate_s0, self.s_initial, 
                                                 self.shape_ls, self.rate_ls, self.ls_initial)
+            self.gppref_models[person].select_covariance_function(self.cov_type)
             if p==0: # initialise the output prior covariance, do this only once  
                 distances = np.zeros((self.N, self.N, len(self.dims)))
                 for d in range(len(self.dims)):
@@ -99,6 +102,8 @@ class PreferenceComponents(object):
             inv_sigmasq_t = np.linalg.inv(self.sigmasq_t)
             C = np.linalg.inv(inv_sigmasq_t + invKs)# covariance of t
             self.t[person, :] = C.dot(inv_sigmasq_t.dot(self.Wx_plus_mu[person:person+1, :].T) + invKs.dot(self.f[person])).T
+            
+            print "Expec_t for person %i out of %i" % (person, len(self.gppref_models.keys()))
     
     def expec_f(self, personids, items_1_coords, items_2_coords, preferences):
         '''
@@ -113,6 +118,8 @@ class PreferenceComponents(object):
             self.gppref_models[person].fit(items_1_p, items_2_p, prefs_p)
             self.gppref_models[person].predict(items_0_coords=self.obs_coords, variance_method='sample')
             self.f[person] = self.gppref_models[person].f 
+            
+            print "Expec_f for person %i out of %i" % (person, len(self.gppref_models.keys()))
              
     def expec_x(self):
         '''
