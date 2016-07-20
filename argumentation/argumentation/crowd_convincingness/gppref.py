@@ -66,7 +66,7 @@ class GPPref(GPGrid):
         
         
     def init_prior_mean_f(self, z0):
-        self.mu0 = z0 # for preference learning, we pass in the latent mean directly  
+        self.mu0_default = z0 # for preference learning, we pass in the latent mean directly  
     
     def init_obs_prior(self):
         nsamples = 50000
@@ -90,11 +90,19 @@ class GPPref(GPGrid):
         #b = 1.0
         #a = 1.0
         self.nu0 = np.array([b, a])
-        logging.debug("Prior parameters for the observed pairwise preference variance are: %s" % str(self.nu0))           
+        if self.verbose:
+            logging.debug("Prior parameters for the observed pairwise preference variance are: %s" % str(self.nu0))           
     
     def init_obs_f(self):
         # Mean probability at observed points given local observations
         self.obs_f = np.zeros((self.obs_coords.shape[0], 1))
+        
+    def init_obs_mu0(self):
+        self.mu0 = np.zeros((len(self.obs_f), 1)) + self.mu0_default
+        if self.mu0_1 is not None:
+            self.mu0[self.pref_v] = self.mu0_1
+        if self.mu0_2 is not None:
+            self.mu0[self.pref_u] = self.mu0_2
     
     def forward_model(self, f=[], v=[], u=[], return_g_f=False):
         '''
@@ -212,11 +220,14 @@ class GPPref(GPGrid):
             
             return poscounts, totals # these remain unaltered as we have not de-duplicated            
             
-    def fit(self, items_1_coords, items_2_coords, obs_values, totals=None, process_obs=True, update_s=True):
+    def fit(self, items_1_coords, items_2_coords, obs_values, totals=None, process_obs=True, update_s=True, mu0_1=None,
+            mu0_2=None):
+        self.mu0_1 = mu0_1
+        self.mu0_2 = mu0_2        
         super(GPPref, self).fit((items_1_coords, items_2_coords), obs_values, totals, process_obs, update_s)  
         
     def predict(self, items_0_coords=None, items_1_coords=None, variance_method='rough', max_block_size=1e5, 
-                expectedlog=False, return_not=False):
+                expectedlog=False, return_not=False, mu0_output1=None, mu0_output2=None):
         '''
         Evaluate the function posterior mean and variance at the given co-ordinates using the 2D squared exponential 
         kernel
@@ -242,6 +253,12 @@ class GPPref(GPGrid):
         output_coords, out_pref_v, out_pref_u = get_unique_locations(items_0_coords, items_1_coords)
                 
         nblocks, noutputs = self.init_output_arrays(output_coords, max_block_size, variance_method)
+                
+        self.mu0_output = np.zeros((noutputs, 1)) + self.mu0_default
+        if mu0_output1 is not None:
+            self.mu0_output[out_pref_v, :] = mu0_output1
+        if mu0_output2 is not None:
+            self.mu0_output[out_pref_u, :] = mu0_output2
                 
         for block in range(nblocks):
             if self.verbose:

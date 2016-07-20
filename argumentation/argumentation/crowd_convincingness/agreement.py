@@ -3,11 +3,15 @@ Created on 10 May 2016
 
 @author: simpson
 '''
+import logging
+logging.basicConfig(level=logging.DEBUG)
+    
 import numpy as np
-from krippendorffalpha import alpha
+#from krippendorffalpha import alpha
 from preference_features import PreferenceComponents
 
 if __name__ == '__main__':
+    
     
     datadir = './argumentation/outputdata'
     data = np.genfromtxt(datadir + '/all_labels.csv', dtype=int, delimiter=',')
@@ -20,7 +24,7 @@ if __name__ == '__main__':
     L = data[:, 0]
     #print "Krippendorff's alpha for the raw pairwise labels = %.3f" % alpha(U, C, L)
     
-    print "Testing Bayesian preference components analysis using real crowdsourced data..."
+    logging.info( "Testing Bayesian preference components analysis using real crowdsourced data...")
     personids = data[:, 0]
     upersonids = np.unique(personids)
     Npeople = len(upersonids)
@@ -42,14 +46,103 @@ if __name__ == '__main__':
     pair1coords = np.concatenate((xvals[pair1idxs][:, np.newaxis], yvals[pair1idxs][:, np.newaxis]), axis=1)
     pair2coords = np.concatenate((xvals[pair2idxs][:, np.newaxis], yvals[pair2idxs][:, np.newaxis]), axis=1) 
     
-    model = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10])
+    model = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=True)
     model.cov_type = 'diagonal'
     model.fit(personids, pair1coords, pair2coords, prefs)
     
-    from scipy.stats import kendalltau
+    model.pickle_me(datadir + '/model_fonly.pkl')
+#     import pickle
+#     from copy import  deepcopy
+#     with open (datadir + '/model.pkl', 'w') as fh:
+#         m2 = deepcopy(model)
+#         for p in m2.gppref_models:
+#             m2.gppref_models[p].kernel_func = None # have to do this to be able to pickle
+#         pickle.dump(m2, fh)
     
-    for p in range(Npeople):
-        print "Personality features of %i: %s" % (p, str(model.x[p]))
-        for q in range(Npeople):
-            print "Distance between personalities: %f" % np.sqrt(np.sum(model.x[p] - model.x[q])**2)**0.5
-            print "Rank correlation between preferences: %f" %  kendalltau(model.f[p], model.f[q])[0]
+#     from scipy.stats import kendalltau
+#     
+#     for p in range(Npeople):
+#         print "Personality features of %i: %s" % (p, str(model.x[p]))
+#         for q in range(Npeople):
+#             print "Distance between personalities: %f" % np.sqrt(np.sum(model.x[p] - model.x[q])**2)**0.5
+#             print "Rank correlation between preferences: %f" %  kendalltau(model.f[p], model.f[q])[0]''
+
+
+# VISUALISING THE LATENT PREFERENCE FUNCTIONS
+
+# 1. Put the data into the correct format for visualisation/clustering
+fbar = np.zeros(model.t.shape) # posterior means
+v = np.zeros(model.t.shape) # posterior variance
+for person in model.gppref_models:
+    fbar[person, :] = model.f[person][:, 0]
+    v[person, :] = model.gppref_models[person].v[:, 0]
+fstd = np.sqrt(v)
+
+# 5. Combine all these functions into a mixture distribution to give an overall density for the whole population
+from scipy.stats import norm
+minf = np.min(fbar - fstd) # min value to plot
+maxf = np.max(fbar - fstd) # max value to plot
+density_xvals = np.arange(minf, maxf, (maxf-minf) / 100.0 ) # 100 points to plot
+density_xvals = np.tile(density_xvals[:, np.newaxis], (1, fbar.shape[1]))
+
+fsum = np.zeros(density_xvals.shape)
+for person in range(fbar.shape[0]):
+    pidxs = personids == person
+    pidxs = np.in1d(xvals, pair1coords[pidxs, 0]) | np.in1d(xvals, pair2coords[pidxs, 0])
+    #fsum[:, pidxs] += norm.cdf(density_xvals[:, pidxs], loc=fbar[person:person+1, pidxs], scale=fstd[person:person+1, pidxs])
+    fsum[:, pidxs] += norm.pdf(density_xvals[:, pidxs], loc=fbar[person:person+1, pidxs], scale=fstd[person:person+1, pidxs])
+
+#order the points by their midpoints (works for CDF?)
+#midpoints = fsum[density_xvals.shape[0]/2, :]
+peakidxs = np.argmax(fsum, axis=0)
+ordering = np.argsort(peakidxs)
+fsum = fsum[:, ordering]
+
+import pickle
+with open (datadir + '/fsum.pkl', 'w') as fh:
+    pickle.dump(fsum, fh)
+
+#6. 3D plot of the distribution
+from matplotlib import pyplot as plt 
+from matplotlib import cm
+from mpl_toolkits.mplot3d import Axes3D
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+idxmatrix = np.arange(fsum.shape[1])
+idxmatrix = np.tile(idxmatrix[np.newaxis, :], (density_xvals.shape[0], 1)) # matrix of xvalue indices
+ax.plot_surface(density_xvals, idxmatrix, fsum, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+
+# # Plot a bar chart to show each worker's pattern across the whole dataset. This probably kills the computer?
+# fig = plt.figure()
+# ax = fig.add_subplot(111, projection='3d')
+# 
+# personmatrix = np.arange(fbar.shape[0])
+# personmatrix = np.tile(personmatrix[:, np.newaxis], (1, fbar.shape[1]))
+# 
+# ax.bar(personmatrix.flatten(), np.tile(idxmatrix[0:1, :], (personmatrix.shape[0], 1)).flatten(), zs=fbar.flatten(), zdir='y')
+
+#10 and 11: plot the gold standard preference pairs instead.
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+N = model.t.shape[1]
+p_hist = np.zeros((3, N**2 ))
+for i in range(N):
+    print i
+    for j in range(N):
+        idx = i * N + j
+        pairidxs = ((xvals[pair1idxs]==i) & (xvals[pair2idxs]==j)) | ((xvals[pair2idxs]==i) & (xvals[pair1idxs]==j))
+        p_hist[0, idx] = np.sum(data[pairidxs, 3] == 0)
+        p_hist[1, idx] = np.sum(data[pairidxs, 3] == 1)
+        p_hist[2, idx] = np.sum(data[pairidxs, 3] == 2)
+        
+# sort by mean value
+means = np.sum(p_hist * [[-1], [0], [1]], axis=0)
+sortbymeans = np.argsort(means)
+p_hist = p_hist[:, sortbymeans]
+        
+pref_xvals = np.tile([[-1], [0], [1]], (1, p_hist.shape[1]))
+pair_idxmatrix = np.arange(p_hist.shape[1])
+pair_idxmatrix = np.tile(pair_idxmatrix[np.newaxis, :], (pref_xvals.shape[0], 1))
+ax.plot_surface(pref_xvals, pair_idxmatrix, p_hist, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)

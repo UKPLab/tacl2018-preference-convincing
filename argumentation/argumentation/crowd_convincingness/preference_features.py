@@ -7,6 +7,8 @@ Created on 2 Jun 2016
 from gppref import GPPref, gen_synthetic_prefs, get_unique_locations
 import numpy as np
 from sklearn.decomposition import FactorAnalysis
+from scipy.stats import norm, multivariate_normal as mvn
+import logging
 
 class PreferenceComponents(object):
     '''
@@ -15,7 +17,7 @@ class PreferenceComponents(object):
     '''
 
     def __init__(self, dims, mu0=[], shape_s0=None, rate_s0=None, s_initial=None, shape_ls=10, rate_ls=0.1, 
-                 ls_initial=None):
+                 ls_initial=None, verbose=False):
         '''
         Constructor
         dims - ranges for each of the observed features of the objects
@@ -39,6 +41,8 @@ class PreferenceComponents(object):
         
         self.cov_type = 'matern_3_2'
         
+        self.verbose = verbose
+        
     def fit(self, personIDs, items_1_coords, items_2_coords, preferences):
         '''
         Learn the model with data as follows:
@@ -51,7 +55,7 @@ class PreferenceComponents(object):
         self.people = np.unique(personIDs)
         self.gppref_models = {}
         
-        self.obs_coords, _, _ = get_unique_locations(items_1_coords, items_2_coords)
+        self.obs_coords, self.pref_u, self.pref_v = get_unique_locations(items_1_coords, items_2_coords)
         
         self.N = len(self.obs_coords)
         self.sigmasq_t = self.sigmasq_t * np.eye(self.N).astype(float)
@@ -63,6 +67,10 @@ class PreferenceComponents(object):
             self.gppref_models[person] = GPPref(self.dims, self.mu0, self.shape_s0, self.rate_s0, self.s_initial, 
                                                 self.shape_ls, self.rate_ls, self.ls_initial)
             self.gppref_models[person].select_covariance_function(self.cov_type)
+            self.gppref_models[person].max_iter_VB = 1
+            self.gppref_models[person].min_iter_VB = 1
+            self.gppref_models[person].max_iter_G = 1            
+            
             if p==0: # initialise the output prior covariance, do this only once  
                 distances = np.zeros((self.N, self.N, len(self.dims)))
                 for d in range(len(self.dims)):
@@ -75,35 +83,45 @@ class PreferenceComponents(object):
         niter = 0
         diff = np.inf
         old_x = 0
+        lb = 0
         while diff > self.conv_threshold and niter < self.max_iter:
             # run a VB iteration
             # compute preference latent functions for all workers
             self.expec_f(personIDs, items_1_coords, items_2_coords, preferences)
-            # compute the preference function means
-            self.expec_t()
-            # find the personality components from the preference function means
-            self.expec_x()
             
-            diff = np.max(old_x - self.x)
-            print "Difference in latent personality features: %f" % diff 
-            old_x = self.x
+            diff = 0
+#             # compute the preference function means
+#             self.expec_t()
+#             # find the personality components from the preference function means
+#             self.expec_x()
+#             
+#             diff = np.max(old_x - self.x)
+#             logging.debug( "Difference in latent personality features: %f" % diff) 
+#             old_x = self.x
+#             
+#             old_lb = lb
+#             lb = self.lowerbound()
+#             logging.debug('Lower bound = %.5f, difference = %.5f' % (lb, lb-old_lb))
             
             niter += 1
             
-        print "Preference personality model converged in %i iterations." % niter 
+        logging.debug( "Preference personality model converged in %i iterations." % niter )
         
     def expec_t(self):
         '''
         Compute the expectation over the preference function mean
         '''
+        inv_sigmasq_t = np.linalg.inv(self.sigmasq_t)
         for person in self.gppref_models:
             Kpred_p = self.Kpred / self.gppref_models[person].s
             invKs = np.linalg.inv(Kpred_p)
-            inv_sigmasq_t = np.linalg.inv(self.sigmasq_t)
+            
             C = np.linalg.inv(inv_sigmasq_t + invKs)# covariance of t
             self.t[person, :] = C.dot(inv_sigmasq_t.dot(self.Wx_plus_mu[person:person+1, :].T) + invKs.dot(self.f[person])).T
             
-            print "Expec_t for person %i out of %i" % (person, len(self.gppref_models.keys()))
+            if self.verbose:
+                logging.debug( "Expec_t for person %i out of %i" % (person, len(self.gppref_models.keys())) )
+        logging.debug('Updated q(t)')
     
     def expec_f(self, personids, items_1_coords, items_2_coords, preferences):
         '''
@@ -115,23 +133,79 @@ class PreferenceComponents(object):
             items_2_p = items_2_coords[pidxs]
             prefs_p = preferences[pidxs]
             
-            self.gppref_models[person].fit(items_1_p, items_2_p, prefs_p)
-            self.gppref_models[person].predict(items_0_coords=self.obs_coords, variance_method='sample')
-            self.f[person] = self.gppref_models[person].f 
+            mu0_1 = self.t[person, self.pref_v[pidxs]][:, np.newaxis]
+            mu0_2 = self.t[person, self.pref_u[pidxs]][:, np.newaxis]
+            mu0_output1 = self.t[person, :][:, np.newaxis]
             
-            print "Expec_f for person %i out of %i" % (person, len(self.gppref_models.keys()))
+            self.gppref_models[person].fit(items_1_p, items_2_p, prefs_p, mu0_1=mu0_1, mu0_2=mu0_2)
+            self.gppref_models[person].predict(items_0_coords=self.obs_coords, variance_method='sample', 
+                                               mu0_output1=mu0_output1)
+            self.f[person] = self.gppref_models[person].f 
+        
+            if self.verbose:    
+                logging.debug( "Expec_f for person %i out of %i" % (person, len(self.gppref_models.keys())) )
+        logging.debug('Updated q(f)')
              
     def expec_x(self):
         '''
         Compute the expectation over the personality components.
         '''
+        
         self.x = self.fa.fit_transform(self.t)
         self.Wx_plus_mu = self.x.dot(self.fa.components_) + self.fa.mean_[np.newaxis, :]
-        print self.Wx_plus_mu
+        #logging.debug( self.Wx_plus_mu
         self.sigmasq_t = np.diag(self.fa.noise_variance_)
         
+        logging.debug('Updated q(x)')
+        
+    def lowerbound(self):
+        f_terms = 0
+        t_terms = 0
+        for person in self.gppref_models:
+            f_terms += self.gppref_models[person].lowerbound()
+            
+            Kpred_p = self.Kpred / self.gppref_models[person].s
+            invKs = np.linalg.inv(Kpred_p)
+            inv_sigmasq_t = np.linalg.inv(self.sigmasq_t)            
+            # should this be same as self.fa.score_samples?
+            t_terms += norm.logpdf(self.t[person, :], loc=self.Wx_plus_mu[person, :], scale=self.sigmasq_t**0.5) - \
+                        mvn.logpdf(self.t[person, :], mean=self.t[person, :], cov=np.linalg.inv(inv_sigmasq_t + invKs))
+        t_terms = np.sum(t_terms)
+        # what to do with the self.fa.mean? -- should be included as an extra column in the component matrix
+        
+#         Sigma_w = 1.0 / self.sigmasq_t 
+#         for person in range(self.x.shape[0]):
+#             Sigma_w *= self.x[person:person+1, :].T.dot(self.x[person:person+1, :])
+#             Sigma_w += np.diag(nu)
+                
+        Sigma_x = self.fa.components_.dot(self.fa.components_.T)/self.sigmasq_t + np.eye(self.x.shape)
+        x_terms = norm.logpdf(self.x) - norm.logpdf(self.x, loc=self.x, scale=Sigma_x**0.5)
+        x_terms = np.sum(x_terms)
+        
+        # These are hyperparameters -- should not need to include here assuming they don't get updated each iteration
+        #sigmasq_terms = norm.logpdf(self.sigmasq_t, ) - norm.logpdf(self.sigmasq_t, loc=self.sigmasq_t, scale=)
+        #mu_terms = norm.logpdf(self.fa.mean_) - norm.logpdf(self.fa.mean_, loc=self.fa.mean_, scale=)
+        
+        #W_terms = norm.logpdf(self.fa.components_, scale=nu**0.5) - norm.logpdf(self.fa.components_,
+        #                                                                loc=self.fa.components_, scale=Sigma_w**0.5)
+        
+        lb = f_terms + t_terms + x_terms #+ W_terms #sigmasq_terms + mu_terms
+        
+        logging.debug( "Lower bound = %f" % lb )
+        
+        return lb
+    
+    def pickle_me(self, filename):
+        import pickle
+        from copy import  deepcopy
+        with open (filename, 'w') as fh:
+            m2 = deepcopy(self)
+            for p in m2.gppref_models:
+                m2.gppref_models[p].kernel_func = None # have to do this to be able to pickle
+            pickle.dump(m2, fh)        
+        
 if __name__ == '__main__':
-    print "Testing Bayesian preference components analysis using synthetic data..."
+    logging.info( "Testing Bayesian preference components analysis using synthetic data..." )
     Npeople = 5
     pair1idxs = []
     pair2idxs = []
@@ -154,12 +228,14 @@ if __name__ == '__main__':
     model = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10])
     model.fit(personids, pair1coords, pair2coords, prefs)
     
-    from scipy.stats import kendalltau
     
+     
+    from scipy.stats import kendalltau
+     
     for p in range(Npeople):
-        print "Personality features of %i: %s" % (p, str(model.x[p]))
+        logging.debug( "Personality features of %i: %s" % (p, str(model.x[p])) )
         for q in range(Npeople):
-            print "Distance between personalities: %f" % np.sqrt(np.sum(model.x[p] - model.x[q])**2)**0.5
-            print "Rank correlation between preferences: %f" %  kendalltau(model.f[p], model.f[q])[0]
-            
+            logging.debug( "Distance between personalities: %f" % np.sqrt(np.sum(model.x[p] - model.x[q])**2)**0.5 )
+            logging.debug( "Rank correlation between preferences: %f" %  kendalltau(model.f[p], model.f[q])[0] )
+             
     
