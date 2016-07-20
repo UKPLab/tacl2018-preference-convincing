@@ -12,22 +12,20 @@ from preference_features import PreferenceComponents
 
 if __name__ == '__main__':
     
-    
+    # Task A1 ---------------------------------------------------------------------------------------------------------
     datadir = './argumentation/outputdata'
+    # load the data with columns: person_ID, arg_1_ID, arg_2_ID, preference_label
     data = np.genfromtxt(datadir + '/all_labels.csv', dtype=int, delimiter=',')
+    
+    Npairs = data.shape[1]
     
     arg_ids = np.unique([data[:, 1], data[:, 2]])
     max_arg_id = np.max(arg_ids)
     
-    U = data[:, 1] * max_arg_id + data[:, 2] # translate the IDs for the arguments in a pairwise comparison to a single ID
-    C = data[:, 3]
-    L = data[:, 0]
+    #U = data[:, 1] * max_arg_id + data[:, 2] # translate the IDs for the arguments in a pairwise comparison to a single ID
+    #C = data[:, 3]
+    #L = data[:, 0]
     #print "Krippendorff's alpha for the raw pairwise labels = %.3f" % alpha(U, C, L)
-    
-    logging.info( "Testing Bayesian preference components analysis using real crowdsourced data...")
-    personids = data[:, 0]
-    upersonids = np.unique(personids)
-    Npeople = len(upersonids)
     
     pair1idxs = data[:, 1]
     pair2idxs = data[:, 2]
@@ -40,35 +38,43 @@ if __name__ == '__main__':
     # have to combine this with a diagonal covariance function.
     yvals = np.zeros(max_arg_id+1)
     
+    logging.info( "Testing Bayesian preference components analysis using real crowdsourced data...")
+    
     nx = 1
     ny = 1
     
     pair1coords = np.concatenate((xvals[pair1idxs][:, np.newaxis], yvals[pair1idxs][:, np.newaxis]), axis=1)
     pair2coords = np.concatenate((xvals[pair2idxs][:, np.newaxis], yvals[pair2idxs][:, np.newaxis]), axis=1) 
+
+    personids = data[:, 0]
+    upersonids = np.unique(personids)
+    Npeople = len(upersonids)
     
+    # Task A2 ----------------------------------------------------------------------------------------------------------
+    
+#     from sklearn.cross_validation import KFold
+# 
+#     kf = KFold(Npairs, 5)
+#     
+#     for train, test in kf:
+#         
+#         # Task C1  ----------------------------------------------------------------------------------------------------
+#         model = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=True)
+#         model.cov_type = 'diagonal'
+#         model.fit(personids[train], pair1coords[train], pair2coords[train], prefs[train])
+#         model.pickle_me(datadir + '/model_fonly.pkl')
+#          
+#         model.predict(personids[test], pair1coords[test], pair2coords[test])
+        
+    # Task A3  ----------------------------------------------------------------------------------------------------
     model = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=True)
     model.cov_type = 'diagonal'
+    model.max_iter = 1 # don't run VB till convergence -- gives same results as if running GPs and FA separately
     model.fit(personids, pair1coords, pair2coords, prefs)
-    
     model.pickle_me(datadir + '/model_fonly.pkl')
-#     import pickle
-#     from copy import  deepcopy
-#     with open (datadir + '/model.pkl', 'w') as fh:
-#         m2 = deepcopy(model)
-#         for p in m2.gppref_models:
-#             m2.gppref_models[p].kernel_func = None # have to do this to be able to pickle
-#         pickle.dump(m2, fh)
-    
-#     from scipy.stats import kendalltau
-#     
-#     for p in range(Npeople):
-#         print "Personality features of %i: %s" % (p, str(model.x[p]))
-#         for q in range(Npeople):
-#             print "Distance between personalities: %f" % np.sqrt(np.sum(model.x[p] - model.x[q])**2)**0.5
-#             print "Rank correlation between preferences: %f" %  kendalltau(model.f[p], model.f[q])[0]''
+    no_model_fonly = model # save it for later
 
-
-# VISUALISING THE LATENT PREFERENCE FUNCTIONS
+# Task B1. VISUALISING THE LATENT PREFERENCE FUNCTIONS ----------------------------------------------------------------
 
 # 1. Put the data into the correct format for visualisation/clustering
 fbar = np.zeros(model.t.shape) # posterior means

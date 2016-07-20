@@ -90,22 +90,37 @@ class PreferenceComponents(object):
             self.expec_f(personIDs, items_1_coords, items_2_coords, preferences)
             
             diff = 0
-#             # compute the preference function means
-#             self.expec_t()
-#             # find the personality components from the preference function means
-#             self.expec_x()
-#             
-#             diff = np.max(old_x - self.x)
-#             logging.debug( "Difference in latent personality features: %f" % diff) 
-#             old_x = self.x
-#             
-#             old_lb = lb
-#             lb = self.lowerbound()
-#             logging.debug('Lower bound = %.5f, difference = %.5f' % (lb, lb-old_lb))
+            # compute the preference function means
+            self.expec_t()
+            # find the personality components from the preference function means
+            self.expec_x()
+             
+            diff = np.max(old_x - self.x)
+            logging.debug( "Difference in latent personality features: %f" % diff) 
+            old_x = self.x
+             
+            old_lb = lb
+            lb = self.lowerbound()
+            logging.debug('Lower bound = %.5f, difference = %.5f' % (lb, lb-old_lb))
             
             niter += 1
             
         logging.debug( "Preference personality model converged in %i iterations." % niter )
+        
+# doesn't seem to work because we need self.t for the test data points  
+#     def predict(self, personids, items_0_coords, items_1_coords, variance_method='rough'):
+#         Npairs = len(personids)
+#         
+#         results = np.zeros(Npairs)
+#         
+#         upeople = np.unique(personids)
+#         for p in upeople:
+#             if p not in self.gppref_models:
+#                 logging.warning('Cannot predict for this person %i') % p
+#                 continue
+#             pidxs = personids == upeople
+#             results[pidxs] = self.gppref_models[p].predict(items_0_coords[pidxs], items_1_coords[pidxs], 
+#                                                            variance_method, mu0_output1=mu0_1, mu0_output2=mu0_2)
         
     def expec_t(self):
         '''
