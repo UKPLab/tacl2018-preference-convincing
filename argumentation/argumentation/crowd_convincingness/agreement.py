@@ -17,6 +17,8 @@ if __name__ == '__main__':
     # load the data with columns: person_ID, arg_1_ID, arg_2_ID, preference_label
     data = np.genfromtxt(datadir + '/all_labels.csv', dtype=int, delimiter=',')
     
+    plotdir = './argumentation/results/'
+    
     Npairs = data.shape[1]
     
     arg_ids = np.unique([data[:, 1], data[:, 2]])
@@ -74,9 +76,9 @@ if __name__ == '__main__':
     model.pickle_me(datadir + '/model_fonly.pkl')
     no_model_fonly = model # save it for later
 
-# Task B1. VISUALISING THE LATENT PREFERENCE FUNCTIONS ----------------------------------------------------------------
+# Section B. VISUALISING THE LATENT PREFERENCE FUNCTION AND RAW DATA WITHOUT MODELS ------------------------------------
 
-# 1. Put the data into the correct format for visualisation/clustering
+# Task A1 continued. Put the data into the correct format for visualisation/clustering
 fbar = np.zeros(model.t.shape) # posterior means
 v = np.zeros(model.t.shape) # posterior variance
 for person in model.gppref_models:
@@ -84,7 +86,7 @@ for person in model.gppref_models:
     v[person, :] = model.gppref_models[person].v[:, 0]
 fstd = np.sqrt(v)
 
-# 5. Combine all these functions into a mixture distribution to give an overall density for the whole population
+# B1. Combine all these functions into a mixture distribution to give an overall density for the whole population
 from scipy.stats import norm
 minf = np.min(fbar - fstd) # min value to plot
 maxf = np.max(fbar - fstd) # max value to plot
@@ -92,11 +94,13 @@ density_xvals = np.arange(minf, maxf, (maxf-minf) / 100.0 ) # 100 points to plot
 density_xvals = np.tile(density_xvals[:, np.newaxis], (1, fbar.shape[1]))
 
 fsum = np.zeros(density_xvals.shape)
-for person in range(fbar.shape[0]):
+seenidxs = np.zeros(fbar.shape)
+for p, person in enumerate(range(fbar.shape[0])):
     pidxs = personids == person
     pidxs = np.in1d(xvals, pair1coords[pidxs, 0]) | np.in1d(xvals, pair2coords[pidxs, 0])
     #fsum[:, pidxs] += norm.cdf(density_xvals[:, pidxs], loc=fbar[person:person+1, pidxs], scale=fstd[person:person+1, pidxs])
     fsum[:, pidxs] += norm.pdf(density_xvals[:, pidxs], loc=fbar[person:person+1, pidxs], scale=fstd[person:person+1, pidxs])
+    seenidxs[p, pidxs] = 1
 
 #order the points by their midpoints (works for CDF?)
 #midpoints = fsum[density_xvals.shape[0]/2, :]
@@ -108,7 +112,7 @@ import pickle
 with open (datadir + '/fsum.pkl', 'w') as fh:
     pickle.dump(fsum, fh)
 
-#6. 3D plot of the distribution
+# B2. 3D plot of the distribution
 from matplotlib import pyplot as plt 
 from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
@@ -119,6 +123,31 @@ idxmatrix = np.arange(fsum.shape[1])
 idxmatrix = np.tile(idxmatrix[np.newaxis, :], (density_xvals.shape[0], 1)) # matrix of xvalue indices
 ax.plot_surface(density_xvals, idxmatrix, fsum, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
 
+# B3. Produce (save) the plot
+plt.savefig(plotdir + 'fsum.eps')
+
+# B4. Compute variance of the GP means and sort by variance
+fbar_seen = np.empty(fbar.shape) # need to deal properly with the nans
+fbar_seen[:, :] = np.NAN 
+fbar_seen[seenidxs] = fbar[seenidxs]
+fmean_var = np.nanvar(fbar_seen, axis=0) # should exclude the points where people made no classification
+
+peakidxs = np.argmax(fmean_var, axis=0)
+ordering = np.argsort(peakidxs)
+fmean_var = fmean_var[:, ordering]
+
+with open (datadir + '/fmean_var.pkl', 'w') as fh:
+    pickle.dump(fmean_var, fh)
+
+# B5. Plot variance in pref function means
+fig = plt.figure()
+plt.plot(np.arange(fmean_var.shape[1]), fmean_var)
+plt.xlabel('Argument Index')
+plt.ylabel('Variance in Latent Pref Function Expected Values')
+plt.title('Variance Expected Latent Preferences Between Different Members of the Crowd')
+# B3. Produce (save) the plot
+plt.savefig(plotdir + 'fsum.eps')
+
 # # Plot a bar chart to show each worker's pattern across the whole dataset. This probably kills the computer?
 # fig = plt.figure()
 # ax = fig.add_subplot(111, projection='3d')
@@ -128,7 +157,7 @@ ax.plot_surface(density_xvals, idxmatrix, fsum, rstride=1, cstride=1, cmap=cm.co
 # 
 # ax.bar(personmatrix.flatten(), np.tile(idxmatrix[0:1, :], (personmatrix.shape[0], 1)).flatten(), zs=fbar.flatten(), zdir='y')
 
-#10 and 11: plot the gold standard preference pairs instead.
+# B6 plot the gold standard preference pairs instead.
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
