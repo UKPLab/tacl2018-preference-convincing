@@ -9,6 +9,8 @@ import numpy as np
 from sklearn.decomposition import FactorAnalysis
 from scipy.stats import norm, multivariate_normal as mvn
 import logging
+from scipy.sparse import coo_matrix
+from gpgrid import coord_arr_to_1d
 
 class PreferenceComponents(object):
     '''
@@ -96,7 +98,7 @@ class PreferenceComponents(object):
             self.expec_x()
              
             diff = np.max(old_x - self.x)
-            logging.debug( "Difference in latent personality features: %f" % diff) 
+            logging.debug( "Difference in latent personality features: %f" % diff)
             old_x = self.x
              
             old_lb = lb
@@ -107,20 +109,37 @@ class PreferenceComponents(object):
             
         logging.debug( "Preference personality model converged in %i iterations." % niter )
         
-# doesn't seem to work because we need self.t for the test data points  
-#     def predict(self, personids, items_0_coords, items_1_coords, variance_method='rough'):
-#         Npairs = len(personids)
-#         
-#         results = np.zeros(Npairs)
-#         
-#         upeople = np.unique(personids)
-#         for p in upeople:
-#             if p not in self.gppref_models:
-#                 logging.warning('Cannot predict for this person %i') % p
-#                 continue
-#             pidxs = personids == upeople
-#             results[pidxs] = self.gppref_models[p].predict(items_0_coords[pidxs], items_1_coords[pidxs], 
-#                                                            variance_method, mu0_output1=mu0_1, mu0_output2=mu0_2)
+    def predict(self, personids, items_0_coords, items_1_coords, variance_method='rough'):
+        Npairs = len(personids)
+         
+        results = np.zeros(Npairs)
+         
+        # convert items_0_coords and items_1_coords to local indices
+        obs_1d = coord_arr_to_1d(self.obs_coords)
+        items_0_1d = coord_arr_to_1d(items_0_coords)
+        items_1_1d = coord_arr_to_1d(items_1_coords)
+        
+        matches_0 = obs_1d[:, np.newaxis]==items_0_1d[np.newaxis, :]
+        items_0_local = np.argmax(matches_0, axis=0)
+        items_0_local[np.sum(matches_0, axis=0)==0] = self.mu0
+        
+        matches_1 = obs_1d[:, np.newaxis]==items_1_1d[np.newaxis, :]
+        items_1_local = np.argmax(matches_1, axis=0)
+        items_1_local[np.sum(matches_1, axis=0)==0] = self.mu0
+         
+        upeople = np.unique(personids)
+        for p in upeople:
+            if p not in self.gppref_models:
+                logging.warning('Cannot predict for this person %i') % p
+                continue
+            pidxs = personids == upeople
+            
+            mu0_1 = self.t[p, items_0_local[pidxs]] # need to translate coords to local first
+            mu0_2 = self.t[p, items_1_local[pidxs]] # need to translate coords to local first
+            results[pidxs], _ = self.gppref_models[p].predict(items_0_coords[pidxs], items_1_coords[pidxs], 
+                                                           variance_method, mu0_output1=mu0_1, mu0_output2=mu0_2)
+            
+        return results
         
     def expec_t(self):
         '''
@@ -176,6 +195,7 @@ class PreferenceComponents(object):
     def lowerbound(self):
         f_terms = 0
         t_terms = 0
+        
         for person in self.gppref_models:
             f_terms += self.gppref_models[person].lowerbound()
             

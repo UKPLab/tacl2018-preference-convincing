@@ -1,4 +1,9 @@
 '''
+
+For the list of tasks implemented here, see:
+
+https://docs.google.com/spreadsheets/d/15LXSrCcaDURsIYmogt-NEwaakUiITFtiq993TLkflRQ/edit#gid=0
+
 Created on 10 May 2016
 
 @author: simpson
@@ -54,26 +59,27 @@ if __name__ == '__main__':
     
     # Task A2 ----------------------------------------------------------------------------------------------------------
     
-#     from sklearn.cross_validation import KFold
-# 
-#     kf = KFold(Npairs, 5)
-#     
-#     for train, test in kf:
-#         
-#         # Task C1  ----------------------------------------------------------------------------------------------------
-#         model = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=True)
-#         model.cov_type = 'diagonal'
-#         model.fit(personids[train], pair1coords[train], pair2coords[train], prefs[train])
-#         model.pickle_me(datadir + '/model_fonly.pkl')
-#          
-#         model.predict(personids[test], pair1coords[test], pair2coords[test])
+    from sklearn.cross_validation import KFold
+ 
+    kf = KFold(Npairs, 5)
+     
+    for train, test in kf:
+         
+        # Task C1  ----------------------------------------------------------------------------------------------------
+        # TODO: in PreferenceComponents.predict(), if the coords were not seen in training, use default mu0
+        model = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=True)
+        model.cov_type = 'diagonal'
+        model.fit(personids[train], pair1coords[train], pair2coords[train], prefs[train])
+        model.pickle_me(datadir + '/model_fonly.pkl')
+          
+        model.predict(personids[test], pair1coords[test], pair2coords[test])
         
     # Task A3  ----------------------------------------------------------------------------------------------------
     model = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=True)
     model.cov_type = 'diagonal'
     model.max_iter = 1 # don't run VB till convergence -- gives same results as if running GPs and FA separately
     model.fit(personids, pair1coords, pair2coords, prefs)
-    model.pickle_me(datadir + '/model_fonly.pkl')
+    model.pickle_me(datadir + '/a3_model_fonly.pkl')
     no_model_fonly = model # save it for later
 
 # Section B. VISUALISING THE LATENT PREFERENCE FUNCTION AND RAW DATA WITHOUT MODELS ------------------------------------
@@ -109,7 +115,7 @@ ordering = np.argsort(peakidxs)
 fsum = fsum[:, ordering]
 
 import pickle
-with open (datadir + '/fsum.pkl', 'w') as fh:
+with open (datadir + '/b1_fsum.pkl', 'w') as fh:
     pickle.dump(fsum, fh)
 
 # B2. 3D plot of the distribution
@@ -119,12 +125,11 @@ from mpl_toolkits.mplot3d import Axes3D
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
+# B3. Produce/save the plot
 idxmatrix = np.arange(fsum.shape[1])
 idxmatrix = np.tile(idxmatrix[np.newaxis, :], (density_xvals.shape[0], 1)) # matrix of xvalue indices
 ax.plot_surface(density_xvals, idxmatrix, fsum, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-
-# B3. Produce (save) the plot
-plt.savefig(plotdir + 'fsum.eps')
+plt.savefig(plotdir + 'b3_fsum.eps')
 
 # B4. Compute variance of the GP means and sort by variance
 fbar_seen = np.empty(fbar.shape) # need to deal properly with the nans
@@ -145,24 +150,19 @@ plt.plot(np.arange(fmean_var.shape[1]), fmean_var)
 plt.xlabel('Argument Index')
 plt.ylabel('Variance in Latent Pref Function Expected Values')
 plt.title('Variance Expected Latent Preferences Between Different Members of the Crowd')
-# B3. Produce (save) the plot
-plt.savefig(plotdir + 'fsum.eps')
+plt.savefig(plotdir + 'b5_fsum.eps')
 
-# # Plot a bar chart to show each worker's pattern across the whole dataset. This probably kills the computer?
-# fig = plt.figure()
-# ax = fig.add_subplot(111, projection='3d')
-# 
-# personmatrix = np.arange(fbar.shape[0])
-# personmatrix = np.tile(personmatrix[:, np.newaxis], (1, fbar.shape[1]))
-# 
-# ax.bar(personmatrix.flatten(), np.tile(idxmatrix[0:1, :], (personmatrix.shape[0], 1)).flatten(), zs=fbar.flatten(), zdir='y')
-
-# B6 plot the gold standard preference pairs instead.
+# B6 plot histograms of the gold standard preference pairs. Plots to try:
+# x-axis indexes the argument pairs
+# y-axis indexes the number of observations. 
+# sort by score: number of positive - negative labels
+# Alternatively, summarise this plot somehow?
 fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
 
 N = model.t.shape[1]
 p_hist = np.zeros((3, N**2 ))
+p_scat_x = np.zeros((data.shape[0]))
+p_scat_y = np.zeros((data.shape[0]))
 for i in range(N):
     print i
     for j in range(N):
@@ -172,12 +172,60 @@ for i in range(N):
         p_hist[1, idx] = np.sum(data[pairidxs, 3] == 1)
         p_hist[2, idx] = np.sum(data[pairidxs, 3] == 2)
         
+        if np.any(pairidxs):
+            p_scat_x[pairidxs] = idx
+            p_scat_y[pairidxs] = data[pairidxs, 3]
+        
 # sort by mean value
 means = np.sum(p_hist * [[-1], [0], [1]], axis=0)
 sortbymeans = np.argsort(means)
 p_hist = p_hist[:, sortbymeans]
         
-pref_xvals = np.tile([[-1], [0], [1]], (1, p_hist.shape[1]))
-pair_idxmatrix = np.arange(p_hist.shape[1])
-pair_idxmatrix = np.tile(pair_idxmatrix[np.newaxis, :], (pref_xvals.shape[0], 1))
-ax.plot_surface(pref_xvals, pair_idxmatrix, p_hist, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+# x locations
+x_locs = np.arange(N**2) - 0.5
+
+#plot histogram
+width = 0.3
+plt.bar(x_locs, p_hist[0, :], width, label='1 > 2')
+plt.bar(x_locs + width, p_hist[1, :], width, label='1==2')
+plt.bar(x_locs + 2*width, p_hist[2, :], width, label='1 < 2')
+
+plt.xlabel('Argument Pairs')
+plt.ylabel('Number of labels')
+plt.legend(loc='best')
+plt.title('Histogram of Labels for each Argument')
+
+plt.savefig(plotdir + '/b6_pref_histogram.eps')
+
+#scatter plot
+plt.scatter(p_scat_x, p_scat_y)
+plt.xlabel('Argument Pairs')
+plt.ylabel('Preference Label')
+plt.title('Distribution of Preferences for Arguments')
+
+plt.savefig(plotdir + '/b6_pref_scatter.eps')
+
+# B7 Compute variance in the observed preferences and sort
+mean_p_hist = (-1 * p_hist[0, :] + 1 * p_hist[2, :]) / np.sum(p_hist, axis=0)[np.newaxis, :]
+var_p_hist = (p_hist[0, :] - mean_p_hist)**2 + (p_hist[1, :] - mean_p_hist)**2 + (p_hist[2, :] - mean_p_hist)**2
+var_p_hist /= np.sum(p_hist, axis=0) 
+
+sortbyvar = np.argsort(var_p_hist)
+var_p_hist = var_p_hist[:, sortbyvar]
+
+# B8 Plot Preference pair variance and save
+plt.figure()
+plt.plot(x_locs + 0.5, var_p_hist)
+plt.xlabel('Argument Pairs')
+plt.ylabel('Variance in Pref. Labels')
+plt.title('Variance in Labels Collected for Each Pair')
+
+plt.savefig(plotdir + '/b8_pref_pair_var.eps')
+
+# B9 Plot pref function means as a line graph -- without using a model, this will be very hard to read
+plt.plot(np.arange(N), fbar)
+plt.xlabel('Arguments')
+plt.ylabel('Latent Preference Value')
+plt.title('Expected Latent Preference Functions for Each Person')
+
+plt.savefig(plotdir + '/b9_pref_means.eps')
