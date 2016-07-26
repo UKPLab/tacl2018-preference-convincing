@@ -19,7 +19,7 @@ class PreferenceComponents(object):
     '''
 
     def __init__(self, dims, mu0=[], shape_s0=None, rate_s0=None, s_initial=None, shape_ls=10, rate_ls=0.1, 
-                 ls_initial=None, verbose=False):
+                 ls_initial=None, verbose=False, nfactors=3):
         '''
         Constructor
         dims - ranges for each of the observed features of the objects
@@ -44,6 +44,8 @@ class PreferenceComponents(object):
         self.cov_type = 'matern_3_2'
         
         self.verbose = verbose
+        
+        self.nfactors = nfactors
         
     def fit(self, personIDs, items_1_coords, items_2_coords, preferences):
         '''
@@ -80,7 +82,7 @@ class PreferenceComponents(object):
         
                 self.Kpred = self.gppref_models[person].kernel_func(distances)
             
-        self.fa = FactorAnalysis(n_components=3)
+        self.fa = FactorAnalysis(n_components=self.nfactors)
             
         niter = 0
         diff = np.inf
@@ -203,18 +205,20 @@ class PreferenceComponents(object):
             invKs = np.linalg.inv(Kpred_p)
             inv_sigmasq_t = np.linalg.inv(self.sigmasq_t)            
             # should this be same as self.fa.score_samples?
-            t_terms += norm.logpdf(self.t[person, :], loc=self.Wx_plus_mu[person, :], scale=self.sigmasq_t**0.5) - \
+            t_terms += norm.logpdf(self.t[person, :], loc=self.Wx_plus_mu[person, :], scale=self.sigmasq_t.diagonal()**0.5) - \
                         mvn.logpdf(self.t[person, :], mean=self.t[person, :], cov=np.linalg.inv(inv_sigmasq_t + invKs))
         t_terms = np.sum(t_terms)
-        # what to do with the self.fa.mean? -- should be included as an extra column in the component matrix
         
-#         Sigma_w = 1.0 / self.sigmasq_t 
-#         for person in range(self.x.shape[0]):
-#             Sigma_w *= self.x[person:person+1, :].T.dot(self.x[person:person+1, :])
-#             Sigma_w += np.diag(nu)
-                
-        Sigma_x = self.fa.components_.dot(self.fa.components_.T)/self.sigmasq_t + np.eye(self.x.shape)
-        x_terms = norm.logpdf(self.x) - norm.logpdf(self.x, loc=self.x, scale=Sigma_x**0.5)
+        var_y = self.fa.components_.T.dot(self.fa.components_).diagonal()
+        prec_x = var_y / self.sigmasq_t.diagonal()
+        prec_x = prec_x[np.newaxis, :]
+        post_var_x = 1.0 / (1 + prec_x)
+        post_mean_x = post_var_x * prec_x * self.Wx_plus_mu
+        
+        x_terms_p = norm.logpdf(self.Wx_plus_mu, loc=self.fa.mean_[np.newaxis, :], scale=self.sigmasq_t.diagonal()[np.newaxis, :])
+        x_terms_q = norm.logpdf(self.Wx_plus_mu, loc=post_mean_x, scale=post_var_x**0.5)
+        
+        x_terms = x_terms_p - x_terms_q
         x_terms = np.sum(x_terms)
         
         # These are hyperparameters -- should not need to include here assuming they don't get updated each iteration
