@@ -12,7 +12,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
     
 import numpy as np
-#from krippendorffalpha import alpha
+from krippendorffalpha import alpha
 from preference_features import PreferenceComponents
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -37,12 +37,7 @@ if __name__ == '__main__':
     
     arg_ids = np.unique([data[:, 1], data[:, 2]])
     max_arg_id = np.max(arg_ids)
-    
-    #U = data[:, 1] * max_arg_id + data[:, 2] # translate the IDs for the arguments in a pairwise comparison to a single ID
-    #C = data[:, 3]
-    #L = data[:, 0]
-    #print "Krippendorff's alpha for the raw pairwise labels = %.3f" % alpha(U, C, L)
-    
+        
     pair1idxs = data[:, 1]
     pair2idxs = data[:, 2]
     prefs = 1.0 - data[:, 3].astype(float) / 2.0 # flip the labels do give the preference for argument 1. Halve the 
@@ -194,13 +189,15 @@ if __name__ == '__main__':
     density_xvals = np.tile(density_xvals[:, np.newaxis], (1, fbar.shape[1]))
     
     fsum = np.zeros(density_xvals.shape)
+    findividual = np.zeros((fsum.shape[0], fsum.shape[1], fbar.shape[0]))
     seenidxs = np.zeros(fbar.shape)
-    for p, person in enumerate(range(fbar.shape[0])):
+    for person in range(fbar.shape[0]):
         pidxs = personids == person
         pidxs = np.in1d(xvals, pair1coords[pidxs, 0]) | np.in1d(xvals, pair2coords[pidxs, 0])
         #fsum[:, pidxs] += norm.cdf(density_xvals[:, pidxs], loc=fbar[person:person+1, pidxs], scale=fstd[person:person+1, pidxs])
-        fsum[:, pidxs] += norm.pdf(density_xvals[:, pidxs], loc=fbar[person:person+1, pidxs], scale=fstd[person:person+1, pidxs])
-        seenidxs[p, pidxs] = 1
+        findividual[:, pidxs, person] = norm.pdf(density_xvals[:, pidxs], loc=fbar[person:person+1, pidxs], scale=fstd[person:person+1, pidxs])
+        fsum[:, pidxs] += findividual[:, pidxs, person]
+        seenidxs[person, pidxs] = 1
     
     #order the points by their midpoints (works for CDF?)
     #midpoints = fsum[density_xvals.shape[0]/2, :]
@@ -324,6 +321,11 @@ if __name__ == '__main__':
     # Section D: CLUSTER ANALYSIS -------------------------------------------------------------------------------------
     # The data to cluster is stored in fbar.
     
+    U = data[:, 1] * max_arg_id + data[:, 2] # translate the IDs for the arguments in a pairwise comparison to a single ID
+    C = data[:, 3]
+    L = data[:, 0]
+    IAA_all = alpha(U, C, L)    
+    
     for nfactors in nfactors_list:
         
         nflabel = 'nfactors_%i' % nfactors # an extra label to add to plots and filenames
@@ -349,7 +351,143 @@ if __name__ == '__main__':
         
         plt.savefig(plotdir + '/dpgmm_membership_%s.eps' % nflabel)
         
+        # cannot apply this to factor analysis -- can do another plot to show distributions. How fuzzy are memberships?
         plt.figure()
+        plt.title('Distribution of People Along Each of %i Factors' % nfactors)
+        for k in range(nfactors):
+            plt.subplot(nfactors / 4 + 1, 4, k )
+            plt.scatter(np.arange(fbar.shape[0]), fbar_trans[:, k])
+            plt.xlim(-5 * fbar.shape[0], 6 * fbar.shape[0])
+        plt.savefig(plotdir + '/factors_individual_%s.eps' % nflabel)
         
+        plt.figure()
+        plt.title('Distribution of Cluster Membership Probabilities with %i Clusters' % nfactors)
+        for k in range(nfactors):
+            plt.subplot(nfactors / 4 + 1, 4, k )
+            plt.scatter(np.arange(fbar.shape[0]), dpgmm_proba[:, k])
+            plt.xlim(-5 * fbar.shape[0], 6 * fbar.shape[0])
+        plt.savefig(plotdir + '/dpgmm_probs_individual_%s.eps' % nflabel)
         
+        # Task D4: Plot pairs of components/cluster distributions -- need some way to select pairs if we are going to do this
+        plt.figure()
+        plt.title('Distribution of People Along Pairs of Factors (%i Factors)' % nfactors)
+        for k in range(nfactors):
+            for k2 in range(nfactors):
+                plt.subplot(nfactors / 4 + 1, 4, k**2 )
+                plt.scatter(fbar_trans[:, k], fbar_trans[:, k2])
+                plt.xlabel('component %i' % k)
+                plt.ylabel('component %i' % k2)
+        plt.savefig(plotdir + '/factors_pairs_%s.eps' % nflabel)
         
+        plt.figure()
+        plt.title('Distribution of People between Pairs of Clusters (%i Clusters)' % nfactors)
+        for k in range(nfactors):
+            for k2 in range(nfactors):
+                plt.subplot(nfactors / 4 + 1, 4, k )
+                plt.scatter(dpgmm_proba[:, k], dpgmm_proba[:, k2])
+                plt.xlabel('probability of cluster %i' % k)
+                plt.ylabel('probability of cluster %i' % k2)                
+        plt.savefig(plotdir + '/dpgmm_probs_pairs_%s.eps' % nflabel)
+        
+        # Task D5, D6: For each cluster, plot f-value means and varaince within the clusters --------------------------
+        fbar_archetypes = np.zeros((nfactors, fbar.shape[1]))
+            
+        fig_dpmeans = plt.figure()
+        fig_dpvar = plt.figure()
+            
+        for k in range(nfactors):
+            # use a set of samples from the mixture distribution to approximate the mean.
+            weights = dpgmm_proba[:, k][np.newaxis, np.newaxis, :]
+            fsum_k = findividual * weights / np.sum(weights)
+            fsum_k = fsum_k[:, ordering]
+        
+            # This is overkill
+#             ax = fig.add_subplot(nfactors/4+1, 4,k, projection='3d')    
+#             ax.plot_surface(density_xvals, idxmatrix, fsum_k, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, 
+#                             antialiased=False)
+#             ax.set_xlabel('Arguments')
+#             ax.set_ylabel('Latent pref. function value')
+#             ax.set_zlabel('Density')
+
+            # Plot the means only
+            fmean_k = np.sum(density_xvals * fsum_k / np.sum(fsum_k, axis=0)[np.newaxis, :], axis=0)
+            plt.figure(fig_dpmeans)
+            plt.plot(fmean_k, label='cluster %s' % k)
+            
+            # compute the variance
+            fvar_k = np.sum((density_xvals - fmean_k[np.newaxis, :])**2 * fsum_k, axis=0) /  np.sum(fsum_k, axis=0)
+            plt.figure(fig_dpvar)
+            plt.plot(fvar_k, label='cluster %s' % k)    
+            
+        plt.figure(fig_dpmeans)
+        plt.legend(loc='best')
+        plt.xlabel('Arguments')
+        plt.ylabel('Means of latent preference function')
+        plt.title('Latent Function Mean by Cluster')
+        plt.savefig(plotdir + 'd5_fmeank_%s.eps' % nflabel)
+        
+        plt.figure(fig_dpvar)
+        plt.legend(loc='best')
+        plt.xlabel('Arguments')
+        plt.ylabel('Variance of latent preference function')
+        plt.title('Latent Function Variance within each Cluster')
+        plt.savefig(plotdir + 'd5_fvark_%s.eps' % nflabel)
+
+        # Task D7: For each cluster, plot variance in observed prefs in each cluster ----------------------------------
+        for k in range(nfactors):
+            # use a set of samples from the mixture distribution to approximate the mean.
+            weights = dpgmm_proba[:, k][np.newaxis, np.newaxis, :]
+            fsum_k = findividual * weights / np.sum(weights)
+            fsum_k = fsum_k[:, ordering]
+        
+            # Plot the means only
+            fmean_k = np.sum(density_xvals * fsum_k / np.sum(fsum_k, axis=0)[np.newaxis, :], axis=0)
+            plt.figure(fig_dpmeans)
+            plt.plot(fmean_k, label='cluster %s' % k)
+            
+            # compute the variance
+            fvar_k = np.sum((density_xvals - fmean_k[np.newaxis, :])**2 * fsum_k, axis=0) /  np.sum(fsum_k, axis=0)
+            plt.figure(fig_dpvar)
+            plt.plot(fvar_k, label='cluster %s' % k)    
+            
+        plt.figure(fig_dpmeans)
+        plt.legend(loc='best')
+        plt.xlabel('Arguments')
+        plt.ylabel('Means of latent preference function')
+        plt.title('Latent Function Mean by Cluster')
+        plt.savefig(plotdir + 'd5_fmeank_%s.eps' % nflabel)
+        
+        plt.figure(fig_dpvar)
+        plt.legend(loc='best')
+        plt.xlabel('Arguments')
+        plt.ylabel('Variance of latent preference function')
+        plt.title('Latent Function Variance within each Cluster')
+        plt.savefig(plotdir + 'd5_fvark_%s.eps' % nflabel)
+        
+
+        
+        #  This will be a total that incorporates the variance in individual f-values 
+        # Task D8: For each cluster, plot variance in predicted prefs in each cluster ---------------------------------
+        # Task D9: For each cluster, compute IAA. Plot as bar chart and save ------------------------------------------
+        IAA = np.zeros(nfactors)
+        labels = ['All People']
+        for k in range(nfactors):
+            # use a set of samples from the mixture distribution to approximate the mean.
+            kpersonidxs = np.argwhere(dpgmm_labels==k)
+            kidxs = np.in1d(data[:, 0], kpersonidxs)
+            Uk = data[kidxs, 1] * max_arg_id + data[:, 2] # translate the IDs for the arguments in a pairwise comparison to a single ID
+            Ck = data[kidxs, 3] # classifications
+            Lk = data[kidxs, 0] # labellers
+            
+            IAA[k] = alpha(Uk, Ck, Lk)   
+            labels.append('%i' % k)
+            
+        IAA = np.concatenate(([IAA_all], IAA))
+            
+        plt.figure()
+        ax = plt.bar(range(nfactors), IAA)
+        plt.xlabel('Cluster Index')
+        ax.set_xticklabels(labels)
+        plt.ylabel("Krippendorff's Alpha")
+        plt.title('Inter-annotator Agreement in each Cluster')
+        plt.savefig(plotdir + '/IAA')
