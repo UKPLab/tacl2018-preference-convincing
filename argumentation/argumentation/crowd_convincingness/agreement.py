@@ -31,9 +31,12 @@ if __name__ == '__main__':
     # load the data with columns: person_ID, arg_1_ID, arg_2_ID, preference_label
     data = np.genfromtxt(datadir + '/all_labels.csv', dtype=int, delimiter=',')
     
+    logging.warning("Subsampling dataset for debugging!!!")
+    data = data[:1000, :]
+    
     plotdir = './argumentation/results/'
     
-    npairs = data.shape[1]
+    npairs = data.shape[0]
     
     arg_ids = np.unique([data[:, 1], data[:, 2]])
     max_arg_id = np.max(arg_ids)
@@ -61,27 +64,33 @@ if __name__ == '__main__':
     upersonids = np.unique(personids)
     Npeople = len(upersonids)
     
-    # Task A2 ----------------------------------------------------------------------------------------------------------
+    # Task A2 ---------------------------------------------------------------------------------------------------------
 
- 
-    kf = KFold(npairs, 5)
+    logging.warning('Cutting the number of components and folds for debugging!!!')
+
+    kf = KFold(npairs, 2)
     
-    nfactors_list = [3, 5, 10, 100]
+    nfactors_list = [3]#, 5, 10, 100] # Task C7
     nmethods = 2 * len(nfactors_list) + 1
     
     results = np.zeros((npairs, nmethods))
     
-    k = 0 # count which fold we are in so we can save data     
+    k = 0 # count which fold we are in so we can save data    
+    
+    method_labels = [] 
     for train, test in kf:
-        
+        logging.info('Running fold %i' % k)
         m = 0
         
         for nfactors in nfactors_list:
             nflabel = 'nfactors_%i' % nfactors # an extra label to add to plots and filenames            
         
-            # Task C1  ----------------------------------------------------------------------------------------------------
+            # Task C1  ------------------------------------------------------------------------------------------------
+            if len(method_labels) <= m:
+                method_labels.append('Ind_GPFA_%s' % nflabel)
+            logging.info('Task C1, %s' % (nflabel))
             # Hypothesis: allows some personalisation but also sharing data through the means
-            model_gpfa = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=True, 
+            model_gpfa = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=False, 
                                               nfactors=nfactors)
             model_gpfa.cov_type = 'diagonal'
             model_gpfa.fit(personids[train], pair1coords[train], pair2coords[train], prefs[train])
@@ -92,9 +101,13 @@ if __name__ == '__main__':
         
             m += 1 # method index
         
-            # Task C3: Baseline with no separate preference functions per user --------------------------------------------
+            # Task C3: Baseline with no separate preference functions per user ----------------------------------------
+            logging.info('Task C3, %s' % (nflabel))
+            if len(method_labels) <= m:
+                method_labels.append('Base_GPFA_%s' % nflabel)            
+
             # Hypothesis: has benefit that there is more data to learn the GP, but no personalisation
-            model_base = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=True)
+            model_base = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=False)
             model_base.cov_type = 'diagonal'
             model_base.fit(np.zeros(len(personids[train])), pair1coords[train], pair2coords[train], prefs) # blank out the user ids
             model_base.pickle_me(datadir + '/c3_model_base_%s_%i.pkl' % (nflabel, k))
@@ -102,11 +115,15 @@ if __name__ == '__main__':
             results_k = model_base.predict(np.zeros(len(personids[test])), pair1coords[test], pair2coords[test])
             results[test, m] = results_k
             
+            m += 1 # method index
+                        
         # Now run the model but without the FA part; no shared information between people. 
         # Hypothesis: splitting by person results in too little data per person
-    
+        logging.info('Task C1 part II, no FA')
+        if len(method_labels) <= m:
+            method_labels.append('Ind_GP_%s' % nflabel)
         model_gponly = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], 
-                                            verbose=True, nfactors=nfactors)
+                                            verbose=False, nfactors=nfactors)
         model_gponly.cov_type = 'diagonal'
         model_gponly.max_iter = 1 # don't run VB till convergence -- gives same results as if running GPs and FA separately
         model_gponly.fit(personids[train], pair1coords[train], pair2coords[train], prefs[train])
@@ -115,59 +132,82 @@ if __name__ == '__main__':
         results_k = model_gponly.predict(personids[test], pair1coords[test], pair2coords[test])
         results[test, m] = results_k
         
-        m += 1 # method index
-        
         m += 1
         k += 1
         
-    # Task C2, C4: Compute accuracy metrics -------------------------------------------------------------------------------
+    # Task C2, C4: Compute accuracy metrics ---------------------------------------------------------------------------
+    logging.info('Task C2/C4, accuracy metrics')
     metrics = {}
     metrics['f1'] = np.zeros(nmethods)
     metrics['auc_roc'] = np.zeros(nmethods)
     metrics['log_loss'] = np.zeros(nmethods)
     
+    # Not sure how to deal with preference labels where the true label is 0.5 with f1 score. For ROC curve we can 
+    # combine two AUCs for negative class and positive class.  
+    
     for i in range(nmethods):
-        metrics['f1'][i] = f1_score(prefs, np.round(results[i, 0]))
-        metrics['auc_roc'][i] = roc_auc_score(prefs, results[i, 0])
-        metrics['log_loss'][i] = log_loss(prefs, results[i, 0])
+                
+        decisive_idxs = (prefs==1) | (prefs==0)
+        metrics['f1'][i] = f1_score(prefs[decisive_idxs], np.round(results[decisive_idxs, i]))
         
-    # Task C9/C10: Plotting metrics ---------------------------------------------------------------------------------------
-    plt.figure()
-    plt.title('F1 Scores with 5-fold Cross Validation')
-    ax = plt.bar(metrics['f1'])
-    plt.xlabel('Method')
-    plt.ylabel('F1 Score')
-    ax.set_xticks(np.arange(results.shape[1]))
-    ax.set_xticklabels(('PL GPs + FA'))
+        auc_a_less_b = roc_auc_score(prefs==0, 1 - results[:, i])
+        frac_a_less_b = np.sum(prefs==0) / float(len(prefs))
+        
+        auc_a_more_b = roc_auc_score(prefs==1, results[:, i])
+        frac_a_more_b = np.sum(prefs==1) / float(len(prefs))
+        
+        auc_a_equal_b = roc_auc_score(prefs==0.5, 1 - np.abs(results[:, i] - 0.5))
+        frac_a_equal_b = np.sum(prefs==0.5) / float(len(prefs))
+        
+        metrics['auc_roc'][i] = auc_a_less_b * frac_a_less_b + auc_a_more_b * frac_a_more_b + auc_a_equal_b * frac_a_equal_b 
+         
+        results_safe = results[:, i].copy()
+        results_safe[results[:, i]<1e-7] = 1e-7
+        results_safe[results[:, i]>(1-1e-7)] = 1 - 1e-7
+        metrics['log_loss'][i] = -np.mean(prefs * np.log(results_safe) + (1 - prefs) * np.log(1 - results_safe))
+        
+    # Task C9/C10: Plotting metrics -----------------------------------------------------------------------------------
+    logging.info('Task C9/10, plotting accuracy metrics')
+    _, ax = plt.subplots()
+    ax.set_title('F1 Scores with 5-fold Cross Validation')
+    ind = np.arange(nmethods)
+    width = 0.6
+    ax.bar(ind, metrics['f1'], width=width)
+    ax.set_xlabel('Method')
+    ax.set_ylabel('F1 Score')
+    ax.set_xticks(ind + (width/2.0))
+    ax.set_xticklabels(method_labels)
     
     plt.savefig(plotdir + '/f1scores.eps') 
     
-    plt.figure()
-    plt.title('AUC of ROC Curve with 5-fold Cross Validation')
-    ax = plt.bar(metrics['auc_roc'])
-    plt.xlabel('Method')
-    plt.ylabel('AUC')
-    ax.set_xticks(np.arange(results.shape[1]))
-    ax.set_xticklabels(('PL GPs + FA'))
-    
+    _, ax = plt.subplots()
+    ax.set_title('AUC of ROC Curve with 5-fold Cross Validation')
+    ax.bar(ind, metrics['auc_roc'], width=width)
+    ax.set_xlabel('Method')
+    ax.set_ylabel('AUC')
+    ax.set_xticks(ind + (width/2.0))
+    ax.set_xticklabels(method_labels)
+        
     plt.savefig(plotdir + '/auc_roc.eps')
     
-    plt.figure()
-    plt.title('Cross Entropy Error with 5-fold Cross Validation')
-    ax = plt.bar(metrics['log_loss'])
-    plt.xlabel('Method')
-    plt.ylabel('Cross Entropy')
-    ax.set_xticks(np.arange(results.shape[1]))
-    ax.set_xticklabels(('PL GPs + FA'))
-    
+    _, ax = plt.subplots()
+    ax.set_title('Cross Entropy Error with 5-fold Cross Validation')
+    plt.bar(ind, metrics['log_loss'], width=width)
+    ax.set_xlabel('Method')
+    ax.set_ylabel('Cross Entropy')
+    ax.set_xticks(ind + (width/2.0))
+    ax.set_xticklabels(method_labels)
+        
     plt.savefig(plotdir + '/cross_entropy.eps')        
 
-    # Section B. VISUALISING THE LATENT PREFERENCE FUNCTION AND RAW DATA WITHOUT MODELS ---------------------------
+    # Section B. VISUALISING THE LATENT PREFERENCE FUNCTION AND RAW DATA WITHOUT MODELS -------------------------------
+    
+    logging.info('Data Visualisation')
     
     nflabel = 'alldata'
     
-    # Task A3  ----------------------------------------------------------------------------------------------------
-    model_gponly = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=True, 
+    # Task A3  --------------------------------------------------------------------------------------------------------
+    model_gponly = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=False, 
                                         nfactors=nfactors)
     model_gponly.cov_type = 'diagonal'
     model_gponly.max_iter = 1 # don't run VB till convergence -- gives same results as if running GPs and FA separately
@@ -175,7 +215,10 @@ if __name__ == '__main__':
     model_gponly.pickle_me(datadir + '/a3_model_gponly_%s.pkl' % nflabel)    
     
     # Task A1 continued. Put the data into the correct format for visualisation/clustering
-    fbar = np.zeros(model_gponly.t.shape) # posterior means
+    
+    # Need to convert from original IDs to local model IDs
+    
+    fbar = np.zeros(())#model_gponly.t.shape) # posterior means
     v = np.zeros(model_gponly.t.shape) # posterior variance
     for person in model_gponly.gppref_models:
         fbar[person, :] = model_gponly.f[person][:, 0]

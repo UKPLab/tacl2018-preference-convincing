@@ -56,6 +56,7 @@ class PreferenceComponents(object):
         preferences - the values, 0 or 1 to express that item 1 was preferred to item 2.
         '''
         
+        # deal only with the original IDs to simplify prediction steps and avoid conversions 
         self.people = np.unique(personIDs)
         self.gppref_models = {}
         
@@ -63,7 +64,7 @@ class PreferenceComponents(object):
         
         self.N = len(self.obs_coords)
         self.sigmasq_t = self.sigmasq_t * np.eye(self.N).astype(float)
-        self.Npeople = len(self.people)
+        self.Npeople = np.max(self.people) + 1
         self.f = {}
         self.t = np.zeros((self.Npeople, self.N))
         self.Wx_plus_mu = np.zeros((self.Npeople, self.N)) + self.mu0
@@ -130,11 +131,14 @@ class PreferenceComponents(object):
         items_1_local[np.sum(matches_1, axis=0)==0] = self.mu0
          
         upeople = np.unique(personids)
-        for p in upeople:
-            if p not in self.gppref_models:
-                logging.warning('Cannot predict for this person %i') % p
+        for p in upeople:            
+            pidxs = personids == p
+            
+            if p not in self.people:
+                if self.verbose:
+                    logging.warning('Cannot predict for this person %i' % p)
+                results[pidxs] = 0.5
                 continue
-            pidxs = personids == upeople
             
             mu0_1 = self.t[p, items_0_local[pidxs]] # need to translate coords to local first
             mu0_2 = self.t[p, items_1_local[pidxs]] # need to translate coords to local first
