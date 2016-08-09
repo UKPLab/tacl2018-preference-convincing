@@ -63,11 +63,11 @@ class PreferenceComponents(object):
         self.obs_coords, self.pref_u, self.pref_v = get_unique_locations(items_1_coords, items_2_coords)
         
         self.N = len(self.obs_coords)
-        self.sigmasq_t = self.sigmasq_t * np.eye(self.N).astype(float)
+        self.t_cov = np.diag(self.sigmasq_t * np.ones(self.N)).astype(float)
+        self.mu = np.zeros((self.N, 1))
         self.Npeople = np.max(self.people) + 1
         self.f = {}
         self.t = np.zeros((self.Npeople, self.N))
-        self.Wx_plus_mu = np.zeros((self.Npeople, self.N)) + self.mu0
         for p, person in enumerate(self.people):
             self.gppref_models[person] = GPPref(self.dims, self.mu0, self.shape_s0, self.rate_s0, self.s_initial, 
                                                 self.shape_ls, self.rate_ls, self.ls_initial)
@@ -151,13 +151,13 @@ class PreferenceComponents(object):
         '''
         Compute the expectation over the preference function mean
         '''
-        inv_sigmasq_t = np.linalg.inv(self.sigmasq_t)
+        
+        invK = np.linalg.inv(self.Kpred)
         for person in self.gppref_models:
-            Kpred_p = self.Kpred / self.gppref_models[person].s
-            invKs = np.linalg.inv(Kpred_p)
+            invKs = invK * self.gppref_models[person].s            
             
-            C = np.linalg.inv(inv_sigmasq_t + invKs)# covariance of t
-            self.t[person, :] = C.dot(inv_sigmasq_t.dot(self.Wx_plus_mu[person:person+1, :].T) + invKs.dot(self.f[person])).T
+            C = np.linalg.inv(self.t_cov + invKs)# covariance of t
+            self.t[person, :] = C.dot(self.t_cov.dot(self.mu) + invKs.dot(self.f[person])).T
             
             if self.verbose:
                 logging.debug( "Expec_t for person %i out of %i" % (person, len(self.gppref_models.keys())) )
@@ -192,9 +192,8 @@ class PreferenceComponents(object):
         '''
         
         self.x = self.fa.fit_transform(self.t)
-        self.Wx_plus_mu = self.x.dot(self.fa.components_) + self.fa.mean_[np.newaxis, :]
-        #logging.debug( self.Wx_plus_mu
-        self.sigmasq_t = np.diag(self.fa.noise_variance_)
+        self.cov_t = self.fa.components_.T.dot(self.fa.components_) + np.diag(self.fa.noise_variance_)
+        self.mu = self.fa.mean_[:, np.newaxis]
         
         logging.debug('Updated q(x)')
         
@@ -202,39 +201,22 @@ class PreferenceComponents(object):
         f_terms = 0
         t_terms = 0
         
+        invKpred_p = np.linalg.inv(self.Kpred)
+        
         for person in self.gppref_models:
             f_terms += self.gppref_models[person].lowerbound()
             
-            Kpred_p = self.Kpred / self.gppref_models[person].s
-            invKs = np.linalg.inv(Kpred_p)
-            inv_sigmasq_t = np.linalg.inv(self.sigmasq_t)            
-            # should this be same as self.fa.score_samples?
-            t_terms += norm.logpdf(self.t[person, :], loc=self.Wx_plus_mu[person, :], scale=self.sigmasq_t.diagonal()**0.5) - \
-                        mvn.logpdf(self.t[person, :], mean=self.t[person, :], cov=np.linalg.inv(inv_sigmasq_t + invKs))
+            invKs = invKpred_p * self.gppref_models[person].s
+                       
+            t_terms_p = mvn.logpdf(self.t[person, :], mean=self.fa.mean_, cov=self.t_cov)
+            t_terms_q = mvn.logpdf(self.t[person, :], mean=self.t[person, :], cov=np.linalg.inv(self.t_cov + invKs))
+            t_terms += t_terms_p - t_terms_q
+                        
         t_terms = np.sum(t_terms)
         
-        var_y = self.fa.components_.T.dot(self.fa.components_).diagonal()
-        prec_x = var_y / self.sigmasq_t.diagonal()
-        prec_x = prec_x[np.newaxis, :]
-        post_var_x = 1.0 / (1 + prec_x)
-        post_mean_x = post_var_x * prec_x * self.Wx_plus_mu
+        lb = f_terms + t_terms
         
-        x_terms_p = norm.logpdf(self.Wx_plus_mu, loc=self.fa.mean_[np.newaxis, :], scale=self.sigmasq_t.diagonal()[np.newaxis, :])
-        x_terms_q = norm.logpdf(self.Wx_plus_mu, loc=post_mean_x, scale=post_var_x**0.5)
-        
-        x_terms = x_terms_p - x_terms_q
-        x_terms = np.sum(x_terms)
-        
-        # These are hyperparameters -- should not need to include here assuming they don't get updated each iteration
-        #sigmasq_terms = norm.logpdf(self.sigmasq_t, ) - norm.logpdf(self.sigmasq_t, loc=self.sigmasq_t, scale=)
-        #mu_terms = norm.logpdf(self.fa.mean_) - norm.logpdf(self.fa.mean_, loc=self.fa.mean_, scale=)
-        
-        #W_terms = norm.logpdf(self.fa.components_, scale=nu**0.5) - norm.logpdf(self.fa.components_,
-        #                                                                loc=self.fa.components_, scale=Sigma_w**0.5)
-        
-        lb = f_terms + t_terms + x_terms #+ W_terms #sigmasq_terms + mu_terms
-        
-        logging.debug( "Lower bound = %f" % lb )
+        logging.debug( "Lower bound = %.3f, fterms=%.3f, tterms=%.3f" % (lb, f_terms, t_terms) )
         
         return lb
     
