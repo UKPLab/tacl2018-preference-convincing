@@ -4,7 +4,14 @@ Created on 18 May 2016
 @author: simpson
 '''
 
-from gpgrid import GPGrid, coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
+from gpgrid import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
+
+supply_update_size = True
+from gpgrid_svi import GPGridSVI as GPGrid
+
+#supply_update_size = False
+#from gpgrid import GPGrid
+
 import numpy as np
 from scipy.stats import norm
 from scipy.sparse import coo_matrix
@@ -43,7 +50,7 @@ class GPPref(GPGrid):
     pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
     
     def __init__(self, dims, mu0=0, shape_s0=None, rate_s0=None, s_initial=None, shape_ls=10, rate_ls=0.1, 
-                 ls_initial=None, force_update_all_points=False, n_lengthscales=1):
+                 ls_initial=None, force_update_all_points=False, n_lengthscales=1, max_update_size=1000):
         
         # We set the function scale and noise scale to the same value so that we assume apriori that the differences
         # in preferences can be explained by noise in the preference pairs or the latent function. Ordering patterns 
@@ -61,7 +68,11 @@ class GPPref(GPGrid):
         if rate_s0 <= 0:
             rate_s0 = 0.5
         
-        super(GPPref, self).__init__(dims, mu0, shape_s0, rate_s0, s_initial, shape_ls, rate_ls, ls_initial, 
+        if supply_update_size:
+            super(GPPref, self).__init__(dims, mu0, shape_s0, rate_s0, s_initial, shape_ls, rate_ls, ls_initial, 
+                                     force_update_all_points, n_lengthscales, max_update_size)
+        else:
+            super(GPPref, self).__init__(dims, mu0, shape_s0, rate_s0, s_initial, shape_ls, rate_ls, ls_initial, 
                                      force_update_all_points, n_lengthscales)
         
         
@@ -73,7 +84,7 @@ class GPPref(GPGrid):
         f_samples = norm.rvs(loc=self.mu0, scale=np.sqrt(1.0/self.s), size=nsamples)
         v_samples = np.random.choice(nsamples, nsamples)
         u_samples = np.random.choice(nsamples, nsamples)
-        rho_samples = self.forward_model(f_samples, v_samples, u_samples)
+        rho_samples = self.forward_model(f_samples, v=v_samples, u=u_samples)
         rho_mean = np.mean(rho_samples)
         rho_var = np.var(rho_samples) # this doesn't work because the locations are not independent
         
@@ -104,7 +115,7 @@ class GPPref(GPGrid):
         if self.mu0_2 is not None:
             self.mu0[self.pref_u] = self.mu0_2
     
-    def forward_model(self, f=[], v=[], u=[], return_g_f=False):
+    def forward_model(self, f=[], subset_idxs=[], v=[], u=[], return_g_f=False):
         '''
         f - should be of shape nobs x 1
         
@@ -119,6 +130,15 @@ class GPPref(GPGrid):
             v = self.pref_v
         if len(u) == 0:
             u = self.pref_u
+            
+        if len(subset_idxs):
+            if len(v) and len(u):
+                # keep only the pairs that reference two items in the subet
+                pair_subset = np.in1d(v, subset_idxs) & np.in1d(u, subset_idxs)
+                v = v[pair_subset]
+                u = u[pair_subset]
+            else:
+                f = f[subset_idxs]  
 
         if f.ndim < 2:
             f = f[:, np.newaxis]
@@ -136,18 +156,31 @@ class GPPref(GPGrid):
         else:
             return phi 
     
-    def update_jacobian(self, G_update_rate=1.0):
-        # Is this correct?
+    def update_jacobian(self, G_update_rate=1.0, selection=[]):
         phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
-        J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * (1.0/(np.sqrt(2) * self.sigma)) #norm.pdf(g_mean_f) / (phi * np.sqrt(2) * self.sigma)
+            
+        J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * (1.0/(np.sqrt(2) * self.sigma))
         obs_idxs = np.arange(self.obs_coords.shape[0])[np.newaxis, :]
-        s = (self.pref_v[:, np.newaxis]==obs_idxs).astype(int) - (self.pref_u[:, np.newaxis]==obs_idxs).astype(int)
+        
+        if len(selection): 
+            obs_idxs = obs_idxs[:, selection]
+            self.data_obs_idx_i = np.in1d(self.pref_v, selection) & np.in1d(self.pref_u, selection)
+            J = J[self.data_obs_idx_i, :]
+            s = (self.pref_v[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int) -\
+                                                    (self.pref_u[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int)
+        else:    
+            s = (self.pref_v[:, np.newaxis]==obs_idxs).astype(int) - (self.pref_u[:, np.newaxis]==obs_idxs).astype(int)
+            
         J = J * s 
+        
         if self.G is None or not np.any(self.G) or self.G.shape != J.shape: 
             # either G has not been initialised, or is from different observations:
             self.G = J
         else:        
             self.G = G_update_rate * J + (1 - G_update_rate) * self.G
+            
+        
+            
         return phi
     
     # If this is the same as parent class, can the initialisation also be the same init_obs_f?
@@ -314,7 +347,7 @@ class GPPref(GPGrid):
         if pref_u is None:
             pref_u = self.pref_u
         
-        m_post, g_f = self.forward_model(f_mean, pref_v, pref_u, return_g_f=True)
+        m_post, g_f = self.forward_model(f_mean, v=pref_v, u=pref_u, return_g_f=True)
         not_m_post = 1 - m_post
         v_post = - 2.0 * self.sigma / (norm.pdf(g_f)**2/m_post**2 + norm.pdf(g_f)*g_f/m_post) # use the inverse hessian
         
@@ -333,7 +366,7 @@ class GPPref(GPGrid):
         # this should sample different values of obs_f and put them into the forward model
         #v = np.diag(self.obs_C)[:, np.newaxis]
         f_samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(len(f_mean.flatten()), 1000))
-        rho_samples = self.forward_model(f_samples, pref_v, pref_u)
+        rho_samples = self.forward_model(f_samples, v=pref_v, u=pref_u)
         rho_samples = temper_extreme_probs(rho_samples)
         rho_not_samples = 1 - rho_samples            
         if expectedlog:
@@ -409,36 +442,49 @@ def gen_synthetic_prefs():
     # generate the discrete labels from the noisy preferences
     prefs = f1noisy > f2noisy
     
-    return N, Ptest, prefs, nx, ny, xvals, yvals, pair1idxs, pair2idxs, f
+    return N, Ptest, prefs, nx, ny, xvals, yvals, pair1idxs, pair2idxs, f, K
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)    
     
     from scipy.stats import kendalltau
     
-    N, Ptest, prefs, nx, ny, xvals, yvals, pair1idxs, pair2idxs, f = gen_synthetic_prefs()
+    # make sure the simulation is repeatable
+    np.random.seed(1)
+    
+    N, Ptest, prefs, nx, ny, xvals, yvals, pair1idxs, pair2idxs, f, _ = gen_synthetic_prefs()
     
     # Create a GPPref model
-    model = GPPref([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10])    
+    model = GPPref([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], max_update_size=60)    
     #model.verbose = True
-    #model.max_iter_G = 100
-    #model.min_iter_VB = 100
+    model.max_iter_VB = 1000
+    model.min_iter_VB = 500
     #model.conv_threshold_G = 1e-8
     #model.conv_check_freq = 1
     #model.conv_threshold = 1e-3 # the difference must be less than 1% of the value of the lower bound
     pair1coords = np.concatenate((xvals[pair1idxs, :], yvals[pair1idxs, :]), axis=1)
     pair2coords = np.concatenate((xvals[pair2idxs, :], yvals[pair2idxs, :]), axis=1)    
+    np.random.seed() # do this if we want to use a different seed each time to test the variation in results
     model.fit(pair1coords, pair2coords, prefs)
     
     # Predict at the test locations
-    rho_pred, var_rho_pred = model.predict((xvals.flatten(), yvals.flatten()), variance_method='sample')
+    rho_pred, var_rho_pred = model.predict((xvals.flatten(), yvals.flatten()), variance_method='rough')
     fpred = model.f.flatten()
     vpred = model.v.flatten()
+    
+    # Compare the observation point values with the ground truth
+    obs_coords_1d = coord_arr_to_1d(model.obs_coords)
+    test_coords_1d = coord_arr_to_1d(np.concatenate((xvals, yvals), axis=1))
+    f_obs = [f[(test_coords_1d==obs_coords_1d[i]).flatten()][0] for i in range(model.obs_coords.shape[0])]
+    print "Kendall's tau (observations): %.3f" % kendalltau(f_obs, model.obs_f.flatten())[0]
+    
+    # To make sure the simulation is repeatable, re-seed the RNG after all the stochastic inference has been completed
+    np.random.seed(2)
     
     # Evaluate the accuracy of the predictions
     #print "RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
     #print "NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
-    print "Kendall's tau: %.3f" % kendalltau(f, fpred)[0] 
+    print "Kendall's tau (test): %.3f" % kendalltau(f, fpred)[0] 
     
     # turn the values into predictions of preference pairs.
     pair1idxs_test = np.random.choice(N, Ptest, replace=True)
@@ -450,7 +496,7 @@ if __name__ == '__main__':
         pair2idxs_test[matchingidxs] = np.random.choice(N, np.sum(matchingidxs), replace=True)
     
     t = (f[pair1idxs_test] > f[pair2idxs_test]).astype(int)
-    rho_pred = model.forward_model(fpred, pair1idxs_test, pair2idxs_test).flatten()
+    rho_pred = model.forward_model(fpred, v=pair1idxs_test, u=pair2idxs_test).flatten()
     rho_pred = temper_extreme_probs(rho_pred)
     
     t_pred = np.round(rho_pred)
