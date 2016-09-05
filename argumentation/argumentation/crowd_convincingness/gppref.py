@@ -179,24 +179,8 @@ class GPPref(GPGrid):
         else:        
             self.G = G_update_rate * J + (1 - G_update_rate) * self.G
             
-        
-            
         return phi
     
-    # If this is the same as parent class, can the initialisation also be the same init_obs_f?
-    #def observations_to_z(self):
-    #    obs_probs = self.obs_values/self.obs_total_counts
-    #    self.z = obs_probs        
-    
-    #def init_obs_f(self):
-    #    # Mean is just initialised to its prior here. Could be done faster?
-    #    self.obs_f = np.zeros((self.obs_coords.shape[0], 1)) + self.mu0
-    
-#     def estimate_obs_noise(self):
-#         #Noise in observations
-#         var_obs_mean = self.obs_mean * (1-self.obs_mean) / (self.obs_total_counts + 1) # uncertainty in obs_mean
-#         self.Q = np.diagflat((self.obs_mean * (1 - self.obs_mean) - var_obs_mean) / self.obs_total_counts)
-       
     def count_observations(self, obs_coords, n_obs, poscounts, totals):
         '''
         obs_coords - a tuple with two elements, the first containing the list of coordinates for the first items in each
@@ -455,7 +439,7 @@ if __name__ == '__main__':
     N, Ptest, prefs, nx, ny, xvals, yvals, pair1idxs, pair2idxs, f, _ = gen_synthetic_prefs()
     
     # Create a GPPref model
-    model = GPPref([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], max_update_size=60)    
+    model = GPPref([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], max_update_size=f.shape[0])    
     #model.verbose = True
     model.max_iter_VB = 1000
     model.min_iter_VB = 500
