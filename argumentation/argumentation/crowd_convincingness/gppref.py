@@ -439,10 +439,10 @@ if __name__ == '__main__':
     N, Ptest, prefs, nx, ny, xvals, yvals, pair1idxs, pair2idxs, f, _ = gen_synthetic_prefs()
     
     # Create a GPPref model
-    model = GPPref([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], max_update_size=f.shape[0])    
+    model = GPPref([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], max_update_size=100)    
     #model.verbose = True
     model.max_iter_VB = 1000
-    model.min_iter_VB = 500
+    model.min_iter_VB = 5
     #model.conv_threshold_G = 1e-8
     #model.conv_check_freq = 1
     #model.conv_threshold = 1e-3 # the difference must be less than 1% of the value of the lower bound
@@ -450,6 +450,7 @@ if __name__ == '__main__':
     pair2coords = np.concatenate((xvals[pair2idxs, :], yvals[pair2idxs, :]), axis=1)    
     np.random.seed() # do this if we want to use a different seed each time to test the variation in results
     model.fit(pair1coords, pair2coords, prefs)
+    print "Final lower bound: %f" % model.lowerbound()
     
     # Predict at the test locations
     rho_pred, var_rho_pred = model.predict((xvals.flatten(), yvals.flatten()), variance_method='rough')
