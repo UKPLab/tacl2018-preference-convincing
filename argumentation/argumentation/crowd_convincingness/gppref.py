@@ -50,7 +50,7 @@ class GPPref(GPGrid):
     pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
     
     def __init__(self, dims, mu0=0, shape_s0=None, rate_s0=None, s_initial=None, shape_ls=10, rate_ls=0.1, 
-                 ls_initial=None, force_update_all_points=False, n_lengthscales=1, max_update_size=1000):
+                 ls_initial=None, force_update_all_points=False, n_lengthscales=1, max_update_size=1000, ninducing=500):
         
         # We set the function scale and noise scale to the same value so that we assume apriori that the differences
         # in preferences can be explained by noise in the preference pairs or the latent function. Ordering patterns 
@@ -70,7 +70,7 @@ class GPPref(GPGrid):
         
         if supply_update_size:
             super(GPPref, self).__init__(dims, mu0, shape_s0, rate_s0, s_initial, shape_ls, rate_ls, ls_initial, 
-                                     force_update_all_points, n_lengthscales, max_update_size)
+                                     force_update_all_points, n_lengthscales, max_update_size, ninducing)
         else:
             super(GPPref, self).__init__(dims, mu0, shape_s0, rate_s0, s_initial, shape_ls, rate_ls, ls_initial, 
                                      force_update_all_points, n_lengthscales)
@@ -439,7 +439,7 @@ if __name__ == '__main__':
     N, Ptest, prefs, nx, ny, xvals, yvals, pair1idxs, pair2idxs, f, _ = gen_synthetic_prefs()
     
     # Create a GPPref model
-    model = GPPref([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], max_update_size=100)    
+    model = GPPref([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], max_update_size=100, ninducing=200)    
     #model.verbose = True
     model.max_iter_VB = 1000
     model.min_iter_VB = 5
