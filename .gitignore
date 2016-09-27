@@ -107,3 +107,4 @@ argumentation/outputdata/results_debugging_svi.txt
 argumentation/outputdata/results_debugging_svi.txt~
 *.csv
 outputdata/*.eps
+/setup.py
