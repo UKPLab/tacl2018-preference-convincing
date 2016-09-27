@@ -105,3 +105,5 @@ argumentation/outputdata/model_fonly.pkl
 argumentation/outputdata/model.pkl
 argumentation/outputdata/results_debugging_svi.txt
 argumentation/outputdata/results_debugging_svi.txt~
+*.csv
+outputdata/*.eps
