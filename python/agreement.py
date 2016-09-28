@@ -85,19 +85,19 @@ if __name__ == '__main__':
         for nfactors in nfactors_list:
             nflabel = 'nfactors_%i' % nfactors # an extra label to add to plots and filenames            
         
-            # Task C1  ------------------------------------------------------------------------------------------------
-            if len(method_labels) <= m:
-                method_labels.append('Ind_GPFA_%s' % nflabel)
-            logging.info('Task C1, %s' % (nflabel))
-            # Hypothesis: allows some personalisation but also sharing data through the means
-            model_gpfa = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=False, 
-                                              nfactors=nfactors)
-            model_gpfa.cov_type = 'diagonal'
-            model_gpfa.fit(personids[train], pair1coords[train], pair2coords[train], prefs[train])
-            model_gpfa.pickle_me(datadir + '/c1_model_gpfa_%s_%i.pkl' % (nflabel, k))
-            
-            results_k = model_gpfa.predict(personids[test], pair1coords[test], pair2coords[test])
-            results[test, m] = results_k
+#             # Task C1  ------------------------------------------------------------------------------------------------
+#             if len(method_labels) <= m:
+#                 method_labels.append('Ind_GPFA_%s' % nflabel)
+#             logging.info('Task C1, %s' % (nflabel))
+#             # Hypothesis: allows some personalisation but also sharing data through the means
+#             model_gpfa = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=False, 
+#                                               nfactors=nfactors)
+#             model_gpfa.cov_type = 'diagonal'
+#             model_gpfa.fit(personids[train], pair1coords[train], pair2coords[train], prefs[train])
+#             model_gpfa.pickle_me(datadir + '/c1_model_gpfa_%s_%i.pkl' % (nflabel, k))
+#             
+#             results_k = model_gpfa.predict(personids[test], pair1coords[test], pair2coords[test])
+#             results[test, m] = results_k
         
             m += 1 # method index
         
@@ -119,18 +119,18 @@ if __name__ == '__main__':
                         
         # Now run the model but without the FA part; no shared information between people. 
         # Hypothesis: splitting by person results in too little data per person
-        logging.info('Task C1 part II, no FA')
-        if len(method_labels) <= m:
-            method_labels.append('Ind_GP_%s' % nflabel)
-        model_gponly = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], 
-                                            verbose=False, nfactors=nfactors)
-        model_gponly.cov_type = 'diagonal'
-        model_gponly.max_iter = 1 # don't run VB till convergence -- gives same results as if running GPs and FA separately
-        model_gponly.fit(personids[train], pair1coords[train], pair2coords[train], prefs[train])
-        model_gponly.pickle_me(datadir + '/c1_model_gponly_%s_%i.pkl' % (nflabel, k))
-      
-        results_k = model_gponly.predict(personids[test], pair1coords[test], pair2coords[test])
-        results[test, m] = results_k
+#         logging.info('Task C1 part II, no FA')
+#         if len(method_labels) <= m:
+#             method_labels.append('Ind_GP_%s' % nflabel)
+#         model_gponly = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], 
+#                                             verbose=False, nfactors=nfactors)
+#         model_gponly.cov_type = 'diagonal'
+#         model_gponly.max_iter = 1 # don't run VB till convergence -- gives same results as if running GPs and FA separately
+#         model_gponly.fit(personids[train], pair1coords[train], pair2coords[train], prefs[train])
+#         model_gponly.pickle_me(datadir + '/c1_model_gponly_%s_%i.pkl' % (nflabel, k))
+#       
+#         results_k = model_gponly.predict(personids[test], pair1coords[test], pair2coords[test])
+#         results[test, m] = results_k
         
         m += 1
         k += 1
@@ -229,21 +229,22 @@ if __name__ == '__main__':
     density_xvals = np.arange(minf, maxf, (maxf-minf) / 100.0 ) # 100 points to plot
     density_xvals = np.tile(density_xvals[:, np.newaxis], (1, fbar.shape[1]))
     
-    fsum = np.zeros(density_xvals.shape)
-    findividual = np.zeros((fsum.shape[0], fsum.shape[1], fbar.shape[0]))
-    seenidxs = np.zeros(fbar.shape, dtype=int)
+    findividual = np.zeros((density_xvals.shape[0], density_xvals.shape[1], fbar.shape[0]))
+    seenidxs = np.zeros(fbar.shape, dtype=bool)
     
     model_coords_1d = coord_arr_to_1d(model_gponly.obs_coords)
     pair1coords_1d = coord_arr_to_1d(pair1coords)
     pair2coords_1d = coord_arr_to_1d(pair2coords)
     
     for person in range(fbar.shape[0]):
-        pidxs = personids == person
-        pidxs = np.in1d(model_coords_1d, pair1coords_1d) | np.in1d(model_coords_1d, pair2coords_1d)
+        pairidxs_p = personids == person
+        itemidxs_p = np.in1d(model_coords_1d, pair1coords_1d[pairidxs_p]) | np.in1d(model_coords_1d, pair2coords_1d[pairidxs_p])
         #fsum[:, pidxs] += norm.cdf(density_xvals[:, pidxs], loc=fbar[person:person+1, pidxs], scale=fstd[person:person+1, pidxs])
-        findividual[:, pidxs, person] = norm.pdf(density_xvals[:, pidxs], loc=fbar[person:person+1, pidxs], scale=fstd[person:person+1, pidxs])
-        fsum[:, pidxs] += findividual[:, pidxs, person]
-        seenidxs[person, pidxs] = 1
+        findividual[:, itemidxs_p, person] = norm.pdf(density_xvals[:, itemidxs_p], 
+                                      loc=fbar[person:person+1, itemidxs_p], scale=fstd[person:person+1, itemidxs_p])
+        seenidxs[person, itemidxs_p] = 1
+    
+    fsum = np.sum(findividual, axis=2)        
     
     #order the points by their midpoints (works for CDF?)
     #midpoints = fsum[density_xvals.shape[0]/2, :]
