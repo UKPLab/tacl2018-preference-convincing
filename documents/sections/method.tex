@@ -1,0 +1,39 @@
+\section{Identifying Common Patterns of Convincingness}\label{sec:model}
+
+\subsection{Baseline methods}
+
+\begin{itemize}
+  \item Random: select a label at random
+  \item Most common (MC): select the most common preference label from across the dataset
+  \item No differentiation (ND): we do not model differences between workers. Labels are estimated by taking the average of other people's labels for the same preference pair. When there are no previous pairs available, select the most common preference label
+  \item Gaussian process preference learning with no differentiation (GP-ND): learn a latent ranking function for the objects from pairwise preferences, ignoring differences between workers and features of the arguments. This provides a probabilistic variant of ND  
+\end{itemize}
+
+\subsection{Modelling Correlations Between Individuals}
+
+Two main types of approach:
+\begin{itemize}
+  \item Factor analysis -- map the set of pairwise preferences to a low-dimensional embedding
+  \item Clustering -- assumes that people fall into distinct preference clusters, or can be modelled as a mixture of several archetypes
+\end{itemize}
+
+Specific methods to test can be split into several types. First,
+we can run different clustering methods on the training data, 
+then predict a worker's label by taking the mean of the other cluster members. 
+When the no members of the cluster have labelled the pair, we predict using the most common label.
+This method is applied to several clustering algorithms:
+\begin{itemize}
+   \item Affinity propagation (AP-mean)
+   \item Gaussian mixture model, using most probable cluster assignment (GMM-mean)
+   \item Gaussian mixture model, using cluster assignments weighted by probability (GMM-WM)
+\end{itemize}
+
+A similar approach can be taken with dimensionality reduction techniques, where we can use K-nearest neightbours (in this case, few workers label each pair, so we choose k=1 and use MC when no workers have labelled the current instance?):
+\begin{itemize}
+   \item Factor analysis with K-nearest neighbours (FA-KNN)
+\end{itemize}
+Alternatively, we can take a weighted average of the other labels for a pair, where the weights are based on inverse distance from the worker in question in the embedded space:
+\begin{itemize}
+   \item Factor analysis with an inverse distance-weighted mean (FA-weighted)
+\end{itemize}
+The distance function can be optimised, which leads to proposing more sophisticated methods...
