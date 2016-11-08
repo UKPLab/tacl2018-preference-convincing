@@ -21,6 +21,10 @@ def alpha(U, C, L):
         uidxs = U==u
         Lu = L[uidxs]
         m_u = Lu.shape[0]
+        
+        if m_u < 2:
+            continue
+        
         Cu = C[uidxs]
         
         #for cuj in Cu:
@@ -32,6 +36,8 @@ def alpha(U, C, L):
     # Dexpec = np.sum(np.abs(C.flatten()[:, np.newaxis] - C.flatten()[np.newaxis, :]))
             
     for i in range(len(U)):
+        if np.sum(U==U[i]) < 2:
+            continue
         Dexpec += np.sum(np.abs(C[i] - C)) # sum up all differences regardless of user and data unit
         
     Dobs = 1 / N * Dobs
