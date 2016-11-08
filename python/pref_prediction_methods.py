@@ -31,49 +31,62 @@ class PredictionTester(object):
         self.results = results 
     
         # turn the data into a big matrix
-        pair1coords_1d = coord_arr_to_1d(pair1coords)
-        pair2coords_1d = coord_arr_to_1d(pair2coords)
+        self.pair1coords_1d = coord_arr_to_1d(pair1coords)
+        self.pair2coords_1d = coord_arr_to_1d(pair2coords)
         
-        flipidxs = pair1coords_1d > pair2coords_1d
-        tmp = pair1coords_1d[flipidxs]
-        pair1coords_1d[flipidxs] = pair2coords_1d
-        pair2coords_1d[flipidxs] = tmp
+        flipidxs = self.pair1coords_1d > self.pair2coords_1d
+        tmp = self.pair1coords_1d[flipidxs]
+        self.pair1coords_1d[flipidxs] = self.pair2coords_1d
+        self.pair2coords_1d[flipidxs] = tmp
         
-        ucoords_1d, pairidxs_1d = np.unique([pair1coords_1d, pair2coords_1d], return_inverse=True)
+        ucoords_1d, pairidxs_1d = np.unique([self.pair1coords_1d, self.pair2coords_1d], return_inverse=True)
         ncoords = len(ucoords_1d)
-        pair1idxs = pairidxs_1d[:len(pair1coords_1d)]
-        pair2idxs = pairidxs_1d[len(pair1coords_1d):]
+        pair1idxs = pairidxs_1d[:len(self.pair1coords_1d)]
+        pair2idxs = pairidxs_1d[len(self.pair1coords_1d):]
         pairidxs_ravelled = np.ravel_multi_index((pair1idxs, pair2idxs), dims=(ncoords, ncoords))
         
         nworkers = len(np.unique(self.personids))
-        self.preftable = np.zeros((ncoords, nworkers))
-        self.preftable[pairidxs_ravelled, self.personids] = self.prefs        
+        self.preftable = np.zeros((nworkers, ncoords))
+        self.preftable[self.personids, pairidxs_ravelled] = self.prefs        
     
     def run_affprop_avg(self):
         
         afprop = AffinityPropagation()
-        afprop_labels = afprop.fit_predict(self.preftable)
-        ncomponents = len(np.unique(afprop_labels))
-
-        # cannot apply this to factor analysis -- can do another plot to show distributions. How fuzzy are memberships?        
-        afprop_membership = np.zeros(ncomponents)
-        membership_weights_ap = np.zeros((ncomponents, N))
-        for k in range(ncomponents):
-            afprop_membership[k] = np.sum(afprop_labels==k)
-            membership_weights_ap[k] = (afprop_labels==k)        
+        labels = afprop.fit_predict(self.preftable[:, self.trainidxs])
+       
+        #get the clusters of the personids
+        clusters_test = labels[self.personids[self.testidxs]]
+        clusters_train = labels[self.personids[self.trainidxs]]
+        #get the other members of the clusters, then get their labels for the same pairs
+        for i, cl in enumerate(clusters_test):
+            members = clusters_train == cl #pairs from same cluster
+            pair1 = self.pair1coords_1d[i] # id for this current pair
+            pair2 = self.pair2coords_1d[i]
+            # idxs for the matching pairs
+            matching_pair_idxs = ((self.pair1coords_1d[self.trainidxs]==pair1) & (self.pair2coords_1d[self.trainidxs]==pair2))
+            flipped_pair_idxs =  ((self.pair1coords_1d[self.trainidxs]==pair2) & (self.pair2coords_1d[self.trainidxs]==pair1))
+            # total preferences for the matching pairs 
+            total_prefs_matching = np.sum((self.prefs[self.trainidxs][matching_pair_idxs & members] - 0.5) * 2)
+            total_prefs_flipped = np.sum((self.prefs[flipped_pair_idxs & members] - 0.5) * 2)
+            cluster_total = total_prefs_matching + total_prefs_flipped
+            cluster_size = np.sum(matching_pair_idxs & members) + np.sum(flipped_pair_idxs & members) + 1.0
     
+            prob_pref = (float(cluster_total) / float(cluster_size) + 1) / 0.5
+        self.results[self.testidxs, self.m] = prob_pref
     
     def run_gpfa(self, nfactors):
         # Task C1  ------------------------------------------------------------------------------------------------
     
         # Hypothesis: allows some personalisation but also sharing data through the means
-        model_gpfa = PreferenceComponents([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=False, 
-                                          nfactors=nfactors)
+        model_gpfa = PreferenceComponents([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], 
+                                          verbose=False, nfactors=nfactors)
         model_gpfa.cov_type = 'diagonal'
-        model_gpfa.fit(self.personids[self.trainidxs], self.pair1coords[self.trainidxs], self.pair2coords[self.trainidxs], self.prefs[self.trainidxs])
+        model_gpfa.fit(self.personids[self.trainidxs], self.pair1coords[self.trainidxs], 
+                       self.pair2coords[self.trainidxs], self.prefs[self.trainidxs])
         model_gpfa.pickle_me(self.datadir + '/c1_model_gpfa_%i.pkl' % (self.k))
           
-        results_k = model_gpfa.predict(self.personids[self.testidxs], self.pair1coords[self.testidxs], self.pair2coords[self.testidxs])
+        results_k = model_gpfa.predict(self.personids[self.testidxs], self.pair1coords[self.testidxs], 
+                                       self.pair2coords[self.testidxs])
         if self.m != None:
             self.results[self.testidxs, self.m] = results_k
         
@@ -81,12 +94,15 @@ class PredictionTester(object):
     
     def run_gp_combined(self):
         # Hypothesis: has benefit that there is more data to learn the GP, but no personalisation
-        model_base = PreferenceComponents([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], verbose=False)
+        model_base = PreferenceComponents([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], 
+                                          verbose=False)
         model_base.cov_type = 'diagonal'
-        model_base.fit(np.zeros(len(self.personids[self.trainidxs])), self.pair1coords[self.trainidxs], self.pair2coords[self.trainidxs], self.prefs) # blank out the user ids
+        model_base.fit(np.zeros(len(self.personids[self.trainidxs])), self.pair1coords[self.trainidxs], 
+                       self.pair2coords[self.trainidxs], self.prefs) # blank out the user ids
         model_base.pickle_me(self.datadir + '/c3_model_base_%i.pkl' % (self.k))
         
-        results_k = model_base.predict(np.zeros(len(self.personids[self.testidxs])), self.pair1coords[self.testidxs], self.pair2coords[self.testidxs])
+        results_k = model_base.predict(np.zeros(len(self.personids[self.testidxs])), self.pair1coords[self.testidxs], 
+                                       self.pair2coords[self.testidxs])
         if self.m != None:
             self.results[self.testidxs, self.m] = results_k
         return results_k, model_base
@@ -98,10 +114,12 @@ class PredictionTester(object):
                                             verbose=False, nfactors=1)
         model_gponly.cov_type = 'diagonal'
         model_gponly.max_iter = 1 # don't run VB till convergence -- gives same results as if running GPs and FA separately
-        model_gponly.fit(self.personids[self.trainidxs], self.pair1coords[self.trainidxs], self.pair2coords[self.trainidxs], self.prefs[self.trainidxs])
+        model_gponly.fit(self.personids[self.trainidxs], self.pair1coords[self.trainidxs], 
+                         self.pair2coords[self.trainidxs], self.prefs[self.trainidxs])
         model_gponly.pickle_me(self.datadir + '/c1_model_gponly_%i.pkl' % (self.k))
        
-        results_k = model_gponly.predict(self.personids[self.testidxs], self.pair1coords[self.testidxs], self.pair2coords[self.testidxs])
+        results_k = model_gponly.predict(self.personids[self.testidxs], self.pair1coords[self.testidxs], 
+                                         self.pair2coords[self.testidxs])
         if self.m != None:
             self.results[self.testidxs, self.m] = results_k
         return results_k, model_gponly
