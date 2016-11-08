@@ -43,27 +43,27 @@ if __name__ == '__main__':
     for train, test in kf:
         logging.info('Running fold %i' % k)
         
-        tester = PredictionTester(datadir, k, m, nx, ny, personids, pair1coords, pair2coords, prefs, train, test, results)
+        tester = PredictionTester(datadir, k, nx, ny, personids, pair1coords, pair2coords, prefs, train, test, results)
         
         for m, method in enumerate(methods):
             if method=='GPFA':
                 logging.info('Task C1, GPFA')
              
                 # Run the GPFA with this fold
-                tester.run_gpfa(nfactors)
+                tester.run_gpfa(m, nfactors)
             elif method=='CombinedGP':
                 # Task C3: Baseline with no separate preference functions per user ----------------------------------------
                 logging.info('Task C3, Combined GP')
                  
-                tester.run_gp_combined() 
+                tester.run_gp_combined(m) 
             elif method=='SeparateGP':              
                 logging.info('Task C1 part II, Separate GPs (no FA)')
                 
-                tester.run_gp_separate()
+                tester.run_gp_separate(m)
             elif method=='AffProp_Averaging':
                 logging.info('Affinity Propagation, then averaging clusters to predict')
                 
-                tester.run_aff_prop_avg()
+                tester.run_affprop_avg(m)
         k += 1
           
     metrics = classification_metrics.compute_metrics(nmethods, prefs, results)       
