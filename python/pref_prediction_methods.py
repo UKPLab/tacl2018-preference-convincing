@@ -70,12 +70,19 @@ class PredictionTester(object):
         self.A = A
     
     def run_affprop_avg(self, m):
-        
+        afprop = AffinityPropagation()
         if not len(self.A):
             self.compute_affinity_matrix()
         
-        afprop = AffinityPropagation()
-        labels = afprop.fit_predict(self.A)
+        labels =  afprop.fit_predict(self.A)
+        self.run_cluster_matching(labels, m)
+
+    def run_agglomerative_avg(self, m):
+        agg = AgglomerativeClustering()
+        labels = agg.fit_predict(self.preftable_train.T)
+        self.run_cluster_matching(labels, m)
+    
+    def run_cluster_matching(self, labels, m):
        
         #get the clusters of the personids
         clusters_test = labels[self.personids[self.testidxs]]
@@ -144,3 +151,23 @@ class PredictionTester(object):
         if self.m != None:
             self.results[self.testidxs, m] = results_k
         return results_k, model_gponly
+    
+    def gp_moments_from_model(self, model):
+        fbar = np.zeros(model.t.shape) # posterior means
+        v = np.zeros(model.t.shape) # posterior variance
+        for person in model.gppref_models:
+            fbar[person, :] = model.f[person][:, 0]
+            v[person, :] = model.gppref_models[person].v[:, 0]
+        fstd = np.sqrt(v)
+        return fbar, fstd
+    
+    def run_gp_affprop_avg(self, m):
+        _, model = self.run_gp_separate(m)
+        fbar, fstd = self.gp_moments_from_model(model)
+        
+        afprop = AffinityPropagation()
+        if not len(self.A):
+            self.compute_affinity_matrix()
+        
+        labels =  afprop.fit_predict(self.A)
+        self.run_cluster_matching(labels, m)        
