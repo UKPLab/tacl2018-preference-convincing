@@ -12,6 +12,8 @@ from gpgrid import coord_arr_to_1d
 import numpy as np
 from sklearn.cluster.hierarchical import AgglomerativeClustering
 from sklearn.cluster import AffinityPropagation
+from sklearn.mixture import GaussianMixture, BayesianGaussianMixture#DPGMM
+import pickle, os, logging
 
 class PredictionTester(object):
     
@@ -62,15 +64,24 @@ class PredictionTester(object):
         self.A = [] # affinity matrix -- don't compute until we need it
     
     def compute_affinity_matrix(self):
+        filename = self.datadir + '/affinity.pkl'
+        if os.path.isfile(filename):
+            with open(filename, 'r') as fh:
+                self.A = pickle.load(fh)
+                return
+        
         # create an affinity matrix for clustering the raw data using the TRAINING DATA
         A = np.zeros((self.nworkers, self.nworkers))
         for i in range(self.nworkers):
+            logging.debug('Creating affinity matrix, %i of %i rows' % (i, self.nworkers))
             agreement_i = self.preftable_train==self.preftable_train[i:i+1, :]
             A[i] = np.sum(agreement_i, axis=1) - np.sum(np.invert(agreement_i), axis=1)
         self.A = A
+        with open(filename, 'w') as fh:
+            pickle.dump(self.A, fh)        
     
     def run_affprop_avg(self, m):
-        afprop = AffinityPropagation()
+        afprop = AffinityPropagation(affinity='precomputed')
         if not len(self.A):
             self.compute_affinity_matrix()
         
@@ -82,6 +93,33 @@ class PredictionTester(object):
         labels = agg.fit_predict(self.preftable_train.T)
         self.run_cluster_matching(labels, m)
     
+    def run_raw_gmm_avg(self, m, ncomponents):
+        gmm_raw = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=(1.0 / 20) * 10) #DPGMM(nfactors)
+        labels = gmm_raw.fit_predict(self.preftable_train)
+        self.run_cluster_matching(labels, m)
+        
+    def run_gp_affprop_avg(self, m):
+        _, model = self.run_gp_separate(m)
+        fbar, _ = self.gp_moments_from_model(model)
+        
+        afprop = AffinityPropagation()        
+        labels = afprop.fit_predict(fbar)
+        self.run_cluster_matching(labels, m)
+    
+    def run_combine_avg(self, m):
+        labels = np.zeros(self.nworkers) # they all belong to one cluster -- assume they are the same
+        self.run_cluster_matching(labels, m)
+          
+    # gmm on the separate fbars  
+    def run_gp_gmm_avg(self, m, ncomponents):
+        _, model = self.run_gp_separate(m)
+        fbar, _ = self.gp_moments_from_model(model)
+
+        #gmm = GaussianMixture(n_components=ncomponents)
+        gmm = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=1.0/10) #DPGMM(nfactors)
+        labels = gmm.fit_predict(fbar)
+        self.run_cluster_matching(labels, m)              
+    
     def run_cluster_matching(self, labels, m):
        
         #get the clusters of the personids
@@ -92,7 +130,8 @@ class PredictionTester(object):
             members = clusters_train == cl #pairs from same cluster
             pair1 = self.pair1idxs[i] # id for this current pair
             pair2 = self.pair2idxs[i]
-            # idxs for the matching pairs
+            # idxs for the matching pairs 
+            # TODO: fix the matching pair idxs line -- nothing is found so far.
             matching_pair_idxs = ((self.pair1idxs[self.trainidxs]==pair1) & (self.pair2idxs[self.trainidxs]==pair2))
             # total preferences for the matching pairs 
             total_prefs_matching = np.sum((self.prefs[self.trainidxs][matching_pair_idxs & members] - 0.5) * 2)
@@ -160,14 +199,3 @@ class PredictionTester(object):
             v[person, :] = model.gppref_models[person].v[:, 0]
         fstd = np.sqrt(v)
         return fbar, fstd
-    
-    def run_gp_affprop_avg(self, m):
-        _, model = self.run_gp_separate(m)
-        fbar, fstd = self.gp_moments_from_model(model)
-        
-        afprop = AffinityPropagation()
-        if not len(self.A):
-            self.compute_affinity_matrix()
-        
-        labels =  afprop.fit_predict(self.A)
-        self.run_cluster_matching(labels, m)        
