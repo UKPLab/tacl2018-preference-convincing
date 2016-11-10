@@ -80,6 +80,24 @@ class PredictionTester(object):
         with open(filename, 'w') as fh:
             pickle.dump(self.A, fh)        
     
+    # Baselines
+        
+    def run_baseline_most_common(self, m): # stupid baseline -- assigns the same label to all data points
+        most_common = 0
+        if np.sum(self.prefs==0) < np.sum(self.prefs==0.5):
+            most_common = 0.5
+            if np.sum(self.prefs==0.5) < np.sum(self.prefs==1):
+                most_common = 1
+        elif np.sum(self.prefs==0) < np.sum(self.prefs==1):
+            most_common = 1
+        self.results[self.testidxs, m] = most_common
+        
+    def run_combine_avg(self, m):
+        labels = np.zeros(self.nworkers) # they all belong to one cluster -- assume they are the same
+        self.run_cluster_matching(labels, m)
+    
+    # Clustering methods with averaging of other cluster members
+    
     def run_affprop_avg(self, m):
         afprop = AffinityPropagation(affinity='precomputed')
         if not len(self.A):
@@ -94,8 +112,10 @@ class PredictionTester(object):
         self.run_cluster_matching(labels, m)
     
     def run_raw_gmm_avg(self, m, ncomponents):
-        gmm_raw = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=(1.0 / 20) * 10) #DPGMM(nfactors)
-        labels = gmm_raw.fit_predict(self.preftable_train)
+        gmm_raw = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=0.5, 
+                                          covariance_type='diag') #DPGMM(nfactors)
+        gmm_raw.fit(self.preftable_train)
+        labels = gmm_raw.predict(self.preftable_train)
         self.run_cluster_matching(labels, m)
         
     def run_gp_affprop_avg(self, m):
@@ -105,10 +125,6 @@ class PredictionTester(object):
         afprop = AffinityPropagation()        
         labels = afprop.fit_predict(fbar)
         self.run_cluster_matching(labels, m)
-    
-    def run_combine_avg(self, m):
-        labels = np.zeros(self.nworkers) # they all belong to one cluster -- assume they are the same
-        self.run_cluster_matching(labels, m)
           
     # gmm on the separate fbars  
     def run_gp_gmm_avg(self, m, ncomponents):
@@ -116,8 +132,10 @@ class PredictionTester(object):
         fbar, _ = self.gp_moments_from_model(model)
 
         #gmm = GaussianMixture(n_components=ncomponents)
-        gmm = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=1.0/10) #DPGMM(nfactors)
-        labels = gmm.fit_predict(fbar)
+        gmm = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=0.1, 
+                                      covariance_type='diag') #DPGMM(nfactors)
+        gmm.fit(fbar)
+        labels = gmm.predict(fbar)
         self.run_cluster_matching(labels, m)              
     
     def run_cluster_matching(self, labels, m):

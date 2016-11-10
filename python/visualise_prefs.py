@@ -12,12 +12,13 @@ import pickle, logging
 from krippendorffalpha import alpha
 from scipy.stats import norm
 from preproc_raw_data import load
-import pref_prediction_methods as ppm
+from pref_prediction_methods import PredictionTester
 from gpgrid import coord_arr_to_1d
 from scipy.sparse import coo_matrix
 from sklearn.mixture import GaussianMixture, BayesianGaussianMixture#DPGMM
 from sklearn.cluster import AffinityPropagation
 from sklearn.decomposition import FactorAnalysis
+import os
 
 # Visualise the raw preference label data -----------------------------------------------------------------------------
     
@@ -370,18 +371,21 @@ if __name__ == '__main__':
     datadir, plotdir, nx, ny, data, pair1coords, pair2coords, pair1idxs, pair2idxs, xvals, yvals, prefs, personids, \
         npairs, nworkers, ntexts = load()
         
-    # Task A3  --------------------------------------------------------------------------------------------------------
-    tempresults = np.zeros((npairs, 1))
-    _, model_gponly = ppm.run_gp_separate(datadir, -1, None, nx, ny, personids, pair1coords, pair2coords, prefs, 
-                        np.ones(npairs), np.ones(npairs), tempresults)
-    
+    # Task A3  --------------------------------------------------------------------------------------------------------    
 #     
 #     # Task A1 continued. Put the data into the correct format for visualisation/clustering
 #     
 
     if  'model_gponly' not in globals():
-        with open(datadir + '/c1_model_gponly_%i.pkl' % (-1), 'rb') as fh:
-            model_gponly = pickle.load(fh) 
+        filename = datadir + '/c1_model_gponly_%i.pkl' % (-1)
+        if os.path.isfile(filename):
+            with open(filename , 'rb') as fh:
+                model_gponly = pickle.load(fh)
+        else:
+            tempresults = np.zeros((npairs, 1))
+            tester = PredictionTester(datadir, -1, nx, ny, personids, pair1coords, pair2coords, prefs, 
+                        np.ones(npairs), np.ones(npairs), tempresults)
+            _, model_gponly = tester.run_gp_separate(-1) 
 
     N = model_gponly.t.shape[1]
     fbar = np.zeros(model_gponly.t.shape) # posterior means
@@ -464,10 +468,10 @@ if __name__ == '__main__':
 #     gmm_labels = gmm.predict(fbar)
 #     gmm_proba = gmm.predict_proba(fbar) # why is this returning only binary values?  
 #      
-#     gmm_raw = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=(1.0 / 20) * 10) #DPGMM(nfactors)
-#     gmm_raw.fit(fraw)
-#     gmm_raw_labels = gmm_raw.predict(fraw)
-#     gmm_raw_proba = gmm_raw.predict_proba(fraw) 
+    gmm_raw = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=(1.0 / 20) * 10) #DPGMM(nfactors)
+    gmm_raw.fit(fraw)
+    gmm_raw_labels = gmm_raw.predict(fraw)
+    gmm_raw_proba = gmm_raw.predict_proba(fraw) 
 # 
 #     gmm_membership = np.sum(gmm_proba, axis=0)
 #     gmm_membership_greedy = np.zeros(ncomponents)

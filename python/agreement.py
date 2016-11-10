@@ -28,7 +28,7 @@ if __name__ == '__main__':
  
     nfactors=5
     
-    methods = ['AffProp_Averaging', 'Agg_Averaging', 'GMM_Averaging', 'CombineAll_Averaging'] # list the names of methods to test here
+    methods = ['Baseline_MostCommon', 'CombineAll_Averaging']#, 'GMM_Averaging', 'AffProp_Averaging', 'Agg_Averaging'] # list the names of methods to test here
     nmethods = len(methods) 
     #2 * len(nfactors_list) + 1 # need to increase nmethods if we are trying multiple numbers of factors 
     # -- new implementation will try to optimize the number of factors internally and return only the best results for each method
@@ -48,8 +48,19 @@ if __name__ == '__main__':
         for m, method in enumerate(methods):
             
             start = datetime.datetime.now()
+            # baseline: assign most common class label
+            if method=='Baseline_MostCommon':
+                logging.info('Baseline -- Assign most common class')
+                tester.run_baseline_most_common(m)
+                
+            # baseline: treating all workers as the same but not considering features; averaging workers
+            elif method=='CombineAll_Averaging':
+                logging.info('Treat all workers as same and average')
+                
+                tester.run_combine_avg(m)
+            
             # clustering the raw preferences
-            if method=='AffProp_Averaging':
+            elif method=='AffProp_Averaging':
                 logging.info('Affinity Propagation, then averaging clusters to predict')
                 
                 tester.run_affprop_avg(m)
@@ -61,11 +72,7 @@ if __name__ == '__main__':
                 logging.info('Gaussian mixture, then averaging clusters to predict')
                 
                 tester.run_raw_gmm_avg(m, nfactors)  
-            # baseline: treating all workers as the same but not considering features; averaging workers
-            elif method=='CombineAll_Averaging':
-                logging.info('Treat all workers as same and average')
                 
-                tester.run_combine_avg(m)
             # testing whether the smoothed, continuous GP improves clustering
             # the effect may only be significant once we have argument features
             # assuming no clustering at all, but using a GP to smooth 
