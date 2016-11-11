@@ -8,7 +8,7 @@ Created on 21 Oct 2016
 @author: simpson
 '''
 from preference_features import PreferenceComponents
-from gpgrid import coord_arr_to_1d
+from gpgrid import coord_arr_to_1d, coord_arr_from_1d
 import numpy as np
 from sklearn.cluster.hierarchical import AgglomerativeClustering
 from sklearn.cluster import AffinityPropagation
@@ -40,17 +40,18 @@ class PredictionTester(object):
         self.pair1idxs = pairidxs_1d[:len(pair1coords_1d)]
         self.pair2idxs = pairidxs_1d[len(pair1coords_1d):]
         
-        # this may not be necessary as we could handle flipped comparisons in the method implementations
-        flipidxs = self.pair1idxs > self.pair2idxs
-        tmp = self.pair1idxs[flipidxs]
-        self.pair1idxs[flipidxs] = self.pair2idxs[flipidxs]
-        self.pair2idxs[flipidxs] = tmp        
+#         # this may not be necessary as we could handle flipped comparisons in the method implementations
+#         flipidxs = self.pair1idxs > self.pair2idxs
+#         tmp = self.pair1idxs[flipidxs]
+#         self.pair1idxs[flipidxs] = self.pair2idxs[flipidxs]
+#         self.pair2idxs[flipidxs] = tmp
+#         self.prefs[flipidxs] = 1 - self.prefs[flipidxs]       
         
         self.pairidxs_ravelled = np.ravel_multi_index((self.pair1idxs, self.pair2idxs), dims=(ncoords, ncoords))
         _, self.pairidxs_ravelled = np.unique(self.pairidxs_ravelled, return_inverse=True)
         npairs = np.max(self.pairidxs_ravelled) + 1
         
-        nworkers = len(np.unique(self.personids))
+        nworkers = np.max(self.personids) + 1
         self.preftable = np.zeros((nworkers, npairs)) + 0.5 # 0.5 is the default value
         self.preftable[self.personids, self.pairidxs_ravelled] = self.prefs
     
@@ -143,21 +144,22 @@ class PredictionTester(object):
         #get the clusters of the personids
         clusters_test = labels[self.personids[self.testidxs]]
         clusters_train = labels[self.personids[self.trainidxs]]
+        
+        prob_pref_test = np.zeros(self.testidxs.size) # container for the test results
+        
         #get the other members of the clusters, then get their labels for the same pairs
         for i, cl in enumerate(clusters_test):
             members = clusters_train == cl #pairs from same cluster
-            pair1 = self.pair1idxs[i] # id for this current pair
-            pair2 = self.pair2idxs[i]
+            pair1 = self.pair1idxs[self.testidxs[i]] # id for this current pair
+            pair2 = self.pair2idxs[self.testidxs[i]]
             # idxs for the matching pairs 
-            # TODO: fix the matching pair idxs line -- nothing is found so far.
             matching_pair_idxs = ((self.pair1idxs[self.trainidxs]==pair1) & (self.pair2idxs[self.trainidxs]==pair2))
             # total preferences for the matching pairs 
             total_prefs_matching = np.sum((self.prefs[self.trainidxs][matching_pair_idxs & members] - 0.5) * 2)
-            cluster_total = total_prefs_matching
             cluster_size = np.sum(matching_pair_idxs & members) + 1.0
     
-            prob_pref = (float(cluster_total) / float(cluster_size) + 1) / 2.0
-        self.results[self.testidxs, m] = prob_pref
+            prob_pref_test[i] = (float(total_prefs_matching) / float(cluster_size) + 1) / 2.0
+        self.results[self.testidxs, m] = prob_pref_test
     
     def run_gpfa(self, m, nfactors):
         # Task C1  ------------------------------------------------------------------------------------------------

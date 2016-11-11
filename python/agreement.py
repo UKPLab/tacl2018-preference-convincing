@@ -36,7 +36,8 @@ if __name__ == '__main__':
     # RUN THE VARIOUS PREFERENCE PREDICTION METHODS....
     k = 0 # count which fold we are in so we can save data    
 
-    kf = KFold(npairs, 10)
+    nfolds = 10
+    kf = KFold(npairs, nfolds)
       
     results = np.zeros((npairs, nmethods)) # the test results only
        
@@ -109,7 +110,7 @@ if __name__ == '__main__':
         k += 1
           
     metrics = classification_metrics.compute_metrics(nmethods, prefs, results)       
-    classification_metrics.plot_metrics(plotdir, metrics, nmethods, methods)
+    classification_metrics.plot_metrics(plotdir, metrics, nmethods, methods, nfolds)
  
 
              
