@@ -24,8 +24,13 @@ def compute_metrics(nmethods, gold_prefs, predictions):
      
     for i in range(nmethods):
                  
-        decisive_idxs = (gold_prefs==1) | (gold_prefs==0)
-        metrics['f1'][i] = f1_score(gold_prefs[decisive_idxs], np.round(predictions[decisive_idxs, i]))
+        #decisive_idxs = (gold_prefs==1) | (gold_prefs==0)
+        f11 = f1_score(gold_prefs==1, predictions[:, i] > 0.5 )
+        f10 = f1_score(gold_prefs==0, predictions[:, i] < 0.5 )
+        f105 = f1_score(gold_prefs==0.5, predictions[:, i] == 0.5 )
+        #how to combine f1 scores for a three class problem?
+        metrics['f1'][i] = f11 * np.sum(gold_prefs==1) + f10 * np.sum(gold_prefs==0) + f105 * np.sum(gold_prefs==0.5) 
+        metrics['f1'][i] /= gold_prefs.size
          
         auc_a_less_b = roc_auc_score(gold_prefs==0, 1 - predictions[:, i])
         frac_a_less_b = np.sum(gold_prefs==0) / float(len(gold_prefs))
@@ -33,7 +38,7 @@ def compute_metrics(nmethods, gold_prefs, predictions):
         auc_a_more_b = roc_auc_score(gold_prefs==1, predictions[:, i])
         frac_a_more_b = np.sum(gold_prefs==1) / float(len(gold_prefs))
          
-        auc_a_equal_b = roc_auc_score(gold_prefs==0.5, 1 - np.abs(predictions[:, i] - 0.5))
+        auc_a_equal_b = roc_auc_score(gold_prefs==0.5, 2 * (1 - np.abs(predictions[:, i] - 0.5)))
         frac_a_equal_b = np.sum(gold_prefs==0.5) / float(len(gold_prefs))
          
         metrics['auc_roc'][i] = auc_a_less_b * frac_a_less_b + auc_a_more_b * frac_a_more_b + auc_a_equal_b * frac_a_equal_b 

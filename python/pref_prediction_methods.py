@@ -12,7 +12,7 @@ from gpgrid import coord_arr_to_1d
 import numpy as np
 from sklearn.cluster.hierarchical import AgglomerativeClustering
 from sklearn.cluster import AffinityPropagation
-from sklearn.mixture import GaussianMixture, BayesianGaussianMixture#DPGMM
+from sklearn.mixture import BayesianGaussianMixture#DPGMM GaussianMixture
 import pickle, os, logging
 
 class PredictionTester(object):

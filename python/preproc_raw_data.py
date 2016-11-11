@@ -11,7 +11,20 @@ def load():
     # Task A1 ---------------------------------------------------------------------------------------------------------
     datadir = './outputdata'
     # load the data with columns: person_ID, arg_1_ID, arg_2_ID, preference_label
-    data = np.genfromtxt(datadir + '/all_labels.csv', dtype=int, delimiter=',')
+    #data = np.genfromtxt(datadir + '/all_labels.csv', dtype=int, delimiter=',')
+    
+    # Random data generation
+    N = 1000
+    Nitems = 20
+    acc = 0.9
+    f = np.random.rand(Nitems) * 10
+    data0 = np.random.randint(0, 10, (N,1))
+    data1 = np.random.randint(0, Nitems, (N,1))
+    data2 = np.random.randint(0, Nitems, (N,1))
+    correctflag = np.random.rand(N, 1) # use this to introduce noise into the preferences instead of reflecting f precisely
+    data3 = 2 * (correctflag < acc) * (f[data1]+0.5 < f[data2]) + 1 * (correctflag < acc) * (np.abs(f[data1] - f[data2]) <=0.5) \
+                + (correctflag > acc) * np.random.randint(0, 3, (N, 1))
+    data = np.concatenate((data0, data1, data2, data3), axis=1)
     
     #logging.warning("Subsampling dataset for debugging!!!")
     #data = data[:1000, :]
@@ -23,9 +36,9 @@ def load():
     arg_ids = np.unique([data[:, 1], data[:, 2]])
     ntexts = np.max(arg_ids) + 1 # +1 because there can also be an argument with ID 0
     
-    pair1idxs = data[:, 1]
-    pair2idxs = data[:, 2]
-    prefs = 1.0 - data[:, 3].astype(float) / 2.0 # flip the labels to give the preference for argument 1. Halve the 
+    pair1idxs = data[:, 1].astype(int)
+    pair2idxs = data[:, 2].astype(int)
+    prefs = data[:, 3].astype(float) / 2.0 # the labels give the preference for argument 2. Halve the 
     #values so they sit between 0 and 1 inclusive. Labels expressing equal preference will be 0.5.
 
     #The feature coordinates for the arguments.
@@ -42,7 +55,7 @@ def load():
     pair1coords = np.concatenate((xvals[pair1idxs][:, np.newaxis], yvals[pair1idxs][:, np.newaxis]), axis=1)
     pair2coords = np.concatenate((xvals[pair2idxs][:, np.newaxis], yvals[pair2idxs][:, np.newaxis]), axis=1) 
 
-    personids = data[:, 0]
+    personids = data[:, 0].astype(int)
     upersonids = np.unique(personids)
     nworkers = len(upersonids)
     
