@@ -28,7 +28,7 @@ if __name__ == '__main__':
  
     nfactors=5
     
-    methods = ['Baseline_MostCommon', 'CombineAll_Averaging']#, 'GMM_Averaging', 'AffProp_Averaging', 'Agg_Averaging'] # list the names of methods to test here
+    methods = ['Baseline_MostCommon', 'CombineAll_Averaging', 'GMM_Averaging', 'AffProp_Averaging']#, 'Agg_Averaging'] # list the names of methods to test here
     nmethods = len(methods) 
     #2 * len(nfactors_list) + 1 # need to increase nmethods if we are trying multiple numbers of factors 
     # -- new implementation will try to optimize the number of factors internally and return only the best results for each method
@@ -109,9 +109,27 @@ if __name__ == '__main__':
                            
         k += 1
           
-    metrics = classification_metrics.compute_metrics(nmethods, prefs, results)       
-    classification_metrics.plot_metrics(plotdir, metrics, nmethods, methods, nfolds)
- 
-
-             
-
+    # separate the data points according to the number of annotators    
+    paircounts = np.sum(np.invert(np.isnan(tester.preftable)), axis=0)
+    nanno_max = 10
+    for nanno in range(nanno_max+1):
+        if nanno==nanno_max:
+            pairs = np.argwhere(paircounts >= nanno)
+        else:
+            pairs = np.argwhere(paircounts == nanno)
+        if not pairs.size:
+            continue
+        #ravel the pair1 and pair2 idxs
+        pairidxs = np.in1d(tester.pairidxs_ravelled, pairs)
+        gold = prefs[pairidxs]
+        if len(np.unique(gold)) != 3:
+            # we don't have examples of all classes
+            continue
+        
+        res = results[pairidxs, :]
+        
+        metrics = classification_metrics.compute_metrics(nmethods, gold, res)
+        if nanno == nanno_max:  
+            classification_metrics.plot_metrics(plotdir, metrics, nmethods, methods, nfolds, nanno, nanno_is_min=True)
+        else:
+            classification_metrics.plot_metrics(plotdir, metrics, nmethods, methods, nfolds, nanno)

@@ -52,7 +52,8 @@ class PredictionTester(object):
         npairs = np.max(self.pairidxs_ravelled) + 1
         
         nworkers = np.max(self.personids) + 1
-        self.preftable = np.zeros((nworkers, npairs)) + 0.5 # 0.5 is the default value
+        self.preftable = np.zeros((nworkers, npairs))
+        self.preftable[:] = np.nan # + 0.5 # 0.5 is the default value
         self.preftable[self.personids, self.pairidxs_ravelled] = self.prefs
     
         self.preftable_train = np.zeros((nworkers, npairs)) + 0.5
@@ -114,7 +115,7 @@ class PredictionTester(object):
     
     def run_raw_gmm_avg(self, m, ncomponents):
         gmm_raw = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=0.5, 
-                                          covariance_type='diag') #DPGMM(nfactors)
+                                          covariance_type='diag', init_params='random') #DPGMM(nfactors)
         gmm_raw.fit(self.preftable_train)
         labels = gmm_raw.predict(self.preftable_train)
         self.run_cluster_matching(labels, m)
