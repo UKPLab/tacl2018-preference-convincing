@@ -37,7 +37,7 @@ if __name__ == '__main__':
     k = 0 # count which fold we are in so we can save data    
 
     nfolds = 10
-    kf = KFold(npairs, nfolds)
+    kf = KFold(npairs, nfolds, shuffle=True, random_state=100)
       
     results = np.zeros((npairs, nmethods)) # the test results only
        
