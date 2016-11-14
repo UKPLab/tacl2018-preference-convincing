@@ -56,12 +56,15 @@ def compute_metrics(nmethods, gold_prefs, predictions):
     
     return metrics
 
-def plot_metrics(plotdir, metrics, nmethods, method_labels, nfolds):
+def plot_metrics(plotdir, metrics, nmethods, method_labels, nfolds, nanno, nanno_is_min=False):
     
     # Task C9/C10: Plotting metrics -----------------------------------------------------------------------------------
     logging.info('Task C9/10, plotting accuracy metrics')
     _, ax = plt.subplots()
-    ax.set_title('F1 Scores with %i-fold Cross Validation' % nfolds)
+    if nanno_is_min:
+        ax.set_title('F1 Scores with %i-fold Cross Validation (data points with at least %i annotators)' % (nfolds, nanno))
+    else:
+        ax.set_title('F1 Scores with %i-fold Cross Validation (data points with %i annotators)' % (nfolds, nanno))
     ind = np.arange(nmethods)
     width = 0.6
     ax.bar(ind, metrics['f1'], width=width)

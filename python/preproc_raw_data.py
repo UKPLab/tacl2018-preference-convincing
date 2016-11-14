@@ -14,9 +14,9 @@ def load():
     #data = np.genfromtxt(datadir + '/all_labels.csv', dtype=int, delimiter=',')
     
     # Random data generation
-    N = 10000
+    N = 1000
     Nitems = 10
-    acc = 0.7
+    acc = 0.9
 #     f = np.array([0, 1, 2]) 
     f = np.random.rand(Nitems) * 10
     data0 = np.random.randint(0, 10, (N,1))
