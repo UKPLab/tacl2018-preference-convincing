@@ -81,7 +81,6 @@ argumentation/results/factors_pairs_nfactors_3.eps
 argumentation/results/f_values.eps
 argumentation/results/IAA.png
 argumentation/outputdata/a3_model_gponly_alldata.pkl
-argumentation/outputdata/all_labels.csv
 argumentation/outputdata/all_labels_original.csv
 argumentation/outputdata/b1_fsum_alldata.pkl
 argumentation/outputdata/c1_model_gpfa_nfactors_100_0.pkl
@@ -105,7 +104,6 @@ argumentation/outputdata/model_fonly.pkl
 argumentation/outputdata/model.pkl
 argumentation/outputdata/results_debugging_svi.txt
 argumentation/outputdata/results_debugging_svi.txt~
-*.csv
 outputdata/*.eps
 /setup.py
 documents/acl2016.tex~
@@ -124,3 +122,6 @@ documents/sections/discussion.tex~
 documents/sections/experiments.tex~
 documents/sections/intro.tex~
 documents/sections/method.tex~
+results/old_stuff/*
+results/*
+outputdata/*.pkl

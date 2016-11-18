@@ -1,6 +1,5 @@
 /model.pkl
 /model_fonly.pkl
-/all_labels.csv
 /all_labels_original.csv
 /a3_model_gponly_alldata.pkl
 /b1_fsum_alldata.pkl
