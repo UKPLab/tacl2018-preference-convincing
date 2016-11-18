@@ -18,27 +18,23 @@ import classification_metrics
 from pref_prediction_methods import PredictionTester
 from preproc_raw_data import load_amt, load_synthetic
 
-
-
 if __name__ == '__main__':
     # Experiment configuration ----------------------------------------------------------------------------------------
-     
-    import xmiparser
 
-    xmiparser.parse(xschemaFileName, xschema, packages, generator, profile_dir)
-     
     dataset = 'amt'
     split_results_by_no_annotations = True
     nruns = 1
     
-#     dataset = 'synth' 
-#     synth_worker_accs = [0.6, 0.7, 0.8, 0.9, 0.99]
-#     nruns = len(synth_worker_accs)
-#     split_results_by_no_annotations = False
+    dataset = 'synth'
+    synth_worker_accs = [0.6, 0.7, 0.8, 0.9, 0.99]
+    nruns = len(synth_worker_accs)
+    split_results_by_no_annotations = False
     
     nfactors=5
     
-    methods = ['Baseline_MostCommon', 'CombineAll_Averaging', 'GMM_Averaging', 'AffProp_Averaging', 'Agg_Averaging'] # list the names of methods to test here
+    # list the names of methods to test here
+    methods = ['Baseline_MostCommon', 'CombineAll_Averaging', 'GMM_GP', 'GMM_Averaging', 'GPGMM_GP', 
+       'AffProp_Averaging', 'AffProp_GP', 'GPAffProp_GP', 'Agg_Averaging', 'Agg_GP', 'CombinedGP', 'SeparateGP' ] 
     nmethods = len(methods) 
     #2 * len(nfactors_list) + 1 # need to increase nmethods if we are trying multiple numbers of factors 
     # -- new implementation will try to optimize the number of factors internally and return only the best results for each method
@@ -81,6 +77,17 @@ if __name__ == '__main__':
             for m, method in enumerate(methods):
                 
                 start = datetime.datetime.now()
+                
+                clustermethod = method.split('_')[0]
+                predictionmethod = method.split('_')[1]
+                
+                if predictionmethod=='GP':
+                    gppredictionmethod = True
+                    predictionmethod_str = 'learning a GP for each cluster to predict preferences'
+                else:
+                    gppredictionmethod = False
+                    predictionmethod_str = 'averaging clusters to predict'
+                
                 # baseline: assign most common class label
                 if method=='Baseline_MostCommon':
                     logging.info('Baseline -- Assign most common class')
@@ -93,18 +100,18 @@ if __name__ == '__main__':
                     tester.run_combine_avg(m)
                 
                 # clustering the raw preferences
-                elif method=='AffProp_Averaging':
-                    logging.info('Affinity Propagation, then averaging clusters to predict')
+                elif clustermethod=='AffProp':
+                    logging.info('Affinity Propagation, then %s' % predictionmethod_str)
                     
-                    tester.run_affprop_avg(m, gp_per_cluster=True)
-                elif method=='Agg_Averaging':
-                    logging.info('Agglomerative clustering, then averaging clusters to predict')
+                    tester.run_affprop_avg(m, gp_per_cluster=gppredictionmethod)
+                elif clustermethod =='Agg':
+                    logging.info('Agglomerative clustering, then %s' % predictionmethod_str)
                     
-                    tester.run_agglomerative_avg(m, gp_per_cluster=True)
-                elif method=='GMM_Averaging':
-                    logging.info('Gaussian mixture, then averaging clusters to predict')
+                    tester.run_agglomerative_avg(m, gp_per_cluster=gppredictionmethod)
+                elif clustermethod =='GMM':
+                    logging.info('Gaussian mixture, then %s' % predictionmethod_str)
                     
-                    tester.run_raw_gmm_avg(m, nfactors, gp_per_cluster=True)  
+                    tester.run_raw_gmm_avg(m, nfactors, gp_per_cluster=gppredictionmethod)  
                     
                 # testing whether the smoothed, continuous GP improves clustering
                 # the effect may only be significant once we have argument features
@@ -126,14 +133,14 @@ if __name__ == '__main__':
                     # Run the GPFA with this fold
                     tester.run_gpfa(m, nfactors)                
                 # clustering methods on top of the smoothed functions
-                elif method=='GP_AffProp_Averaging':
-                    logging.info('Preference GP, function means fed to Aff. Prop., then averaging clusters to predict')
+                elif clustermethod=='GPAffProp':
+                    logging.info('Preference GP, function means fed to Aff. Prop., then %s' % predictionmethod_str)
                     
-                    tester.run_gp_affprop_avg(m, gp_per_cluster=True)
-                elif method=='GP_GMM_Averaging':
-                    logging.info('Preference GP, function means fed to GMM, then averaging clusters to predict')
+                    tester.run_gp_affprop_avg(m, gp_per_cluster=gppredictionmethod)
+                elif clustermethod=='GPGMM':
+                    logging.info('Preference GP, function means fed to GMM, then %s' % predictionmethod_str)
                     
-                    tester.run_gp_gmm_avg(m, nfactors, gp_per_cluster=True)
+                    tester.run_gp_gmm_avg(m, nfactors, gp_per_cluster=gppredictionmethod)
                     
                 end = datetime.datetime.now()
                 duration = (end - start).total_seconds()

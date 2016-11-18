@@ -40,6 +40,7 @@ class PreferenceComponents(object):
         
         self.conv_threshold = 1e-5
         self.max_iter = 100
+        self.min_iter = 10
         
         self.cov_type = 'matern_3_2'
         
@@ -65,7 +66,7 @@ class PreferenceComponents(object):
         self.N = len(self.obs_coords)
         self.t_cov = np.diag(self.sigmasq_t * np.ones(self.N)).astype(float)
         self.mu = np.zeros((self.N, 1))
-        self.Npeople = np.max(self.people) + 1
+        self.Npeople = np.max(self.people).astype(int) + 1
         self.f = {}
         self.t = np.zeros((self.Npeople, self.N))
         for p, person in enumerate(self.people):
@@ -89,7 +90,7 @@ class PreferenceComponents(object):
         diff = np.inf
         old_x = 0
         lb = 0
-        while diff > self.conv_threshold and niter < self.max_iter:
+        while niter < self.min_iter | (diff > self.conv_threshold and niter < self.max_iter):
             # run a VB iteration
             # compute preference latent functions for all workers
             self.expec_f(personIDs, items_1_coords, items_2_coords, preferences)

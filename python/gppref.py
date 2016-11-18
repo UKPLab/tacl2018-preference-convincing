@@ -243,7 +243,7 @@ class GPPref(GPGrid):
         self.mu0_2 = mu0_2        
         super(GPPref, self).fit((items_1_coords, items_2_coords), obs_values, totals, process_obs, update_s)  
         
-    def predict(self, items_0_coords=None, items_1_coords=None, variance_method='rough', max_block_size=1e5, 
+    def predict(self, items_0_coords=[], items_1_coords=[], variance_method='rough', max_block_size=1e5, 
                 expectedlog=False, return_not=False, mu0_output1=None, mu0_output2=None):
         '''
         Evaluate the function posterior mean and variance at the given co-ordinates using the 2D squared exponential 
@@ -258,7 +258,7 @@ class GPPref(GPGrid):
         if items_0_coords.ndim==2 and items_0_coords.shape[1]!=len(self.dims) and items_0_coords.shape[0]==len(self.dims):
             items_0_coords = items_0_coords.T
             
-        if items_1_coords!=None and len(items_1_coords):
+        if len(items_1_coords):
             pair_items_with_self = False            
         else:
             items_1_coords = items_0_coords
@@ -307,13 +307,13 @@ class GPPref(GPGrid):
             logging.warning("Switched to using sample method as expected log requested. No quick method is available.")
           
         # map self.f and self.v back to the original order, i.e. f at locations in items_0_coords followed by f at
-        # locations in items_1_coords
-        if not pair_items_with_self:
-            out_idxs = np.concatenate((out_pref_v, out_pref_u))
-        else:
-            out_idxs = out_pref_v
-        self.f = self.f[out_idxs, :]
-        self.v  = self.v[out_idxs, :]       
+        # locations in items_1_coords. This seems unnecessary and confusing
+#         if not pair_items_with_self:
+#             out_idxs = np.concatenate((out_pref_v, out_pref_u))
+#         else:
+#             out_idxs = out_pref_v
+#         self.f = self.f[out_idxs, :]
+#         self.v  = self.v[out_idxs, :]       
             
         if return_not:
             return m_post, not_m_post, v_post
