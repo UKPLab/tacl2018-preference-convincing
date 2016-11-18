@@ -64,15 +64,15 @@ if __name__ == '__main__':
             elif method=='AffProp_Averaging':
                 logging.info('Affinity Propagation, then averaging clusters to predict')
                 
-                tester.run_affprop_avg(m)
+                tester.run_affprop_avg(m, gp_per_cluster=True)
             elif method=='Agg_Averaging':
                 logging.info('Agglomerative clustering, then averaging clusters to predict')
                 
-                tester.run_agglomerative_avg(m)
+                tester.run_agglomerative_avg(m, gp_per_cluster=True)
             elif method=='GMM_Averaging':
                 logging.info('Gaussian mixture, then averaging clusters to predict')
                 
-                tester.run_raw_gmm_avg(m, nfactors)  
+                tester.run_raw_gmm_avg(m, nfactors, gp_per_cluster=True)
                 
             # testing whether the smoothed, continuous GP improves clustering
             # the effect may only be significant once we have argument features
@@ -97,11 +97,11 @@ if __name__ == '__main__':
             elif method=='GP_AffProp_Averaging':
                 logging.info('Preference GP, function means fed to Aff. Prop., then averaging clusters to predict')
                 
-                tester.run_gp_affprop_avg()
+                tester.run_gp_affprop_avg(m, gp_per_cluster=True)
             elif method=='GP_GMM_Averaging':
                 logging.info('Preference GP, function means fed to GMM, then averaging clusters to predict')
                 
-                tester.run_gp_gmm_avg(m, nfactors)
+                tester.run_gp_gmm_avg(m, nfactors, gp_per_cluster=True)
                 
             end = datetime.datetime.now()
             duration = (end - start).total_seconds()

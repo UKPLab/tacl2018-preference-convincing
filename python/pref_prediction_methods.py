@@ -100,36 +100,49 @@ class PredictionTester(object):
     
     # Clustering methods with averaging of other cluster members
     
-    def run_affprop_avg(self, m):
+    def run_affprop_avg(self, m, gp_per_cluster=False):
         afprop = AffinityPropagation(affinity='precomputed')
         if not len(self.A):
             self.compute_affinity_matrix()
         
         labels =  afprop.fit_predict(self.A)
-        self.run_cluster_matching(labels, m)
+        
+        if gp_per_cluster:
+            self.run_gp_per_cluster(labels, m)
+        else:
+            self.run_cluster_matching(labels, m)
 
-    def run_agglomerative_avg(self, m):
+    def run_agglomerative_avg(self, m, gp_per_cluster=False):
         agg = AgglomerativeClustering()
         labels = agg.fit_predict(self.preftable_train.T)
-        self.run_cluster_matching(labels, m)
-    
-    def run_raw_gmm_avg(self, m, ncomponents):
+        if gp_per_cluster:
+            self.run_gp_per_cluster(labels, m)
+        else:
+            self.run_cluster_matching(labels, m)
+                
+    def run_raw_gmm_avg(self, m, ncomponents, gp_per_cluster=False):
         gmm_raw = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=0.5, 
                                           covariance_type='diag', init_params='random') #DPGMM(nfactors)
         gmm_raw.fit(self.preftable_train)
         labels = gmm_raw.predict(self.preftable_train)
-        self.run_cluster_matching(labels, m)
-        
-    def run_gp_affprop_avg(self, m):
+        if gp_per_cluster:
+            self.run_gp_per_cluster(labels, m)
+        else:
+            self.run_cluster_matching(labels, m)
+                    
+    def run_gp_affprop_avg(self, m, gp_per_cluster=False):
         _, model = self.run_gp_separate(m)
         fbar, _ = self.gp_moments_from_model(model)
         
         afprop = AffinityPropagation()        
         labels = afprop.fit_predict(fbar)
-        self.run_cluster_matching(labels, m)
-          
+        if gp_per_cluster:
+            self.run_gp_per_cluster(labels, m)
+        else:
+            self.run_cluster_matching(labels, m)
+                      
     # gmm on the separate fbars  
-    def run_gp_gmm_avg(self, m, ncomponents):
+    def run_gp_gmm_avg(self, m, ncomponents, gp_per_cluster=False):
         _, model = self.run_gp_separate(m)
         fbar, _ = self.gp_moments_from_model(model)
 
@@ -138,8 +151,35 @@ class PredictionTester(object):
                                       covariance_type='diag') #DPGMM(nfactors)
         gmm.fit(fbar)
         labels = gmm.predict(fbar)
-        self.run_cluster_matching(labels, m)              
-    
+        if gp_per_cluster:
+            self.run_gp_per_cluster(labels, m)
+        else:
+            self.run_cluster_matching(labels, m)
+            
+    def run_gp_per_cluster(self, labels, m):
+       
+        #get the clusters of the personids
+        clusters_test = labels[self.personids[self.testidxs]]
+        clusters_train = labels[self.personids[self.trainidxs]]
+        
+        uclusters = np.unique(labels)
+        for cl in uclusters:
+            clidxs = clusters_train==cl
+            ndatapoints = np.sum(clidxs)
+            
+            model_base = PreferenceComponents([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], 
+                                          verbose=False)
+            model_base.cov_type = 'diagonal'
+            model_base.fit(np.zeros(ndatapoints), self.pair1coords[self.trainidxs][clidxs], 
+                self.pair2coords[self.trainidxs][clidxs], self.prefs[self.trainidxs][clidxs]) # blank out the user ids
+        
+            clidxs_test = clusters_test==cl
+            ndatapoints = np.sum(clidxs_test)
+        
+            results_cl = model_base.predict(np.zeros(ndatapoints), self.pair1coords[self.testidxs][clidxs_test], 
+                                       self.pair2coords[self.testidxs][clidxs_test])
+            self.results[self.testidxs, m][clidxs_test] = results_cl
+
     def run_cluster_matching(self, labels, m):
        
         #get the clusters of the personids
