@@ -7,35 +7,12 @@ import xmltodict, os
 import numpy as np
 import logging
 
-def load():
-    # Task A1 ---------------------------------------------------------------------------------------------------------
-    datadir = './outputdata'
-    # load the data with columns: person_ID, arg_1_ID, arg_2_ID, preference_label
-    #data = np.genfromtxt(datadir + '/all_labels.csv', dtype=int, delimiter=',')
-    
-    # Random data generation
-    N = 1000
-    Nitems = 10
-    acc = 0.9
-#     f = np.array([0, 1, 2]) 
-    f = np.random.rand(Nitems) * 10
-    data0 = np.random.randint(0, 10, (N,1))
-#     data1 = np.zeros((N, 1)).astype(int)#
-    data1 = np.random.randint(0, Nitems, (N,1))
-#     data1[30:60, :] = 1
-#     data1[61:, :] = 2
-#     data2 = np.ones((N, 1)).astype(int)
-    data2 = np.random.randint(0, Nitems, (N,1))
-    correctflag = np.random.rand(N, 1) # use this to introduce noise into the preferences instead of reflecting f precisely
-    data3 = 2 * (correctflag < acc) * (f[data1]+0.5 < f[data2]) + 1 * (correctflag < acc) * (np.abs(f[data1] - f[data2]) <=0.5) \
-                + (correctflag > acc) * np.random.randint(0, 3, (N, 1))
-    logging.debug('Number of neg prefs = %i, no prefs = %i, pos prefs = %i' % (np.sum(data3==0), np.sum(data3==1), np.sum(data3==2)))
-    data = np.concatenate((data0, data1, data2, data3), axis=1)
-    
+datadir = './outputdata'
+plotdir = './results/'
+
+def load(data, f):
     #logging.warning("Subsampling dataset for debugging!!!")
     #data = data[:1000, :]
-    
-    plotdir = './results/'
     
     npairs = data.shape[0]
     
@@ -66,8 +43,35 @@ def load():
     nworkers = len(upersonids)
     
     return datadir, plotdir, nx, ny, data, pair1coords, pair2coords, pair1idxs, pair2idxs, xvals, yvals, prefs, \
-            personids, npairs, nworkers, ntexts
+            personids, npairs, nworkers, ntexts, f
     
+def load_synthetic(acc=0.9):
+    # Random data generation
+    N = 1000
+    Nitems = 10
+#     f = np.array([0, 1, 2]) 
+    f = np.random.rand(Nitems) * 10
+    data0 = np.random.randint(0, 10, (N,1))
+#     data1 = np.zeros((N, 1)).astype(int)#
+    data1 = np.random.randint(0, Nitems, (N,1))
+#     data1[30:60, :] = 1
+#     data1[61:, :] = 2
+#     data2 = np.ones((N, 1)).astype(int)
+    data2 = np.random.randint(0, Nitems, (N,1))
+    correctflag = np.random.rand(N, 1) # use this to introduce noise into the preferences instead of reflecting f precisely
+    data3 = 2 * (correctflag < acc) * (f[data1]+0.5 < f[data2]) + 1 * (correctflag < acc) * (np.abs(f[data1] - f[data2]) <=0.5) \
+                + (correctflag > acc) * np.random.randint(0, 3, (N, 1))
+    logging.debug('Number of neg prefs = %i, no prefs = %i, pos prefs = %i' % (np.sum(data3==0), np.sum(data3==1), np.sum(data3==2)))
+    data = np.concatenate((data0, data1, data2, data3), axis=1)
+    
+    return load(data, f)
+    
+def load_amt():
+    # Task A1 ---------------------------------------------------------------------------------------------------------
+    # load the data with columns: person_ID, arg_1_ID, arg_2_ID, preference_label
+    data = np.genfromtxt(datadir + '/all_labels.csv', dtype=int, delimiter=',') 
+    f = []    
+    return load(data, f)
 
 def process_list(pairlist):
     

@@ -8,7 +8,7 @@ Created on 21 Oct 2016
 @author: simpson
 '''
 from preference_features import PreferenceComponents
-from gpgrid import coord_arr_to_1d, coord_arr_from_1d
+from gpgrid import coord_arr_to_1d#, coord_arr_from_1d
 import numpy as np
 from sklearn.cluster.hierarchical import AgglomerativeClustering
 from sklearn.cluster import AffinityPropagation
@@ -18,7 +18,7 @@ import pickle, os, logging
 class PredictionTester(object):
     
     def __init__(self, datadir, k, nx, ny, personids, pair1coords, pair2coords, prefs, train, 
-                        test, results):
+                        test, results, rank_results):
         self.datadir = datadir
         self.k = k
         self.nx = nx
@@ -30,6 +30,7 @@ class PredictionTester(object):
         self.trainidxs = train
         self.testidxs = test
         self.results = results 
+        self.rank_results = rank_results
     
         # turn the data into a big matrix
         pair1coords_1d = coord_arr_to_1d(pair1coords)
