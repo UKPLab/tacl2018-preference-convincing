@@ -244,6 +244,49 @@ class PredictionTester(object):
                 prob_pref_test[i] = (float(total_prefs_matching) / float(cluster_size) + 1) / 2.0
                 
         self.results[self.testidxs, m] = prob_pref_test
+
+    def run_soft_cluster_matching(self, weights, m):       
+        #get the clusters of the personids
+        prob_pref_test = np.zeros(self.testidxs.size) # container for the test results
+        
+        #get the other members of the clusters, then get their labels for the same pairs
+        for i, idx in enumerate(self.testidxs):
+            pair1 = self.pair1idxs[idx] # id for this current pair
+            pair2 = self.pair2idxs[idx]
+            # idxs for the matching pairs 
+            matching_pair_idxs = ((self.pair1idxs[self.trainidxs]==pair1) & (self.pair2idxs[self.trainidxs]==pair2))
+            # total preferences for the matching pairs 
+            weighted_matches = weights[matching_pair_idxs, :] * weights[i:i+1, :] 
+            cluster_size = np.sum(weighted_matches)
+            weighted_matches /= cluster_size
+            
+            prefs_matching_weighted = self.prefs[self.trainidxs][matching_pair_idxs][:, np.newaxis] * weighted_matches
+            total_prefs_matching = np.sum((prefs_matching_weighted - 0.5) * 2)                
+            prob_pref_test[i] = (float(total_prefs_matching) / float(cluster_size) + 1) / 2.0
+                
+        self.results[self.testidxs, m] = prob_pref_test
+        
+    def run_fa_matching(self, factors, m):
+        #get the clusters of the personids
+        prob_pref_test = np.zeros(self.testidxs.size) # container for the test results
+        
+        #get the other members of the clusters, then get their labels for the same pairs
+        for i, idx in enumerate(self.testidxs):
+            pair1 = self.pair1idxs[idx] # id for this current pair
+            pair2 = self.pair2idxs[idx]
+            # idxs for the matching pairs 
+            matching_pair_idxs = ((self.pair1idxs[self.trainidxs]==pair1) & (self.pair2idxs[self.trainidxs]==pair2))
+            # total preferences for the matching pairs 
+            sqdist = (factors[i, :] - factors[matching_pair_idxs, :])**2#weights[matching_pair_idxs, :] * weights[i:i+1, :]
+            weighted_matches = np.exp(-sqdist) 
+            cluster_size = np.sum(weighted_matches)
+            weighted_matches /= cluster_size
+            
+            prefs_matching_weighted = self.prefs[self.trainidxs][matching_pair_idxs][:, np.newaxis] * weighted_matches
+            total_prefs_matching = np.sum((prefs_matching_weighted - 0.5) * 2)                
+            prob_pref_test[i] = (float(total_prefs_matching) / float(cluster_size) + 1) / 2.0
+                
+        self.results[self.testidxs, m] = prob_pref_test
     
     def run_gpfa(self, m, nfactors):
         # Task C1  ------------------------------------------------------------------------------------------------
