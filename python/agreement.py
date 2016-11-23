@@ -83,9 +83,15 @@ if __name__ == '__main__':
                 
                 if predictionmethod=='GP':
                     gppredictionmethod = True
+                    softprediction = False
                     predictionmethod_str = 'learning a GP for each cluster to predict preferences'
+                elif predictionmethod=='soft':
+                    gppredictionmethod = False
+                    softprediction = True
+                    predictionmethod_Str = 'averaging clusters using soft membership weights to predict'
                 else:
                     gppredictionmethod = False
+                    softpredictionmethod=False
                     predictionmethod_str = 'averaging clusters to predict'
                 
                 # baseline: assign most common class label
@@ -103,15 +109,16 @@ if __name__ == '__main__':
                 elif clustermethod=='AffProp':
                     logging.info('Affinity Propagation, then %s' % predictionmethod_str)
                     
-                    tester.run_affprop_avg(m, gp_per_cluster=gppredictionmethod)
+                    tester.run_affprop(m, gp_per_cluster=gppredictionmethod)
                 elif clustermethod =='Agg':
                     logging.info('Agglomerative clustering, then %s' % predictionmethod_str)
                     
-                    tester.run_agglomerative_avg(m, gp_per_cluster=gppredictionmethod)
+                    tester.run_agglomerative(m, gp_per_cluster=gppredictionmethod)
                 elif clustermethod =='GMM':
                     logging.info('Gaussian mixture, then %s' % predictionmethod_str)
                     
-                    tester.run_raw_gmm_avg(m, nfactors, gp_per_cluster=gppredictionmethod)  
+                    tester.run_raw_gmm(m, nfactors, gp_per_cluster=gppredictionmethod, 
+                                       soft_cluster_matching=softpredictionmethod)  
                     
                 # testing whether the smoothed, continuous GP improves clustering
                 # the effect may only be significant once we have argument features
@@ -125,13 +132,16 @@ if __name__ == '__main__':
                     # Task C3: Baseline with no separate preference functions per user ----------------------------------------
                     logging.info('Task C3, Combined GP')
                      
-                    tester.run_gp_combined(m) 
-                # factor analysis + GP          
+                    tester.run_gp_combined(m)
                 elif method=='GPFA':
-                    logging.info('Task C1, GPFA')
+                    logging.info('Task C1, GPFA, separate steps with distance-based matching')
+                    tester.run_fa(m, nfactors)
+                # factor analysis + GP          
+                elif method=='GPFABayes':
+                    logging.info('Task C1, GPFA, Bayesian method')
                  
                     # Run the GPFA with this fold
-                    tester.run_gpfa(m, nfactors)                
+                    tester.run_gpfa_bayes(m, nfactors)                
                 # clustering methods on top of the smoothed functions
                 elif clustermethod=='GPAffProp':
                     logging.info('Preference GP, function means fed to Aff. Prop., then %s' % predictionmethod_str)
@@ -140,7 +150,8 @@ if __name__ == '__main__':
                 elif clustermethod=='GPGMM':
                     logging.info('Preference GP, function means fed to GMM, then %s' % predictionmethod_str)
                     
-                    tester.run_gp_gmm_avg(m, nfactors, gp_per_cluster=gppredictionmethod)
+                    tester.run_gp_gmm(m, nfactors, gp_per_cluster=gppredictionmethod, 
+                                      soft_cluster_matching=softpredictionmethod)
                     
                 end = datetime.datetime.now()
                 duration = (end - start).total_seconds()

@@ -14,6 +14,7 @@ import numpy as np
 from sklearn.cluster.hierarchical import AgglomerativeClustering
 from sklearn.cluster import AffinityPropagation
 from sklearn.mixture import BayesianGaussianMixture#DPGMM GaussianMixture
+from sklearn.decomposition import FactorAnalysis
 import pickle, os, logging
 
 class PredictionTester(object):
@@ -111,7 +112,7 @@ class PredictionTester(object):
     
     # Clustering methods with averaging of other cluster members
     
-    def run_affprop_avg(self, m, gp_per_cluster=False):
+    def run_affprop(self, m, gp_per_cluster=False):
         afprop = AffinityPropagation(affinity='precomputed')
         if not len(self.A):
             self.compute_affinity_matrix()
@@ -123,7 +124,7 @@ class PredictionTester(object):
         else:
             self.run_cluster_matching(labels, m)
 
-    def run_agglomerative_avg(self, m, gp_per_cluster=False):
+    def run_agglomerative(self, m, gp_per_cluster=False):
         agg = AgglomerativeClustering()
         labels = agg.fit_predict(self.preftable_train.T)
         if gp_per_cluster:
@@ -131,17 +132,20 @@ class PredictionTester(object):
         else:
             self.run_cluster_matching(labels, m)
                 
-    def run_raw_gmm_avg(self, m, ncomponents, gp_per_cluster=False):
-        gmm_raw = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=0.5, 
+    def run_raw_gmm(self, m, ncomponents, gp_per_cluster=False, soft_cluster_matching=False):
+        gmm = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=0.5, 
                                           covariance_type='diag', init_params='random') #DPGMM(nfactors)
-        gmm_raw.fit(self.preftable_train)
-        labels = gmm_raw.predict(self.preftable_train)
+        gmm.fit(self.preftable_train)
+        labels = gmm.predict(self.preftable_train)
         if gp_per_cluster:
             self.run_gp_per_cluster(labels, m)
+        elif soft_cluster_matching:
+            weights = gmm.predict_proba(self.preftable_train)
+            self.run_soft_cluster_matching(weights, m)
         else:
             self.run_cluster_matching(labels, m)
                     
-    def run_gp_affprop_avg(self, m, gp_per_cluster=False):
+    def run_gp_affprop(self, m, gp_per_cluster=False):
         _, model = self.run_gp_separate(m)
         fbar, _ = self.gp_moments_from_model(model)
         
@@ -153,7 +157,7 @@ class PredictionTester(object):
             self.run_cluster_matching(labels, m)
                       
     # gmm on the separate fbars  
-    def run_gp_gmm_avg(self, m, ncomponents, gp_per_cluster=False):
+    def run_gp_gmm(self, m, ncomponents, gp_per_cluster=False, soft_cluster_matching=False):
         _, model = self.run_gp_separate(m)
         fbar = self.gp_moments_from_model(model)
 
@@ -164,8 +168,20 @@ class PredictionTester(object):
         labels = gmm.predict(fbar)
         if gp_per_cluster:
             self.run_gp_per_cluster(labels, m)
+        elif soft_cluster_matching:
+            weights = gmm.predict_proba(fbar)
+            self.run_soft_cluster_matching(weights, m)
         else:
             self.run_cluster_matching(labels, m)
+            
+    def run_fa(self, m, ncomponents):
+        _, model = self.run_gp_separate(m)
+        fbar = self.gp_moments_from_model(model)
+        
+        fa = FactorAnalysis(ncomponents)
+        y = fa.fit_transform(fbar)
+        
+        self.run_fa_matching(y, m)
             
     def fit_predict_gp(self, pair1coords_train, pair2coords_train, prefs, pair1coords_test, pair2coords_test):
         model = GPPref([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10])
@@ -288,7 +304,7 @@ class PredictionTester(object):
                 
         self.results[self.testidxs, m] = prob_pref_test
     
-    def run_gpfa(self, m, nfactors):
+    def run_gpfa_bayes(self, m, nfactors):
         # Task C1  ------------------------------------------------------------------------------------------------
     
         # Hypothesis: allows some personalisation but also sharing data through the means
