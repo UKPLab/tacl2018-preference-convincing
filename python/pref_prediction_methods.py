@@ -130,13 +130,16 @@ class PredictionTester(object):
         else:
             self.run_cluster_matching(labels, m)
                 
-    def run_raw_gmm(self, m, ncomponents, gp_per_cluster=False):
-        gmm_raw = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=0.5, 
+    def run_raw_gmm(self, m, ncomponents, gp_per_cluster=False, soft_cluster_matching=False):
+        gmm = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=0.5, 
                                           covariance_type='diag', init_params='random') #DPGMM(nfactors)
-        gmm_raw.fit(self.preftable_train)
-        labels = gmm_raw.predict(self.preftable_train)
+        gmm.fit(self.preftable_train)
+        labels = gmm.predict(self.preftable_train)
         if gp_per_cluster:
             self.run_gp_per_cluster(labels, m)
+        elif soft_cluster_matching:
+            weights = gmm.predict_proba(self.preftable_train)
+            self.run_soft_cluster_matching(weights, m)
         else:
             self.run_cluster_matching(labels, m)
                     
@@ -149,8 +152,9 @@ class PredictionTester(object):
             self.run_gp_per_cluster(labels, m)
         else:
             self.run_cluster_matching(labels, m)
-   
-    def run_gp_gmm(self, m, ncomponents, gp_per_cluster=False): # gmm on the separate fbars  
+                      
+    # gmm on the separate fbars  
+    def run_gp_gmm(self, m, ncomponents, gp_per_cluster=False, soft_cluster_matching=False):
         fbar = self.run_gp_separate(m)
 
         gmm = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=0.1, 
@@ -159,8 +163,20 @@ class PredictionTester(object):
         labels = gmm.predict(fbar)
         if gp_per_cluster:
             self.run_gp_per_cluster(labels, m)
+        elif soft_cluster_matching:
+            weights = gmm.predict_proba(fbar)
+            self.run_soft_cluster_matching(weights, m)
         else:
             self.run_cluster_matching(labels, m)
+            
+    def run_fa(self, m, ncomponents):
+        _, model = self.run_gp_separate(m)
+        fbar = self.gp_moments_from_model(model)
+        
+        fa = FactorAnalysis(ncomponents)
+        y = fa.fit_transform(fbar)
+        
+        self.run_fa_matching(y, m)
             
     def fit_predict_gp(self, pair1coords_train, pair2coords_train, prefs, pair1coords_test, pair2coords_test, 
                        return_latent_f=False):
@@ -242,10 +258,51 @@ class PredictionTester(object):
                 prob_pref_test[i] = (float(total_prefs_matching) / float(cluster_size) + 1) / 2.0
                 
         self.results[self.testidxs, m] = prob_pref_test
+
+    def run_soft_cluster_matching(self, weights, m):       
+        #get the clusters of the personids
+        prob_pref_test = np.zeros(self.testidxs.size) # container for the test results
         
-    #def run_
+        #get the other members of the clusters, then get their labels for the same pairs
+        for i, idx in enumerate(self.testidxs):
+            pair1 = self.pair1idxs[idx] # id for this current pair
+            pair2 = self.pair2idxs[idx]
+            # idxs for the matching pairs 
+            matching_pair_idxs = ((self.pair1idxs[self.trainidxs]==pair1) & (self.pair2idxs[self.trainidxs]==pair2))
+            # total preferences for the matching pairs 
+            weighted_matches = weights[matching_pair_idxs, :] * weights[i:i+1, :] 
+            cluster_size = np.sum(weighted_matches)
+            weighted_matches /= cluster_size
+            
+            prefs_matching_weighted = self.prefs[self.trainidxs][matching_pair_idxs][:, np.newaxis] * weighted_matches
+            total_prefs_matching = np.sum((prefs_matching_weighted - 0.5) * 2)                
+            prob_pref_test[i] = (float(total_prefs_matching) / float(cluster_size) + 1) / 2.0
+                
+        self.results[self.testidxs, m] = prob_pref_test
+        
+    def run_fa_matching(self, factors, m):
+        #get the clusters of the personids
+        prob_pref_test = np.zeros(self.testidxs.size) # container for the test results
+        
+        #get the other members of the clusters, then get their labels for the same pairs
+        for i, idx in enumerate(self.testidxs):
+            pair1 = self.pair1idxs[idx] # id for this current pair
+            pair2 = self.pair2idxs[idx]
+            # idxs for the matching pairs 
+            matching_pair_idxs = ((self.pair1idxs[self.trainidxs]==pair1) & (self.pair2idxs[self.trainidxs]==pair2))
+            # total preferences for the matching pairs 
+            sqdist = (factors[i, :] - factors[matching_pair_idxs, :])**2#weights[matching_pair_idxs, :] * weights[i:i+1, :]
+            weighted_matches = np.exp(-sqdist) 
+            cluster_size = np.sum(weighted_matches)
+            weighted_matches /= cluster_size
+            
+            prefs_matching_weighted = self.prefs[self.trainidxs][matching_pair_idxs][:, np.newaxis] * weighted_matches
+            total_prefs_matching = np.sum((prefs_matching_weighted - 0.5) * 2)                
+            prob_pref_test[i] = (float(total_prefs_matching) / float(cluster_size) + 1) / 2.0
+                
+        self.results[self.testidxs, m] = prob_pref_test
     
-    def run_gpfa(self, m, nfactors):
+    def run_gpfa_bayes(self, m, nfactors):
         # Task C1  ------------------------------------------------------------------------------------------------
     
         # Hypothesis: allows some personalisation but also sharing data through the means

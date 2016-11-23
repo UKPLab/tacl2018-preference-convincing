@@ -30,7 +30,7 @@ if __name__ == '__main__':
 #     nruns = len(synth_worker_accs)
 #     split_results_by_no_annotations = False
     
-    nfactors=5 
+    nfactors=5
     
     # list the names of methods to test here
     methods = ['GPFA_GP', 'Baseline_MostCommon', 'Combined_Averaging', 
@@ -85,9 +85,15 @@ if __name__ == '__main__':
                 
                 if predictionmethod=='GP':
                     gppredictionmethod = True
+                    softprediction = False
                     predictionmethod_str = 'learning a GP for each cluster to predict preferences'
+                elif predictionmethod=='soft':
+                    gppredictionmethod = False
+                    softprediction = True
+                    predictionmethod_Str = 'averaging clusters using soft membership weights to predict'
                 else:
                     gppredictionmethod = False
+                    softpredictionmethod=False
                     predictionmethod_str = 'averaging clusters to predict'
                 
                 # baseline: assign most common class label
@@ -119,6 +125,8 @@ if __name__ == '__main__':
                     logging.info('Gaussian mixture, then %s' % predictionmethod_str)
                     
                     tester.run_raw_gmm(m, nfactors, gp_per_cluster=gppredictionmethod)  
+                    tester.run_raw_gmm(m, nfactors, gp_per_cluster=gppredictionmethod, 
+                                       soft_cluster_matching=softpredictionmethod)  
                     
                 # testing whether the smoothed, continuous GP improves clustering
                 # the effect may only be significant once we have argument features
@@ -127,21 +135,26 @@ if __name__ == '__main__':
                     logging.info('Task C1 part II, Separate GPs (no FA)')
                     tester.run_gp_separate(m)
                     
-                # factor analysis + GP          
                 elif method=='GPFA':
-                    logging.info('Task C1, GPFA')
+                    logging.info('Task C1, GPFA, separate steps with distance-based matching')
+                    tester.run_fa(m, nfactors)
+                
+                # factor analysis + GP         
+                elif method=='GPFABayes':
+                    logging.info('Task C1, GPFA, Bayesian method')
                     # Run the GPFA with this fold
-                    tester.run_gpfa(m, nfactors)   
+                    tester.run_gpfa_bayes(m, nfactors)   
                                  
                 # clustering methods on top of the smoothed functions
                 elif clustermethod=='GPAffProp':
                     logging.info('Preference GP, function means fed to Aff. Prop., then %s' % predictionmethod_str)
-                    tester.run_gp_affprop(m, gp_per_cluster=gppredictionmethod)
+                    tester.run_gp_affprop_avg(m, gp_per_cluster=gppredictionmethod)
                     
                 elif clustermethod=='GPGMM':
                     logging.info('Preference GP, function means fed to GMM, then %s' % predictionmethod_str)
-                    tester.run_gp_gmm(m, nfactors, gp_per_cluster=gppredictionmethod)
-                    
+                    tester.run_gp_gmm(m, nfactors, gp_per_cluster=gppredictionmethod, 
+                                      soft_cluster_matching=softpredictionmethod)
+                                    
                 end = datetime.datetime.now()
                 duration = (end - start).total_seconds()
                 logging.info("Method %i in fold %i took %.2f seconds" % (m, k, duration))
