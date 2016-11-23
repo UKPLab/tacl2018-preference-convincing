@@ -47,7 +47,7 @@ def load(data, f):
     
 def load_synthetic(acc=0.9):
     # Random data generation
-    N = 200
+    N = 100
     Nitems = 5
 #     f = np.array([0, 1, 2]) 
     f = np.random.rand(Nitems) * 10

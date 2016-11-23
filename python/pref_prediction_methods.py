@@ -51,20 +51,19 @@ class PredictionTester(object):
         
         self.pairidxs_ravelled = np.ravel_multi_index((self.pair1idxs, self.pair2idxs), dims=(ncoords, ncoords))
         _, self.pairidxs_ravelled = np.unique(self.pairidxs_ravelled, return_inverse=True)
-        npairs = np.max(self.pairidxs_ravelled) + 1
+        self.npairs = np.max(self.pairidxs_ravelled) + 1
         
-        nworkers = np.max(self.personids) + 1
-        self.preftable = np.zeros((nworkers, npairs))
+        self.nworkers = np.max(self.personids) + 1
+        self.preftable = np.zeros((self.nworkers, self.npairs))
         self.preftable[:] = np.nan # + 0.5 # 0.5 is the default value
         self.preftable[self.personids, self.pairidxs_ravelled] = self.prefs
     
-        self.preftable_train = np.zeros((nworkers, npairs)) + 0.5
+        self.preftable_train = np.zeros((self.nworkers, self.npairs)) + 0.5
         self.preftable_train[self.personids[self.trainidxs], self.pairidxs_ravelled[self.trainidxs]] = self.prefs[self.trainidxs]
 
-        self.preftable_test = np.zeros((nworkers, npairs)) + 0.5
+        self.preftable_test = np.zeros((self.nworkers, self.npairs)) + 0.5
         self.preftable_test[self.personids[self.testidxs], self.pairidxs_ravelled[self.testidxs]] = self.prefs[self.testidxs]
         
-        self.nworkers = nworkers
         self.A = [] # affinity matrix -- don't compute until we need it
         
         self.most_common = np.nan
@@ -111,7 +110,7 @@ class PredictionTester(object):
     
     # Clustering methods with averaging of other cluster members
     
-    def run_affprop_avg(self, m, gp_per_cluster=False):
+    def run_affprop(self, m, gp_per_cluster=False):
         afprop = AffinityPropagation(affinity='precomputed')
         if not len(self.A):
             self.compute_affinity_matrix()
@@ -123,15 +122,15 @@ class PredictionTester(object):
         else:
             self.run_cluster_matching(labels, m)
 
-    def run_agglomerative_avg(self, m, gp_per_cluster=False):
+    def run_agglomerative(self, m, gp_per_cluster=False):
         agg = AgglomerativeClustering()
-        labels = agg.fit_predict(self.preftable_train.T)
+        labels = agg.fit_predict(self.preftable_train)
         if gp_per_cluster:
             self.run_gp_per_cluster(labels, m)
         else:
             self.run_cluster_matching(labels, m)
                 
-    def run_raw_gmm_avg(self, m, ncomponents, gp_per_cluster=False):
+    def run_raw_gmm(self, m, ncomponents, gp_per_cluster=False):
         gmm_raw = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=0.5, 
                                           covariance_type='diag', init_params='random') #DPGMM(nfactors)
         gmm_raw.fit(self.preftable_train)
@@ -141,9 +140,8 @@ class PredictionTester(object):
         else:
             self.run_cluster_matching(labels, m)
                     
-    def run_gp_affprop_avg(self, m, gp_per_cluster=False):
-        _, model = self.run_gp_separate(m)
-        fbar, _ = self.gp_moments_from_model(model)
+    def run_gp_affprop(self, m, gp_per_cluster=False):
+        fbar = self.run_gp_separate(m)
         
         afprop = AffinityPropagation()        
         labels = afprop.fit_predict(fbar)
@@ -151,13 +149,10 @@ class PredictionTester(object):
             self.run_gp_per_cluster(labels, m)
         else:
             self.run_cluster_matching(labels, m)
-                      
-    # gmm on the separate fbars  
-    def run_gp_gmm_avg(self, m, ncomponents, gp_per_cluster=False):
-        _, model = self.run_gp_separate(m)
-        fbar = self.gp_moments_from_model(model)
+   
+    def run_gp_gmm(self, m, ncomponents, gp_per_cluster=False): # gmm on the separate fbars  
+        fbar = self.run_gp_separate(m)
 
-        #gmm = GaussianMixture(n_components=ncomponents)
         gmm = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=0.1, 
                                       covariance_type='diag') #DPGMM(nfactors)
         gmm.fit(fbar)
@@ -167,7 +162,8 @@ class PredictionTester(object):
         else:
             self.run_cluster_matching(labels, m)
             
-    def fit_predict_gp(self, pair1coords_train, pair2coords_train, prefs, pair1coords_test, pair2coords_test):
+    def fit_predict_gp(self, pair1coords_train, pair2coords_train, prefs, pair1coords_test, pair2coords_test, 
+                       return_latent_f=False):
         model = GPPref([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10])
         model.select_covariance_function('diagonal')
         model.max_iter_VB = 50
@@ -177,11 +173,13 @@ class PredictionTester(object):
 
         model.fit(pair1coords_train, pair2coords_train, prefs) # ignores any user ids
 
+        # does model.f cover all the data points? If not, we should be able to pass that in
         results, _ = model.predict(pair1coords_test, pair2coords_test)
         
-        #model.pickle_me(self.datadir + '/c3_model_base_%i.pkl' % (self.k))
-               
-        return results.flatten() 
+        if return_latent_f:
+            return results.flatten(), model.f.flatten()
+        else:
+            return results.flatten()
             
     def run_gp_per_cluster(self, labels, m):
        
@@ -194,7 +192,7 @@ class PredictionTester(object):
             clidxs = clusters_train==cl
             clidxs_test = clusters_test==cl
             logging.debug("--- Running PC model for cluster %i ---" % cl)
-            if not np.sum(clidxs_test):
+            if not np.sum(clidxs_test) or not np.sum(clidxs):
                 continue
             results = self.fit_predict_gp(self.pair1coords[self.trainidxs][clidxs], 
                                           self.pair2coords[self.trainidxs][clidxs], 
@@ -244,6 +242,8 @@ class PredictionTester(object):
                 prob_pref_test[i] = (float(total_prefs_matching) / float(cluster_size) + 1) / 2.0
                 
         self.results[self.testidxs, m] = prob_pref_test
+        
+    #def run_
     
     def run_gpfa(self, m, nfactors):
         # Task C1  ------------------------------------------------------------------------------------------------
@@ -276,21 +276,25 @@ class PredictionTester(object):
     def run_gp_separate(self, m):
         #run the model but without the FA part; no shared information between people. 
         #Hypothesis: splitting by person results in too little data per person
-        model = PreferenceComponents([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], 
-                                            verbose=False, nfactors=1)
-        model.cov_type = 'diagonal'
-        model.max_iter = 1 # don't run VB till convergence -- gives same results as if running GPs and FA separately
-        model.fit(self.personids[self.trainidxs], self.pair1coords[self.trainidxs], 
-                         self.pair2coords[self.trainidxs], self.prefs[self.trainidxs])
-        model.pickle_me(self.datadir + '/c1_model_gponly_%i.pkl' % (self.k))
-       
-        results_k = model.predict(self.personids[self.testidxs], self.pair1coords[self.testidxs], 
-                                         self.pair2coords[self.testidxs])
-        self.results[self.testidxs, m] = results_k
-        return results_k, model
-    
-    def gp_moments_from_model(self, model):
-        fbar = np.zeros(model.t.shape) # posterior means
-        for person in model.gppref_models:
-            fbar[person, :] = model.f[person][:, 0]
-        return fbar
+
+        try:
+            return self.gp_separate_p, self.fbar
+        except AttributeError:
+            logging.debug('Need to compute the separate GPs for each person.')
+            
+        upersonids = np.unique(self.personids)
+        ncoords = np.unique([coord_arr_to_1d(self.pair1coords), coord_arr_to_1d(self.pair2coords)]).size
+        self.fbar = np.zeros((self.nworkers, ncoords))
+
+        for p in upersonids:   
+            pidxs_train = self.trainidxs[self.personids[self.trainidxs]==p]
+            if not len(pidxs_train):
+                continue
+            _, self.fbar[p, :] = self.fit_predict_gp(
+                                            self.pair1coords[pidxs_train], 
+                                            self.pair2coords[pidxs_train], 
+                                            self.prefs[pidxs_train], 
+                                            self.pair1coords, # test on all the available data 
+                                            self.pair2coords,
+                                            return_latent_f=True)
+        return self.fbar

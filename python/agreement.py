@@ -25,16 +25,18 @@ if __name__ == '__main__':
     split_results_by_no_annotations = True
     nruns = 1
     
-    dataset = 'synth'
-    synth_worker_accs = [0.6, 0.7, 0.8, 0.9, 0.99]
-    nruns = len(synth_worker_accs)
-    split_results_by_no_annotations = False
+    synth_worker_accs = [0.6, 0.7, 0.8, 0.9, 0.99]    
+#     dataset = 'synth'
+#     nruns = len(synth_worker_accs)
+#     split_results_by_no_annotations = False
     
-    nfactors=5
+    nfactors=5 
     
     # list the names of methods to test here
-    methods = ['Baseline_MostCommon', 'CombineAll_Averaging', 'GMM_GP', 'GMM_Averaging', 'GPGMM_GP', 
-       'AffProp_Averaging', 'AffProp_GP', 'GPAffProp_GP', 'Agg_Averaging', 'Agg_GP', 'CombinedGP', 'SeparateGP' ] 
+    methods = ['GPFA_GP', 'Baseline_MostCommon', 'Combined_Averaging', 
+            'Combined_GP', 'Separate_GP', 
+            'GMM_GP', 'GMM_Averaging', 'GPGMM_GP', 'AffProp_Averaging', 'AffProp_GP', 'GPAffProp_GP', 
+            'Agg_Averaging', 'Agg_GP'] 
     nmethods = len(methods) 
     #2 * len(nfactors_list) + 1 # need to increase nmethods if we are trying multiple numbers of factors 
     # -- new implementation will try to optimize the number of factors internally and return only the best results for each method
@@ -93,54 +95,52 @@ if __name__ == '__main__':
                     logging.info('Baseline -- Assign most common class')
                     tester.run_baseline_most_common(m)
                     
-                # baseline: treating all workers as the same but not considering features; averaging workers
-                elif method=='CombineAll_Averaging':
+                # Task C3: Baseline with no separate preference functions per user or clustering 
+                elif clustermethod=='Combined':
                     logging.info('Treat all workers as same and average')
-                    
-                    tester.run_combine_avg(m)
+                    if gppredictionmethod == 'Averaging':
+                        # treating all workers as the same and averaging workers
+                        tester.run_combine_avg(m)
+                    elif gppredictionmethod == 'GP':
+                        # treating all workers as the same and using a GP to smooth
+                        logging.info('Task C3, Combined GP')                        
+                        tester.run_gp_combined(m) 
                 
                 # clustering the raw preferences
                 elif clustermethod=='AffProp':
                     logging.info('Affinity Propagation, then %s' % predictionmethod_str)
                     
-                    tester.run_affprop_avg(m, gp_per_cluster=gppredictionmethod)
+                    tester.run_affprop(m, gp_per_cluster=gppredictionmethod)
                 elif clustermethod =='Agg':
                     logging.info('Agglomerative clustering, then %s' % predictionmethod_str)
                     
-                    tester.run_agglomerative_avg(m, gp_per_cluster=gppredictionmethod)
+                    tester.run_agglomerative(m, gp_per_cluster=gppredictionmethod)
                 elif clustermethod =='GMM':
                     logging.info('Gaussian mixture, then %s' % predictionmethod_str)
                     
-                    tester.run_raw_gmm_avg(m, nfactors, gp_per_cluster=gppredictionmethod)  
+                    tester.run_raw_gmm(m, nfactors, gp_per_cluster=gppredictionmethod)  
                     
                 # testing whether the smoothed, continuous GP improves clustering
                 # the effect may only be significant once we have argument features
                 # assuming no clustering at all, but using a GP to smooth 
-                elif method=='SeparateGP':              
+                elif method=='Separate_GP':              
                     logging.info('Task C1 part II, Separate GPs (no FA)')
+                    tester.run_gp_separate(m)
                     
-                    tester.run_gp_separate(m)                
-                # treating all workers as the same and using a GP to smooth
-                elif method=='CombinedGP':
-                    # Task C3: Baseline with no separate preference functions per user ----------------------------------------
-                    logging.info('Task C3, Combined GP')
-                     
-                    tester.run_gp_combined(m) 
                 # factor analysis + GP          
                 elif method=='GPFA':
                     logging.info('Task C1, GPFA')
-                 
                     # Run the GPFA with this fold
-                    tester.run_gpfa(m, nfactors)                
+                    tester.run_gpfa(m, nfactors)   
+                                 
                 # clustering methods on top of the smoothed functions
                 elif clustermethod=='GPAffProp':
                     logging.info('Preference GP, function means fed to Aff. Prop., then %s' % predictionmethod_str)
+                    tester.run_gp_affprop(m, gp_per_cluster=gppredictionmethod)
                     
-                    tester.run_gp_affprop_avg(m, gp_per_cluster=gppredictionmethod)
                 elif clustermethod=='GPGMM':
                     logging.info('Preference GP, function means fed to GMM, then %s' % predictionmethod_str)
-                    
-                    tester.run_gp_gmm_avg(m, nfactors, gp_per_cluster=gppredictionmethod)
+                    tester.run_gp_gmm(m, nfactors, gp_per_cluster=gppredictionmethod)
                     
                 end = datetime.datetime.now()
                 duration = (end - start).total_seconds()
