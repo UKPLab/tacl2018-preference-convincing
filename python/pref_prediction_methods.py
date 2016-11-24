@@ -14,6 +14,7 @@ import numpy as np
 from sklearn.cluster.hierarchical import AgglomerativeClustering
 from sklearn.cluster import AffinityPropagation
 from sklearn.mixture import BayesianGaussianMixture#DPGMM GaussianMixture
+from sklearn.decomposition import FactorAnalysis, LatentDirichletAllocation
 import pickle, os, logging
 
 class PredictionTester(object):
@@ -104,12 +105,13 @@ class PredictionTester(object):
         most_common = self.get_most_common_label()
         self.results[self.testidxs, m] = most_common
         
-    def run_combine_avg(self, m):
+    def run_combine_all(self, m, gp=False):
         labels = np.zeros(self.nworkers) # they all belong to one cluster -- assume they are the same
-        self.run_cluster_matching(labels, m)
-    
-    # Clustering methods with averaging of other cluster members
-    
+        if gp:
+            self.run_cluster_matching(labels, m)
+        else:
+            self.run_gp_per_cluster(labels, m)
+        
     def run_affprop(self, m, gp_per_cluster=False):
         afprop = AffinityPropagation(affinity='precomputed')
         if not len(self.A):
@@ -129,7 +131,19 @@ class PredictionTester(object):
             self.run_gp_per_cluster(labels, m)
         else:
             self.run_cluster_matching(labels, m)
-                
+            
+    def run_lda(self, m, ncomponents, gp_per_cluster=False):
+        lda = LatentDirichletAllocation(n_topics=ncomponents, learning_method='batch') # need to optimise ncomponentns using lda.score()
+        workertopics = lda.fit_transform(self.preftable_train)
+        if gp_per_cluster:
+            logging.error('Not implemented yet: LDA with GPs trained on each cluster. ') 
+            # Problem is that the soft cluster membership means we don't have a definite set of data points to train
+            # a GP for each cluster. To resolve this, we need to understand how we can use the cluster probabilities
+            # to adapt weaken the observations for training the GP. 
+            #self.run_soft_gp_per_cluster(workertopics, m)
+        else:
+            self.run_soft_cluster_matching(workertopics, m)
+            
     def run_raw_gmm(self, m, ncomponents, gp_per_cluster=False, soft_cluster_matching=False):
         gmm = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=0.5, 
                                           covariance_type='diag', init_params='random') #DPGMM(nfactors)
@@ -170,8 +184,7 @@ class PredictionTester(object):
             self.run_cluster_matching(labels, m)
             
     def run_fa(self, m, ncomponents):
-        _, model = self.run_gp_separate(m)
-        fbar = self.gp_moments_from_model(model)
+        fbar = self.run_gp_separate(m)
         
         fa = FactorAnalysis(ncomponents)
         y = fa.fit_transform(fbar)
@@ -186,12 +199,14 @@ class PredictionTester(object):
         model.min_iter_VB = 10
         model.max_iter_G = 3      
         model.verbose = True
+        model.uselowerbound = False
 
+        logging.info('Fitting GP...')
         model.fit(pair1coords_train, pair2coords_train, prefs) # ignores any user ids
-
+        logging.info('Fitted. Predicting from GP...')
         # does model.f cover all the data points? If not, we should be able to pass that in
         results, _ = model.predict(pair1coords_test, pair2coords_test)
-        
+        logging.info('Predicted.')
         if return_latent_f:
             return results.flatten(), model.f.flatten()
         else:
@@ -236,6 +251,8 @@ class PredictionTester(object):
         
         prob_pref_test = np.zeros(self.testidxs.size) # container for the test results
         
+        most_common_label = np.nan
+        
         #get the other members of the clusters, then get their labels for the same pairs
         for i, cl in enumerate(clusters_test):
             members = clusters_train == cl #pairs from same cluster
@@ -250,7 +267,11 @@ class PredictionTester(object):
             if cluster_size > 1.0:
                 total_prefs_matching = np.sum((self.prefs[self.trainidxs][matching_pair_idxs & members] - 0.5) * 2)                
                 prob_pref_test[i] = (float(total_prefs_matching) / float(cluster_size) + 1) / 2.0
-            else:
+            elif not np.sum(matching_pair_idxs): # no other have labelled this pair
+                if np.isnan(most_common_label):
+                    most_common_label = self.get_most_common_label()
+                prob_pref_test[i] = most_common_label
+            else: # others have labelled this pair, but not in same cluster
                 #prob_pref_test[i] = self.get_most_common_label() # use most common label
                 # take an average of all the workers
                 total_prefs_matching = np.sum((self.prefs[self.trainidxs][matching_pair_idxs] - 0.5) * 2)
@@ -262,21 +283,30 @@ class PredictionTester(object):
     def run_soft_cluster_matching(self, weights, m):       
         #get the clusters of the personids
         prob_pref_test = np.zeros(self.testidxs.size) # container for the test results
-        
+                
+        most_common_label = np.nan
+
         #get the other members of the clusters, then get their labels for the same pairs
         for i, idx in enumerate(self.testidxs):
             pair1 = self.pair1idxs[idx] # id for this current pair
             pair2 = self.pair2idxs[idx]
             # idxs for the matching pairs 
             matching_pair_idxs = ((self.pair1idxs[self.trainidxs]==pair1) & (self.pair2idxs[self.trainidxs]==pair2))
+            if not np.sum(matching_pair_idxs): # no others have labelled this pair
+                if np.isnan(most_common_label):
+                    most_common_label = self.get_most_common_label()
+                prob_pref_test[i] = most_common_label
+                
             # total preferences for the matching pairs 
-            weighted_matches = weights[matching_pair_idxs, :] * weights[i:i+1, :] 
-            cluster_size = np.sum(weighted_matches)
+            p = self.personids[idx]
+            matching_people = self.personids[self.trainidxs][matching_pair_idxs]
+            weighted_matches = weights[matching_people, :] * weights[p:p+1, :]
+            cluster_size = np.sum(weighted_matches) + 1.0
             weighted_matches /= cluster_size
             
-            prefs_matching_weighted = self.prefs[self.trainidxs][matching_pair_idxs][:, np.newaxis] * weighted_matches
-            total_prefs_matching = np.sum((prefs_matching_weighted - 0.5) * 2)                
-            prob_pref_test[i] = (float(total_prefs_matching) / float(cluster_size) + 1) / 2.0
+            prefs_matching = self.prefs[self.trainidxs][matching_pair_idxs][:, np.newaxis]
+            total_prefs_matching = np.sum((prefs_matching - 0.5) * 2 * weighted_matches)                
+            prob_pref_test[i] = (float(total_prefs_matching) + 1) / 2.0
                 
         self.results[self.testidxs, m] = prob_pref_test
         
@@ -291,7 +321,10 @@ class PredictionTester(object):
             # idxs for the matching pairs 
             matching_pair_idxs = ((self.pair1idxs[self.trainidxs]==pair1) & (self.pair2idxs[self.trainidxs]==pair2))
             # total preferences for the matching pairs 
-            sqdist = (factors[i, :] - factors[matching_pair_idxs, :])**2#weights[matching_pair_idxs, :] * weights[i:i+1, :]
+            # gaussian kernel -- pdf of the matching pairs given the current pair as the mean
+            p = self.personids[idx]
+            matching_people = self.personids[self.trainidxs][matching_pair_idxs]
+            sqdist = 0.5 * (factors[p, :] - factors[matching_people, :])**2
             weighted_matches = np.exp(-sqdist) 
             cluster_size = np.sum(weighted_matches)
             weighted_matches /= cluster_size
@@ -319,24 +352,13 @@ class PredictionTester(object):
         
         return results_k, model_gpfa
     
-    def run_gp_combined(self, m):
-        # Hypothesis: has benefit that there is more data to learn the GP, but no personalisation
-        results_k = self.fit_predict_gp(self.pair1coords[self.trainidxs], 
-                            self.pair2coords[self.trainidxs], 
-                            self.prefs, 
-                            self.pair1coords[self.testidxs], 
-                            self.pair2coords[self.testidxs])
-                
-        self.results[self.testidxs, m] = results_k
-        return results_k
-        
     def run_gp_separate(self, m):
         #run the model but without the FA part; no shared information between people. 
         #Hypothesis: splitting by person results in too little data per person
 
         try:
-            return self.gp_separate_p, self.fbar
-        except AttributeError:
+            return self.fbar
+        except:
             logging.debug('Need to compute the separate GPs for each person.')
             
         upersonids = np.unique(self.personids)
@@ -347,6 +369,7 @@ class PredictionTester(object):
             pidxs_train = self.trainidxs[self.personids[self.trainidxs]==p]
             if not len(pidxs_train):
                 continue
+            logging.info('Training input GP for person %i' % p)
             _, self.fbar[p, :] = self.fit_predict_gp(
                                             self.pair1coords[pidxs_train], 
                                             self.pair2coords[pidxs_train], 

@@ -8,11 +8,12 @@ Created on 10 May 2016
 
 @author: simpson
 '''
-import logging, os, datetime
-logging.basicConfig(level=logging.DEBUG)
+import logging, os, datetime, pickle
+logging.basicConfig(level=logging.INFO)#DEBUG)
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D    
+from mpl_toolkits.mplot3d import Axes3D #@UnresolvedImport  
 from sklearn.cross_validation import KFold
+
 
 import classification_metrics
 from pref_prediction_methods import PredictionTester
@@ -25,18 +26,27 @@ if __name__ == '__main__':
     split_results_by_no_annotations = True
     nruns = 1
     
-    synth_worker_accs = [0.6, 0.7, 0.8, 0.9, 0.99]    
-#     dataset = 'synth'
-#     nruns = len(synth_worker_accs)
-#     split_results_by_no_annotations = False
+    synth_worker_accs = [0.9]#[0.6, 0.7, 0.8, 0.9, 0.99]    
+    dataset = 'synth'
+    nruns = len(synth_worker_accs)
+    split_results_by_no_annotations = False
     
     nfactors=5
     
     # list the names of methods to test here
-    methods = ['GPFA_GP', 'Baseline_MostCommon', 'Combined_Averaging', 
-            'Combined_GP', 'Separate_GP', 
-            'GMM_GP', 'GMM_Averaging', 'GPGMM_GP', 'AffProp_Averaging', 'AffProp_GP', 'GPAffProp_GP', 
-            'Agg_Averaging', 'Agg_GP'] 
+    methods = [# 
+               #'GPFABayes_GP', 'GPFA_soft', 
+               #'GPGMM_GP', 
+               'GPGMM_soft', 'GPGMM_Averaging',
+               #'Separate_GP', 'GPAffProp_GP', 
+               # 'Baseline_MostCommon', 
+               'Combined_Averaging', 
+               'Combined_GP',
+               # 'AffProp_Averaging', 'AffProp_GP', 'Agg_Averaging', 'Agg_GP', 
+               'LDA_soft'
+               ] 
+            #'GMM_GP', 'GMM_Averaging', 'GMM_soft'] # these don't make any sense as cannot learn GMM from a discrete data
+            #'GPGMM_GP', 'GPGMM_soft', 'Separate_GP', 'GPAffProp_GP' # this may be infeasible with lots of workers 
     nmethods = len(methods) 
     #2 * len(nfactors_list) + 1 # need to increase nmethods if we are trying multiple numbers of factors 
     # -- new implementation will try to optimize the number of factors internally and return only the best results for each method
@@ -56,11 +66,23 @@ if __name__ == '__main__':
             datadir, plotdir, nx, ny, data, pair1coords, pair2coords, pair1idxs, pair2idxs, xvals, yvals, prefs, personids,\
                 npairs, nworkers, ntexts, f = load_synthetic(synth_worker_accs[r]) # use different params in each run
             xlabels = synth_worker_accs
+            # make sure the root exists
+            if not os.path.isdir(plotdir):
+                os.mkdir(plotdir)
             plotdir += '/synth/'
+            # make sure the subdirectory exists
+            if not os.path.isdir(plotdir):
+                os.mkdir(plotdir)
         else:
             datadir, plotdir, nx, ny, data, pair1coords, pair2coords, pair1idxs, pair2idxs, xvals, yvals, prefs, personids,\
                 npairs, nworkers, ntexts, f = load_amt()
+            # make sure the root exists    
+            if not os.path.isdir(plotdir):
+                os.mkdir(plotdir)                
             plotdir += '/amt/'
+            # make sure the subdirectory exists            
+            if not os.path.isdir(plotdir):
+                os.mkdir(plotdir)            
             xlabels = None
         if not os.path.isdir(plotdir):
             os.mkdir(plotdir)
@@ -90,10 +112,10 @@ if __name__ == '__main__':
                 elif predictionmethod=='soft':
                     gppredictionmethod = False
                     softprediction = True
-                    predictionmethod_Str = 'averaging clusters using soft membership weights to predict'
+                    predictionmethod_str = 'averaging clusters using soft membership weights to predict'
                 else:
                     gppredictionmethod = False
-                    softpredictionmethod=False
+                    softprediction = False
                     predictionmethod_str = 'averaging clusters to predict'
                 
                 # baseline: assign most common class label
@@ -104,29 +126,25 @@ if __name__ == '__main__':
                 # Task C3: Baseline with no separate preference functions per user or clustering 
                 elif clustermethod=='Combined':
                     logging.info('Treat all workers as same and average')
-                    if gppredictionmethod == 'Averaging':
-                        # treating all workers as the same and averaging workers
-                        tester.run_combine_avg(m)
-                    elif gppredictionmethod == 'GP':
-                        # treating all workers as the same and using a GP to smooth
-                        logging.info('Task C3, Combined GP')                        
-                        tester.run_gp_combined(m) 
+                    tester.run_combine_all(m, gp=gppredictionmethod)
                 
                 # clustering the raw preferences
-                elif clustermethod=='AffProp':
+                elif clustermethod == 'AffProp':
                     logging.info('Affinity Propagation, then %s' % predictionmethod_str)
                     
                     tester.run_affprop(m, gp_per_cluster=gppredictionmethod)
-                elif clustermethod =='Agg':
+                elif clustermethod == 'Agg':
                     logging.info('Agglomerative clustering, then %s' % predictionmethod_str)
                     
                     tester.run_agglomerative(m, gp_per_cluster=gppredictionmethod)
-                elif clustermethod =='GMM':
+                elif clustermethod == 'GMM':
                     logging.info('Gaussian mixture, then %s' % predictionmethod_str)
                     
-                    tester.run_raw_gmm(m, nfactors, gp_per_cluster=gppredictionmethod)  
                     tester.run_raw_gmm(m, nfactors, gp_per_cluster=gppredictionmethod, 
-                                       soft_cluster_matching=softpredictionmethod)  
+                                       soft_cluster_matching=softprediction)
+                elif clustermethod == 'LDA':
+                    logging.info('LDA, then %s' % predictionmethod_str)
+                    tester.run_lda(m, nfactors, gp_per_cluster=gppredictionmethod) 
                     
                 # testing whether the smoothed, continuous GP improves clustering
                 # the effect may only be significant once we have argument features
@@ -135,12 +153,12 @@ if __name__ == '__main__':
                     logging.info('Task C1 part II, Separate GPs (no FA)')
                     tester.run_gp_separate(m)
                     
-                elif method=='GPFA':
+                elif clustermethod=='GPFA':
                     logging.info('Task C1, GPFA, separate steps with distance-based matching')
                     tester.run_fa(m, nfactors)
                 
                 # factor analysis + GP         
-                elif method=='GPFABayes':
+                elif clustermethod=='GPFABayes':
                     logging.info('Task C1, GPFA, Bayesian method')
                     # Run the GPFA with this fold
                     tester.run_gpfa_bayes(m, nfactors)   
@@ -148,12 +166,12 @@ if __name__ == '__main__':
                 # clustering methods on top of the smoothed functions
                 elif clustermethod=='GPAffProp':
                     logging.info('Preference GP, function means fed to Aff. Prop., then %s' % predictionmethod_str)
-                    tester.run_gp_affprop_avg(m, gp_per_cluster=gppredictionmethod)
+                    tester.run_gp_affprop(m, gp_per_cluster=gppredictionmethod)
                     
                 elif clustermethod=='GPGMM':
                     logging.info('Preference GP, function means fed to GMM, then %s' % predictionmethod_str)
                     tester.run_gp_gmm(m, nfactors, gp_per_cluster=gppredictionmethod, 
-                                      soft_cluster_matching=softpredictionmethod)
+                                      soft_cluster_matching=softprediction)
                                     
                 end = datetime.datetime.now()
                 duration = (end - start).total_seconds()
@@ -202,6 +220,10 @@ if __name__ == '__main__':
                                                                 nanno, xlabels=xlabels)
                         
         metrics = classification_metrics.compute_metrics(nmethods, prefs, results, metrics, nruns, r)
+        
+        with open(plotdir + "/metrics.pkl", 'w') as fh:
+            pickle.dump(metrics, fh)
+        
         if r == nruns - 1:    
             classification_metrics.plot_metrics(plotdir, metrics, nmethods, methods, nfolds, 1, nanno_is_min=True, 
                                                 xlabels=xlabels)

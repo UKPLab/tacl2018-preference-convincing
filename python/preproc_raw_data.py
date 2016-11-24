@@ -8,7 +8,7 @@ import numpy as np
 import logging
 
 datadir = './outputdata'
-plotdir = './results/'
+plotdir = './results2/'
 
 def load(data, f):
     #logging.warning("Subsampling dataset for debugging!!!")
@@ -47,20 +47,32 @@ def load(data, f):
     
 def load_synthetic(acc=0.9):
     # Random data generation
-    N = 100
-    Nitems = 5
-#     f = np.array([0, 1, 2]) 
-    f = np.random.rand(Nitems) * 10
-    data0 = np.random.randint(0, 10, (N,1))
-#     data1 = np.zeros((N, 1)).astype(int)#
-    data1 = np.random.randint(0, Nitems, (N,1))
-#     data1[30:60, :] = 1
-#     data1[61:, :] = 2
-#     data2 = np.ones((N, 1)).astype(int)
-    data2 = np.random.randint(0, Nitems, (N,1))
-    correctflag = np.random.rand(N, 1) # use this to introduce noise into the preferences instead of reflecting f precisely
-    data3 = 2 * (correctflag < acc) * (f[data1]+0.5 < f[data2]) + 1 * (correctflag < acc) * (np.abs(f[data1] - f[data2]) <=0.5) \
-                + (correctflag > acc) * np.random.randint(0, 3, (N, 1))
+    npairs = 10000
+    nitems = 4
+    nclusters = 2 # true number of clusters
+    f = np.random.rand(nclusters, nitems) * 10
+    
+    nworkers = 10
+    clusterids = np.random.randint(0, nclusters, (nworkers))    
+    
+    data0 = np.random.randint(0, nworkers, (npairs,1)) # worker ids
+    data1 = np.random.randint(0, nitems, (npairs,1)) # pair 1 ids
+    data2 = np.random.randint(0, nitems, (npairs,1)) # pair 2 ids
+    
+    # the function values for the first items in the pair, given the cluster id of the annotator 
+    f1 = f[clusterids[data0], data1]
+    # the function values for the second items in the pair, given the cluster id of the annotator 
+    f2 = f[clusterids[data0], data2]
+        
+    correctflag = np.random.rand(npairs, 1) # use this to introduce noise into the preferences instead of reflecting f precisely
+    #if f1 < f2 by more than 0.5 then the answer is 2
+    data3_f2greater = 2 * (correctflag < acc) * (f1+0.5 < f2) 
+    #if f1 = f2 to within 0.5 then the answer is 1
+    data3_f1f2same =  1 * (correctflag < acc) * (np.abs(f1 - f2) <=0.5)  
+    #if the worker makes an error, it is random
+    data3_incorrect = (correctflag > acc) * np.random.randint(0, 3, (npairs, 1))
+    # combine the possible labels
+    data3 = data3_f2greater + data3_f1f2same + data3_incorrect
     logging.debug('Number of neg prefs = %i, no prefs = %i, pos prefs = %i' % (np.sum(data3==0), np.sum(data3==1), np.sum(data3==2)))
     data = np.concatenate((data0, data1, data2, data3), axis=1)
     
