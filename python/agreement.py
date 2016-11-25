@@ -26,7 +26,7 @@ if __name__ == '__main__':
     split_results_by_no_annotations = True
     nruns = 1
     
-    synth_worker_accs = [0.9]#[0.6, 0.7, 0.8, 0.9, 0.99]    
+    synth_worker_accs = [0.7, 0.8, 0.9]    
     dataset = 'synth'
     nruns = len(synth_worker_accs)
     split_results_by_no_annotations = False
@@ -34,17 +34,23 @@ if __name__ == '__main__':
     nfactors=5
     
     # list the names of methods to test here
-    methods = [# 
-               #'GPFABayes_GP', 'GPFA_soft', 
-               #'GPGMM_GP', 
-               'GPGMM_soft', 'GPGMM_Averaging',
-               #'Separate_GP', 'GPAffProp_GP', 
-               # 'Baseline_MostCommon', 
-               'Combined_Averaging', 
-               'Combined_GP',
-               # 'AffProp_Averaging', 'AffProp_GP', 'Agg_Averaging', 'Agg_GP', 
-               'LDA_soft'
-               ] 
+    methods = [ 
+            'Separate_GP', 
+            'GPFABayes_GP', 
+            'GPFA_soft', 
+            'GPGMM_GP', 
+            'GPGMM_soft', 
+            'GPGMM_Averaging',
+            'GPAffProp_GP', 
+            'Baseline_MostCommon', 
+            'Combined_Averaging', 
+            'Combined_GP',
+            'AffProp_Averaging', 
+            'AffProp_GP', 
+            'Agg_Averaging', 
+            'Agg_GP', 
+            'LDA_soft'
+            ] 
             #'GMM_GP', 'GMM_Averaging', 'GMM_soft'] # these don't make any sense as cannot learn GMM from a discrete data
             #'GPGMM_GP', 'GPGMM_soft', 'Separate_GP', 'GPAffProp_GP' # this may be infeasible with lots of workers 
     nmethods = len(methods) 
