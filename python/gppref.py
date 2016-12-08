@@ -9,8 +9,8 @@ from gpgrid import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
 supply_update_size = True
 from gpgrid_svi import GPGridSVI as GPGrid
 
-#supply_update_size = False
-#from gpgrid import GPGrid
+# supply_update_size = False
+# from gpgrid import GPGrid
 
 import numpy as np
 from scipy.stats import norm

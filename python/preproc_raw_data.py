@@ -8,7 +8,8 @@ import numpy as np
 import logging
 
 datadir = './outputdata'
-plotdir = './results2/'
+exptlabel = '3'
+plotdir = './results%s/' % exptlabel
 
 def load(data, f):
     #logging.warning("Subsampling dataset for debugging!!!")
