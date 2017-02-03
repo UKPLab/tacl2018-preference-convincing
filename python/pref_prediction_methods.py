@@ -342,6 +342,7 @@ class PredictionTester(object):
         model_gpfa = PreferenceComponents([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], 
                                           verbose=False, nfactors=nfactors)
         model_gpfa.cov_type = 'diagonal'
+        model_gpfa.verbose = False
         model_gpfa.fit(self.personids[self.trainidxs], self.pair1coords[self.trainidxs], 
                        self.pair2coords[self.trainidxs], self.prefs[self.trainidxs])
         model_gpfa.pickle_me(self.datadir + '/c1_model_gpfa_%i.pkl' % (self.k))

@@ -48,7 +48,7 @@ def load(data, f):
 def load_synthetic(acc=0.9):
     # Random data generation
     npairs = 10000
-    nitems = 4
+    nitems = 5
     nclusters = 2 # true number of clusters
     f = np.random.rand(nclusters, nitems) * 10
     
@@ -58,6 +58,15 @@ def load_synthetic(acc=0.9):
     data0 = np.random.randint(0, nworkers, (npairs,1)) # worker ids
     data1 = np.random.randint(0, nitems, (npairs,1)) # pair 1 ids
     data2 = np.random.randint(0, nitems, (npairs,1)) # pair 2 ids
+    
+    # remove duplicates. The methods should cope with these but they might distort results
+#     for d in range(npairs):
+#         dupes = np.in1d(data0[d], data0[:d]) & np.in1d(data1[d], data1[:d]) & np.in1d(data2[d], data2[:d])
+#         while np.any(dupes):
+#             data0[d] = np.random.randint(0, nworkers, 1) # worker ids
+#             data1[d] = np.random.randint(0, nitems, 1) # pair 1 ids
+#             data2[d] = np.random.randint(0, nitems, 1) # pair 2 ids   
+#             dupes = np.in1d(data0[d], data0[:d]) & np.in1d(data1[d], data1[:d]) & np.in1d(data2[d], data2[:d])         
     
     # the function values for the first items in the pair, given the cluster id of the annotator 
     f1 = f[clusterids[data0], data1]

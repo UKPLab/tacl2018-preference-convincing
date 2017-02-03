@@ -65,8 +65,8 @@ class PreferenceComponents(object):
         
         self.N = len(self.obs_coords)
         self.t_cov = np.diag(self.sigmasq_t * np.ones(self.N)).astype(float)
-        self.mu = np.zeros((self.N, 1))
         self.Npeople = np.max(self.people).astype(int) + 1
+        self.t_mu = np.zeros((self.Npeople, self.N))
         self.f = {}
         self.t = np.zeros((self.Npeople, self.N))
         for p, person in enumerate(self.people):
@@ -75,7 +75,8 @@ class PreferenceComponents(object):
             self.gppref_models[person].select_covariance_function(self.cov_type)
             self.gppref_models[person].max_iter_VB = 1
             self.gppref_models[person].min_iter_VB = 1
-            self.gppref_models[person].max_iter_G = 1            
+            self.gppref_models[person].max_iter_G = 1
+            self.gppref_models[person].verbose = self.verbose  
             
             if p==0: # initialise the output prior covariance, do this only once  
                 distances = np.zeros((self.N, self.N, len(self.dims)))
@@ -83,7 +84,8 @@ class PreferenceComponents(object):
                     distances[:, :, d] = self.obs_coords[:, d:d+1] - self.obs_coords[:, d:d+1].T
         
                 self.Kpred = self.gppref_models[person].kernel_func(distances)
-            
+                self.invK = np.linalg.inv(self.Kpred)
+                
         self.fa = FactorAnalysis(n_components=self.nfactors)
             
         niter = 0
@@ -152,13 +154,13 @@ class PreferenceComponents(object):
         '''
         Compute the expectation over the preference function mean
         '''
-        
-        invK = np.linalg.inv(self.Kpred)
+        self.C_t = {}
         for person in self.gppref_models:
-            invKs = invK * self.gppref_models[person].s            
+            invKs = self.invK * self.gppref_models[person].s            
             
             C = np.linalg.inv(self.t_cov + invKs)# covariance of t
-            self.t[person, :] = C.dot(self.t_cov.dot(self.mu) + invKs.dot(self.f[person])).T
+            self.t[person, :] = C.dot(self.t_cov.dot(self.t_mu[person:person+1, :].T) + invKs.dot(self.f[person])).T
+            self.C_t[person] = C
             
             if self.verbose:
                 logging.debug( "Expec_t for person %i out of %i" % (person, len(self.gppref_models.keys())) )
@@ -193,24 +195,19 @@ class PreferenceComponents(object):
         '''
         
         self.x = self.fa.fit_transform(self.t)
-        self.cov_t = self.fa.components_.T.dot(self.fa.components_) + np.diag(self.fa.noise_variance_)
-        self.mu = self.fa.mean_[:, np.newaxis]
-        
+        self.t_cov = self.fa.components_.T.dot(self.fa.components_) + np.diag(self.fa.noise_variance_)
+        self.t_mu = self.fa.mean_[np.newaxis, :] + self.x.dot(self.fa.components_)
         logging.debug('Updated q(x)')
         
     def lowerbound(self):
         f_terms = 0
         t_terms = 0
         
-        invKpred_p = np.linalg.inv(self.Kpred)
-        
         for person in self.gppref_models:
             f_terms += self.gppref_models[person].lowerbound()
             
-            invKs = invKpred_p * self.gppref_models[person].s
-                       
             t_terms_p = mvn.logpdf(self.t[person, :], mean=self.fa.mean_, cov=self.t_cov)
-            t_terms_q = mvn.logpdf(self.t[person, :], mean=self.t[person, :], cov=np.linalg.inv(self.t_cov + invKs))
+            t_terms_q = mvn.logpdf(self.t[person, :], mean=self.t[person, :], cov=self.C_t[person])
             t_terms += t_terms_p - t_terms_q
                         
         t_terms = np.sum(t_terms)

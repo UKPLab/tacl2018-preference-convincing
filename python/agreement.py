@@ -9,7 +9,7 @@ Created on 10 May 2016
 @author: simpson
 '''
 import logging, os, datetime, pickle
-logging.basicConfig(level=logging.INFO)#DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D #@UnresolvedImport  
 from sklearn.cross_validation import KFold
@@ -35,21 +35,21 @@ if __name__ == '__main__':
     
     # list the names of methods to test here
     methods = [ 
-            'Separate_GP', 
             'GPFABayes_GP', 
-            'GPFA_soft', 
-            'GPGMM_GP', 
-            'GPGMM_soft', 
-            'GPGMM_Averaging',
-            'GPAffProp_GP', 
-            'Baseline_MostCommon', 
-            'Combined_Averaging', 
-            'Combined_GP',
-            'AffProp_Averaging', 
-            'AffProp_GP', 
-            'Agg_Averaging', 
-            'Agg_GP', 
-            'LDA_soft'
+#             'Separate_GP', 
+#             'GPFA_soft', 
+#             'GPGMM_GP', 
+#             'GPGMM_soft', 
+#             'GPGMM_Averaging',
+#             'GPAffProp_GP', 
+#             'Baseline_MostCommon', 
+#             'Combined_Averaging', 
+#             'Combined_GP',
+#             'AffProp_Averaging', 
+#             'AffProp_GP', 
+#             'Agg_Averaging', 
+#             'Agg_GP', 
+#             'LDA_soft'
             ] 
             #'GMM_GP', 'GMM_Averaging', 'GMM_soft'] # these don't make any sense as cannot learn GMM from a discrete data
             #'GPGMM_GP', 'GPGMM_soft', 'Separate_GP', 'GPAffProp_GP' # this may be infeasible with lots of workers 
