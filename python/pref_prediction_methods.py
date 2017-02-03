@@ -16,12 +16,14 @@ from sklearn.cluster import AffinityPropagation
 from sklearn.mixture import BayesianGaussianMixture#DPGMM GaussianMixture
 from sklearn.decomposition import FactorAnalysis, LatentDirichletAllocation
 import pickle, os, logging
+#from scipy.optimize import fmin
 
 class PredictionTester(object):
     
-    def __init__(self, datadir, k, nx, ny, personids, pair1coords, pair2coords, prefs, train, 
-                        test, results, rank_results):
+    def __init__(self, datadir, exptlabel, k, nx, ny, personids, pair1coords, pair2coords, prefs, train, 
+                        test, results, rank_results, nfactors_max, nfactors_min):
         self.datadir = datadir
+        self.exptlabel = exptlabel
         self.k = k
         self.nx = nx
         self.ny = ny
@@ -33,6 +35,8 @@ class PredictionTester(object):
         self.testidxs = test
         self.results = results 
         self.rank_results = rank_results
+        self.nfactors_max = nfactors_max
+        self.nfactors_min = nfactors_min
     
         # turn the data into a big matrix
         pair1coords_1d = coord_arr_to_1d(pair1coords)
@@ -70,7 +74,7 @@ class PredictionTester(object):
         self.most_common = np.nan
     
     def compute_affinity_matrix(self):
-        filename = self.datadir + '/affinity.pkl'
+        filename = self.datadir + '/affinity_%s.pkl' % self.exptlabel
         if os.path.isfile(filename):
             with open(filename, 'r') as fh:
                 self.A = pickle.load(fh)
@@ -132,9 +136,24 @@ class PredictionTester(object):
         else:
             self.run_cluster_matching(labels, m)
             
-    def run_lda(self, m, ncomponents, gp_per_cluster=False):
-        lda = LatentDirichletAllocation(n_topics=ncomponents, learning_method='batch') # need to optimise ncomponentns using lda.score()
-        workertopics = lda.fit_transform(self.preftable_train)
+    def run_lda(self, m, gp_per_cluster=False):
+        
+        def neg_log_likelihood(ntopics, preftable_train):
+            lda = LatentDirichletAllocation(n_topics=ntopics, learning_method='batch') # need to optimise ncomponentns using lda.score()
+            lda.fit(preftable_train)
+            score = - lda.score(preftable_train)
+            return score, lda
+
+        minscore = np.inf        
+        for ntopics in range(self.nfactors_min, self.nfactors_max+1):
+            logging.info('Trying ntopics=%i' % ntopics)            
+            score, lda_n = neg_log_likelihood(ntopics, self.preftable_train)
+            if score < minscore:
+                logging.info('Choosing ntopics=%i' % ntopics)
+                minscore = score
+                lda = lda_n
+        
+        workertopics = lda.transform(self.preftable_train)
         if gp_per_cluster:
             logging.error('Not implemented yet: LDA with GPs trained on each cluster. ') 
             # Problem is that the soft cluster membership means we don't have a definite set of data points to train
@@ -144,9 +163,10 @@ class PredictionTester(object):
         else:
             self.run_soft_cluster_matching(workertopics, m)
             
-    def run_raw_gmm(self, m, ncomponents, gp_per_cluster=False, soft_cluster_matching=False):
-        gmm = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=0.5, 
-                                          covariance_type='diag', init_params='random') #DPGMM(nfactors)
+    def run_raw_gmm(self, m, gp_per_cluster=False, soft_cluster_matching=False):
+        
+        gmm = BayesianGaussianMixture(n_components=self.nfactors_max, weight_concentration_prior=0.5, 
+                                      weight_concentration_prior_type='dirichlet_process', covariance_type='diag')
         gmm.fit(self.preftable_train)
         labels = gmm.predict(self.preftable_train)
         if gp_per_cluster:
@@ -168,11 +188,11 @@ class PredictionTester(object):
             self.run_cluster_matching(labels, m)
                       
     # gmm on the separate fbars  
-    def run_gp_gmm(self, m, ncomponents, gp_per_cluster=False, soft_cluster_matching=False):
+    def run_gp_gmm(self, m, gp_per_cluster=False, soft_cluster_matching=False):
         fbar = self.run_gp_separate(m)
 
-        gmm = BayesianGaussianMixture(n_components=ncomponents, weight_concentration_prior=0.1, 
-                                      covariance_type='diag') #DPGMM(nfactors)
+        gmm = BayesianGaussianMixture(n_components=self.nfactors_max, weight_concentration_prior=0.1, 
+                                      weight_concentration_prior_type='dirichlet_process', covariance_type='diag') 
         gmm.fit(fbar)
         labels = gmm.predict(fbar)
         if gp_per_cluster:
@@ -183,11 +203,25 @@ class PredictionTester(object):
         else:
             self.run_cluster_matching(labels, m)
             
-    def run_fa(self, m, ncomponents):
+    def run_fa(self, m):
         fbar = self.run_gp_separate(m)
         
-        fa = FactorAnalysis(ncomponents)
-        y = fa.fit_transform(fbar)
+        def neg_log_likelihood(nfactors, fbar):
+            fa = FactorAnalysis(nfactors)
+            fa.fit(fbar)
+            score = - fa.score(fbar)
+            return score, fa
+
+        minscore = np.inf        
+        for nfactors in range(self.nfactors_min, self.nfactors_max+1):
+            logging.info('Trying nfactors=%i' % nfactors)            
+            score, fa_n = neg_log_likelihood(nfactors, fbar)
+            if score < minscore:
+                logging.info('Choosing nfactors=%i' % nfactors)
+                minscore = score        
+                fa = fa_n        
+        
+        y = fa.transform(fbar)
         
         self.run_fa_matching(y, m)
             
@@ -198,7 +232,7 @@ class PredictionTester(object):
         model.max_iter_VB = 50
         model.min_iter_VB = 10
         model.max_iter_G = 3      
-        model.verbose = True
+        model.verbose = False
         model.uselowerbound = False
 
         logging.info('Fitting GP...')
@@ -222,7 +256,7 @@ class PredictionTester(object):
         for cl in uclusters:
             clidxs = clusters_train==cl
             clidxs_test = clusters_test==cl
-            logging.debug("--- Running PC model for cluster %i ---" % cl)
+            logging.debug("--- Running GP pref model for cluster %i ---" % cl)
             if not np.sum(clidxs_test) or not np.sum(clidxs):
                 continue
             results = self.fit_predict_gp(self.pair1coords[self.trainidxs][clidxs], 
@@ -236,7 +270,7 @@ class PredictionTester(object):
         # find the results that are still at 0.5
         notlabelledidxs = self.results[self.testidxs, m] == 0.5
         
-        logging.debug("--- Running PC model for all workers --- ")
+        logging.debug("--- Running Pref GP model for all workers --- ")
         self.fit_predict_gp(self.pair1coords[self.trainidxs], 
                             self.pair2coords[self.trainidxs], 
                             self.prefs[self.trainidxs], 
@@ -274,9 +308,9 @@ class PredictionTester(object):
             else: # others have labelled this pair, but not in same cluster
                 #prob_pref_test[i] = self.get_most_common_label() # use most common label
                 # take an average of all the workers
-                total_prefs_matching = np.sum((self.prefs[self.trainidxs][matching_pair_idxs] - 0.5) * 2)
+                total_prefs_matching = np.sum(self.prefs[self.trainidxs][matching_pair_idxs])
                 cluster_size = nannotators_for_this_pair + 1.0
-                prob_pref_test[i] = (float(total_prefs_matching) / float(cluster_size) + 1) / 2.0
+                prob_pref_test[i] = float(total_prefs_matching) / float(cluster_size)
                 
         self.results[self.testidxs, m] = prob_pref_test
 
@@ -301,12 +335,11 @@ class PredictionTester(object):
             p = self.personids[idx]
             matching_people = self.personids[self.trainidxs][matching_pair_idxs]
             weighted_matches = weights[matching_people, :] * weights[p:p+1, :]
+            weighted_matches = np.sum(weighted_matches, axis=1)[:, np.newaxis]
             cluster_size = np.sum(weighted_matches) + 1.0
             weighted_matches /= cluster_size
             
-            prefs_matching = self.prefs[self.trainidxs][matching_pair_idxs][:, np.newaxis]
-            total_prefs_matching = np.sum((prefs_matching - 0.5) * 2 * weighted_matches)                
-            prob_pref_test[i] = (float(total_prefs_matching) + 1) / 2.0
+            prob_pref_test[i] = np.sum(self.prefs[self.trainidxs][matching_pair_idxs][:, np.newaxis] * weighted_matches)
                 
         self.results[self.testidxs, m] = prob_pref_test
         
@@ -324,29 +357,35 @@ class PredictionTester(object):
             # gaussian kernel -- pdf of the matching pairs given the current pair as the mean
             p = self.personids[idx]
             matching_people = self.personids[self.trainidxs][matching_pair_idxs]
-            sqdist = 0.5 * (factors[p, :] - factors[matching_people, :])**2
-            weighted_matches = np.exp(-sqdist) 
-            cluster_size = np.sum(weighted_matches)
+            sqdist = 0.5 * (factors[p:p+1, :] - factors[matching_people, :])**2
+            weighted_matches = np.sum(np.exp(-sqdist), axis=1)[:, np.newaxis] 
+            cluster_size = np.sum(weighted_matches) + 1.0
             weighted_matches /= cluster_size
             
-            prefs_matching_weighted = self.prefs[self.trainidxs][matching_pair_idxs][:, np.newaxis] * weighted_matches
-            total_prefs_matching = np.sum((prefs_matching_weighted - 0.5) * 2)                
-            prob_pref_test[i] = (float(total_prefs_matching) / float(cluster_size) + 1) / 2.0
+            prob_pref_test[i] = np.sum(self.prefs[self.trainidxs][matching_pair_idxs][:, np.newaxis] * weighted_matches)
                 
         self.results[self.testidxs, m] = prob_pref_test
     
-    def run_gpfa_bayes(self, m, nfactors):
+    def run_gpfa_bayes(self, m):
         # Task C1  ------------------------------------------------------------------------------------------------
-    
-        # Hypothesis: allows some personalisation but also sharing data through the means
-        model_gpfa = PreferenceComponents([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], 
-                                          verbose=False, nfactors=nfactors)
-        model_gpfa.cov_type = 'diagonal'
-        model_gpfa.verbose = False
-        model_gpfa.fit(self.personids[self.trainidxs], self.pair1coords[self.trainidxs], 
-                       self.pair2coords[self.trainidxs], self.prefs[self.trainidxs])
-        model_gpfa.pickle_me(self.datadir + '/c1_model_gpfa_%i.pkl' % (self.k))
-          
+        def neg_log_likelihood(nfactors):
+            model_gpfa = PreferenceComponents([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], 
+                            verbose=False, nfactors=nfactors)
+            #model_gpfa.verbose = False
+            model_gpfa.cov_type = 'diagonal'
+            model_gpfa.fit(self.personids[self.trainidxs], self.pair1coords[self.trainidxs], 
+                       self.pair2coords[self.trainidxs], self.prefs[self.trainidxs])           
+            score = - model_gpfa.lowerbound()
+            return score, model_gpfa
+
+        minscore = np.inf        
+        for nfactors in range(self.nfactors_min, self.nfactors_max+1):
+            logging.info('Trying nfactors=%i' % nfactors)
+            score, fa_n = neg_log_likelihood(nfactors)
+            if score < minscore:
+                logging.info('Choosing nfactors=%i' % nfactors)
+                minscore = score
+                model_gpfa = fa_n          
         results_k = model_gpfa.predict(self.personids[self.testidxs], self.pair1coords[self.testidxs], 
                                        self.pair2coords[self.testidxs])
         self.results[self.testidxs, m] = results_k

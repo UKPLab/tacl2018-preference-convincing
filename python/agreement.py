@@ -17,7 +17,7 @@ from sklearn.cross_validation import KFold
 
 import classification_metrics
 from pref_prediction_methods import PredictionTester
-from preproc_raw_data import load_amt, load_synthetic
+from preproc_raw_data import load_amt, load_synthetic, exptlabel
 
 if __name__ == '__main__':
     # Experiment configuration ----------------------------------------------------------------------------------------
@@ -26,22 +26,24 @@ if __name__ == '__main__':
     split_results_by_no_annotations = True
     nruns = 1
     
-    synth_worker_accs = [0.7, 0.8, 0.9]    
-    dataset = 'synth'
-    nruns = len(synth_worker_accs)
-    split_results_by_no_annotations = False
-    
-    nfactors=5
+    synth_worker_accs = [0.9]#[0.7, 0.8, 0.9]    
+#     dataset = 'synth'
+#     nruns = len(synth_worker_accs)
+#     split_results_by_no_annotations = False
+#     
+    # number of factors or components that we can try in our models
+    nfactors_min = 5
+    nfactors_max = 5
     
     # list the names of methods to test here
-    methods = [ 
-            'GPFABayes_GP', 
-#             'Separate_GP', 
-#             'GPFA_soft', 
-#             'GPGMM_GP', 
-#             'GPGMM_soft', 
-#             'GPGMM_Averaging',
-#             'GPAffProp_GP', 
+    methods = [
+            #'GPFABayes_GP',
+            'Separate_GP',  
+            'GPFA_soft',  # no. factors?
+            'GPGMM_GP', 
+            'GPGMM_soft', 
+            'GPGMM_Averaging',
+            'GPAffProp_GP', # this takes ages because there are too many clusters
 #             'Baseline_MostCommon', 
 #             'Combined_Averaging', 
 #             'Combined_GP',
@@ -49,7 +51,7 @@ if __name__ == '__main__':
 #             'AffProp_GP', 
 #             'Agg_Averaging', 
 #             'Agg_GP', 
-#             'LDA_soft'
+             'LDA_soft' # no. topics? Needs posterior over no. topics, not likelihood
             ] 
             #'GMM_GP', 'GMM_Averaging', 'GMM_soft'] # these don't make any sense as cannot learn GMM from a discrete data
             #'GPGMM_GP', 'GPGMM_soft', 'Separate_GP', 'GPAffProp_GP' # this may be infeasible with lots of workers 
@@ -67,7 +69,7 @@ if __name__ == '__main__':
     
     # Task A2 ---------------------------------------------------------------------------------------------------------
     for r in range(nruns): # Repeat everything!
-     
+        # comment out down to the beginning of the for loop if we need to restart the process from fold number 6
         if dataset == 'synth':
             datadir, plotdir, nx, ny, data, pair1coords, pair2coords, pair1idxs, pair2idxs, xvals, yvals, prefs, personids,\
                 npairs, nworkers, ntexts, f = load_synthetic(synth_worker_accs[r]) # use different params in each run
@@ -92,19 +94,24 @@ if __name__ == '__main__':
             xlabels = None
         if not os.path.isdir(plotdir):
             os.mkdir(plotdir)
-        
+         
         kf = KFold(npairs, nfolds, shuffle=True, random_state=100)
-          
+           
         results = np.zeros((npairs, nmethods)) # the test results only
         rank_results = np.zeros((ntexts, nmethods)) # used by methods that rank items as well as predict pairwise labels
-           
+            
         for train, test in kf:
             logging.info('Running fold %i' % k)
-            
-            tester = PredictionTester(datadir, k, nx, ny, personids, pair1coords, pair2coords, prefs, train, test, results, 
-                                      rank_results)
+                        
+            tester = PredictionTester(datadir, exptlabel, k, nx, ny, personids, pair1coords, pair2coords, prefs, train, test, results, 
+                                      rank_results, nfactors_max, nfactors_min)
             
             for m, method in enumerate(methods):
+                
+#                 # restart from fold 6 for all methods except those specified below
+#                 if k < 6 and method != 'GPFA_soft' and method != 'LDA_soft' and method != 'GPGMM_soft':
+#                     k += 1
+#                     continue                
                 
                 start = datetime.datetime.now()
                 
@@ -146,11 +153,10 @@ if __name__ == '__main__':
                 elif clustermethod == 'GMM':
                     logging.info('Gaussian mixture, then %s' % predictionmethod_str)
                     
-                    tester.run_raw_gmm(m, nfactors, gp_per_cluster=gppredictionmethod, 
-                                       soft_cluster_matching=softprediction)
+                    tester.run_raw_gmm(m, gp_per_cluster=gppredictionmethod, soft_cluster_matching=softprediction)
                 elif clustermethod == 'LDA':
                     logging.info('LDA, then %s' % predictionmethod_str)
-                    tester.run_lda(m, nfactors, gp_per_cluster=gppredictionmethod) 
+                    tester.run_lda(m, gp_per_cluster=gppredictionmethod) 
                     
                 # testing whether the smoothed, continuous GP improves clustering
                 # the effect may only be significant once we have argument features
@@ -161,13 +167,13 @@ if __name__ == '__main__':
                     
                 elif clustermethod=='GPFA':
                     logging.info('Task C1, GPFA, separate steps with distance-based matching')
-                    tester.run_fa(m, nfactors)
+                    tester.run_fa(m)
                 
                 # factor analysis + GP         
                 elif clustermethod=='GPFABayes':
                     logging.info('Task C1, GPFA, Bayesian method')
                     # Run the GPFA with this fold
-                    tester.run_gpfa_bayes(m, nfactors)   
+                    tester.run_gpfa_bayes(m)   
                                  
                 # clustering methods on top of the smoothed functions
                 elif clustermethod=='GPAffProp':
@@ -176,7 +182,7 @@ if __name__ == '__main__':
                     
                 elif clustermethod=='GPGMM':
                     logging.info('Preference GP, function means fed to GMM, then %s' % predictionmethod_str)
-                    tester.run_gp_gmm(m, nfactors, gp_per_cluster=gppredictionmethod, 
+                    tester.run_gp_gmm(m, gp_per_cluster=gppredictionmethod, 
                                       soft_cluster_matching=softprediction)
                                     
                 end = datetime.datetime.now()
