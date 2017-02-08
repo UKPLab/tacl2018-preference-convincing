@@ -71,7 +71,6 @@ class PreferenceComponents(object):
         self.t_pre = np.linalg.inv(self.t_cov)
         
         self.Npeople = np.max(self.people).astype(int) + 1
-        self.t_mu = np.zeros((self.Npeople, self.N))
         self.t_mu = np.zeros((self.N, 1))
         
         self.f = np.zeros((self.Npeople, self.N))
@@ -187,6 +186,9 @@ class PreferenceComponents(object):
             mu0_output1 = self.t[person, :][:, np.newaxis]
             
             #original_s = self.gppref_models[person].s
+            if hasattr(self.fa, 'noise_variance_'):
+                self.gppref_models[person].shape_s0 = 100000 
+                self.gppref_models[person].rate_s0 = 100000 * self.fa.noise_variance_[person]
             
             self.gppref_models[person].fit(items_1_p, items_2_p, prefs_p, mu0_1=mu0_1, mu0_2=mu0_2)
             
@@ -217,14 +219,12 @@ class PreferenceComponents(object):
         
         for person in self.gppref_models:
             f_terms += self.gppref_models[person].lowerbound()
-            
-            t_terms_p = mvn.logpdf(self.t[person, :], mean=self.fa.mean_, cov=self.t_cov)
-#                                    mean=self.fa.mean_, 
-#                                    cov=np.diag(self.fa.noise_variance_) )
-            t_terms_q = mvn.logpdf(self.t[person, :], mean=self.t[person, :], cov=self.t_cov)
-            t_terms += t_terms_p - t_terms_q
-            
             logging.debug('s=%.2f' % self.gppref_models[person].s)
+            
+        for n in range(self.N):
+            t_terms_p = mvn.logpdf(self.t[:, n], mean=self.fa.mean_, cov=self.t_cov)
+            t_terms_q = mvn.logpdf(self.t[:, n], mean=self.t[:, n], cov=self.t_cov)
+            t_terms += t_terms_p - t_terms_q
                         
         t_terms = np.sum(t_terms)
         
@@ -244,8 +244,11 @@ class PreferenceComponents(object):
             pickle.dump(m2, fh)        
         
 if __name__ == '__main__':
+    
+    logging.basicConfig(level=logging.DEBUG)    
+
     logging.info( "Testing Bayesian preference components analysis using synthetic data..." )
-    Npeople = 5
+    Npeople = 10
     pair1idxs = []
     pair2idxs = []
     prefs = []
@@ -253,7 +256,7 @@ if __name__ == '__main__':
     xvals = []
     yvals = []
     for p in range(Npeople):
-        N, Ptest, prefs_p, nx, ny, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f = gen_synthetic_prefs()
+        N, Ptest, prefs_p, nx, ny, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs()
         pair1idxs = np.concatenate((pair1idxs, pair1idxs_p)).astype(int)
         pair2idxs = np.concatenate((pair2idxs, pair2idxs_p)).astype(int)
         prefs = np.concatenate((prefs, prefs_p)).astype(int)
@@ -264,7 +267,7 @@ if __name__ == '__main__':
     pair1coords = np.concatenate((xvals[pair1idxs][:, np.newaxis], yvals[pair1idxs][:, np.newaxis]), axis=1)
     pair2coords = np.concatenate((xvals[pair2idxs][:, np.newaxis], yvals[pair2idxs][:, np.newaxis]), axis=1) 
     
-    model = PreferenceComponents([nx, ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10])
+    model = PreferenceComponents([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], nfactors = 2)
     model.fit(personids, pair1coords, pair2coords, prefs)
     
     from scipy.stats import kendalltau
