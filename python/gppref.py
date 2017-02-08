@@ -6,11 +6,11 @@ Created on 18 May 2016
 
 from gpgrid import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
 
-supply_update_size = True
-from gpgrid_svi import GPGridSVI as GPGrid
+#supply_update_size = True
+#from gpgrid_svi import GPGridSVI as GPGrid
 
-# supply_update_size = False
-# from gpgrid import GPGrid
+supply_update_size = False
+from gpgrid import GPGrid
 
 import numpy as np
 from scipy.stats import norm
@@ -107,6 +107,7 @@ class GPPref(GPGrid):
     def init_obs_f(self):
         # Mean probability at observed points given local observations
         self.obs_f = np.zeros((self.obs_coords.shape[0], 1))
+        self.Ntrain = self.pref_u.size 
         
     def init_obs_mu0(self):
         self.mu0 = np.zeros((len(self.obs_f), 1)) + self.mu0_default
@@ -258,13 +259,11 @@ class GPPref(GPGrid):
         if items_0_coords.ndim==2 and items_0_coords.shape[1]!=len(self.dims) and items_0_coords.shape[0]==len(self.dims):
             items_0_coords = items_0_coords.T
             
-        if len(items_1_coords):
-            pair_items_with_self = False            
-        else:
-            items_1_coords = items_0_coords
-            pair_items_with_self = True
-        
-        if items_1_coords.ndim==2 and items_1_coords.shape[1]!=len(self.dims) and items_1_coords.shape[0]==len(self.dims):
+        if not len(items_1_coords):
+            items_1_coords = items_0_coords.copy()
+            
+        if items_1_coords.ndim==2 and items_1_coords.shape[1]!=len(self.dims) and \
+                            items_1_coords.shape[0]==len(self.dims):
             items_1_coords = items_1_coords.T       
         
         output_coords, out_pref_v, out_pref_u = get_unique_locations(items_0_coords, items_1_coords)
