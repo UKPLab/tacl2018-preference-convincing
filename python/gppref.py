@@ -373,7 +373,7 @@ def gen_synthetic_prefs():
     
     sigma = 1
     
-    N = 300
+    N = nx * ny
     P = 500 # number of pairs for training
     Ptest = 500 # number of pairs to test
     
@@ -404,8 +404,8 @@ def gen_synthetic_prefs():
         return K
     
     # Some random feature values
-    xvals = np.random.choice(nx, N, replace=True)[:, np.newaxis]
-    yvals = np.random.choice(ny, N, replace=True)[:, np.newaxis]
+    xvals = np.tile(np.arange(nx)[:, np.newaxis], (1, ny)).flatten()
+    yvals = np.tile(np.arange(ny)[np.newaxis, :], (nx, 1)).flatten()
     
     K = matern_3_2(xvals, yvals, ls)
     
@@ -427,7 +427,7 @@ def gen_synthetic_prefs():
     # generate the discrete labels from the noisy preferences
     prefs = f1noisy > f2noisy
     
-    return N, Ptest, prefs, nx, ny, xvals, yvals, pair1idxs, pair2idxs, f, K
+    return N, nx, ny, prefs, xvals, yvals, pair1idxs, pair2idxs, f, K
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)    
@@ -437,7 +437,7 @@ if __name__ == '__main__':
     # make sure the simulation is repeatable
     np.random.seed(1)
     
-    N, Ptest, prefs, nx, ny, xvals, yvals, pair1idxs, pair2idxs, f, _ = gen_synthetic_prefs()
+    N, nx, ny, prefs, xvals, yvals, pair1idxs, pair2idxs, f, _ = gen_synthetic_prefs()
     
     # Create a GPPref model
     model = GPPref([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], max_update_size=100, ninducing=200)    
@@ -473,6 +473,7 @@ if __name__ == '__main__':
     print "Kendall's tau (test): %.3f" % kendalltau(f, fpred)[0] 
     
     # turn the values into predictions of preference pairs.
+    Ptest = 500
     pair1idxs_test = np.random.choice(N, Ptest, replace=True)
     pair2idxs_test = np.random.choice(N, Ptest, replace=True)
     

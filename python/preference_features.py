@@ -98,7 +98,7 @@ class PreferenceComponents(object):
         diff = np.inf
         old_x = np.inf
         lb = 0
-        while niter < self.min_iter | (diff > self.conv_threshold and niter < self.max_iter):
+        while (niter < self.min_iter) | ((diff > self.conv_threshold) and (niter < self.max_iter)):
             # run a VB iteration
             # compute preference latent functions for all workers
             self.expec_f(personIDs, items_1_coords, items_2_coords, preferences)
@@ -113,9 +113,10 @@ class PreferenceComponents(object):
             logging.debug( "Difference in latent personality features: %f" % diff)
             old_x = self.x
              
-            old_lb = lb
-            lb = self.lowerbound()
-            logging.debug('Lower bound = %.5f, difference = %.5f' % (lb, lb-old_lb))        
+            # Don't use lower bound here, it doesn't really make sense when we use ML for some parameters
+            #old_lb = lb
+            #lb = self.lowerbound()
+            #logging.debug('Lower bound = %.5f, difference = %.5f' % (lb, lb-old_lb))        
             
             niter += 1
             
@@ -207,10 +208,10 @@ class PreferenceComponents(object):
         Compute the expectation over the personality components.
         '''
         
-        self.x = self.fa.fit_transform(self.f)#t)
+        self.x = self.fa.fit_transform(self.f.T)#t)
         self.t_cov = self.fa.get_covariance() 
         self.t_pre = np.linalg.inv(self.t_cov)
-        self.t = self.x.dot(self.fa.components_) + self.fa.mean_[np.newaxis, :]
+        self.t = self.fa.components_.T.dot(self.x.T) + self.fa.mean_[:, np.newaxis]
         logging.debug('Updated q(x)')
         
     def lowerbound(self):
@@ -222,8 +223,9 @@ class PreferenceComponents(object):
             logging.debug('s=%.2f' % self.gppref_models[person].s)
             
         for n in range(self.N):
-            t_terms_p = mvn.logpdf(self.t[:, n], mean=self.fa.mean_, cov=self.t_cov)
-            t_terms_q = mvn.logpdf(self.t[:, n], mean=self.t[:, n], cov=self.t_cov)
+            #t_terms_p = mvn.logpdf(self.t[:, n], mean=self.fa.mean_, cov=self.t_cov)
+            t_terms_p = mvn.logpdf(self.t[:, n], mean=np.zeros(self.t.shape[0]), cov=np.eye(self.t.shape[0]))
+            t_terms_q = mvn.logpdf(self.t[:, n], mean=self.t[:, n], cov=self.fa.components_.T * self.fa.components_)
             t_terms += t_terms_p - t_terms_q
                         
         t_terms = np.sum(t_terms)
@@ -256,26 +258,39 @@ if __name__ == '__main__':
     xvals = []
     yvals = []
     for p in range(Npeople):
-        N, Ptest, prefs_p, nx, ny, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs()
-        pair1idxs = np.concatenate((pair1idxs, pair1idxs_p)).astype(int)
-        pair2idxs = np.concatenate((pair2idxs, pair2idxs_p)).astype(int)
+        N, nx, ny, prefs_p, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs()
+        pair1idxs = np.concatenate((pair1idxs, pair1idxs_p + len(xvals))).astype(int)
+        pair2idxs = np.concatenate((pair2idxs, pair2idxs_p + len(yvals))).astype(int)
         prefs = np.concatenate((prefs, prefs_p)).astype(int)
-        personids = np.concatenate((personids, np.zeros(Ptest) + p)).astype(int)
+        personids = np.concatenate((personids, np.zeros(pair1idxs.size) + p)).astype(int)
         xvals = np.concatenate((xvals, xvals_p.flatten()))
         yvals = np.concatenate((yvals, yvals_p.flatten()))
 
     pair1coords = np.concatenate((xvals[pair1idxs][:, np.newaxis], yvals[pair1idxs][:, np.newaxis]), axis=1)
     pair2coords = np.concatenate((xvals[pair2idxs][:, np.newaxis], yvals[pair2idxs][:, np.newaxis]), axis=1) 
+
+    Ptest = 100
+    testpairs = np.random.choice(pair1coords.shape[0], Ptest, replace=False)
+    testidxs = np.zeros(pair1coords.shape[0], dtype=bool)
+    testidxs[testpairs] = True
+    trainidxs = np.invert(testidxs)
     
     model = PreferenceComponents([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], nfactors = 2)
-    model.fit(personids, pair1coords, pair2coords, prefs)
+    model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs])
     
-    from scipy.stats import kendalltau
-     
-    for p in range(Npeople):
-        logging.debug( "Personality features of %i: %s" % (p, str(model.x[p])) )
-        for q in range(Npeople):
-            logging.debug( "Distance between personalities: %f" % np.sqrt(np.sum(model.x[p] - model.x[q])**2)**0.5 )
-            logging.debug( "Rank correlation between preferences: %f" %  kendalltau(model.f[p], model.f[q])[0] )
-             
+    # turn the values into predictions of preference pairs.
+    results = model.predict(personids[testidxs], pair1coords[testidxs], pair2coords[testidxs], variance_method='sample')
+    
+    from sklearn.metrics import accuracy_score
+    
+    print 'Accuracy: %f' % accuracy_score(prefs[testidxs], results)
+    
+#     from scipy.stats import kendalltau
+#      
+#     for p in range(Npeople):
+#         logging.debug( "Personality features of %i: %s" % (p, str(model.x[p])) )
+#         for q in range(Npeople):
+#             logging.debug( "Distance between personalities: %f" % np.sqrt(np.sum(model.x[p] - model.x[q])**2)**0.5 )
+#             logging.debug( "Rank correlation between preferences: %f" %  kendalltau(model.f[p], model.f[q])[0] )
+#              
     
