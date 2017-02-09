@@ -7,7 +7,7 @@ import xmltodict, os
 import numpy as np
 import logging
 
-datadir = './outputdata'
+datadir = '../../data/outputdata'
 exptlabel = '3'
 plotdir = './results%s/' % exptlabel
 
@@ -131,7 +131,7 @@ if __name__ == '__main__':
     datafiles = os.listdir(datadir)
     #datafiles = ["testonly.xml"] # try with one file first
     
-    outputdir = './argumentation/outputdata'
+    outputdir = '../../data/outputdata'
     
     all_labels = np.empty((0, 4))
     
