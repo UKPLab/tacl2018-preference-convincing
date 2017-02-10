@@ -246,6 +246,21 @@ class GPPref(GPGrid):
         self.mu0_2 = mu0_2        
         super(GPPref, self).fit((items_1_coords, items_2_coords), obs_values, totals, process_obs, update_s)  
         
+    def predict_f(self, items_coords=[], max_block_size=1e5, mu0_output=None):
+        nblocks, noutputs = self.init_output_arrays(items_coords, max_block_size)
+                
+        if mu0_output is not None and len(mu0_output):
+            self.mu0_output = mu0_output
+        else:
+            self.mu0_output = np.zeros((noutputs, 1)) + self.mu0_default
+                
+        for block in range(nblocks):
+            if self.verbose:
+                logging.debug("GPGrid predicting block %i of %i" % (block, nblocks))            
+            self.predict_block(block, max_block_size, noutputs)
+        
+        return self.f, self.v
+
     def predict(self, items_0_coords=[], items_1_coords=[], variance_method='rough', max_block_size=1e5, 
                 expectedlog=False, return_not=False, mu0_output1=None, mu0_output2=None):
         '''
@@ -269,8 +284,8 @@ class GPPref(GPGrid):
             items_1_coords = items_1_coords.T       
         
         output_coords, out_pref_v, out_pref_u = get_unique_locations(items_0_coords, items_1_coords)
-                
-        nblocks, noutputs = self.init_output_arrays(output_coords, max_block_size, variance_method)
+        npairs = out_pref_v.size
+        nblocks, noutputs = self.init_output_arrays(output_coords, max_block_size)
                 
         self.mu0_output = np.zeros((noutputs, 1)) + self.mu0_default
         if mu0_output1 is not None:
@@ -294,8 +309,8 @@ class GPPref(GPGrid):
         nblocks = int(np.ceil(float(noutprefs) / max_block_size))
         for block in range(nblocks):
             maxidx = (block + 1) * max_block_size
-            if maxidx > noutputs:
-                maxidx = noutputs
+            if maxidx > npairs:
+                maxidx = npairs
             blockidxs = np.arange(block * max_block_size, maxidx, dtype=int)            
             
             if variance_method == 'sample' or expectedlog:
@@ -350,7 +365,7 @@ class GPPref(GPGrid):
         
         # this should sample different values of obs_f and put them into the forward model
         #v = np.diag(self.obs_C)[:, np.newaxis]
-        f_samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(len(f_mean.flatten()), 1000))
+        f_samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(len(f_mean.flatten()), 100))
         rho_samples = self.forward_model(f_samples, v=pref_v, u=pref_u)
         rho_samples = temper_extreme_probs(rho_samples)
         rho_not_samples = 1 - rho_samples            
@@ -366,17 +381,16 @@ class GPPref(GPGrid):
 
 def gen_synthetic_prefs():
     # Generate some data
-    nx = 100
-    ny = 100
+    nx = 50
+    ny = 50
     
     ls = [10, 10]
     
-    sigma = 1
+    sigma = 0.00000001 
     
-    N = nx * ny
-    P = 500 # number of pairs for training
-    Ptest = 500 # number of pairs to test
+    N = 4
     
+    P = 1000 # number of pairs for training
     s = 0.1 # inverse precision scale for the latent function.
     
     from scipy.stats import multivariate_normal as mvn
@@ -404,9 +418,14 @@ def gen_synthetic_prefs():
         return K
     
     # Some random feature values
-    xvals = np.tile(np.arange(nx)[:, np.newaxis], (1, ny)).flatten()
-    yvals = np.tile(np.arange(ny)[np.newaxis, :], (nx, 1)).flatten()
-    
+    xvals = np.random.choice(nx, N, replace=True)[:, np.newaxis]
+    yvals = np.random.choice(ny, N, replace=True)[:, np.newaxis]
+    # remove repeated coordinates
+    for coord in range(N):
+        while np.sum((xvals==xvals[coord]) & (yvals==yvals[coord])) > 1:
+            xvals[coord] = np.random.choice(nx, 1)
+            yvals[coord] = np.random.choice(ny, 1)           
+        
     K = matern_3_2(xvals, yvals, ls)
     
     f = mvn.rvs(cov=K/s) # zero mean
@@ -418,7 +437,7 @@ def gen_synthetic_prefs():
     # remove indexes of pairs that compare the same data points -- the correct answer is trivial
     while(np.sum(pair1idxs==pair2idxs)):
         matchingidxs = pair1idxs==pair2idxs
-        pair2idxs[matchingidxs] = np.random.choice(N, np.sum(matchingidxs), replace=True)    
+        pair2idxs[matchingidxs] = np.random.choice(N, np.sum(matchingidxs), replace=True)
       
     # generate the noisy function values for the pairs
     f1noisy = norm.rvs(scale=sigma, size=P) + f[pair1idxs]
@@ -434,10 +453,30 @@ if __name__ == '__main__':
     
     from scipy.stats import kendalltau
     
+    fix_seeds = True
+    
     # make sure the simulation is repeatable
-    np.random.seed(1)
+    if fix_seeds:
+        np.random.seed(1)
     
     N, nx, ny, prefs, xvals, yvals, pair1idxs, pair2idxs, f, _ = gen_synthetic_prefs()
+    pair1coords = np.concatenate((xvals[pair1idxs, :], yvals[pair1idxs, :]), axis=1)
+    pair2coords = np.concatenate((xvals[pair2idxs, :], yvals[pair2idxs, :]), axis=1)   
+        
+    # separate training and test data
+    Ptest = 100
+    testpairs = np.random.choice(pair1coords.shape[0], Ptest, replace=False)
+    testidxs = np.zeros(pair1coords.shape[0], dtype=bool)
+    testidxs[testpairs] = True
+    trainidxs = np.invert(testidxs)
+    
+    xvals_test = np.array([xvals[pair1idxs[testidxs]], xvals[pair2idxs[testidxs]]]).flatten()
+    yvals_test = np.array([yvals[pair1idxs[testidxs]], yvals[pair2idxs[testidxs]]]).flatten()
+    _, uidxs = np.unique(coord_arr_to_1d(np.concatenate((xvals_test[:, np.newaxis], yvals_test[:, np.newaxis]), axis=1)), 
+              return_index=True)
+    xvals_test = xvals_test[uidxs][:, np.newaxis]
+    yvals_test = yvals_test[uidxs][:, np.newaxis]
+    f_test = np.concatenate((f[pair1idxs[testidxs]], f[pair2idxs[testidxs]]))[uidxs]
     
     # Create a GPPref model
     model = GPPref([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], max_update_size=100, ninducing=200)    
@@ -447,46 +486,37 @@ if __name__ == '__main__':
     #model.conv_threshold_G = 1e-8
     #model.conv_check_freq = 1
     #model.conv_threshold = 1e-3 # the difference must be less than 1% of the value of the lower bound
-    pair1coords = np.concatenate((xvals[pair1idxs, :], yvals[pair1idxs, :]), axis=1)
-    pair2coords = np.concatenate((xvals[pair2idxs, :], yvals[pair2idxs, :]), axis=1)    
-    np.random.seed() # do this if we want to use a different seed each time to test the variation in results
-    model.fit(pair1coords, pair2coords, prefs)
+    
+    if fix_seeds:
+        np.random.seed() # do this if we want to use a different seed each time to test the variation in results
+    
+    model.fit(pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs])
     print "Final lower bound: %f" % model.lowerbound()
     
     # Predict at the test locations
-    rho_pred, var_rho_pred = model.predict((xvals.flatten(), yvals.flatten()), variance_method='rough')
-    fpred = model.f.flatten()
-    vpred = model.v.flatten()
+    fpred, vpred = model.predict_f(np.concatenate((xvals_test, yvals_test), axis=1))
     
     # Compare the observation point values with the ground truth
     obs_coords_1d = coord_arr_to_1d(model.obs_coords)
     test_coords_1d = coord_arr_to_1d(np.concatenate((xvals, yvals), axis=1))
     f_obs = [f[(test_coords_1d==obs_coords_1d[i]).flatten()][0] for i in range(model.obs_coords.shape[0])]
     print "Kendall's tau (observations): %.3f" % kendalltau(f_obs, model.obs_f.flatten())[0]
-    
-    # To make sure the simulation is repeatable, re-seed the RNG after all the stochastic inference has been completed
-    np.random.seed(2)
-    
+        
     # Evaluate the accuracy of the predictions
     #print "RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
     #print "NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
-    print "Kendall's tau (test): %.3f" % kendalltau(f, fpred)[0] 
-    
-    # turn the values into predictions of preference pairs.
-    Ptest = 500
-    pair1idxs_test = np.random.choice(N, Ptest, replace=True)
-    pair2idxs_test = np.random.choice(N, Ptest, replace=True)
-    
-    # remove indexes of pairs that compare the same data points -- the correct answer is trivial
-    while(np.sum(pair1idxs_test==pair2idxs_test)):
-        matchingidxs = pair1idxs_test==pair2idxs_test
-        pair2idxs_test[matchingidxs] = np.random.choice(N, np.sum(matchingidxs), replace=True)
-    
-    t = (f[pair1idxs_test] > f[pair2idxs_test]).astype(int)
-    rho_pred = model.forward_model(fpred, v=pair1idxs_test, u=pair2idxs_test).flatten()
-    rho_pred = temper_extreme_probs(rho_pred)
-    
+    print "Kendall's tau (test): %.3f" % kendalltau(f_test, fpred)[0] 
+        
+    t = (f[pair1idxs[testidxs]] > f[pair2idxs[testidxs]]).astype(int)
+    rho_pred, var_rho_pred = model.predict(pair1coords[testidxs], 
+                                            pair2coords[testidxs], 
+                                            variance_method='sample')
+    rho_pred = rho_pred.flatten()
     t_pred = np.round(rho_pred)
+    
+    # To make sure the simulation is repeatable, re-seed the RNG after all the stochastic inference has been completed
+    if fix_seeds:
+        np.random.seed(2)    
     
     print "Brier score of %.3f" % np.sqrt(np.mean((t-rho_pred)**2))
     print "Cross entropy error of %.3f" % -np.sum(t * np.log(rho_pred) + (1-t) * np.log(1 - rho_pred))    
@@ -495,4 +525,6 @@ if __name__ == '__main__':
     print "F1 score of %.3f" % f1_score(t, t_pred)
     print "Accuracy of %.3f" % np.mean(t==t_pred)
     print "ROC of %.3f" % roc_auc_score(t, rho_pred)
+    
+    # looks like we don't correct the modified order of points in predict() that occurs in the unique locations function 
     

@@ -258,7 +258,7 @@ if __name__ == '__main__':
     xvals = []
     yvals = []
     for p in range(Npeople):
-        N, nx, ny, prefs_p, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs()
+        _, nx, ny, prefs_p, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs()
         pair1idxs = np.concatenate((pair1idxs, pair1idxs_p + len(xvals))).astype(int)
         pair2idxs = np.concatenate((pair2idxs, pair2idxs_p + len(yvals))).astype(int)
         prefs = np.concatenate((prefs, prefs_p)).astype(int)
@@ -279,7 +279,7 @@ if __name__ == '__main__':
     model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs])
     
     # turn the values into predictions of preference pairs.
-    results = model.predict(personids[testidxs], pair1coords[testidxs], pair2coords[testidxs], variance_method='sample')
+    results = model.predict(personids[testidxs], pair1coords[testidxs], pair2coords[testidxs], variance_method='rough')
     
     from sklearn.metrics import accuracy_score
     
