@@ -340,9 +340,9 @@ def gen_synthetic_prefs():
     
     ls = [10, 10]
     
-    sigma = 0.00000001 
+    sigma = 0.1 
     
-    N = 4
+    N = 100
     
     P = 1000 # number of pairs for training
     s = 0.1 # inverse precision scale for the latent function.
