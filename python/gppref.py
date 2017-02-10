@@ -261,7 +261,7 @@ class GPPref(GPGrid):
         
         return self.f, self.v
 
-    def predict(self, items_0_coords=[], items_1_coords=[], variance_method='rough', max_block_size=1e5, 
+    def predict(self, items_0_coords=[], items_1_coords=[], max_block_size=1e5, 
                 expectedlog=False, return_not=False, mu0_output1=None, mu0_output2=None):
         '''
         Evaluate the function posterior mean and variance at the given co-ordinates using the 2D squared exponential 
@@ -269,7 +269,12 @@ class GPPref(GPGrid):
         '''
         # if no output_coords provided, give predictions at the fitted locations
         if not len(items_0_coords) and not len(items_1_coords):
-            return self.predict_obs(variance_method, expectedlog, return_not)
+            return_args = self.predict_obs('rough', False, return_not)
+            if expectedlog:
+                return_args[0] = np.log(return_args[0])
+                if len(return_args) == 3:
+                    return_args[1] = np.log(return_args[1])
+            return return_args
         
         if not isinstance(items_0_coords, np.ndarray):
             items_0_coords = np.array(items_0_coords)
@@ -298,38 +303,11 @@ class GPPref(GPGrid):
                 logging.debug("GPGrid predicting block %i of %i" % (block, nblocks))            
             self.predict_block(block, max_block_size, noutputs)
 
-        noutprefs = items_0_coords.shape[0]
+        m_post, not_m_post, v_post = self.post_rough(self.f, self.v, out_pref_v, out_pref_u)
         
-        if variance_method=='sample':
-            m_post = np.empty((noutprefs, 1), dtype=float)
-            not_m_post = np.empty((noutprefs, 1), dtype=float)
-            v_post = np.empty((noutprefs, 1), dtype=float)        
-                    
-        # Approximate the expected value of the variable transformed through the sigmoid.
-        nblocks = int(np.ceil(float(noutprefs) / max_block_size))
-        for block in range(nblocks):
-            maxidx = (block + 1) * max_block_size
-            if maxidx > npairs:
-                maxidx = npairs
-            blockidxs = np.arange(block * max_block_size, maxidx, dtype=int)            
-            
-            if variance_method == 'sample' or expectedlog:
-                m_post[blockidxs, :], not_m_post[blockidxs, :], v_post[blockidxs, :] = \
-                    self.post_sample(self.f, self.v, expectedlog, out_pref_v[blockidxs], out_pref_u[blockidxs])                
-                
-        if variance_method == 'rough' and not expectedlog:
-            m_post, not_m_post, v_post = self.post_rough(self.f, self.v, out_pref_v, out_pref_u)
-        elif variance_method == 'rough':
-            logging.warning("Switched to using sample method as expected log requested. No quick method is available.")
-          
-        # map self.f and self.v back to the original order, i.e. f at locations in items_0_coords followed by f at
-        # locations in items_1_coords. This seems unnecessary and confusing
-#         if not pair_items_with_self:
-#             out_idxs = np.concatenate((out_pref_v, out_pref_u))
-#         else:
-#             out_idxs = out_pref_v
-#         self.f = self.f[out_idxs, :]
-#         self.v  = self.v[out_idxs, :]       
+        if expectedlog:
+            m_post = np.log(m_post)
+            not_m_post = np.log(not_m_post)
             
         if return_not:
             return m_post, not_m_post, v_post
@@ -348,36 +326,12 @@ class GPPref(GPGrid):
             pref_u = self.pref_u
         
         m_post, g_f = self.forward_model(f_mean, v=pref_v, u=pref_u, return_g_f=True)
+        m_post = temper_extreme_probs(m_post)
+        
         not_m_post = 1 - m_post
         v_post = - 2.0 * self.sigma / (norm.pdf(g_f)**2/m_post**2 + norm.pdf(g_f)*g_f/m_post) # use the inverse hessian
         
         return m_post, not_m_post, v_post
-    
-    def post_sample(self, f_mean, f_var, expectedlog, pref_v=None, pref_u=None): 
-        ''' 
-        When making predictions, we want to predict the probability of each listed preference pair. 
-        Use sampling to handle the nonlinearity. 
-        '''
-        if pref_v is None:
-            pref_v = self.pref_v
-        if pref_u is None:
-            pref_u = self.pref_u
-        
-        # this should sample different values of obs_f and put them into the forward model
-        #v = np.diag(self.obs_C)[:, np.newaxis]
-        f_samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(len(f_mean.flatten()), 100))
-        rho_samples = self.forward_model(f_samples, v=pref_v, u=pref_u)
-        rho_samples = temper_extreme_probs(rho_samples)
-        rho_not_samples = 1 - rho_samples            
-        if expectedlog:
-            rho_samples = np.log(rho_samples)
-            rho_not_samples = np.log(rho_not_samples)
-        
-        m_post = np.mean(rho_samples, axis=1)[:, np.newaxis]
-        not_m_post = np.mean(rho_not_samples, axis=1)[:, np.newaxis]
-        v_post = np.var(rho_samples, axis=1)[:, np.newaxis]
-        
-        return m_post, not_m_post, v_post 
 
 def gen_synthetic_prefs():
     # Generate some data
@@ -508,9 +462,7 @@ if __name__ == '__main__':
     print "Kendall's tau (test): %.3f" % kendalltau(f_test, fpred)[0] 
         
     t = (f[pair1idxs[testidxs]] > f[pair2idxs[testidxs]]).astype(int)
-    rho_pred, var_rho_pred = model.predict(pair1coords[testidxs], 
-                                            pair2coords[testidxs], 
-                                            variance_method='sample')
+    rho_pred, var_rho_pred = model.predict(pair1coords[testidxs], pair2coords[testidxs])
     rho_pred = rho_pred.flatten()
     t_pred = np.round(rho_pred)
     
