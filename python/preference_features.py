@@ -97,7 +97,7 @@ class PreferenceComponents(object):
         niter = 0
         diff = np.inf
         old_x = np.inf
-        lb = 0
+        #lb = 0
         while (niter < self.min_iter) | ((diff > self.conv_threshold) and (niter < self.max_iter)):
             # run a VB iteration
             # compute preference latent functions for all workers
@@ -195,9 +195,8 @@ class PreferenceComponents(object):
             
             #self.gppref_models[person].s = original_s
             
-            self.gppref_models[person].predict(items_0_coords=self.obs_coords, variance_method='sample', 
-                                               mu0_output1=mu0_output1)
-            self.f[person, :] = self.gppref_models[person].f.flatten()
+            f, v = self.gppref_models[person].predict_f(items_coords=self.obs_coords, mu0_output=mu0_output1)
+            self.f[person, :] = f.flatten()
         
             if self.verbose:    
                 logging.debug( "Expec_f for person %i out of %i" % (person, len(self.gppref_models.keys())) )
@@ -207,12 +206,11 @@ class PreferenceComponents(object):
         '''
         Compute the expectation over the personality components.
         '''
-        
         self.x = self.fa.fit_transform(self.f.T)#t)
         self.t_cov = self.fa.get_covariance() 
         self.t_pre = np.linalg.inv(self.t_cov)
         self.t = self.fa.components_.T.dot(self.x.T) + self.fa.mean_[:, np.newaxis]
-        logging.debug('Updated q(x)')
+        logging.debug('Updated q(x). Biggest noise value = %f' % np.max(np.abs(self.t - self.f)))
         
     def lowerbound(self):
         f_terms = 0
