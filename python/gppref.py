@@ -58,7 +58,7 @@ class GPPref(GPGrid):
         # in preferences can be explained by noise in the preference pairs or the latent function. Ordering patterns 
         # will change this balance in the posterior.  
         
-        self.sigma = 1 # controls the observation noise. Is this equivalent to the output scale of f? I.e. doesn't it have the 
+        #self.sigma = 1 # controls the observation noise. Equivalent to the output scale of f? I.e. doesn't it have the 
         # same effect by controlling the amount of noise that is permissible at each point? If so, I think we can fix this
         # to 1.
         # By approximating the likelihood distribution with a Gaussian, the covariance of the approximation is the
@@ -82,40 +82,29 @@ class GPPref(GPGrid):
         self.mu0_default = z0 # for preference learning, we pass in the latent mean directly  
     
     def init_obs_prior(self):
-        nsamples = 50000
-        f_samples = norm.rvs(loc=self.mu0, scale=np.sqrt(1.0/self.s), size=nsamples)
-        v_samples = np.random.choice(nsamples, nsamples)
-        u_samples = np.random.choice(nsamples, nsamples)
-        rho_samples = self.forward_model(f_samples, v=v_samples, u=u_samples)
-        rho_mean = np.mean(rho_samples)
-        rho_var = np.var(rho_samples) # this doesn't work because the locations are not independent
-        
-        # calculate using the hessian
-#         phi, g_mean_f = self.forward_model(f=np.array([self.mu0]), v=[0], u=[0], 
-#                                            return_g_f=True) # first order Taylor series approximation
-#         N_over_phi = norm.pdf(g_mean_f) / phi          
-#         rho_var = self.s - (N_over_phi**2 + N_over_phi*g_mean_f)        
-#                 
+        m_prior, not_m_prior, v_prior = self.post_rough(self.mu0, 1.0/self.s, self.pref_v, self.pref_u)
+
         # find the beta parameters
-        a_plus_b = 1.0 / (rho_var / (rho_mean*(1 - rho_mean))) - 1
-        a = a_plus_b * rho_mean
-        b = a_plus_b * (1 - rho_mean)
-        #b = 1.0
-        #a = 1.0
+        a_plus_b = 1.0 / (v_prior / (m_prior*(not_m_prior))) - 1
+        a = a_plus_b * m_prior
+        b = a_plus_b * not_m_prior
+
         self.nu0 = np.array([b, a])
         if self.verbose:
             logging.debug("Prior parameters for the observed pairwise preference variance are: %s" % str(self.nu0))           
     
     def init_obs_f(self):
         # Mean probability at observed points given local observations
-        self.obs_f = np.zeros((self.obs_coords.shape[0], 1))
+        self.obs_f = np.zeros((self.n_locs, 1)) + self.mu0
         self.Ntrain = self.pref_u.size 
         
-    def init_obs_mu0(self):
-        self.mu0 = np.zeros((len(self.obs_f), 1)) + self.mu0_default
-        if self.mu0_1 is not None:
+    def init_obs_mu0(self, mu0):
+        self.mu0 = np.zeros((self.n_locs, 1)) + self.mu0_default
+        
+        if mu0 is not None and mu0[0] is not None and mu0[1] is not None:
+            self.mu0_1 = mu0[0]
             self.mu0[self.pref_v] = self.mu0_1
-        if self.mu0_2 is not None:
+            self.mu0_2 = mu0[1]
             self.mu0[self.pref_u] = self.mu0_2
     
     def forward_model(self, f=[], subset_idxs=[], v=[], u=[], return_g_f=False):
@@ -147,9 +136,9 @@ class GPPref(GPGrid):
             f = f[:, np.newaxis]
         
         if len(v) and len(u):   
-            g_f = (f[v, :] - f[u, :]) / (np.sqrt(2) * self.sigma) # gives an NobsxNobs matrix
+            g_f = (f[v, :] - f[u, :]) / (np.sqrt(2) / self.s) # gives an NobsxNobs matrix
         else: # provide the complete set of pairs
-            g_f = (f - f.T) / (np.sqrt(2) * self.sigma)    
+            g_f = (f - f.T) / (np.sqrt(2) / self.s)    
                 
         phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the 
         # With the standard GP density classifier, we can skip this step because
@@ -162,8 +151,8 @@ class GPPref(GPGrid):
     def update_jacobian(self, G_update_rate=1.0, selection=[]):
         phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
             
-        J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * (1.0/(np.sqrt(2) * self.sigma))
-        obs_idxs = np.arange(self.obs_coords.shape[0])[np.newaxis, :]
+        J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * np.sqrt(self.s/2)
+        obs_idxs = np.arange(self.n_locs)[np.newaxis, :]
         
         if len(selection): 
             obs_idxs = obs_idxs[:, selection]
@@ -242,9 +231,8 @@ class GPPref(GPGrid):
             
     def fit(self, items_1_coords, items_2_coords, obs_values, totals=None, process_obs=True, update_s=True, mu0_1=None,
             mu0_2=None):
-        self.mu0_1 = mu0_1
-        self.mu0_2 = mu0_2        
-        super(GPPref, self).fit((items_1_coords, items_2_coords), obs_values, totals, process_obs, update_s)  
+        super(GPPref, self).fit((items_1_coords, items_2_coords), obs_values, totals, process_obs, update_s, 
+                                mu0=(mu0_1, mu0_2))  
         
     def predict_f(self, items_coords=[], max_block_size=1e5, mu0_output=None):
         nblocks, noutputs = self.init_output_arrays(items_coords, max_block_size)
@@ -262,7 +250,7 @@ class GPPref(GPGrid):
         return self.f, self.v
 
     def predict(self, items_0_coords=[], items_1_coords=[], max_block_size=1e5, 
-                expectedlog=False, return_not=False, mu0_output1=None, mu0_output2=None):
+                expectedlog=False, return_var=True, return_not=False, mu0_output1=None, mu0_output2=None):
         '''
         Evaluate the function posterior mean and variance at the given co-ordinates using the 2D squared exponential 
         kernel
@@ -289,7 +277,6 @@ class GPPref(GPGrid):
             items_1_coords = items_1_coords.T       
         
         output_coords, out_pref_v, out_pref_u = get_unique_locations(items_0_coords, items_1_coords)
-        npairs = out_pref_v.size
         nblocks, noutputs = self.init_output_arrays(output_coords, max_block_size)
                 
         self.mu0_output = np.zeros((noutputs, 1)) + self.mu0_default
@@ -310,11 +297,16 @@ class GPPref(GPGrid):
             not_m_post = np.log(not_m_post)
             
         if return_not:
-            return m_post, not_m_post, v_post
+            if return_var:
+                return m_post, not_m_post, v_post
+            else:
+                return m_post, not_m_post
+        elif return_var:
+            return m_post, v_post
         else:
-            return m_post, v_post     
+            return m_post     
         
-    def post_rough(self, f_mean, f_var, pref_v=None, pref_u=None):
+    def post_rough(self, f_mean, f_var=None, pref_v=None, pref_u=None):
         ''' 
         When making predictions, we want to predict the probability of each listed preference pair.
         Use a solution given by applying the forward model to the mean of the latent function -- 
@@ -325,13 +317,21 @@ class GPPref(GPGrid):
         if pref_u is None:
             pref_u = self.pref_u
         
-        m_post, g_f = self.forward_model(f_mean, v=pref_v, u=pref_u, return_g_f=True)
+        m_post = self.forward_model(f_mean, v=pref_v, u=pref_u, return_g_f=False)
         m_post = temper_extreme_probs(m_post)
         
         not_m_post = 1 - m_post
-        v_post = - 2.0 * self.sigma / (norm.pdf(g_f)**2/m_post**2 + norm.pdf(g_f)*g_f/m_post) # use the inverse hessian
-        
-        return m_post, not_m_post, v_post
+
+        if f_var is not None:
+            f_samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(f_mean.shape[0], 5000))
+            rho_samples = self.forward_model(f_samples, v=pref_v, u=pref_u, return_g_f=False)
+            v_post = np.var(rho_samples, axis=1)[:, np.newaxis]
+            v_post = temper_extreme_probs(v_post, zero_only=True)
+            v_post[m_post * (1 - not_m_post) <= 1e-7] = 1e-8 # important to make sure our fixes for extreme values lead
+            # to sensible values
+            return m_post, not_m_post, v_post            
+        else:        
+            return m_post, not_m_post
 
 def gen_synthetic_prefs():
     # Generate some data
@@ -342,9 +342,9 @@ def gen_synthetic_prefs():
     
     sigma = 0.1 
     
-    N = 100
+    N = 2
     
-    P = 1000 # number of pairs for training
+    P = 15 # number of pairs for training
     s = 0.1 # inverse precision scale for the latent function.
     
     from scipy.stats import multivariate_normal as mvn
@@ -418,7 +418,7 @@ if __name__ == '__main__':
     pair2coords = np.concatenate((xvals[pair2idxs, :], yvals[pair2idxs, :]), axis=1)   
         
     # separate training and test data
-    Ptest = 100
+    Ptest = 10
     testpairs = np.random.choice(pair1coords.shape[0], Ptest, replace=False)
     testidxs = np.zeros(pair1coords.shape[0], dtype=bool)
     testidxs[testpairs] = True
@@ -434,7 +434,7 @@ if __name__ == '__main__':
     
     # Create a GPPref model
     model = GPPref([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], max_update_size=100, ninducing=200)    
-    #model.verbose = True
+    model.verbose = True
     model.max_iter_VB = 1000
     model.min_iter_VB = 5
     #model.conv_threshold_G = 1e-8

@@ -38,7 +38,7 @@ class PreferenceComponents(object):
         self.rate_ls = rate_ls
         self.ls_initial = ls_initial
         
-        self.conv_threshold = 1e-5
+        self.conv_threshold = 1e-3
         self.max_iter = 100
         self.min_iter = 10
         
@@ -61,7 +61,7 @@ class PreferenceComponents(object):
         self.people = np.unique(personIDs)
         self.gppref_models = {}
         
-        self.obs_coords, self.pref_u, self.pref_v = get_unique_locations(items_1_coords, items_2_coords)
+        self.obs_coords, self.pref_v, self.pref_u = get_unique_locations(items_1_coords, items_2_coords)
         
         self.N = len(self.obs_coords)
         
@@ -79,8 +79,8 @@ class PreferenceComponents(object):
             self.gppref_models[person] = GPPref(self.dims, self.mu0, self.shape_s0, self.rate_s0, self.s_initial, 
                                                 self.shape_ls, self.rate_ls, self.ls_initial)
             self.gppref_models[person].select_covariance_function(self.cov_type)
-            self.gppref_models[person].max_iter_VB = 1
-            self.gppref_models[person].min_iter_VB = 1
+            self.gppref_models[person].max_iter_VB = 20
+            self.gppref_models[person].min_iter_VB = 2
             self.gppref_models[person].max_iter_G = 5
             self.gppref_models[person].verbose = self.verbose  
             
@@ -98,20 +98,25 @@ class PreferenceComponents(object):
         diff = np.inf
         old_x = np.inf
         #lb = 0
-        while (niter < self.min_iter) | ((diff > self.conv_threshold) and (niter < self.max_iter)):
+        while ((niter < self.min_iter) and (diff > 0)) | ((diff > self.conv_threshold) and (niter < self.max_iter)):
             # run a VB iteration
             # compute preference latent functions for all workers
             self.expec_f(personIDs, items_1_coords, items_2_coords, preferences)
             
             diff = 0
-            # compute the preference function means
+            # compute the preference function means and find the personality components
             self.expec_t()
-            # find the personality components from the preference function means
-            self.expec_x()
              
             diff = np.max(old_x - self.x)
             logging.debug( "Difference in latent personality features: %f" % diff)
             old_x = self.x
+            
+            for person in self.people:
+                logging.debug( "Variance 1/s: %f." % (1.0/self.gppref_models[person].s))
+                
+            for v in self.fa.noise_variance_:
+                logging.debug("variance from FA estimate: %f" % v)
+
              
             # Don't use lower bound here, it doesn't really make sense when we use ML for some parameters
             #old_lb = lb
@@ -122,7 +127,7 @@ class PreferenceComponents(object):
             
         logging.debug( "Preference personality model converged in %i iterations." % niter )
         
-    def predict(self, personids, items_0_coords, items_1_coords, variance_method='rough'):
+    def predict(self, personids, items_0_coords, items_1_coords):
         Npairs = len(personids)
          
         results = np.zeros(Npairs)
@@ -152,26 +157,11 @@ class PreferenceComponents(object):
             
             mu0_1 = self.t[p, items_0_local[pidxs]] # need to translate coords to local first
             mu0_2 = self.t[p, items_1_local[pidxs]] # need to translate coords to local first
-            results[pidxs], _ = self.gppref_models[p].predict(items_0_coords[pidxs], items_1_coords[pidxs], 
-                                                           variance_method, mu0_output1=mu0_1, mu0_output2=mu0_2)
+            results[pidxs] = self.gppref_models[p].predict(items_0_coords[pidxs], items_1_coords[pidxs], 
+                                                  mu0_output1=mu0_1, mu0_output2=mu0_2, return_var=False).flatten()
             
         return results
         
-    def expec_t(self):
-        '''
-        Compute the expectation over the preference function mean
-        '''
-#         self.C_t = {}
-#         for person in self.gppref_models:
-#             invKs = self.invK * self.gppref_models[person].s            
-#              
-#             C = np.linalg.inv(self.t_pre + invKs)# covariance of t
-#             self.t[person, :] = C.dot(self.t_pre.dot(self.t_mu) + invKs.dot(self.f[person])).T
-#             self.C_t[person] = C            
-#             if self.verbose:
-#                 logging.debug( "Expec_t for person %i out of %i" % (person, len(self.gppref_models.keys())) )
-#         logging.debug('Updated q(t)')
-    
     def expec_f(self, personids, items_1_coords, items_2_coords, preferences):
         '''
         Compute the expectation over each worker's latent preference function values for the set of objects.
@@ -186,25 +176,18 @@ class PreferenceComponents(object):
             mu0_2 = self.t[person, self.pref_u[pidxs]][:, np.newaxis]
             mu0_output1 = self.t[person, :][:, np.newaxis]
             
-            #original_s = self.gppref_models[person].s
-            if hasattr(self.fa, 'noise_variance_'):
-                self.gppref_models[person].shape_s0 = 100000 
-                self.gppref_models[person].rate_s0 = 100000 * self.fa.noise_variance_[person]
-            
             self.gppref_models[person].fit(items_1_p, items_2_p, prefs_p, mu0_1=mu0_1, mu0_2=mu0_2)
             
-            #self.gppref_models[person].s = original_s
-            
-            f, v = self.gppref_models[person].predict_f(items_coords=self.obs_coords, mu0_output=mu0_output1)
+            f, _ = self.gppref_models[person].predict_f(items_coords=self.obs_coords, mu0_output=mu0_output1)
             self.f[person, :] = f.flatten()
         
             if self.verbose:    
                 logging.debug( "Expec_f for person %i out of %i" % (person, len(self.gppref_models.keys())) )
         logging.debug('Updated q(f)')
              
-    def expec_x(self):
+    def expec_t(self):
         '''
-        Compute the expectation over the personality components.
+        Compute the expectation over the personality components and the preference function mean.
         '''
         self.x = self.fa.fit_transform(self.f.T)#t)
         self.t_cov = self.fa.get_covariance() 
@@ -247,8 +230,14 @@ if __name__ == '__main__':
     
     logging.basicConfig(level=logging.DEBUG)    
 
+    fix_seeds = True
+    
+    # make sure the simulation is repeatable
+    if fix_seeds:
+        np.random.seed(1)
+
     logging.info( "Testing Bayesian preference components analysis using synthetic data..." )
-    Npeople = 10
+    Npeople = 3
     pair1idxs = []
     pair2idxs = []
     prefs = []
@@ -260,28 +249,35 @@ if __name__ == '__main__':
         pair1idxs = np.concatenate((pair1idxs, pair1idxs_p + len(xvals))).astype(int)
         pair2idxs = np.concatenate((pair2idxs, pair2idxs_p + len(yvals))).astype(int)
         prefs = np.concatenate((prefs, prefs_p)).astype(int)
-        personids = np.concatenate((personids, np.zeros(pair1idxs.size) + p)).astype(int)
+        personids = np.concatenate((personids, np.zeros(len(pair1idxs_p)) + p)).astype(int)
         xvals = np.concatenate((xvals, xvals_p.flatten()))
         yvals = np.concatenate((yvals, yvals_p.flatten()))
 
     pair1coords = np.concatenate((xvals[pair1idxs][:, np.newaxis], yvals[pair1idxs][:, np.newaxis]), axis=1)
     pair2coords = np.concatenate((xvals[pair2idxs][:, np.newaxis], yvals[pair2idxs][:, np.newaxis]), axis=1) 
 
-    Ptest = 100
+    Ptest = 6
     testpairs = np.random.choice(pair1coords.shape[0], Ptest, replace=False)
     testidxs = np.zeros(pair1coords.shape[0], dtype=bool)
     testidxs[testpairs] = True
     trainidxs = np.invert(testidxs)
     
-    model = PreferenceComponents([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], nfactors = 2)
+    if fix_seeds:
+        np.random.seed() # do this if we want to use a different seed each time to test the variation in results
+        
+    model = PreferenceComponents([nx, ny], mu0=0, shape_s0=1.0, rate_s0=1.0, ls_initial=[10, 10], nfactors = 2)
     model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs])
     
     # turn the values into predictions of preference pairs.
-    results = model.predict(personids[testidxs], pair1coords[testidxs], pair2coords[testidxs], variance_method='rough')
+    results = model.predict(personids[testidxs], pair1coords[testidxs], pair2coords[testidxs])
+    
+    # To make sure the simulation is repeatable, re-seed the RNG after all the stochastic inference has been completed
+    if fix_seeds:
+        np.random.seed(2)    
     
     from sklearn.metrics import accuracy_score
     
-    print 'Accuracy: %f' % accuracy_score(prefs[testidxs], results)
+    print 'Accuracy: %f' % accuracy_score(prefs[testidxs], np.round(results))
     
 #     from scipy.stats import kendalltau
 #      
