@@ -11,6 +11,42 @@ from scipy.stats import norm, multivariate_normal as mvn
 import logging
 from scipy.sparse import coo_matrix
 from gpgrid import coord_arr_to_1d
+from scipy.linalg import cholesky, solve_triangular
+
+def vb_gp_regression(m, K, shape_s0, rate_s0, Sigma, y, max_iter=20, conv_threshold=1e-5, cholK=None):
+    
+    shape_s = shape_s0
+    rate_s = rate_s0
+    
+    nIt = 0
+    diff = np.inf
+    
+    if cholK == None:
+        cholK = cholesky(K, overwrite_a=False, check_finite=False)
+    
+    while (diff > conv_threshold) and (nIt < max_iter):
+        s = shape_s / rate_s
+        
+        Ks = K / s
+        L = cholesky(Ks + Sigma, lower=True, check_finite=False, overwrite_a=True)
+        B = solve_triangular(L, (y - m), lower=True, overwrite_b=True, check_finite=False)
+        A = solve_triangular(L, B, lower=True, trans=True, overwrite_b=False, check_finite=False)
+        f_mean = Ks.dot(A) + m # need to add the prior mean here?
+        
+        V = solve_triangular(L, Ks.T, lower=True, overwrite_b=True, check_finite=False)
+        Cov_f = Ks - V.T.dot(V)
+        
+        # learn the output scale with VB
+        shape_s = shape_s0 + 0.5 * y.shape[0]
+        L_expecFF = solve_triangular(cholK, Cov_f + f_mean.dot(f_mean.T) - m.dot(f_mean.T) -f_mean.dot(m.T) + m.dot(m.T), 
+                                     trans=True, overwrite_b=True, check_finite=False)
+        LT_L_expecFF = solve_triangular(cholK, L_expecFF, overwrite_b=True, check_finite=False)
+        rate_s = rate_s0 + 0.5 * np.trace(LT_L_expecFF) 
+        
+        nIt += 1
+        diff = np.abs(shape_s / rate_s - s)
+    
+    return f_mean, Cov_f, shape_s, rate_s 
 
 class PreferenceComponents(object):
     '''
@@ -65,16 +101,13 @@ class PreferenceComponents(object):
         
         self.N = len(self.obs_coords)
         
-        self.t_covprior = np.diag(self.sigmasq_t * np.ones(self.N)).astype(float)
-        self.t_cov = np.diag(self.sigmasq_t * np.ones(self.N)).astype(float)
-
-        self.t_pre = np.linalg.inv(self.t_cov)
-        
         self.Npeople = np.max(self.people).astype(int) + 1
         self.t_mu = np.zeros((self.N, 1))
         
         self.f = np.zeros((self.Npeople, self.N))
-        self.t = np.zeros((self.Npeople, self.N))
+        self.x_dot_comps = np.zeros((self.Npeople, self.N))
+        self.t = np.zeros((self.Npeople, 1))
+        
         for p, person in enumerate(self.people):
             self.gppref_models[person] = GPPref(self.dims, self.mu0, self.shape_s0, self.rate_s0, self.s_initial, 
                                                 self.shape_ls, self.rate_ls, self.ls_initial)
@@ -103,8 +136,10 @@ class PreferenceComponents(object):
             # compute preference latent functions for all workers
             self.expec_f(personIDs, items_1_coords, items_2_coords, preferences)
             
-            diff = 0
-            # compute the preference function means and find the personality components
+            # find the personality components
+            self.expec_x()
+            
+            # compute the preference function means
             self.expec_t()
              
             diff = np.max(old_x - self.x)
@@ -155,8 +190,9 @@ class PreferenceComponents(object):
                 results[pidxs] = 0.5
                 continue
             
-            mu0_1 = self.t[p, items_0_local[pidxs]] # need to translate coords to local first
-            mu0_2 = self.t[p, items_1_local[pidxs]] # need to translate coords to local first
+            mu0 = self.x_dot_comps[p, :] + self.t[p]
+            mu0_1 = mu0[items_0_local[pidxs]] # need to translate coords to local first
+            mu0_2 = mu0[items_1_local[pidxs]] # need to translate coords to local first
             results[pidxs] = self.gppref_models[p].predict(items_0_coords[pidxs], items_1_coords[pidxs], 
                                                   mu0_output1=mu0_1, mu0_output2=mu0_2, return_var=False).flatten()
             
@@ -172,27 +208,29 @@ class PreferenceComponents(object):
             items_2_p = items_2_coords[pidxs]
             prefs_p = preferences[pidxs]
             
-            mu0_1 = self.t[person, self.pref_v[pidxs]][:, np.newaxis]
-            mu0_2 = self.t[person, self.pref_u[pidxs]][:, np.newaxis]
-            mu0_output1 = self.t[person, :][:, np.newaxis]
+            mu0_output = self.x_dot_comps[person, :][:, np.newaxis] + self.t[person]
+            
+            mu0_1 = mu0_output[self.pref_v[pidxs], :]
+            mu0_2 = mu0_output[self.pref_u[pidxs], :]
             
             self.gppref_models[person].fit(items_1_p, items_2_p, prefs_p, mu0_1=mu0_1, mu0_2=mu0_2)
             
-            f, _ = self.gppref_models[person].predict_f(items_coords=self.obs_coords, mu0_output=mu0_output1)
+            f, _ = self.gppref_models[person].predict_f(items_coords=self.obs_coords, mu0_output=mu0_output)
             self.f[person, :] = f.flatten()
         
             if self.verbose:    
                 logging.debug( "Expec_f for person %i out of %i" % (person, len(self.gppref_models.keys())) )
         logging.debug('Updated q(f)')
              
-    def expec_t(self):
+    def expec_x(self):
         '''
         Compute the expectation over the personality components and the preference function mean.
         '''
-        self.x = self.fa.fit_transform(self.f.T)#t)
-        self.t_cov = self.fa.get_covariance() 
-        self.t_pre = np.linalg.inv(self.t_cov)
-        self.t = self.fa.components_.T.dot(self.x.T) + self.fa.mean_[:, np.newaxis]
+        self.x = self.fa.fit_transform(self.f.T)
+        self.x_dot_comps = self.fa.components_.T.dot(self.x.T)
+        
+    def expec_t(self):
+        self.t = self.fa.mean_[:, np.newaxis]
         logging.debug('Updated q(x). Biggest noise value = %f' % np.max(np.abs(self.t - self.f)))
         
     def lowerbound(self):
@@ -204,7 +242,6 @@ class PreferenceComponents(object):
             logging.debug('s=%.2f' % self.gppref_models[person].s)
             
         for n in range(self.N):
-            #t_terms_p = mvn.logpdf(self.t[:, n], mean=self.fa.mean_, cov=self.t_cov)
             t_terms_p = mvn.logpdf(self.t[:, n], mean=np.zeros(self.t.shape[0]), cov=np.eye(self.t.shape[0]))
             t_terms_q = mvn.logpdf(self.t[:, n], mean=self.t[:, n], cov=self.fa.components_.T * self.fa.components_)
             t_terms += t_terms_p - t_terms_q
