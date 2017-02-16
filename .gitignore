@@ -125,3 +125,4 @@ documents/sections/method.tex~
 results/old_stuff/*
 results/*
 outputdata/*.pkl
+/.DS_Store

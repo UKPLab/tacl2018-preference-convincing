@@ -437,6 +437,7 @@ if __name__ == '__main__':
     model.verbose = True
     model.max_iter_VB = 1000
     model.min_iter_VB = 5
+    model.uselowerbound = True
     #model.conv_threshold_G = 1e-8
     #model.conv_check_freq = 1
     #model.conv_threshold = 1e-3 # the difference must be less than 1% of the value of the lower bound
