@@ -390,9 +390,9 @@ if __name__ == '__main__':
     N = model_gponly.t.shape[1]
     fbar = np.zeros(model_gponly.t.shape) # posterior means
     v = np.zeros(model_gponly.t.shape) # posterior variance
-    for person in model_gponly.gppref_models:
+    for person in model_gponly.pref_gp:
         fbar[person, :] = model_gponly.f[person][:, 0]
-        v[person, :] = model_gponly.gppref_models[person].v[:, 0]
+        v[person, :] = model_gponly.pref_gp[person].v[:, 0]
     fstd = np.sqrt(v)
     # Section B. VISUALISING THE LATENT PREFERENCE FUNCTION AND RAW DATA WITHOUT MODELS -------------------------------
     # B1. Combine all these functions into a mixture distribution to give an overall density for the whole population
