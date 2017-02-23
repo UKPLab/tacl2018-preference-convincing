@@ -17,6 +17,7 @@ from gpgrid import GPGrid
 import numpy as np
 from scipy.stats import norm
 from scipy.sparse import coo_matrix
+from scipy.special import psi
 import logging
 
 def get_unique_locations(obs_coords_0, obs_coords_1):
@@ -82,12 +83,12 @@ class GPPref(GPGrid):
         self.mu0_default = z0 # for preference learning, we pass in the latent mean directly  
     
     def init_obs_prior(self):
-        m_prior, not_m_prior, v_prior = self.post_rough(self.mu0, 1.0/self.s, self.pref_v, self.pref_u)
+        m_prior, not_m_prior, v_prior = self.post_rough(self.mu0, self.rate_s0/self.shape_s0, self.pref_v, self.pref_u)
 
         # find the beta parameters
         a_plus_b = 1.0 / (v_prior / (m_prior*(not_m_prior))) - 1
-        a = a_plus_b * m_prior
-        b = a_plus_b * not_m_prior
+        a = (a_plus_b * m_prior)
+        b = (a_plus_b * not_m_prior)
 
         self.nu0 = np.array([b, a])
         if self.verbose:
@@ -106,7 +107,20 @@ class GPPref(GPGrid):
             self.mu0[self.pref_v] = self.mu0_1
             self.mu0_2 = mu0[1]
             self.mu0[self.pref_u] = self.mu0_2
-    
+            
+#     def init_s(self):
+#         self.shape_s = self.shape_s0
+#         self.rate_s = self.rate_s0            
+#         self.s = self.shape_s / self.rate_s        
+#         self.Elns = psi(self.shape_s) - np.log(self.rate_s)
+#         
+#         self.Ks = self.K / self.s
+#         self.obs_C = self.K / self.s
+#         
+#         self.old_s = self.s
+#         if self.verbose:
+#             logging.debug("Setting the initial precision scale to s=%.3f" % self.s)    
+#             
     def forward_model(self, f=[], subset_idxs=[], v=[], u=[], return_g_f=False):
         '''
         f - should be of shape nobs x 1
@@ -136,9 +150,11 @@ class GPPref(GPGrid):
             f = f[:, np.newaxis]
         
         if len(v) and len(u):   
-            g_f = (f[v, :] - f[u, :]) / (np.sqrt(2) / np.sqrt(self.s)) # gives an NobsxNobs matrix
+            g_f = (f[v, :] - f[u, :]) / np.sqrt(2) # / np.sqrt(self.s)) # gives an NobsxNobs matrix
         else: # provide the complete set of pairs
-            g_f = (f - f.T) / (np.sqrt(2) / np.sqrt(self.s))    
+            g_f = (f - f.T) / np.sqrt(2) # / np.sqrt(self.s))  # the maths shows that s cancels out -- it's already 
+            # included in our estimates of f, which are scaled by s. However, the prior mean mu0 should also be scaled
+            # to match, but this should happen automatically if we learn s, I think. 
                 
         phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the 
         # With the standard GP density classifier, we can skip this step because
@@ -146,12 +162,12 @@ class GPPref(GPGrid):
         if return_g_f:
             return phi, g_f
         else:
-            return phi 
+            return phi
     
     def update_jacobian(self, G_update_rate=1.0, selection=[]):
         phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
             
-        J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * np.sqrt(self.s/2)
+        J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * np.sqrt(0.5)
         obs_idxs = np.arange(self.n_locs)[np.newaxis, :]
         
         if len(selection): 
@@ -332,6 +348,15 @@ class GPPref(GPGrid):
             return m_post, not_m_post, v_post            
         else:        
             return m_post, not_m_post
+        
+    def logpt(self):
+        rho = self.forward_model(self.obs_f)
+        rho = temper_extreme_probs(rho)
+        logrho_rough = np.log(rho)
+        lognotrho_rough = np.log(1 - rho)   
+        #logging.debug("Approximation error in rho =%.4f" % np.max(np.abs(logrho - logrho_rough)))
+        #logging.debug("Approximation error in notrho =%.4f" % np.max(np.abs(lognotrho - lognotrho_rough)))
+        return logrho_rough, lognotrho_rough     
 
 def gen_synthetic_prefs():
     # Generate some data
