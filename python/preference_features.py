@@ -7,7 +7,7 @@ Created on 2 Jun 2016
 @author: simpson
 '''
 
-from gppref import GPPref, gen_synthetic_prefs, get_unique_locations
+from gppref import GPPref, gen_synthetic_prefs, get_unique_locations, matern_3_2, matern_3_2_from_raw_vals
 import numpy as np
 from sklearn.decomposition import FactorAnalysis
 from scipy.stats import multivariate_normal as mvn
@@ -39,14 +39,6 @@ def lnq_output_scale(shape_s, rate_s):
     
     lnq_s = - gammaln(shape_s) + shape_s * np.log(rate_s) + (shape_s-1) * Elns - rate_s * s
     return lnq_s
-
-def matern_3_2(distances, ls):
-    K = np.zeros(distances.shape)
-    for d in range(distances.shape[2]):
-        K[:, :, d] = np.abs(distances[:, :, d]) * 3**0.5 / ls[d]
-        K[:, :, d] = (1 + K[:, :, d]) * np.exp(-K[:, :, d])
-    K = np.prod(K, axis=2)
-    return K
 
 class PreferenceComponents(object):
     '''
@@ -535,8 +527,37 @@ if __name__ == '__main__':
     personids = []
     xvals = []
     yvals = []
+    
+    nx = 50
+    ny = 50
+    
+    # generate a common prior:
+    ls = [10, 10]
+    xvals = np.arange(nx)[:, np.newaxis]
+    xvals = np.tile(xvals, (1, ny)).flatten()
+    yvals = np.arange(ny)[np.newaxis, :]
+    yvals = np.tile(yvals, (nx, 1)).flatten()
+    Kt = matern_3_2_from_raw_vals(np.array([xvals, yvals]), ls)
+    t = mvn.rvs(cov=Kt).reshape(nx, ny)
+    
+    Nfactors = 2
+    
+    Ky = matern_3_2_from_raw_vals(np.arange(Npeople)[np.newaxis, :], [2])
+    
+    w = np.zeros((nx * ny, Nfactors))
+    y = np.zeros((Nfactors, Npeople))
+    for f in range(Nfactors):
+        w[:, f] = mvn.rvs(cov=Kt).flatten()
+        y[f, :] = mvn.rvs(cov=Ky)
+    
     for p in range(Npeople):
-        _, nx, ny, prefs_p, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs()
+        
+        y_p = y[:, p:p+1]
+        wy_p = w.dot(y_p).reshape((nx, ny))
+        
+        f_prior_mean = t + wy_p
+        
+        _, nx, ny, prefs_p, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs(f_prior_mean)
         pair1idxs = np.concatenate((pair1idxs, pair1idxs_p + len(xvals))).astype(int)
         pair2idxs = np.concatenate((pair2idxs, pair2idxs_p + len(yvals))).astype(int)
         prefs = np.concatenate((prefs, prefs_p)).astype(int)
@@ -556,7 +577,7 @@ if __name__ == '__main__':
     if fix_seeds:
         np.random.seed() # do this if we want to use a different seed each time to test the variation in results
         
-    model = PreferenceComponents([nx,ny], ls=[10,10], nfactors=2, use_fa=False)
+    model = PreferenceComponents([nx,ny], ls=[10,10], nfactors=Nfactors, use_fa=False)
     model.verbose = False
     model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs])
     

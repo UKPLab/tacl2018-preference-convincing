@@ -104,9 +104,12 @@ class GPPref(GPGrid):
         
         if mu0 is not None and mu0[0] is not None and mu0[1] is not None:
             self.mu0_1 = mu0[0]
-            self.mu0[self.pref_v] = self.mu0_1
             self.mu0_2 = mu0[1]
-            self.mu0[self.pref_u] = self.mu0_2
+            
+            all_mu0 = np.concatenate((self.mu0_1, self.mu0_2), axis=0)
+            self.mu0 = all_mu0[self.original_idxs] # the means corresponding to uravelled_coords
+            self.mu0_1 = self.mu0[self.pref_v, :]
+            self.mu0_2 = self.mu0[self.pref_u, :]
             
 #     def init_s(self):
 #         self.shape_s = self.shape_s0
@@ -212,7 +215,7 @@ class GPPref(GPGrid):
             # SWAP PAIRS SO THEY ALL HAVE LOWEST COORD FIRST so we can count prefs for duplicate location pairs
             # get unique keys
             all_ravelled_coords = np.concatenate((ravelled_coords_0, ravelled_coords_1), axis=0)
-            uravelled_coords, keys = np.unique(all_ravelled_coords, return_inverse=True)
+            uravelled_coords, origidxs, keys = np.unique(all_ravelled_coords, return_index=True, return_inverse=True)
             keys_0 = keys[:len(ravelled_coords_0)]
             keys_1 = keys[len(ravelled_coords_0):]
             idxs_to_swap = keys_0 < keys_1
@@ -228,6 +231,8 @@ class GPPref(GPGrid):
             nonzero_v, nonzero_u = grid_obs_counts.nonzero() # coordinate key pairs with duplicate pairs removed
             nonzero_all = np.concatenate((nonzero_v, nonzero_u), axis=0)
             ukeys, pref_vu = np.unique(nonzero_all, return_inverse=True) # get unique locations
+            
+            self.original_idxs = origidxs[ukeys] # indexes of unique observation locations into the original input data
             
             # Record the coordinates of all points that were compared
             self.obs_coords = coord_arr_from_1d(uravelled_coords[ukeys], obs_coords_0.dtype, 
@@ -358,43 +363,36 @@ class GPPref(GPGrid):
         #logging.debug("Approximation error in notrho =%.4f" % np.max(np.abs(lognotrho - lognotrho_rough)))
         return logrho_rough, lognotrho_rough     
 
-def gen_synthetic_prefs():
-    # Generate some data
-    nx = 50
-    ny = 50
-    
-    ls = [10, 10]
-    
-    sigma = 0.1 
-    
-    N = 20
-    
-    P = 150 # number of pairs for training
-    s = 1 # inverse precision scale for the latent function.
-    
-    from scipy.stats import multivariate_normal as mvn
+def matern_3_2(distances, ls):
+    K = np.zeros(distances.shape)
+    for d in range(distances.shape[2]):
+        K[:, :, d] = np.abs(distances[:, :, d]) * 3**0.5 / ls[d]
+        K[:, :, d] = (1 + K[:, :, d]) * np.exp(-K[:, :, d])
+    K = np.prod(K, axis=2)
+    return K
 
-    def matern_3_2(xvals, yvals, ls):
-        
+def matern_3_2_from_raw_vals(vals, ls):
+    distances = np.zeros((vals[0].size, vals[0].size, vals.shape[0]))
+    for i, xvals in enumerate(vals):
         if xvals.ndim == 1:
             xvals = xvals[:, np.newaxis]
         elif xvals.shape[0] == 1 and xvals.shape[1] > 1:
             xvals = xvals.T
-        if yvals.ndim == 1:
-            yvals = yvals[:, np.newaxis]
-        elif yvals.shape[0] == 1 and yvals.shape[1] > 1:
-            yvals = yvals.T        
         xdists = xvals - xvals.T
-        ydists = yvals - yvals.T
-        
-        Kx = np.abs(xdists) * 3**0.5 / float(ls[0])
-        Kx = (1 + Kx) * np.exp(-Kx)
-        Ky = np.abs(ydists) * 3**0.5 / float(ls[1])
-        Ky = (1 + Ky) * np.exp(-Ky)
-        if Ky.shape[1] == 1:
-            Ky = Ky.T     
-        K = Kx * Ky
-        return K
+        distances[:, :, i] = xdists
+    K = matern_3_2(distances, ls)
+    return K
+
+
+def gen_synthetic_prefs(f_prior_mean=None, nx=50, ny=50):
+    # f_prior_mean should contain the means for all the grid squares
+    
+    # Generate some data
+    ls = [10, 10]
+    sigma = 0.1 
+    N = 20
+    P = 150 # number of pairs for training
+    s = 1 # inverse precision scale for the latent function.
     
     # Some random feature values
     xvals = np.random.choice(nx, N, replace=True)[:, np.newaxis]
@@ -405,9 +403,12 @@ def gen_synthetic_prefs():
             xvals[coord] = np.random.choice(nx, 1)
             yvals[coord] = np.random.choice(ny, 1)           
         
-    K = matern_3_2(xvals, yvals, ls)
-    
-    f = mvn.rvs(cov=K/s) # zero mean
+    K = matern_3_2_from_raw_vals(np.array([xvals, yvals]), ls)
+    from scipy.stats import multivariate_normal as mvn
+    if f_prior_mean is None:
+        f = mvn.rvs(cov=K/s) # zero mean        
+    else:
+        f = mvn.rvs(mean=f_prior_mean[xvals, yvals].flatten(), cov=K/s) # zero mean
     
     # generate pairs indices
     pair1idxs = np.random.choice(N, P, replace=True)
