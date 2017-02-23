@@ -136,9 +136,9 @@ class GPPref(GPGrid):
             f = f[:, np.newaxis]
         
         if len(v) and len(u):   
-            g_f = (f[v, :] - f[u, :]) / (np.sqrt(2) / self.s) # gives an NobsxNobs matrix
+            g_f = (f[v, :] - f[u, :]) / (np.sqrt(2) / np.sqrt(self.s)) # gives an NobsxNobs matrix
         else: # provide the complete set of pairs
-            g_f = (f - f.T) / (np.sqrt(2) / self.s)    
+            g_f = (f - f.T) / (np.sqrt(2) / np.sqrt(self.s))    
                 
         phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the 
         # With the standard GP density classifier, we can skip this step because
@@ -342,10 +342,10 @@ def gen_synthetic_prefs():
     
     sigma = 0.1 
     
-    N = 2
+    N = 20
     
-    P = 15 # number of pairs for training
-    s = 0.1 # inverse precision scale for the latent function.
+    P = 150 # number of pairs for training
+    s = 1 # inverse precision scale for the latent function.
     
     from scipy.stats import multivariate_normal as mvn
 
