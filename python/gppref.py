@@ -384,14 +384,14 @@ def matern_3_2_from_raw_vals(vals, ls):
     return K
 
 
-def gen_synthetic_prefs(f_prior_mean=None, nx=50, ny=50):
+def gen_synthetic_prefs(f_prior_mean=None, nx=5, ny=5):
     # f_prior_mean should contain the means for all the grid squares
     
     # Generate some data
     ls = [10, 10]
     sigma = 0.1 
-    N = 20
-    P = 150 # number of pairs for training
+    N = 25
+    P = 100 # number of pairs for training
     s = 1 # inverse precision scale for the latent function.
     
     # Some random feature values

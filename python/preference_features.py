@@ -1,13 +1,9 @@
 '''
-TODO: find out why feature learning is not really working. Currently the different factors have very similar values. 
-This may be the result of an error in a covariance calculation. E.g. models correlation between factors when it shouldn't 
+TODO: find out whether we correctly model correlations between people.
 
 TODO: test the sparseness property -- does the method find two ground truth features when we give it lots to look for?
 
 TODO: move some of the matrix inversions to the initialisation and use Cholesky. E.g. for Kw and Ky
-
-TODO: according to equation 22 of A & B 2009, we are missing a covariance term in the noise GP inverse scale update...
-...this is the variance of mu0 to be added in same way as obs_C.
 
 Preference learning model for identifying relevant input features of items and people, plus finding latent 
 characteristics of items and people. Can be used to predict preferences or rank items, therefore could be part of
@@ -93,7 +89,7 @@ class PreferenceComponents(object):
     variational Bayes.
     '''
 
-    def __init__(self, item_dims, person_dims=0, mu0=0, mu0_y=0, shape_s0=10, rate_s0=10, shape_ls=1, rate_ls=100, 
+    def __init__(self, item_dims, person_dims=0, mu0=0, mu0_y=0, shape_s0=1, rate_s0=1, shape_ls=1, rate_ls=100, 
                  ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=3, use_fa=False):
         '''
         Constructor
@@ -126,7 +122,7 @@ class PreferenceComponents(object):
         # vary relative to the overall f, i.e. how much they learn from f. A high s will mean that the wy & t functions 
         # have smaller scale relative to f, so they will be less fitted to f. By default we assume a common prior.   
         self.shape_sw0 = shape_s0
-        self.rate_sw0 = rate_s0 * 100
+        self.rate_sw0 = rate_s0
                             
         self.shape_sy0 = shape_s0
         self.rate_sy0 = rate_s0   
@@ -178,7 +174,6 @@ class PreferenceComponents(object):
         self.rate_st = self.rate_st0                
         
         self.invKf = {}
-        self.invKsf = {}
         self.coordidxs = {}
         
         for person in self.people:
@@ -201,6 +196,7 @@ class PreferenceComponents(object):
         # kernel used by t
         self.K = matern_3_2(distances, self.ls)
         self.cholK = cholesky(self.K, overwrite_a=False, check_finite=False)
+        self.invK = np.linalg.inv(self.K)
         
         # kernel used by w
         blocks = [self.K for _ in range(self.Nfactors)]
@@ -390,11 +386,7 @@ class PreferenceComponents(object):
                     matches = matches & np.equal(internal_coords_p[:, dim:dim+1], self.obs_coords[:, dim:dim+1].T)
                 self.coordidxs[person] = np.argwhere(matches)[:, 1]
             
-                #if person not in self.invKf:            
-                pidxs = self.coordidxs[person]            
-                #    self.invKf[person] = np.linalg.inv(self.pref_gp[person].K + self.K[pidxs, :][:, pidxs]) 
-                self.invKsf[person] = np.linalg.inv(self.pref_gp[person].K  / self.pref_gp[person].s 
-                                                    + self.K[pidxs, :][:, pidxs] * self.rate_st / self.shape_st) 
+                self.invKf[person] = np.linalg.inv(self.pref_gp[person].K) 
             
             f, _ = self.pref_gp[person].predict_f(items_coords=self.obs_coords, mu0_output=mu0_output)
             self.f[person, :] = f.flatten()
@@ -422,15 +414,16 @@ class PreferenceComponents(object):
 
             for person in self.pref_gp:
                 pidxs = self.coordidxs[person]                
-                prec_p = self.invKsf[person]#[npidxs, npidxs]
+                prec_p = self.invKf[person] * self.pref_gp[person].s #[npidxs, npidxs]
+                y_p = self.y[:, person:person+1]
                 
                 # add the means for this person's observations to the list of observations, x 
-                x[pidxs, :] += self.y[:, person:person+1].T * prec_p.dot(self.f[person:person+1, pidxs].T - self.t[pidxs])
+                x[pidxs, :] += y_p.T * prec_p.dot(self.f[person:person+1, pidxs].T - self.t[pidxs])
                 
                 # add the covariance for this person's observations as a block in the covariance matrix Sigma
                 Sigma_p = np.zeros((self.N * self.Nfactors, self.N * self.Nfactors))
                 yidxs = person + self.Npeople * np.arange(self.Nfactors)
-                Sigma_yscaling = self.y.dot(self.y.T) + self.y_cov[yidxs, :][:, yidxs]
+                Sigma_yscaling = y_p.dot(y_p.T) + self.y_cov[yidxs, :][:, yidxs] # covariance between people?
                 for f in range(self.Nfactors):
                     for g in range(self.Nfactors):
                         Sigma_p_rows = np.zeros((len(pidxs), self.N * self.Nfactors))
@@ -468,7 +461,7 @@ class PreferenceComponents(object):
             pidxs = self.coordidxs[person]           
             
             # the means for this person's observations 
-            prec_f_p = self.invKsf[person]
+            prec_f_p = self.invKf[person] * self.pref_gp[person].s
             
             # np.zeros((self.Nfactors * len(pidxs), self.Nfactors * len(pidxs))) do we need to factorise w_cov into two NF x N factors?
             # the data points are not independent given y. The factors are independent?
@@ -510,7 +503,7 @@ class PreferenceComponents(object):
         if self.use_fa:
             self.t = self.fa.mean_[:, np.newaxis]
         else:
-            t_prec = np.linalg.inv(self.K * self.rate_st / self.shape_st)
+            t_prec = self.invK * self.shape_st * self.rate_st
             self.t = t_prec.dot(np.zeros((self.N, 1)) + self.t_mu0)
             
             #size_added = 0
@@ -621,7 +614,7 @@ if __name__ == '__main__':
         np.random.seed(10)
 
     logging.info( "Testing Bayesian preference components analysis using synthetic data..." )
-    Npeople = 20
+    Npeople = 200
     Ptest = 20
     pair1idxs = []
     pair2idxs = []
@@ -630,11 +623,11 @@ if __name__ == '__main__':
     xvals = []
     yvals = []
     
-    nx = 50
-    ny = 50
+    nx = 5
+    ny = 5
     
     # generate a common prior:
-    ls = [10, 10]
+    ls = [10, 5]
     xvals = np.arange(nx)[:, np.newaxis]
     xvals = np.tile(xvals, (1, ny)).flatten()
     yvals = np.arange(ny)[np.newaxis, :]
@@ -659,7 +652,7 @@ if __name__ == '__main__':
         
         f_prior_mean = t + wy_p
         
-        _, nx, ny, prefs_p, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs(f_prior_mean)
+        _, nx, ny, prefs_p, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs(f_prior_mean, nx, ny)
         pair1idxs = np.concatenate((pair1idxs, pair1idxs_p + len(xvals))).astype(int)
         pair2idxs = np.concatenate((pair2idxs, pair2idxs_p + len(yvals))).astype(int)
         prefs = np.concatenate((prefs, prefs_p)).astype(int)
@@ -679,8 +672,8 @@ if __name__ == '__main__':
     if fix_seeds:
         np.random.seed() # do this if we want to use a different seed each time to test the variation in results
         
-    model = PreferenceComponents([nx,ny], ls=ls, nfactors=Nfactors, use_fa=False)
-    model.verbose = True
+    model = PreferenceComponents([nx,ny], ls=ls, nfactors=Nfactors + 5, use_fa=False)
+    model.verbose = False
     model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs])
     
     # turn the values into predictions of preference pairs.
@@ -720,6 +713,14 @@ if __name__ == '__main__':
 
     plt.figure()
     tmap = np.zeros((nx, ny))
+    tmap[model.obs_coords[:, 0], model.obs_coords[:, 1]] = np.sqrt(np.diag(model.t_cov))
+    scale = np.std(tmap[model.obs_coords[:, 0], model.obs_coords[:, 1]])
+    plt.imshow(tmap, cmap=cmap, aspect=None, origin='lower', \
+                   vmin=-scale*2, vmax=scale*2, interpolation='none', filterrad=0.01)
+    plt.title('STD at training points: t (item mean)')
+
+    plt.figure()
+    tmap = np.zeros((nx, ny))
     tmap[model.obs_coords[:, 0], model.obs_coords[:, 1]] = t[model.obs_coords[:, 0], model.obs_coords[:, 1]].flatten()
     plt.imshow(tmap, cmap=cmap, aspect=None, origin='lower', \
                    vmin=-2, vmax=2, interpolation='none', filterrad=0.01)
@@ -730,27 +731,42 @@ if __name__ == '__main__':
     ymap = model.y.T
     scale = np.sqrt(model.rate_sy[np.newaxis, :]/model.shape_sy[np.newaxis, :])
     ymap /= scale
-    plt.imshow(ymap, cmap=cmap, aspect=None, origin='lower', \
-                   vmin=-2, vmax=2, interpolation='none', filterrad=0.01)
+    plt.imshow(ymap, cmap=cmap, origin='lower', extent=[0, ymap.shape[1], 0, ymap.shape[0]], 
+               aspect=Nfactors / float(ymap.shape[0]), vmin=-2, vmax=2, interpolation='none', filterrad=0.01)
     plt.title('predictions at training points: y (latent features for people)')
 
     plt.figure()
     ymap = y.T
-    plt.imshow(ymap, cmap=cmap, aspect=None, origin='lower', \
-                   vmin=-2, vmax=2, interpolation='none', filterrad=0.01)
+    plt.imshow(ymap, cmap=cmap, origin='lower', extent=[0, ymap.shape[1], 0, ymap.shape[0]], 
+               aspect=Nfactors / float(ymap.shape[0]), vmin=-2, vmax=2, interpolation='none', filterrad=0.01)
     plt.title('ground truth at training points: y (latent features for people')      
        
     # w
-    plt.figure()
-    wmap = model.w
-    scale = np.sqrt(model.rate_sw[np.newaxis, :]/model.shape_sw[np.newaxis, :])
-    wmap /= scale
-    plt.imshow(wmap, cmap=cmap, aspect=None, origin='lower', \
-                   vmin=-2, vmax=2, interpolation='none', filterrad=0.01)
-    plt.title('predictions at training points: w (latent features for items)')
+    for f in range(model.Nfactors):
+        plt.figure()
+        wmap = np.zeros((nx, ny))
+        wmap[model.obs_coords[:, 0], model.obs_coords[:, 1]] = model.w[:, f]
+        scale = np.sqrt(model.rate_sw[f]/model.shape_sw[f])
+        wmap /= scale
+        plt.imshow(wmap, cmap=cmap, origin='lower', extent=[0, wmap.shape[1], 0, wmap.shape[0]],
+                   aspect=None, vmin=-2, vmax=2, interpolation='none', filterrad=0.01)
+        plt.title('predictions at training points: w_%i (latent feature for items)' %f)
 
-    plt.figure()
-    wmap = w[np.ravel_multi_index((model.obs_coords[:, 0], model.obs_coords[:, 1]), dims=(nx, ny)), :]
-    plt.imshow(wmap, cmap=cmap, aspect=None, origin='lower', \
-                   vmin=-2, vmax=2, interpolation='none', filterrad=0.01)
-    plt.title('ground truth at training points: w (latent features for items')  
+        plt.figure()
+        wmap = np.zeros((nx, ny))
+        wmap[model.obs_coords[:, 0], model.obs_coords[:, 1]] = np.sqrt(model.w_cov[np.arange(model.N*f, model.N*(f+1)), 
+                                                                                   np.arange(model.N*f, model.N*(f+1))])        
+        scale = np.std(wmap[model.obs_coords[:, 0], model.obs_coords[:, 1]])
+        wmap /= scale
+        plt.imshow(wmap, cmap=cmap, origin='lower', extent=[0, wmap.shape[1], 0, wmap.shape[0]], aspect=None, vmin=-2, 
+                   vmax=2, interpolation='none', filterrad=0.01)
+        plt.title('STD at training points: w_%i (latent feature for items)' %f)
+
+    for f in range(Nfactors):
+        plt.figure()
+        wmap = np.zeros((nx, ny))
+        wmap[model.obs_coords[:, 0], model.obs_coords[:, 1]] = w[np.ravel_multi_index((model.obs_coords[:, 0], 
+                                                                       model.obs_coords[:, 1]), dims=(nx, ny)), f]
+        plt.imshow(wmap, cmap=cmap, origin='lower', extent=[0, wmap.shape[1], 0, wmap.shape[0]],
+                   aspect=None, vmin=-2, vmax=2, interpolation='none', filterrad=0.01)
+        plt.title('ground truth at training points: w_%i (latent feature for items' % f)  
