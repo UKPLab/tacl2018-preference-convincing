@@ -1,9 +1,9 @@
 '''
 TODO: find out whether we correctly model correlations between people.
 
-TODO: test the sparseness property -- does the method find two ground truth features when we give it lots to look for?
+TODO: length-scale learning through MLII
 
-TODO: move some of the matrix inversions to the initialisation and use Cholesky. E.g. for Kw and Ky
+TODO: some of the matrix inversions should use Cholesky. E.g. for Kw and Ky
 
 Preference learning model for identifying relevant input features of items and people, plus finding latent 
 characteristics of items and people. Can be used to predict preferences or rank items, therefore could be part of
