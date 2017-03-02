@@ -8,8 +8,8 @@ Created on 21 Oct 2016
 @author: simpson
 '''
 from preference_features import PreferenceComponents
-from gppref import GPPref
-from gpgrid import coord_arr_to_1d#, coord_arr_from_1d
+from gp_pref_learning import GPPrefLearning
+from gp_classifier_vb import coord_arr_to_1d#, coord_arr_from_1d
 import numpy as np
 from sklearn.cluster.hierarchical import AgglomerativeClustering
 from sklearn.cluster import AffinityPropagation
@@ -227,7 +227,7 @@ class PredictionTester(object):
             
     def fit_predict_gp(self, pair1coords_train, pair2coords_train, prefs, pair1coords_test, pair2coords_test, 
                        return_latent_f=False):
-        model = GPPref([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10])
+        model = GPPrefLearning([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10])
         model.select_covariance_function('diagonal')
         model.max_iter_VB = 50
         model.min_iter_VB = 10

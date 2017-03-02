@@ -4,20 +4,19 @@ Created on 18 May 2016
 @author: simpson
 '''
 
-from gpgrid import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
+from gp_classifier_vb import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
 
 #supply_update_size = True
-#from gpgrid_svi import GPGridSVI as GPGrid
+#from gp_classifier_svi import GPGridSVI as GPClassifierVB
 
 #supply_update_size = False
-#from gpgrid import GPGrid
+#from gp_classifier_vb import GPClassifierVB
 supply_update_size = False
-from gpgrid import GPGrid
+from gp_classifier_svi import GPClassifierSVI
 
 import numpy as np
 from scipy.stats import norm
 from scipy.sparse import coo_matrix
-from scipy.special import psi
 import logging
 
 def get_unique_locations(obs_coords_0, obs_coords_1):
@@ -35,9 +34,9 @@ def get_unique_locations(obs_coords_0, obs_coords_1):
     
     return obs_coords, pref_v, pref_u
 
-class GPPref(GPGrid):
+class GPPrefLearning(GPClassifierSVI):
     '''
-    Preference learning with GP, with variational inference implementation.
+    Preference learning with GP, with variational inference implementation. Can use stochastic variational inference.
     
     Redefines:
     - Calculations of the Jacobian, referred to as self.G
@@ -53,7 +52,8 @@ class GPPref(GPGrid):
     pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
     
     def __init__(self, dims, mu0=0, shape_s0=None, rate_s0=None, s_initial=None, shape_ls=10, rate_ls=0.1, 
-                 ls_initial=None, force_update_all_points=False, n_lengthscales=1, max_update_size=1000, ninducing=500):
+                 ls_initial=None, force_update_all_points=False, n_lengthscales=1, max_update_size=1000, ninducing=500, 
+                 use_svi=True):
         
         # We set the function scale and noise scale to the same value so that we assume apriori that the differences
         # in preferences can be explained by noise in the preference pairs or the latent function. Ordering patterns 
@@ -71,13 +71,8 @@ class GPPref(GPGrid):
         if rate_s0 <= 0:
             rate_s0 = 0.5
         
-        if supply_update_size:
-            super(GPPref, self).__init__(dims, mu0, shape_s0, rate_s0, s_initial, shape_ls, rate_ls, ls_initial, 
-                                     force_update_all_points, n_lengthscales, max_update_size, ninducing)
-        else:
-            super(GPPref, self).__init__(dims, mu0, shape_s0, rate_s0, s_initial, shape_ls, rate_ls, ls_initial, 
-                                     force_update_all_points, n_lengthscales)
-        
+        super(GPPrefLearning, self).__init__(dims, mu0, shape_s0, rate_s0, s_initial, shape_ls, rate_ls, ls_initial, 
+                                     force_update_all_points, n_lengthscales, max_update_size, ninducing, use_svi)
         
     def init_prior_mean_f(self, z0):
         self.mu0_default = z0 # for preference learning, we pass in the latent mean directly  
@@ -167,15 +162,19 @@ class GPPref(GPGrid):
         else:
             return phi
     
-    def update_jacobian(self, G_update_rate=1.0, selection=[]):
+    def update_sample_idxs(self):
+        nobs = self.obs_f.shape[0]        
+        self.data_idx_i = np.random.choice(nobs, self.update_size, replace=False)
+        self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)        
+    
+    def update_jacobian(self, G_update_rate=1.0):
         phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
             
         J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * np.sqrt(0.5)
         obs_idxs = np.arange(self.n_locs)[np.newaxis, :]
         
-        if len(selection): 
-            obs_idxs = obs_idxs[:, selection]
-            self.data_obs_idx_i = np.in1d(self.pref_v, selection) & np.in1d(self.pref_u, selection)
+        if len(self.data_obs_idx_i): 
+            obs_idxs = obs_idxs[:, self.data_idx_i]
             J = J[self.data_obs_idx_i, :]
             s = (self.pref_v[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int) -\
                                                     (self.pref_u[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int)
@@ -252,7 +251,7 @@ class GPPref(GPGrid):
             
     def fit(self, items_1_coords, items_2_coords, obs_values, totals=None, process_obs=True, update_s=True, mu0_1=None,
             mu0_2=None):
-        super(GPPref, self).fit((items_1_coords, items_2_coords), obs_values, totals, process_obs, update_s, 
+        super(GPPrefLearning, self).fit((items_1_coords, items_2_coords), obs_values, totals, process_obs, update_s, 
                                 mu0=(mu0_1, mu0_2))  
         
     def predict_f(self, items_coords=[], max_block_size=1e5, mu0_output=None):
@@ -265,7 +264,7 @@ class GPPref(GPGrid):
                 
         for block in range(nblocks):
             if self.verbose:
-                logging.debug("GPGrid predicting block %i of %i" % (block, nblocks))            
+                logging.debug("GPClassifierVB predicting block %i of %i" % (block, nblocks))            
             self.predict_block(block, max_block_size, noutputs)
         
         return self.f, self.v
@@ -308,7 +307,7 @@ class GPPref(GPGrid):
                 
         for block in range(nblocks):
             if self.verbose:
-                logging.debug("GPGrid predicting block %i of %i" % (block, nblocks))            
+                logging.debug("GPClassifierVB predicting block %i of %i" % (block, nblocks))            
             self.predict_block(block, max_block_size, noutputs)
 
         m_post, not_m_post, v_post = self.post_rough(self.f, self.v, out_pref_v, out_pref_u)
@@ -384,14 +383,14 @@ def matern_3_2_from_raw_vals(vals, ls):
     return K
 
 
-def gen_synthetic_prefs(f_prior_mean=None, nx=5, ny=5):
+def gen_synthetic_prefs(f_prior_mean=None, nx=100, ny=100):
     # f_prior_mean should contain the means for all the grid squares
     
     # Generate some data
     ls = [10, 10]
     sigma = 0.1 
-    N = 25
-    P = 100 # number of pairs for training
+    N = 1000
+    P = 10000 # number of pairs for training
     s = 1 # inverse precision scale for the latent function.
     
     # Some random feature values
@@ -399,6 +398,7 @@ def gen_synthetic_prefs(f_prior_mean=None, nx=5, ny=5):
     yvals = np.random.choice(ny, N, replace=True)[:, np.newaxis]
     # remove repeated coordinates
     for coord in range(N):
+        
         while np.sum((xvals==xvals[coord]) & (yvals==yvals[coord])) > 1:
             xvals[coord] = np.random.choice(nx, 1)
             yvals[coord] = np.random.choice(ny, 1)           
@@ -444,7 +444,7 @@ if __name__ == '__main__':
     pair2coords = np.concatenate((xvals[pair2idxs, :], yvals[pair2idxs, :]), axis=1)   
         
     # separate training and test data
-    Ptest = 10
+    Ptest = 100
     testpairs = np.random.choice(pair1coords.shape[0], Ptest, replace=False)
     testidxs = np.zeros(pair1coords.shape[0], dtype=bool)
     testidxs[testpairs] = True
@@ -458,9 +458,10 @@ if __name__ == '__main__':
     yvals_test = yvals_test[uidxs][:, np.newaxis]
     f_test = np.concatenate((f[pair1idxs[testidxs]], f[pair2idxs[testidxs]]))[uidxs]
     
-    # Create a GPPref model
-    model = GPPref([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], max_update_size=100, ninducing=200)    
-    model.verbose = True
+    # Create a GPPrefLearning model
+    model = GPPrefLearning([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], max_update_size=100, 
+                           ninducing=200, use_svi=True)    
+    #model.verbose = True
     model.max_iter_VB = 1000
     model.min_iter_VB = 5
     model.uselowerbound = True

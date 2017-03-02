@@ -13,7 +13,7 @@ from krippendorffalpha import alpha
 from scipy.stats import norm
 from preproc_raw_data import load
 from pref_prediction_methods import PredictionTester
-from gpgrid import coord_arr_to_1d
+from gp_classifier_vb import coord_arr_to_1d
 from scipy.sparse import coo_matrix
 from sklearn.mixture import GaussianMixture, BayesianGaussianMixture#DPGMM
 from sklearn.cluster import AffinityPropagation

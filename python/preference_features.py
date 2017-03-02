@@ -50,12 +50,12 @@ Created on 2 Jun 2016
 @author: simpson
 '''
 
-from gppref import GPPref, gen_synthetic_prefs, get_unique_locations, matern_3_2, matern_3_2_from_raw_vals
+from gp_pref_learning import GPPrefLearning, gen_synthetic_prefs, get_unique_locations, matern_3_2, matern_3_2_from_raw_vals
 import numpy as np
 from sklearn.decomposition import FactorAnalysis
 from scipy.stats import multivariate_normal as mvn
 import logging
-from gpgrid import coord_arr_to_1d
+from gp_classifier_vb import coord_arr_to_1d
 from scipy.linalg import cholesky, solve_triangular, block_diag
 from scipy.special import gammaln, psi
 
@@ -177,8 +177,8 @@ class PreferenceComponents(object):
         self.coordidxs = {}
         
         for person in self.people:
-            self.pref_gp[person] = GPPref(self.dims, self.mu0, self.shape_sf0, self.rate_sf0, None,
-                                                self.shape_ls, self.rate_ls, self.ls)
+            self.pref_gp[person] = GPPrefLearning(self.dims, self.mu0, self.shape_sf0, self.rate_sf0, None,
+                                                self.shape_ls, self.rate_ls, self.ls, use_svi=False)
             self.pref_gp[person].select_covariance_function('matern_3_2')
             self.pref_gp[person].max_iter_VB = 1
             self.pref_gp[person].min_iter_VB = 1
@@ -343,7 +343,7 @@ class PreferenceComponents(object):
                 pref_gp_p = self.pref_gp[p]
             else:
                 # create a new pref GP for a new person
-                pref_gp_p = GPPref(self.dims, self.mu0, self.shape_sf0, self.rate_sf0, None, self.shape_ls, 
+                pref_gp_p = GPPrefLearning(self.dims, self.mu0, self.shape_sf0, self.rate_sf0, None, self.shape_ls, 
                                    self.rate_ls, self.ls)
                 pref_gp_p.select_covariance_function('matern_3_2')
                 pref_gp_p.max_iter_VB = 1
