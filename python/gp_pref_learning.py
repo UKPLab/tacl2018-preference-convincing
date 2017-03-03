@@ -43,8 +43,7 @@ class GPPrefLearning(GPClassifierSVI):
     pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
     
     def __init__(self, dims, mu0=0, shape_s0=2, rate_s0=2, shape_ls=10, rate_ls=0.1, ls_initial=None, 
-                 force_update_all_points=False, n_lengthscales=1, kernel_func='matern_3_2', max_update_size=10000, 
-                 ninducing=500, use_svi=True):
+         force_update_all_points=False, kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True):
         
         # We set the function scale and noise scale to the same value so that we assume apriori that the differences
         # in preferences can be explained by noise in the preference pairs or the latent function. Ordering patterns 
@@ -63,15 +62,15 @@ class GPPrefLearning(GPClassifierSVI):
             rate_s0 = 0.5
         
         super(GPPrefLearning, self).__init__(dims, mu0, shape_s0, rate_s0, shape_ls, rate_ls, ls_initial, 
-                             force_update_all_points, n_lengthscales, kernel_func, max_update_size, ninducing, use_svi)
+                             force_update_all_points, kernel_func, max_update_size, ninducing, use_svi)
     
     # Initialisation --------------------------------------------------------------------------------------------------
         
-    def init_prior_mean_f(self, z0):
+    def _init_prior_mean_f(self, z0):
         self.mu0_default = z0 # for preference learning, we pass in the latent mean directly  
     
-    def init_obs_prior(self):
-        m_prior, not_m_prior, v_prior = self.post_rough(self.mu0, self.rate_s0/self.shape_s0, self.pref_v, self.pref_u)
+    def _init_obs_prior(self):
+        m_prior, not_m_prior, v_prior = self._post_rough(self.mu0, self.rate_s0/self.shape_s0, self.pref_v, self.pref_u)
 
         # find the beta parameters
         a_plus_b = 1.0 / (v_prior / (m_prior*(not_m_prior))) - 1
@@ -82,12 +81,12 @@ class GPPrefLearning(GPClassifierSVI):
         if self.verbose:
             logging.debug("Prior parameters for the observed pairwise preference variance are: %s" % str(self.nu0))           
     
-    def init_obs_f(self):
+    def _init_obs_f(self):
         # Mean probability at observed points given local observations
         self.obs_f = np.zeros((self.n_locs, 1)) + self.mu0
         self.Ntrain = self.pref_u.size 
         
-    def init_obs_mu0(self, mu0):
+    def _init_obs_mu0(self, mu0):
         self.mu0 = np.zeros((self.n_locs, 1)) + self.mu0_default
         
         if mu0 is not None and mu0[0] is not None and mu0[1] is not None:
@@ -101,7 +100,7 @@ class GPPrefLearning(GPClassifierSVI):
     
     # Input data handling ---------------------------------------------------------------------------------------------
 
-    def count_observations(self, obs_coords, n_obs, poscounts, totals):
+    def _count_observations(self, obs_coords, n_obs, poscounts, totals):
         '''
         obs_coords - a tuple with two elements, the first containing the list of coordinates for the first items in each
         pair, and the second containing the coordinates of the second item in the pair.
@@ -204,7 +203,7 @@ class GPPrefLearning(GPClassifierSVI):
         else:
             return phi
     
-    def update_jacobian(self, G_update_rate=1.0):
+    def _update_jacobian(self, G_update_rate=1.0):
         phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
             
         J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * np.sqrt(0.5)
@@ -230,7 +229,7 @@ class GPPrefLearning(GPClassifierSVI):
     
     # Log Likelihood Computation ------------------------------------------------------------------------------------- 
         
-    def logpt(self):
+    def _logpt(self):
         rho = self.forward_model(self.obs_f)
         rho = temper_extreme_probs(rho)
         logrho_rough = np.log(rho)
@@ -241,12 +240,12 @@ class GPPrefLearning(GPClassifierSVI):
     
     # Training methods ------------------------------------------------------------------------------------------------  
             
-    def fit(self, items_1_coords, items_2_coords, obs_values, totals=None, process_obs=True, update_s=True, mu0_1=None,
-            mu0_2=None):
-        super(GPPrefLearning, self).fit((items_1_coords, items_2_coords), obs_values, totals, process_obs, update_s, 
-                                mu0=(mu0_1, mu0_2))  
+    def fit(self, items1_coords=None, items2_coords=None, obs_values=None, totals=None, process_obs=True, update_s=True, mu0_1=None,
+            mu0_2=None, optimize=False):
+        super(GPPrefLearning, self).fit((items1_coords, items2_coords), obs_values, totals, process_obs, 
+                                        mu0=(mu0_1, mu0_2), optimize=optimize)  
         
-    def update_sample_idxs(self):
+    def _update_sample_idxs(self):
         nobs = self.obs_f.shape[0]
         
         self.data_obs_idx_i = 0
@@ -285,7 +284,7 @@ class GPPrefLearning(GPClassifierSVI):
             items_1_coords = items_1_coords.T       
         
         output_coords, out_pref_v, out_pref_u = get_unique_locations(items_0_coords, items_1_coords)
-        nblocks, noutputs = self.init_output_arrays(output_coords, max_block_size)
+        nblocks, noutputs = self._init_output_arrays(output_coords, max_block_size)
                 
         self.mu0_output = np.zeros((noutputs, 1)) + self.mu0_default
         if mu0_output1 is not None:
@@ -296,9 +295,9 @@ class GPPrefLearning(GPClassifierSVI):
         for block in range(nblocks):
             if self.verbose:
                 logging.debug("GPClassifierVB predicting block %i of %i" % (block, nblocks))            
-            self.predict_block(block, max_block_size, noutputs)
+            self._predict_block(block, max_block_size, noutputs)
 
-        m_post, not_m_post, v_post = self.post_rough(self.f, self.v, out_pref_v, out_pref_u)
+        m_post, not_m_post, v_post = self._post_rough(self.f, self.v, out_pref_v, out_pref_u)
         
         if expectedlog:
             m_post = np.log(m_post)
@@ -315,7 +314,7 @@ class GPPrefLearning(GPClassifierSVI):
             return m_post     
         
     def predict_f(self, items_coords=[], max_block_size=1e5, mu0_output=None):
-        nblocks, noutputs = self.init_output_arrays(items_coords, max_block_size)
+        nblocks, noutputs = self._init_output_arrays(items_coords, max_block_size)
                 
         if mu0_output is not None and len(mu0_output):
             self.mu0_output = mu0_output
@@ -325,11 +324,11 @@ class GPPrefLearning(GPClassifierSVI):
         for block in range(nblocks):
             if self.verbose:
                 logging.debug("GPClassifierVB predicting block %i of %i" % (block, nblocks))            
-            self.predict_block(block, max_block_size, noutputs)
+            self._predict_block(block, max_block_size, noutputs)
         
         return self.f, self.v
             
-    def post_rough(self, f_mean, f_var=None, pref_v=None, pref_u=None):
+    def _post_rough(self, f_mean, f_var=None, pref_v=None, pref_u=None):
         ''' 
         When making predictions, we want to predict the probability of each listed preference pair.
         Use a solution given by applying the forward model to the mean of the latent function -- 
@@ -355,123 +354,3 @@ class GPPrefLearning(GPClassifierSVI):
             return m_post, not_m_post, v_post            
         else:        
             return m_post, not_m_post   
-
-def gen_synthetic_prefs(f_prior_mean=None, nx=100, ny=100):
-    # f_prior_mean should contain the means for all the grid squares
-    
-    # Generate some data
-    ls = [10, 10]
-    sigma = 0.1 
-    N = 100
-    P = 1000 # number of pairs for training
-    s = 1 # inverse precision scale for the latent function.
-    
-    # Some random feature values
-    xvals = np.random.choice(nx, N, replace=True)[:, np.newaxis]
-    yvals = np.random.choice(ny, N, replace=True)[:, np.newaxis]
-    # remove repeated coordinates
-    for coord in range(N):
-        
-        while np.sum((xvals==xvals[coord]) & (yvals==yvals[coord])) > 1:
-            xvals[coord] = np.random.choice(nx, 1)
-            yvals[coord] = np.random.choice(ny, 1)           
-        
-    K = matern_3_2_from_raw_vals(np.array([xvals, yvals]), ls)
-    from scipy.stats import multivariate_normal as mvn
-    if f_prior_mean is None:
-        f = mvn.rvs(cov=K/s) # zero mean        
-    else:
-        f = mvn.rvs(mean=f_prior_mean[xvals, yvals].flatten(), cov=K/s) # zero mean
-    
-    # generate pairs indices
-    pair1idxs = np.random.choice(N, P, replace=True)
-    pair2idxs = np.random.choice(N, P, replace=True)
-    
-    # remove indexes of pairs that compare the same data points -- the correct answer is trivial
-    while(np.sum(pair1idxs==pair2idxs)):
-        matchingidxs = pair1idxs==pair2idxs
-        pair2idxs[matchingidxs] = np.random.choice(N, np.sum(matchingidxs), replace=True)
-      
-    # generate the noisy function values for the pairs
-    f1noisy = norm.rvs(scale=sigma, size=P) + f[pair1idxs]
-    f2noisy = norm.rvs(scale=sigma, size=P) + f[pair2idxs]
-    
-    # generate the discrete labels from the noisy preferences
-    prefs = f1noisy > f2noisy
-    
-    return N, nx, ny, prefs, xvals, yvals, pair1idxs, pair2idxs, f, K
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)    
-    
-    from scipy.stats import kendalltau
-    
-    fix_seeds = True
-    
-    # make sure the simulation is repeatable
-    if fix_seeds:
-        np.random.seed(1)
-    
-    N, nx, ny, prefs, xvals, yvals, pair1idxs, pair2idxs, f, _ = gen_synthetic_prefs()
-    pair1coords = np.concatenate((xvals[pair1idxs, :], yvals[pair1idxs, :]), axis=1)
-    pair2coords = np.concatenate((xvals[pair2idxs, :], yvals[pair2idxs, :]), axis=1)   
-        
-    # separate training and test data
-    Ptest = int(len(prefs) * 0.1)
-    testpairs = np.random.choice(pair1coords.shape[0], Ptest, replace=False)
-    testidxs = np.zeros(pair1coords.shape[0], dtype=bool)
-    testidxs[testpairs] = True
-    trainidxs = np.invert(testidxs)
-    
-    xvals_test = np.array([xvals[pair1idxs[testidxs]], xvals[pair2idxs[testidxs]]]).flatten()
-    yvals_test = np.array([yvals[pair1idxs[testidxs]], yvals[pair2idxs[testidxs]]]).flatten()
-    _, uidxs = np.unique(coord_arr_to_1d(np.concatenate((xvals_test[:, np.newaxis], yvals_test[:, np.newaxis]), axis=1)), 
-              return_index=True)
-    xvals_test = xvals_test[uidxs][:, np.newaxis]
-    yvals_test = yvals_test[uidxs][:, np.newaxis]
-    f_test = np.concatenate((f[pair1idxs[testidxs]], f[pair2idxs[testidxs]]))[uidxs]
-    
-    # Create a GPPrefLearning model
-    model = GPPrefLearning([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], use_svi=True, ninducing=100)    
-    #model.verbose = True
-    model.delay = 1
-    
-    if fix_seeds:
-        np.random.seed() # do this if we want to use a different seed each time to test the variation in results
-    
-    model.fit(pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs])
-    print "Final lower bound: %f" % model.lowerbound()
-    
-    # Predict at the test locations
-    fpred, vpred = model.predict_f(np.concatenate((xvals_test, yvals_test), axis=1))
-    
-    # Compare the observation point values with the ground truth
-    obs_coords_1d = coord_arr_to_1d(model.obs_coords)
-    test_coords_1d = coord_arr_to_1d(np.concatenate((xvals, yvals), axis=1))
-    f_obs = [f[(test_coords_1d==obs_coords_1d[i]).flatten()][0] for i in range(model.obs_coords.shape[0])]
-    print "Kendall's tau (observations): %.3f" % kendalltau(f_obs, model.obs_f.flatten())[0]
-        
-    # Evaluate the accuracy of the predictions
-    #print "RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
-    #print "NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
-    print "Kendall's tau (test): %.3f" % kendalltau(f_test, fpred)[0] 
-        
-    t = (f[pair1idxs[testidxs]] > f[pair2idxs[testidxs]]).astype(int)
-    rho_pred, var_rho_pred = model.predict(pair1coords[testidxs], pair2coords[testidxs])
-    rho_pred = rho_pred.flatten()
-    t_pred = np.round(rho_pred)
-    
-    # To make sure the simulation is repeatable, re-seed the RNG after all the stochastic inference has been completed
-    if fix_seeds:
-        np.random.seed(2)    
-    
-    print "Brier score of %.3f" % np.sqrt(np.mean((t-rho_pred)**2))
-    print "Cross entropy error of %.3f" % -np.sum(t * np.log(rho_pred) + (1-t) * np.log(1 - rho_pred))    
-    
-    from sklearn.metrics import f1_score, roc_auc_score
-    print "F1 score of %.3f" % f1_score(t, t_pred)
-    print "Accuracy of %.3f" % np.mean(t==t_pred)
-    print "ROC of %.3f" % roc_auc_score(t, rho_pred)
-    
-    # looks like we don't correct the modified order of points in predict() that occurs in the unique locations function 
-    

@@ -228,7 +228,7 @@ class PredictionTester(object):
     def fit_predict_gp(self, pair1coords_train, pair2coords_train, prefs, pair1coords_test, pair2coords_test, 
                        return_latent_f=False):
         model = GPPrefLearning([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10])
-        model.select_covariance_function('diagonal')
+        model._select_covariance_function('diagonal')
         model.max_iter_VB = 50
         model.min_iter_VB = 10
         model.max_iter_G = 3      

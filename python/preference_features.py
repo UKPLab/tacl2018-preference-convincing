@@ -154,7 +154,7 @@ class PreferenceComponents(object):
         
         self.use_fa = use_fa # flag to indicate whether to use the simple factor analysis ML update instead of the VB GP
         
-    def init_params(self):
+    def _init_params(self):
         self.Npeople = np.max(self.people).astype(int) + 1
         
         self.f = np.zeros((self.Npeople, self.N))
@@ -179,7 +179,7 @@ class PreferenceComponents(object):
         for person in self.people:
             self.pref_gp[person] = GPPrefLearning(self.dims, self.mu0, self.shape_sf0, self.rate_sf0, None,
                                                 self.shape_ls, self.rate_ls, self.ls, use_svi=False)
-            self.pref_gp[person].select_covariance_function('matern_3_2')
+            self.pref_gp[person]._select_covariance_function('matern_3_2')
             self.pref_gp[person].max_iter_VB = 1
             self.pref_gp[person].min_iter_VB = 1
             self.pref_gp[person].max_iter_G = 5
@@ -251,7 +251,7 @@ class PreferenceComponents(object):
             pidxs = personIDs==person
             self.Nlabels += np.unique([self.pref_v[pidxs], self.pref_u[pidxs]]).shape[0]
         
-        self.init_params()
+        self._init_params()
             
         niter = 0
         diff = np.inf
@@ -260,7 +260,7 @@ class PreferenceComponents(object):
         while (niter < self.min_iter) | ((diff > self.conv_threshold) and (niter < self.max_iter)):
             # run a VB iteration
             # compute preference latent functions for all workers
-            self.expec_f(personIDs, items_1_coords, items_2_coords, preferences)
+            self._expec_f(personIDs, items_1_coords, items_2_coords, preferences)
             
             # compute the preference function means
             self.expec_t()            
@@ -345,7 +345,7 @@ class PreferenceComponents(object):
                 # create a new pref GP for a new person
                 pref_gp_p = GPPrefLearning(self.dims, self.mu0, self.shape_sf0, self.rate_sf0, None, self.shape_ls, 
                                    self.rate_ls, self.ls)
-                pref_gp_p.select_covariance_function('matern_3_2')
+                pref_gp_p._select_covariance_function('matern_3_2')
                 pref_gp_p.max_iter_VB = 1
                 pref_gp_p.min_iter_VB = 1
                 pref_gp_p.max_iter_G = 5
@@ -357,7 +357,7 @@ class PreferenceComponents(object):
             
         return results
         
-    def expec_f(self, personids, items_1_coords, items_2_coords, preferences):
+    def _expec_f(self, personids, items_1_coords, items_2_coords, preferences):
         '''
         Compute the expectation over each worker's latent preference function values for the set of objects.
         '''
@@ -551,11 +551,11 @@ class PreferenceComponents(object):
             #logging.debug("logps_y: %.2f" % logps_y)
             #logging.debug("logqs_y: %.2f" % logqs_y)
             
-        logpt = mvn.logpdf(self.t.flatten(), mean=np.zeros(self.N) + self.t_mu0, cov=self.K * self.rate_st / self.shape_st)
+        _logpt = mvn.logpdf(self.t.flatten(), mean=np.zeros(self.N) + self.t_mu0, cov=self.K * self.rate_st / self.shape_st)
         logqt = mvn.logpdf(self.t.flatten(), mean=self.t.flatten(), cov=self.t_cov)
         logps_t = lnp_output_scale(self.shape_st0, self.rate_st0, self.shape_st, self.rate_st) 
         logqs_t = lnq_output_scale(self.shape_st, self.rate_st)
-        t_terms = logpt - logqt + logps_t - logqs_t
+        t_terms = _logpt - logqt + logps_t - logqs_t
         if self.verbose:         
             logging.debug('s_t=%.2f' % (self.shape_st/self.rate_st))        
             #logging.debug("t_cov: %s" % self.t_cov)
