@@ -52,7 +52,7 @@ class GPPrefLearning(GPClassifierSVI):
     pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
     
     def __init__(self, dims, mu0=0, shape_s0=None, rate_s0=None, s_initial=None, shape_ls=10, rate_ls=0.1, 
-                 ls_initial=None, force_update_all_points=False, n_lengthscales=1, max_update_size=1000, ninducing=500, 
+                 ls_initial=None, force_update_all_points=False, n_lengthscales=1, max_update_size=10000, ninducing=500, 
                  use_svi=True):
         
         # We set the function scale and noise scale to the same value so that we assume apriori that the differences
@@ -163,9 +163,13 @@ class GPPrefLearning(GPClassifierSVI):
             return phi
     
     def update_sample_idxs(self):
-        nobs = self.obs_f.shape[0]        
-        self.data_idx_i = np.random.choice(nobs, self.update_size, replace=False)
-        self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)        
+        nobs = self.obs_f.shape[0]
+        
+        self.data_obs_idx_i = 0
+        
+        while not np.sum(self.data_obs_idx_i): # make sure we don't choose indices that have not been compared
+            self.data_idx_i = np.random.choice(nobs, self.update_size, replace=False)
+            self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)        
     
     def update_jacobian(self, G_update_rate=1.0):
         phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
@@ -173,7 +177,7 @@ class GPPrefLearning(GPClassifierSVI):
         J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * np.sqrt(0.5)
         obs_idxs = np.arange(self.n_locs)[np.newaxis, :]
         
-        if len(self.data_obs_idx_i): 
+        if hasattr(self, 'data_obs_idx_i') and len(self.data_obs_idx_i): 
             obs_idxs = obs_idxs[:, self.data_idx_i]
             J = J[self.data_obs_idx_i, :]
             s = (self.pref_v[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int) -\
@@ -444,7 +448,7 @@ if __name__ == '__main__':
     pair2coords = np.concatenate((xvals[pair2idxs, :], yvals[pair2idxs, :]), axis=1)   
         
     # separate training and test data
-    Ptest = 100
+    Ptest = int(len(prefs) * 0.1)
     testpairs = np.random.choice(pair1coords.shape[0], Ptest, replace=False)
     testidxs = np.zeros(pair1coords.shape[0], dtype=bool)
     testidxs[testpairs] = True
@@ -459,12 +463,12 @@ if __name__ == '__main__':
     f_test = np.concatenate((f[pair1idxs[testidxs]], f[pair2idxs[testidxs]]))[uidxs]
     
     # Create a GPPrefLearning model
-    model = GPPrefLearning([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], max_update_size=100, 
-                           ninducing=200, use_svi=True)    
+    model = GPPrefLearning([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], use_svi=True)    
     #model.verbose = True
     model.max_iter_VB = 1000
     model.min_iter_VB = 5
     model.uselowerbound = True
+    model.delay = 1
     #model.conv_threshold_G = 1e-8
     #model.conv_check_freq = 1
     #model.conv_threshold = 1e-3 # the difference must be less than 1% of the value of the lower bound
