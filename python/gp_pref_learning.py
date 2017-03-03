@@ -3,21 +3,12 @@ Created on 18 May 2016
 
 @author: simpson
 '''
-
-from gp_classifier_vb import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
-
-#supply_update_size = True
-#from gp_classifier_svi import GPGridSVI as GPClassifierVB
-
-#supply_update_size = False
-#from gp_classifier_vb import GPClassifierVB
-supply_update_size = False
-from gp_classifier_svi import GPClassifierSVI
-
 import numpy as np
 from scipy.stats import norm
 from scipy.sparse import coo_matrix
 import logging
+from gp_classifier_vb import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs, matern_3_2_from_raw_vals
+from gp_classifier_svi import GPClassifierSVI
 
 def get_unique_locations(obs_coords_0, obs_coords_1):
     coord_rows_0 = coord_arr_to_1d(obs_coords_0)
@@ -51,9 +42,9 @@ class GPPrefLearning(GPClassifierSVI):
     pref_v = [] # the first items in each pair -- index to the observation coordinates in self.obsx and self.obsy
     pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
     
-    def __init__(self, dims, mu0=0, shape_s0=None, rate_s0=None, s_initial=None, shape_ls=10, rate_ls=0.1, 
-                 ls_initial=None, force_update_all_points=False, n_lengthscales=1, max_update_size=10000, ninducing=500, 
-                 use_svi=True):
+    def __init__(self, dims, mu0=0, shape_s0=2, rate_s0=2, shape_ls=10, rate_ls=0.1, ls_initial=None, 
+                 force_update_all_points=False, n_lengthscales=1, kernel_func='matern_3_2', max_update_size=10000, 
+                 ninducing=500, use_svi=True):
         
         # We set the function scale and noise scale to the same value so that we assume apriori that the differences
         # in preferences can be explained by noise in the preference pairs or the latent function. Ordering patterns 
@@ -71,8 +62,10 @@ class GPPrefLearning(GPClassifierSVI):
         if rate_s0 <= 0:
             rate_s0 = 0.5
         
-        super(GPPrefLearning, self).__init__(dims, mu0, shape_s0, rate_s0, s_initial, shape_ls, rate_ls, ls_initial, 
-                                     force_update_all_points, n_lengthscales, max_update_size, ninducing, use_svi)
+        super(GPPrefLearning, self).__init__(dims, mu0, shape_s0, rate_s0, shape_ls, rate_ls, ls_initial, 
+                             force_update_all_points, n_lengthscales, kernel_func, max_update_size, ninducing, use_svi)
+    
+    # Initialisation --------------------------------------------------------------------------------------------------
         
     def init_prior_mean_f(self, z0):
         self.mu0_default = z0 # for preference learning, we pass in the latent mean directly  
@@ -105,96 +98,9 @@ class GPPrefLearning(GPClassifierSVI):
             self.mu0 = all_mu0[self.original_idxs] # the means corresponding to uravelled_coords
             self.mu0_1 = self.mu0[self.pref_v, :]
             self.mu0_2 = self.mu0[self.pref_u, :]
-            
-#     def init_s(self):
-#         self.shape_s = self.shape_s0
-#         self.rate_s = self.rate_s0            
-#         self.s = self.shape_s / self.rate_s        
-#         self.Elns = psi(self.shape_s) - np.log(self.rate_s)
-#         
-#         self.Ks = self.K / self.s
-#         self.obs_C = self.K / self.s
-#         
-#         self.old_s = self.s
-#         if self.verbose:
-#             logging.debug("Setting the initial precision scale to s=%.3f" % self.s)    
-#             
-    def forward_model(self, f=[], subset_idxs=[], v=[], u=[], return_g_f=False):
-        '''
-        f - should be of shape nobs x 1
-        
-        This returns the probability that each pair has a value of 1, which is referred to as Phi(z) 
-        in the chu/ghahramani paper, and the latent parameter referred to as z in the chu/ghahramani paper. 
-        In this work, we use z to refer to the observations, i.e. the fraction of comparisons of a given pair with 
-        value 1, so use a different label here.
-        '''        
-        if len(f) == 0:
-            f = self.obs_f            
-        if len(v) == 0:
-            v = self.pref_v
-        if len(u) == 0:
-            u = self.pref_u
-            
-        if len(subset_idxs):
-            if len(v) and len(u):
-                # keep only the pairs that reference two items in the subet
-                pair_subset = np.in1d(v, subset_idxs) & np.in1d(u, subset_idxs)
-                v = v[pair_subset]
-                u = u[pair_subset]
-            else:
-                f = f[subset_idxs]  
+    
+    # Input data handling ---------------------------------------------------------------------------------------------
 
-        if f.ndim < 2:
-            f = f[:, np.newaxis]
-        
-        if len(v) and len(u):   
-            g_f = (f[v, :] - f[u, :]) / np.sqrt(2) # / np.sqrt(self.s)) # gives an NobsxNobs matrix
-        else: # provide the complete set of pairs
-            g_f = (f - f.T) / np.sqrt(2) # / np.sqrt(self.s))  # the maths shows that s cancels out -- it's already 
-            # included in our estimates of f, which are scaled by s. However, the prior mean mu0 should also be scaled
-            # to match, but this should happen automatically if we learn s, I think. 
-                
-        phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the 
-        # With the standard GP density classifier, we can skip this step because
-        # g_f is already a probability and Phi(z) is a Bernoulli distribution.
-        if return_g_f:
-            return phi, g_f
-        else:
-            return phi
-    
-    def update_sample_idxs(self):
-        nobs = self.obs_f.shape[0]
-        
-        self.data_obs_idx_i = 0
-        
-        while not np.sum(self.data_obs_idx_i): # make sure we don't choose indices that have not been compared
-            self.data_idx_i = np.random.choice(nobs, self.update_size, replace=False)
-            self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)        
-    
-    def update_jacobian(self, G_update_rate=1.0):
-        phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
-            
-        J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * np.sqrt(0.5)
-        obs_idxs = np.arange(self.n_locs)[np.newaxis, :]
-        
-        if hasattr(self, 'data_obs_idx_i') and len(self.data_obs_idx_i): 
-            obs_idxs = obs_idxs[:, self.data_idx_i]
-            J = J[self.data_obs_idx_i, :]
-            s = (self.pref_v[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int) -\
-                                                    (self.pref_u[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int)
-        else:    
-            s = (self.pref_v[:, np.newaxis]==obs_idxs).astype(int) - (self.pref_u[:, np.newaxis]==obs_idxs).astype(int)
-            
-        J = J * s 
-        
-        if self.G is None or not np.any(self.G) or self.G.shape != J.shape: 
-            # either G has not been initialised, or is from different observations:
-            self.G = J
-        else:        
-            self.G = G_update_rate * J + (1 - G_update_rate) * self.G
-            
-        return phi
-    
     def count_observations(self, obs_coords, n_obs, poscounts, totals):
         '''
         obs_coords - a tuple with two elements, the first containing the list of coordinates for the first items in each
@@ -251,27 +157,105 @@ class GPPrefLearning(GPClassifierSVI):
         elif obs_coords_0.dtype=='float':
             self.obs_coords, self.pref_v, self.pref_u = get_unique_locations(obs_coords_0, obs_coords_1)
             
-            return poscounts, totals # these remain unaltered as we have not de-duplicated            
+            return poscounts, totals # these remain unaltered as we have not de-duplicated
+
+    # Mapping between latent and observation spaces -------------------------------------------------------------------
+              
+    def forward_model(self, f=[], subset_idxs=[], v=[], u=[], return_g_f=False):
+        '''
+        f - should be of shape nobs x 1
+        
+        This returns the probability that each pair has a value of 1, which is referred to as Phi(z) 
+        in the chu/ghahramani paper, and the latent parameter referred to as z in the chu/ghahramani paper. 
+        In this work, we use z to refer to the observations, i.e. the fraction of comparisons of a given pair with 
+        value 1, so use a different label here.
+        '''        
+        if len(f) == 0:
+            f = self.obs_f            
+        if len(v) == 0:
+            v = self.pref_v
+        if len(u) == 0:
+            u = self.pref_u
+            
+        if len(subset_idxs):
+            if len(v) and len(u):
+                # keep only the pairs that reference two items in the subet
+                pair_subset = np.in1d(v, subset_idxs) & np.in1d(u, subset_idxs)
+                v = v[pair_subset]
+                u = u[pair_subset]
+            else:
+                f = f[subset_idxs]  
+
+        if f.ndim < 2:
+            f = f[:, np.newaxis]
+        
+        if len(v) and len(u):   
+            g_f = (f[v, :] - f[u, :]) / np.sqrt(2) # / np.sqrt(self.s)) # gives an NobsxNobs matrix
+        else: # provide the complete set of pairs
+            g_f = (f - f.T) / np.sqrt(2) # / np.sqrt(self.s))  # the maths shows that s cancels out -- it's already 
+            # included in our estimates of f, which are scaled by s. However, the prior mean mu0 should also be scaled
+            # to match, but this should happen automatically if we learn s, I think. 
+                
+        phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the 
+        # With the standard GP density classifier, we can skip this step because
+        # g_f is already a probability and Phi(z) is a Bernoulli distribution.
+        if return_g_f:
+            return phi, g_f
+        else:
+            return phi
+    
+    def update_jacobian(self, G_update_rate=1.0):
+        phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
+            
+        J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * np.sqrt(0.5)
+        obs_idxs = np.arange(self.n_locs)[np.newaxis, :]
+        
+        if hasattr(self, 'data_obs_idx_i') and len(self.data_obs_idx_i): 
+            obs_idxs = obs_idxs[:, self.data_idx_i]
+            J = J[self.data_obs_idx_i, :]
+            s = (self.pref_v[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int) -\
+                                                    (self.pref_u[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int)
+        else:    
+            s = (self.pref_v[:, np.newaxis]==obs_idxs).astype(int) - (self.pref_u[:, np.newaxis]==obs_idxs).astype(int)
+            
+        J = J * s 
+        
+        if self.G is None or not np.any(self.G) or self.G.shape != J.shape: 
+            # either G has not been initialised, or is from different observations:
+            self.G = J
+        else:        
+            self.G = G_update_rate * J + (1 - G_update_rate) * self.G
+            
+        return phi
+    
+    # Log Likelihood Computation ------------------------------------------------------------------------------------- 
+        
+    def logpt(self):
+        rho = self.forward_model(self.obs_f)
+        rho = temper_extreme_probs(rho)
+        logrho_rough = np.log(rho)
+        lognotrho_rough = np.log(1 - rho)   
+        #logging.debug("Approximation error in rho =%.4f" % np.max(np.abs(logrho - logrho_rough)))
+        #logging.debug("Approximation error in notrho =%.4f" % np.max(np.abs(lognotrho - lognotrho_rough)))
+        return logrho_rough, lognotrho_rough  
+    
+    # Training methods ------------------------------------------------------------------------------------------------  
             
     def fit(self, items_1_coords, items_2_coords, obs_values, totals=None, process_obs=True, update_s=True, mu0_1=None,
             mu0_2=None):
         super(GPPrefLearning, self).fit((items_1_coords, items_2_coords), obs_values, totals, process_obs, update_s, 
                                 mu0=(mu0_1, mu0_2))  
         
-    def predict_f(self, items_coords=[], max_block_size=1e5, mu0_output=None):
-        nblocks, noutputs = self.init_output_arrays(items_coords, max_block_size)
-                
-        if mu0_output is not None and len(mu0_output):
-            self.mu0_output = mu0_output
-        else:
-            self.mu0_output = np.zeros((noutputs, 1)) + self.mu0_default
-                
-        for block in range(nblocks):
-            if self.verbose:
-                logging.debug("GPClassifierVB predicting block %i of %i" % (block, nblocks))            
-            self.predict_block(block, max_block_size, noutputs)
+    def update_sample_idxs(self):
+        nobs = self.obs_f.shape[0]
         
-        return self.f, self.v
+        self.data_obs_idx_i = 0
+        
+        while not np.sum(self.data_obs_idx_i): # make sure we don't choose indices that have not been compared
+            self.data_idx_i = np.random.choice(nobs, self.update_size, replace=False)
+            self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)        
+            
+    # Prediction methods ---------------------------------------------------------------------------------------------
 
     def predict(self, items_0_coords=[], items_1_coords=[], max_block_size=1e5, 
                 expectedlog=False, return_var=True, return_not=False, mu0_output1=None, mu0_output2=None):
@@ -330,6 +314,21 @@ class GPPrefLearning(GPClassifierSVI):
         else:
             return m_post     
         
+    def predict_f(self, items_coords=[], max_block_size=1e5, mu0_output=None):
+        nblocks, noutputs = self.init_output_arrays(items_coords, max_block_size)
+                
+        if mu0_output is not None and len(mu0_output):
+            self.mu0_output = mu0_output
+        else:
+            self.mu0_output = np.zeros((noutputs, 1)) + self.mu0_default
+                
+        for block in range(nblocks):
+            if self.verbose:
+                logging.debug("GPClassifierVB predicting block %i of %i" % (block, nblocks))            
+            self.predict_block(block, max_block_size, noutputs)
+        
+        return self.f, self.v
+            
     def post_rough(self, f_mean, f_var=None, pref_v=None, pref_u=None):
         ''' 
         When making predictions, we want to predict the probability of each listed preference pair.
@@ -355,37 +354,7 @@ class GPPrefLearning(GPClassifierSVI):
             # to sensible values
             return m_post, not_m_post, v_post            
         else:        
-            return m_post, not_m_post
-        
-    def logpt(self):
-        rho = self.forward_model(self.obs_f)
-        rho = temper_extreme_probs(rho)
-        logrho_rough = np.log(rho)
-        lognotrho_rough = np.log(1 - rho)   
-        #logging.debug("Approximation error in rho =%.4f" % np.max(np.abs(logrho - logrho_rough)))
-        #logging.debug("Approximation error in notrho =%.4f" % np.max(np.abs(lognotrho - lognotrho_rough)))
-        return logrho_rough, lognotrho_rough     
-
-def matern_3_2(distances, ls):
-    K = np.zeros(distances.shape)
-    for d in range(distances.shape[2]):
-        K[:, :, d] = np.abs(distances[:, :, d]) * 3**0.5 / ls[d]
-        K[:, :, d] = (1 + K[:, :, d]) * np.exp(-K[:, :, d])
-    K = np.prod(K, axis=2)
-    return K
-
-def matern_3_2_from_raw_vals(vals, ls):
-    distances = np.zeros((vals[0].size, vals[0].size, vals.shape[0]))
-    for i, xvals in enumerate(vals):
-        if xvals.ndim == 1:
-            xvals = xvals[:, np.newaxis]
-        elif xvals.shape[0] == 1 and xvals.shape[1] > 1:
-            xvals = xvals.T
-        xdists = xvals - xvals.T
-        distances[:, :, i] = xdists
-    K = matern_3_2(distances, ls)
-    return K
-
+            return m_post, not_m_post   
 
 def gen_synthetic_prefs(f_prior_mean=None, nx=100, ny=100):
     # f_prior_mean should contain the means for all the grid squares
@@ -393,8 +362,8 @@ def gen_synthetic_prefs(f_prior_mean=None, nx=100, ny=100):
     # Generate some data
     ls = [10, 10]
     sigma = 0.1 
-    N = 1000
-    P = 10000 # number of pairs for training
+    N = 100
+    P = 1000 # number of pairs for training
     s = 1 # inverse precision scale for the latent function.
     
     # Some random feature values
@@ -463,15 +432,9 @@ if __name__ == '__main__':
     f_test = np.concatenate((f[pair1idxs[testidxs]], f[pair2idxs[testidxs]]))[uidxs]
     
     # Create a GPPrefLearning model
-    model = GPPrefLearning([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], use_svi=True)    
+    model = GPPrefLearning([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], use_svi=True, ninducing=100)    
     #model.verbose = True
-    model.max_iter_VB = 1000
-    model.min_iter_VB = 5
-    model.uselowerbound = True
     model.delay = 1
-    #model.conv_threshold_G = 1e-8
-    #model.conv_check_freq = 1
-    #model.conv_threshold = 1e-3 # the difference must be less than 1% of the value of the lower bound
     
     if fix_seeds:
         np.random.seed() # do this if we want to use a different seed each time to test the variation in results
