@@ -10,15 +10,13 @@ from gp_classifier_vb import matern_3_2_from_raw_vals, coord_arr_to_1d
 from gp_pref_learning import GPPrefLearning
 import logging
 
-def gen_synthetic_prefs(f_prior_mean=None, nx=100, ny=100):
+def gen_synthetic_prefs(f_prior_mean=None, nx=100, ny=100, N=5, P=100, ls=[10, 10], s=1, sigma=0.1):
     # f_prior_mean should contain the means for all the grid squares
-    
-    # Generate some data
-    ls = [10, 10]
-    sigma = 0.1 
-    N = 100
-    P = 1000 # number of pairs for training
-    s = 1 # inverse precision scale for the latent function.
+    # P is number of pairs for training
+    # s is inverse precision scale for the latent function.
+
+    if N > nx * ny:
+        N = nx * ny # can't have more locations than there are grid squares (only using discrete values here)
     
     # Some random feature values
     xvals = np.random.choice(nx, N, replace=True)[:, np.newaxis]
