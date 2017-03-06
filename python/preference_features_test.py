@@ -15,6 +15,10 @@ from preference_features import PreferenceComponents
 if __name__ == '__main__':
     
     logging.basicConfig(level=logging.DEBUG)    
+    
+    import cProfile, pstats, StringIO
+    pr = cProfile.Profile()
+    pr.enable()
 
     fix_seeds = True
     
@@ -24,7 +28,9 @@ if __name__ == '__main__':
 
     logging.info( "Testing Bayesian preference components analysis using synthetic data..." )
     Npeople = 200
-    Ptest = 20
+    N = 100
+    P = 100
+    Ptest_percent = 0.2
     pair1idxs = []
     pair2idxs = []
     prefs = []
@@ -32,8 +38,8 @@ if __name__ == '__main__':
     xvals = []
     yvals = []
     
-    nx = 5
-    ny = 5
+    nx = 25
+    ny = 25
     
     # generate a common prior:
     ls = [10, 5]
@@ -61,7 +67,7 @@ if __name__ == '__main__':
         
         f_prior_mean = t + wy_p
         
-        _, nx, ny, prefs_p, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs(f_prior_mean, nx, ny)
+        _, nx, ny, prefs_p, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs(f_prior_mean, nx, ny, N, P)
         pair1idxs = np.concatenate((pair1idxs, pair1idxs_p + len(xvals))).astype(int)
         pair2idxs = np.concatenate((pair2idxs, pair2idxs_p + len(yvals))).astype(int)
         prefs = np.concatenate((prefs, prefs_p)).astype(int)
@@ -72,6 +78,8 @@ if __name__ == '__main__':
     pair1coords = np.concatenate((xvals[pair1idxs][:, np.newaxis], yvals[pair1idxs][:, np.newaxis]), axis=1)
     pair2coords = np.concatenate((xvals[pair2idxs][:, np.newaxis], yvals[pair2idxs][:, np.newaxis]), axis=1) 
 
+    Ptest = int(Ptest_percent * pair1idxs.size)
+
     testpairs = np.random.choice(pair1coords.shape[0], Ptest, replace=False)
     testidxs = np.zeros(pair1coords.shape[0], dtype=bool)
     testidxs[testpairs] = True
@@ -80,12 +88,22 @@ if __name__ == '__main__':
     if fix_seeds:
         np.random.seed() # do this if we want to use a different seed each time to test the variation in results
         
-    model = PreferenceComponents([nx,ny], ls=ls, nfactors=Nfactors + 5, use_fa=False, use_svi=True)
+    use_svi = True
+    model = PreferenceComponents([nx,ny], ls=ls, nfactors=Nfactors + 5, use_fa=False, use_svi=use_svi)
     model.verbose = False
     model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs])
     
     # turn the values into predictions of preference pairs.
     results = model.predict(personids[testidxs], pair1coords[testidxs], pair2coords[testidxs], )
+    
+    pr.disable()
+    import datetime
+    pr.dump_stats('preference_features_test_svi_%i_%s.profile' % (use_svi, datetime.datetime.now()))
+    s = StringIO.StringIO()
+    sortby = 'cumulative'
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    print s.getvalue()
     
     # To make sure the simulation is repeatable, re-seed the RNG after all the stochastic inference has been completed
     if fix_seeds:
