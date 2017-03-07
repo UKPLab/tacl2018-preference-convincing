@@ -27,9 +27,20 @@ if __name__ == '__main__':
         np.random.seed(10)
 
     logging.info( "Testing Bayesian preference components analysis using synthetic data..." )
-    Npeople = 200
-    N = 100
+
+    Npeople = 20
+    N = 25
     P = 100
+    nx = 5
+    ny = 5
+# 
+#     Npeople = 200
+#     N = 100
+#     P = 100
+#     nx = 25
+#     ny = 25
+#     
+    
     Ptest_percent = 0.2
     pair1idxs = []
     pair2idxs = []
@@ -38,9 +49,6 @@ if __name__ == '__main__':
     xvals = []
     yvals = []
     
-    nx = 25
-    ny = 25
-    
     # generate a common prior:
     ls = [10, 5]
     xvals = np.arange(nx)[:, np.newaxis]
@@ -48,18 +56,28 @@ if __name__ == '__main__':
     yvals = np.arange(ny)[np.newaxis, :]
     yvals = np.tile(yvals, (nx, 1)).flatten()
     Kt = matern_3_2_from_raw_vals(np.array([xvals, yvals]), ls)
-    t = mvn.rvs(cov=Kt).reshape(nx, ny)
+    t = np.zeros((nx, ny))#mvn.rvs(cov=Kt).reshape(nx, ny)
     
     Nfactors = 2
     
-    Ky = matern_3_2_from_raw_vals(np.arange(Npeople)[np.newaxis, :], [2])
+    Npeoplefeatures = 4
+    person_features = None
+    person_features = np.zeros((Npeoplefeatures, Npeople)) 
+    for f in range(Npeoplefeatures):
+        person_features[f, :Npeople/2] = 1.0
+        person_features[f, Npeople/2:] = -1.0
+        person_features[f, :] = np.arange(Npeople)
+    
+    Ky = matern_3_2_from_raw_vals(person_features, 2 + np.zeros(Npeoplefeatures))
     
     w = np.zeros((nx * ny, Nfactors))
     y = np.zeros((Nfactors, Npeople))
     for f in range(Nfactors):
-        w[:, f] = mvn.rvs(cov=Kt).flatten()
-        y[f, :] = mvn.rvs(cov=Ky)
-    
+        w[:(nx * ny)/2, f] = f * 100#mvn.rvs(cov=Kt).flatten()
+        w[(nx * ny)/2:, f] = (f-1) * 100
+        y[f, :Npeople/2] = f * 100#mvn.rvs(cov=Ky)
+        y[f, Npeople/2:] = (f-1) * 100
+        
     for p in range(Npeople):
         
         y_p = y[:, p:p+1]
@@ -88,10 +106,10 @@ if __name__ == '__main__':
     if fix_seeds:
         np.random.seed() # do this if we want to use a different seed each time to test the variation in results
         
-    use_svi = True
-    model = PreferenceComponents([nx,ny], ls=ls, nfactors=Nfactors + 5, use_fa=False, use_svi=use_svi)
+    use_svi = False
+    model = PreferenceComponents(2, Npeoplefeatures, ls=ls, nfactors=Nfactors + 5, use_fa=False, use_svi=use_svi)
     model.verbose = False
-    model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs])
+    model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs], person_features)
     
     # turn the values into predictions of preference pairs.
     results = model.predict(personids[testidxs], pair1coords[testidxs], pair2coords[testidxs], )
@@ -111,8 +129,47 @@ if __name__ == '__main__':
     
     from sklearn.metrics import accuracy_score
     
-    print 'Accuracy: %f' % accuracy_score(prefs[testidxs], np.round(results))
+    p_pred = results
+    p_pred_round = np.round(results).astype(int)
+    p = prefs[testidxs]
+       
+    print " --- Preference prediction metrics --- " 
+    print "Brier score of %.3f" % np.sqrt(np.mean((p-p_pred)**2))
+    p_pred[p_pred > (1-1e-6)] = 1 - 1e-6
+    p_pred[p_pred < 1e-6] = 1e-6
+    print "Cross entropy error of %.3f" % -np.mean(p * np.log(p_pred) + (1-p) * np.log(1 - p_pred))
+            
+    from sklearn.metrics import f1_score, roc_auc_score
+    print "F1 score of %.3f" % f1_score(p, p_pred_round)
+    print 'Accuracy: %f' % accuracy_score(p, p_pred_round)
+    print "ROC of %.3f" % roc_auc_score(p, p_pred)
+
+    print " --- Latent item feature prediction metrics --- " 
     
+    # how can we handle the permutations of the features?
+    #scipy.factorial(model.Nfactors) / scipy.factorial(model.Nfactors - w.shape[1])
+    # remove the features from the model with least variation -- these are the dead features
+    wvar = np.var(model.w, axis=0)
+    chosen_features = np.argsort(wvar)[-w.shape[1]:]
+    w_pred = model.w[:, chosen_features]
+    w_var = np.diag(model.w_cov)[(np.arange(w.shape[0])[np.newaxis, :]*chosen_features[:, np.newaxis]).flatten()].reshape(
+                                                                                         w.shape[1], w.shape[0]).T
+    
+    print "RMSE of %.3f" % np.sqrt(np.mean((w-w_pred)**2))
+    from scipy.stats import norm
+    print "NLPD error of %.3f" % -np.mean(norm.logpdf(w, loc=w_pred, scale=np.sqrt(w_var)))
+            
+    print " --- Latent person feature prediction metrics --- " 
+
+    yvar = np.var(model.y, axis=1)
+    chosen_features = np.argsort(yvar)[-y.shape[0]:]
+    y_pred = model.y[chosen_features, :].T
+    y_var = np.diag(model.y_cov)[(np.arange(y.shape[1])[np.newaxis, :]*chosen_features[:, np.newaxis]).flatten()].reshape(
+                                                                                             y.shape[0], y.shape[1]).T
+
+    print "RMSE of %.3f" % np.sqrt(np.mean((y.T-y_pred)**2))
+    print "NLPD error of %.3f" % -np.mean(norm.logpdf(y.T, loc=y_pred, scale=np.sqrt(y_var)))   
+            
 #     from scipy.stats import kendalltau
 #      
 #     for p in range(Npeople):

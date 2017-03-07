@@ -84,14 +84,14 @@ if __name__ == '__main__':
     models = {}
     
     # Create a GPPrefLearning model
-    model = GPPrefLearning([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], use_svi=True, ninducing=100)    
+    model = GPPrefLearning(2, mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], use_svi=True, ninducing=100)    
     #model.verbose = True
     model.delay = 1
     
     models['SVI'] = model
     
     # Create a GPPrefLearning model
-    model = GPPrefLearning([nx, ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], use_svi=False, ninducing=100)    
+    model = GPPrefLearning(2, mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], use_svi=False, ninducing=100)    
     #model.verbose = True
     model.delay = 1    
     

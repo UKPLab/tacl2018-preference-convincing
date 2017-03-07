@@ -54,7 +54,7 @@ import numpy as np
 from sklearn.decomposition import FactorAnalysis
 from scipy.stats import multivariate_normal as mvn
 import logging
-from gp_classifier_vb import matern_3_2, diagonal, sq_exp_cov
+from gp_classifier_vb import matern_3_2, diagonal, sq_exp_cov, matern_3_2_from_raw_vals
 from gp_pref_learning import GPPrefLearning, get_unique_locations
 from scipy.linalg import cholesky, solve_triangular, block_diag
 from scipy.special import gammaln, psi
@@ -83,8 +83,8 @@ def lnq_output_scale(shape_s, rate_s):
     
     lnq_s = - gammaln(shape_s) + shape_s * np.log(rate_s) + (shape_s-1) * Elns - rate_s * s
     return lnq_s
-
-def svi_update_gaussian(z_i, mu0_i, mu0_n, K_mm, invK_mm, K_nm, K_im, K_nn, invQi, prev_invS, prev_invSm, vb_iter, 
+    
+def svi_update_gaussian(invQi_y, mu0_i, mu0_n, K_mm, invK_mm, K_nm, K_im, K_nn, invQi, prev_invS, prev_invSm, vb_iter, 
                         delay, forgetting_rate, N, update_size):
     Lambda_factor1 = invK_mm.dot(K_im.T)
     Lambda_i = Lambda_factor1.dot(invQi).dot(Lambda_factor1.T)
@@ -103,12 +103,13 @@ def svi_update_gaussian(z_i, mu0_i, mu0_n, K_mm, invK_mm, K_nm, K_im, K_nn, invQ
     invS = (1 - rho_i) * prev_invS + rho_i * (w_i * Lambda_i  + invK_mm)
     
     # use the estimate given by the Taylor series expansion
-    y = z_i - mu0_i
-    if y.ndim==1:
-        y = y[:, np.newaxis]
+#     y = z_i - mu0_i
+#     if y.ndim==1:
+#         y = y[:, np.newaxis]
     
     # Variational update to theta_1 is (1-rho)*S^-1m + rho*beta*K_mm^-1.K_mn.y  
-    invSm = (1 - rho_i) * prev_invSm + w_i * rho_i * invK_mm.dot(K_im.T).dot(invQi).dot(y)
+#     invSm = (1 - rho_i) * prev_invSm + w_i * rho_i * invK_mm.dot(K_im.T).dot(invQi).dot(y)
+    invSm = (1 - rho_i) * prev_invSm + w_i * rho_i * invK_mm.dot(K_im.T).dot(invQi_y)
     
     # Next step is to use this to update f, so we can in turn update G. The contribution to Lambda_m and u_inv_S should therefore be made only once G has stabilised!
     L_invS = cholesky(invS.T, lower=True, check_finite=False)
@@ -131,7 +132,7 @@ class PreferenceComponents(object):
     variational Bayes.
     '''
 
-    def __init__(self, item_dims, person_dims=0, mu0=0, mu0_y=0, shape_s0=1, rate_s0=1, shape_ls=1, rate_ls=100, 
+    def __init__(self, nitem_features, nperson_features=0, mu0=0, mu0_y=0, shape_s0=1, rate_s0=1, shape_ls=1, rate_ls=100, 
                  ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=3, use_fa=False,  
                  kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True):
         '''
@@ -139,8 +140,8 @@ class PreferenceComponents(object):
         dims - ranges for each of the observed features of the objects
         mu0 - initial mean for the latent preference function 
         '''
-        self.dims = item_dims
-        self.person_dims = person_dims
+        self.nitem_features = nitem_features
+        self.nperson_features = nperson_features
         self.mu0 = mu0 # these are abstract latent functions, not related to any real-world variables: mu0=0 by default
         # other means should be provided later so that we can put priors on type of person liking type of object
         
@@ -234,6 +235,7 @@ class PreferenceComponents(object):
         #self.y = np.ones((self.Nfactors, self.Npeople)) #np.random.rand(self.Nfactors, self.Npeople) # use ones to avoid divide by zero
         self.y_cov = np.diag(np.ones(self.Npeople*self.Nfactors)) # use ones to avoid divide by zero
         
+        self.t_mu0 = np.zeros((self.N, 1)) + self.t_mu0
         self.t = np.zeros((self.N, 1))
         self.t_cov = np.diag(np.ones(self.N))
         
@@ -248,7 +250,7 @@ class PreferenceComponents(object):
         self.coordidxs = {}
         
         for person in self.people:
-            self.pref_gp[person] = GPPrefLearning(self.dims, self.mu0, self.shape_sf0, self.rate_sf0,
+            self.pref_gp[person] = GPPrefLearning(self.nitem_features, self.mu0, self.shape_sf0, self.rate_sf0,
                                                 self.shape_ls, self.rate_ls, self.ls, use_svi=self.use_svi)
             self.pref_gp[person]._select_covariance_function('matern_3_2')
             self.pref_gp[person].max_iter_VB = 1
@@ -260,11 +262,12 @@ class PreferenceComponents(object):
              
         self.new_obs = True # cause the pref GPs to process the new observations in the first iteration
                         
-        distances = np.zeros((self.N, self.N, len(self.dims)))
-        for d in range(len(self.dims)):
+        distances = np.zeros((self.N, self.N, self.nitem_features))
+        for d in range(self.nitem_features):
             distances[:, :, d] = self.obs_coords[:, d:d+1] - self.obs_coords[:, d:d+1].T
         
         # kernel used by t
+        self.ls = np.zeros(self.nitem_features) + self.ls
         self.K = self.kernel_func(distances, self.ls)
         self.cholK = cholesky(self.K, overwrite_a=False, check_finite=False)
         self.invK = np.linalg.inv(self.K)
@@ -275,13 +278,11 @@ class PreferenceComponents(object):
         self.sw_matrix = np.ones(self.Kw.shape)
                 
         # kernel used by y  
-        if self.person_features == None:
+        if self.person_features is None:
             Ky = np.diag(np.ones(self.Npeople))
         else:
-            distances = np.zeros((self.Npeople, self.Npeople, len(self.person_dims)))
-            for d in range(len(self.person_dims)):
-                distances[:, :, d] = self.person_features[:, d:d+1] - self.person_features[:, d:d+1].T        
-            Ky = matern_3_2(distances, self.lsy)
+            self.lsy = np.zeros(self.nperson_features) + self.lsy    
+            Ky = matern_3_2_from_raw_vals(self.person_features, self.lsy)
            
         blocks = [Ky for _ in range(self.Nfactors)]
         self.Ky = block_diag(*blocks) 
@@ -318,9 +319,6 @@ class PreferenceComponents(object):
         self.t_invSm = np.zeros((self.ninducing, 1), dtype=float)# theta_1
         self.t_invS = np.zeros((self.ninducing, self.ninducing), dtype=float) # theta_2
         
-        self.y_invSm = np.zeros((self.ninducing * self.Nfactors, 1), dtype=float)# theta_1
-        self.y_invS = np.zeros((self.ninducing * self.Nfactors, self.ninducing * self.Nfactors), dtype=float) # theta_2
-        
         init_size = 300
         if self.ninducing > init_size:
             init_size = self.ninducing
@@ -331,9 +329,9 @@ class PreferenceComponents(object):
         self.inducing_coords = kmeans.cluster_centers_
         #self.inducing_coords = self.obs_coords
 
-        mm_dist = np.zeros((self.ninducing, self.ninducing, len(self.dims)))
-        nm_dist = np.zeros((nobs, self.ninducing, len(self.dims)))
-        for d in range(len(self.dims)):
+        mm_dist = np.zeros((self.ninducing, self.ninducing, self.nitem_features))
+        nm_dist = np.zeros((nobs, self.ninducing, self.nitem_features))
+        for d in range(self.nitem_features):
             mm_dist[:, :, d] = self.inducing_coords[:, d:d+1].T - self.inducing_coords[:, d:d+1]
             nm_dist[:, :, d] = self.inducing_coords[:, d:d+1].T - self.obs_coords[:, d:d+1].astype(float)
          
@@ -353,7 +351,7 @@ class PreferenceComponents(object):
         #self.shape_s = self.shape_s0 + 0.5 * self.ninducing # update this because we are not using n_locs data points -- needs replacing?
 
         # For y
-        if self.person_features:
+        if self.person_features is not None:
             self.use_svi_people = True
             
             self.y_update_size = self.max_update_size # number of inducing points in each stochastic update            
@@ -374,23 +372,26 @@ class PreferenceComponents(object):
             self.y_inducing_coords = kmeans.cluster_centers_
             #self.inducing_coords = self.obs_coords
     
-            mm_dist = np.zeros((self.y_ninducing, self.y_ninducing, len(self.person_dims)))
+            self.y_invSm = np.zeros((self.y_ninducing * self.Nfactors, 1), dtype=float)# theta_1
+            self.y_invS = np.zeros((self.y_ninducing * self.Nfactors, self.y_ninducing * self.Nfactors), dtype=float) # theta_2
+    
+            mm_dist = np.zeros((self.y_ninducing, self.y_ninducing, self.nperson_features))
             # should be okay up to here.    
-            nm_dist = np.zeros((nobs, self.ninducing, len(self.dims)))
-            for d in range(len(self.dims)):
-                mm_dist[:, :, d] = self.inducing_coords[:, d:d+1].T - self.inducing_coords[:, d:d+1]
-                nm_dist[:, :, d] = self.inducing_coords[:, d:d+1].T - self.obs_coords[:, d:d+1].astype(float)
+            nm_dist = np.zeros((self.Npeople, self.y_ninducing, self.nperson_features))
+            for d in range(self.nperson_features):
+                mm_dist[:, :, d] = self.y_inducing_coords[:, d:d+1].T - self.y_inducing_coords[:, d:d+1]
+                nm_dist[:, :, d] = self.y_inducing_coords[:, d:d+1].T - self.person_features[:, d:d+1].astype(float)
              
-            self.Ky_mm = self.kernel_func(mm_dist, self.ls)
+            self.Ky_mm = self.kernel_func(mm_dist, self.lsy)
             self.Ky_mm += 1e-6 * np.eye(len(self.Ky_mm)) # jitter 
             blocks = [self.Ky_mm for _ in range(self.Nfactors)]
             self.Ky_mm = block_diag(*blocks)            
             
             self.invKy_mm = np.linalg.inv(self.Ky_mm)
             
-            self.Ky_nm = self.kernel_func(nm_dist, self.ls)
+            self.Ky_nm = self.kernel_func(nm_dist, self.lsy)
             blocks = [self.Ky_nm for _ in range(self.Nfactors)]
-            self.Kw_nm = block_diag(*blocks)
+            self.Ky_nm = block_diag(*blocks)
             
         else:
             self.use_svi_people = False
@@ -464,8 +465,8 @@ class PreferenceComponents(object):
                     Ky = np.zeros((1, self.Npeople))
                 else:
                     #distances for y-space
-                    distances = np.zeros((1, self.Npeople, len(self.person_dims)))
-                    for d in range(len(self.person_dims)):
+                    distances = np.zeros((1, self.Npeople, self.nperson_features))
+                    for d in range(self.nperson_features):
                         distances[:, :, d] = person_features[p, d:d+1] - self.person_features[:, d:d+1].T        
                     # kernel between p and people already seen
                     Ky = matern_3_2(distances, self.lsy)
@@ -478,9 +479,9 @@ class PreferenceComponents(object):
             
             # this could be made more efficient because duplicate locations are computed separately!
             # distances for t-space
-            distances1 = np.zeros((Npairs_p, self.N, len(self.dims)))
-            distances2 = np.zeros((Npairs_p, self.N, len(self.dims)))
-            for d in range(len(self.dims)):
+            distances1 = np.zeros((Npairs_p, self.N, self.nitem_features))
+            distances2 = np.zeros((Npairs_p, self.N, self.nitem_features))
+            for d in range(self.nitem_features):
                 distances1[:, :, d] = coords_1[:, d:d+1] - self.obs_coords[:, d:d+1].T
                 distances2[:, :, d] = coords_2[:, d:d+1] - self.obs_coords[:, d:d+1].T
                 
@@ -508,7 +509,7 @@ class PreferenceComponents(object):
                 pref_gp_p = self.pref_gp[p]
             else:
                 # create a new pref GP for a new person
-                pref_gp_p = GPPrefLearning(self.dims, self.mu0, self.shape_sf0, self.rate_sf0, None, self.shape_ls, 
+                pref_gp_p = GPPrefLearning(self.nitem_features, self.mu0, self.shape_sf0, self.rate_sf0, None, self.shape_ls, 
                                    self.rate_ls, self.ls)
                 pref_gp_p._select_covariance_function('matern_3_2')
                 pref_gp_p.max_iter_VB = 1
@@ -573,75 +574,56 @@ class PreferenceComponents(object):
             self.w = self.fa.components_.T
             self.wy = self.w.dot(self.y)
             return
+        if self.use_svi:
+            N = self.update_size               
+        else:
+            N = self.N
+            
+        # Put a GP prior on w with covariance K/gamma and mean 0
+        x = np.zeros((N, self.Nfactors))
+        Sigma = np.zeros((N * self.Nfactors, N * self.Nfactors))
+
+        for person in self.pref_gp:
+            pidxs = self.coordidxs[person]
+            
+            if self.use_svi:
+                psample = np.in1d(pidxs, self.data_idx_i)
+                pidxs = pidxs[psample]
+                prec_p = self.invKf[person][psample, :][:, psample] * self.pref_gp[person].s #[npidxs, npidxs] 
+            else:
+                prec_p = self.invKf[person] * self.pref_gp[person].s #[npidxs, npidxs]
+            y_p = self.y[:, person:person+1]
+            
+            # add the means for this person's observations to the list of observations, x 
+            x[pidxs, :] += y_p.T * prec_p.dot(self.f[person:person+1, pidxs].T - self.t[pidxs])
+            
+            # add the covariance for this person's observations as a block in the covariance matrix Sigma
+            Sigma_p = np.zeros((N * self.Nfactors, N * self.Nfactors))
+            yidxs = person + self.Npeople * np.arange(self.Nfactors)
+            Sigma_yscaling = y_p.dot(y_p.T) + self.y_cov[yidxs, :][:, yidxs] # covariance between people?
+            for f in range(self.Nfactors):
+                for g in range(self.Nfactors):
+                    Sigma_p_rows = np.zeros((len(pidxs), N * self.Nfactors))
+                    Sigma_p_rows[:, pidxs + g * N] = prec_p * Sigma_yscaling[f, g]
+                    Sigma_p[pidxs + f * N, :] += Sigma_p_rows
+                        
+            Sigma += Sigma_p
+                
+        x = x.T.flatten()[:, np.newaxis]
         
         if not self.use_svi:
-            # Put a GP prior on w with covariance K/gamma and mean 0
-            x = np.zeros((self.N, self.Nfactors))
-            Sigma = np.zeros((self.N * self.Nfactors, self.N * self.Nfactors))
-
-            for person in self.pref_gp:
-                pidxs = self.coordidxs[person]                
-                prec_p = self.invKf[person] * self.pref_gp[person].s #[npidxs, npidxs]
-                y_p = self.y[:, person:person+1]
-                
-                # add the means for this person's observations to the list of observations, x 
-                x[pidxs, :] += y_p.T * prec_p.dot(self.f[person:person+1, pidxs].T - self.t[pidxs])
-                
-                # add the covariance for this person's observations as a block in the covariance matrix Sigma
-                Sigma_p = np.zeros((self.N * self.Nfactors, self.N * self.Nfactors))
-                yidxs = person + self.Npeople * np.arange(self.Nfactors)
-                Sigma_yscaling = y_p.dot(y_p.T) + self.y_cov[yidxs, :][:, yidxs] # covariance between people?
-                for f in range(self.Nfactors):
-                    for g in range(self.Nfactors):
-                        Sigma_p_rows = np.zeros((len(pidxs), self.N * self.Nfactors))
-                        Sigma_p_rows[:, pidxs + g * self.N] = prec_p * Sigma_yscaling[f, g]
-                        Sigma_p[pidxs + f * self.N, :] += Sigma_p_rows
-                            
-                Sigma += Sigma_p
-                    
-            x = x.T.flatten()[:, np.newaxis]
-                    
             # w_cov is same shape as K with rows corresponding to (f*N) + n where f is factor index from 0 and 
             # n is data point index
             
             self.w_cov = np.linalg.inv(np.linalg.inv(self.Kw  / self.sw_matrix) + Sigma)
             self.w = self.w_cov.dot(x)
             
-        else:
-            # SVI implementation
-            obs_size = np.sum(self.data_obs_idx_i)
-            z = np.zeros((obs_size, self.Nfactors))
-            invQi = np.zeros((z.shape[0] * self.Nfactors, z.shape[0] * self.Nfactors))
-            for person in self.pref_gp:
-                pidxs = self.coordidxs[person]   
-                psample = self.data_obs_idx_i[person, pidxs]             
-                if not np.sum(psample):
-                    continue
-            
-                prec_p = self.invKf[person][psample, :][:, psample] * self.pref_gp[person].s #[npidxs, npidxs]
-                
-                y_p = self.y[:, person:person+1]
-                idxstart = np.sum(self.data_obs_idx_i[:person, :])
-                idxend = idxstart + np.sum(psample)                
-                z[idxstart:idxend, :] = y_p.T * (self.f[person:person+1, pidxs[psample]].T - self.t[pidxs[psample], :])
-                
-                yidxs = person + self.Npeople * np.arange(self.Nfactors)
-                Sigma_yscaling = y_p.dot(y_p.T) + self.y_cov[yidxs, :][:, yidxs]
- 
-                qidxstart = np.sum(self.data_obs_idx_i[:person, :])
-                qidxend = qidxstart + np.sum(psample)
-            
-                for f in range(self.Nfactors):
-                    for g in range(self.Nfactors):
-                        Sigma_p_rows = np.zeros((len(pidxs), obs_size * self.Nfactors))
-                        Sigma_p_rows[:, qidxstart + g * obs_size:qidxend + g * obs_size] = prec_p * Sigma_yscaling[f, g]
-                        invQi[qidxstart + f * obs_size:qidxend + f * obs_size, :] += Sigma_p_rows
-            
-            z = z.T.flatten()[:, np.newaxis]
-            
-            self.w, self.w_cov, self.w_invS, self.w_invSm, self.w_m = svi_update_gaussian(z, 0, 0, self.Kws_mm, 
-                  self.inv_Kws_mm, self.Kws_nm, self.Kws_nm[self.w_idxs_i, :], self.Kw / self.sw_matrix, invQi, self.w_invS, 
-                  self.w_invSm, self.vb_iter, self.delay, self.forgetting_rate, self.N, self.update_size)                
+        else: # SVI implementation
+            nidxs = ((np.arange(self.Nfactors)[:, np.newaxis] * self.N) + self.data_idx_i[np.newaxis, :]).flatten()
+            self.w, self.w_cov, self.w_invS, self.w_invSm, self.w_m = svi_update_gaussian(x, 0, 0, self.Kws_mm, 
+                  self.inv_Kws_mm, self.Kws_nm, self.Kws_nm[nidxs, :], self.Kw / self.sw_matrix, Sigma, 
+                  self.w_invS, self.w_invSm, self.vb_iter, self.delay, self.forgetting_rate, 
+                  np.sum(self.data_obs_idx), np.sum(self.data_obs_idx_i))                
         
         self.w = np.reshape(self.w, (self.Nfactors, self.N)).T # w is N x Nfactors    
         
@@ -659,85 +641,54 @@ class PreferenceComponents(object):
         '''
         Compute expectation over the personality components using VB
         '''
+        if self.use_svi and self.use_svi_people:
+            Npeople = self.y_update_size               
+        else:
+            Npeople = self.Npeople  
+                    
+        Sigma = np.zeros((self.Nfactors * Npeople, self.Nfactors * Npeople))
+        x = np.zeros((Npeople, self.Nfactors))
+
+        for person in self.pref_gp:
+            pidxs = self.coordidxs[person]           
+            
+            # the means for this person's observations 
+            prec_f_p = self.invKf[person] * self.pref_gp[person].s          
+            
+            # np.zeros((self.Nfactors * len(pidxs), self.Nfactors * len(pidxs))) do we need to factorise w_cov into two NF x N factors?
+            # the data points are not independent given y. The factors are independent?
+            covterm = np.zeros((self.Nfactors, self.Nfactors))
+            for f in range(self.Nfactors): 
+                w_cov_idxs = pidxs + (f * self.N)
+                w_cov_f = self.w_cov[w_cov_idxs, :]
+                for g in range(self.Nfactors):
+                    w_cov_idxs = pidxs + (g * self.N)
+                    covterm[f, g] = np.sum(prec_f_p * w_cov_f[:, w_cov_idxs])
+            Sigma_p = self.w[pidxs, :].T.dot(prec_f_p).dot(self.w[pidxs, :]) + covterm
+                
+            sigmaidxs = np.arange(self.Nfactors) * self.Npeople + person
+            Sigmarows = np.zeros((self.Nfactors, Sigma.shape[1]))
+            Sigmarows[:, sigmaidxs] =  Sigma_p
+            Sigma[sigmaidxs, :] += Sigmarows             
+              
+            x[person, :] = self.w[pidxs, :].T.dot(prec_f_p).dot(self.f[person, pidxs][:, np.newaxis] 
+                                                                - self.t[pidxs, :]).T
+                
+        x = x.T.flatten()[:, np.newaxis]
+                    
         if not self.use_svi or not self.use_svi_people:
-            Sigma = np.zeros((self.Nfactors * self.Npeople, self.Nfactors * self.Npeople))
-            x = np.zeros((self.Npeople, self.Nfactors))
-    
-            for person in self.pref_gp:
-                pidxs = self.coordidxs[person]           
-                
-                # the means for this person's observations 
-                prec_f_p = self.invKf[person] * self.pref_gp[person].s
-                
-                # np.zeros((self.Nfactors * len(pidxs), self.Nfactors * len(pidxs))) do we need to factorise w_cov into two NF x N factors?
-                # the data points are not independent given y. The factors are independent?
-                covterm = np.zeros((self.Nfactors, self.Nfactors))
-                for f in range(self.Nfactors): 
-                    w_cov_idxs = pidxs + (f * self.N)
-                    w_cov_f = self.w_cov[w_cov_idxs, :]
-                    for g in range(self.Nfactors):
-                        w_cov_idxs = pidxs + (g * self.N)
-                        covterm[f, g] = np.sum(prec_f_p * w_cov_f[:, w_cov_idxs])
-                Sigma_p = self.w[pidxs, :].T.dot(prec_f_p).dot(self.w[pidxs, :]) + covterm
-                    
-                sigmaidxs = np.arange(self.Nfactors) * self.Npeople + person
-                Sigmarows = np.zeros((self.Nfactors, Sigma.shape[1]))
-                Sigmarows[:, sigmaidxs] =  Sigma_p
-                Sigma[sigmaidxs, :] += Sigmarows             
-                  
-                x[person, :] = self.w[pidxs, :].T.dot(prec_f_p).dot(self.f[person, pidxs][:, np.newaxis] 
-                                                                    - self.t[pidxs, :]).T
-                    
-            x = x.T.flatten()[:, np.newaxis]
-                    
             # y_cov is same format as K and Sigma with rows corresponding to (f*Npeople) + p where f is factor index from 0 
             # and p is person index
             #self.y, self.y_cov = vb_gp_regression(0, K, shape_s0, rate_s0, Sigma, x, cholK)
             self.y_cov = np.linalg.inv(np.linalg.inv(self.Ky  / self.sy_matrix) + Sigma)
             self.y = self.y_cov.dot(x)
             
-        else:
-            # SVI implementation
-            obs_size = np.sum(self.pdata_obs_idx_i)
-            z = np.zeros((obs_size, self.Nfactors))
-            invQi = np.zeros((z.shape[0] * self.Nfactors, z.shape[0] * self.Nfactors))
-            
-            idxstart = 0
-            for person in self.pref_gp:
-                if not self.pdata_idx_i[person]:
-                    #not in current sample
-                    continue
-                 
-                pidxs = self.coordidxs[person]   
-
-                # the means for this person's observations 
-                prec_f_p = self.invKf[person] * self.pref_gp[person].s
-                
-                # np.zeros((self.Nfactors * len(pidxs), self.Nfactors * len(pidxs))) do we need to factorise w_cov into two NF x N factors?
-                # the data points are not independent given y. The factors are independent?
-                idxend = idxstart + pidxs.size
-                for f in range(self.Nfactors): 
-                    w_cov_idxs = pidxs + (f * obs_size)
-                    w_cov_f = self.w_cov[w_cov_idxs, :]
-                    for g in range(self.Nfactors):
-                        w_cov_idxs = pidxs + (g * obs_size)
-                        
-                        Sigma_p_rows = np.zeros((len(pidxs), obs_size * self.Nfactors))
-                        covterm = np.sum(prec_f_p * w_cov_f[:, w_cov_idxs])
-                        Sigma_p_rows[:, idxstart + g * obs_size:idxend + g * obs_size] = \
-                                                    self.w[pidxs, :].T.dot(prec_f_p).dot(self.w[pidxs, :]) + covterm                         
-
-                        invQi[idxstart + f * obs_size:idxend + f * obs_size, :] += Sigma_p_rows
-                 
-                    z[idxstart:idxend, :] = self.w[pidxs, :] * (self.f[person, pidxs][:, np.newaxis] 
-                                                                    - self.t[pidxs, :]).T                
-                
-                idxstart = idxend
-            
-            z = z.T.flatten()[:, np.newaxis]
-            self.y, self.y_cov, self.y_invS, self.y_invSm, self.y_m = svi_update_gaussian(z, 0, 0, self.Kys_mm, 
-                  self.inv_Kys_mm, self.Kys_nm, self.Kys_nm[self.y_idxs_i, :], self.Ky / self.sy_matrix, invQi, 
-                  self.w_invS, self.w_invSm, self.vb_iter, self.delay, self.forgetting_rate, self.N, self.update_size)              
+        else: # SVI implementation
+            pidxs = ((np.arange(self.Nfactors)[:, np.newaxis] * self.Npeople) + self.pdata_idx_i[np.newaxis, :]).flatten()
+            self.y, self.y_cov, self.y_invS, self.y_invSm, self.y_m = svi_update_gaussian(x, 0, 0, self.Kys_mm, 
+                  self.inv_Kys_mm, self.Kys_nm, self.Kys_nm[pidxs, :], self.Ky / self.sy_matrix, Sigma, 
+                  self.y_invS, self.y_invSm, self.vb_iter, self.delay, self.forgetting_rate, np.sum(self.data_obs_idx), 
+                  np.sum(self.pdata_obs_idx_i))
             
         self.y = np.reshape(self.y, (self.Nfactors, self.Npeople))
             
@@ -746,60 +697,47 @@ class PreferenceComponents(object):
             _, self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.Npeople, 
                         self.cholKy, self.y[f:f+1, :].T, np.zeros((self.Npeople, 1)), self.y_cov[fidxs, :][:, fidxs])    
             self.sy_matrix[fidxs, :] = self.shape_sy[f] / self.rate_sy[f]    
-        # y is Nfactors x Npeople     
-         
+        # y is Nfactors x Npeople
+
     def expec_t(self):
         if self.use_fa:
             self.t = self.fa.mean_[:, np.newaxis]
             return
         
-        if not self.use_svi:
-            t_prec = self.invK * self.shape_st / self.rate_st # changed to the divide sign -- it was a *. Should be tested
-            self.t = t_prec.dot(np.zeros((self.N, 1)) + self.t_mu0)
+        if self.use_svi:
+            N = self.update_size
+        else:
+            N = self.N
+        
+        invKts = self.invK * self.shape_st / self.rate_st
+        Sigma = np.zeros((N, N))
+        x = np.zeros((N, 1))
+        
+        #size_added = 0
+        for person in self.pref_gp:
+            pidxs = self.coordidxs[person]
+            sigmarows = np.zeros((len(pidxs), N))
             
-            #size_added = 0
-            for person in self.pref_gp:
-                pidxs = self.coordidxs[person]
-                sigmarows = np.zeros((len(pidxs), self.N))
+            Sigma_p = np.linalg.inv(self.pref_gp[person].Ks)
+            sigmarows[:, pidxs] = Sigma_p
+            Sigma[pidxs, :] += sigmarows
+            
+            # add the means for this person's observations to the list of observations, x 
+            f_obs = self.pref_gp[person].obs_f - self.wy[pidxs, person:person+1]
+            x[pidxs, :] += Sigma_p.dot(f_obs)
                 
-                Sigma_p = np.linalg.inv(self.pref_gp[person].Ks)
-                sigmarows[:, pidxs] = Sigma_p
-                t_prec[pidxs, :] += sigmarows 
-                
-                # add the means for this person's observations to the list of observations, x 
-                f_obs = self.pref_gp[person].obs_f - self.wy[pidxs, person:person+1]
-                self.t[pidxs, :] += Sigma_p.dot(f_obs)
-                
-            self.t_cov = np.linalg.inv(t_prec)
+        if not self.use_svi:
+            self.t = invKts.dot(np.zeros((N, 1)) + self.t_mu0) + x
+            self.t_cov = np.linalg.inv(Sigma + invKts)
             self.t = self.t_cov.dot(self.t)
 
         else:
             # SVI implementation
-            z = self.f[self.data_obs_idx_i] - self.wy[self.data_obs_idx_i.T]
-             
-            mu0 = np.zeros((self.N)) + self.t_mu0
-            mu0 = mu0[self.t_idxs_i]
-            
-            invQi = np.zeros((z.shape[0], z.shape[0]))
-            obs_size = z.shape[0]
-            for person in self.pref_gp:
-                pidxs = self.coordidxs[person]
-                #which of pidxs are in the current sample?
-                psample = self.data_obs_idx_i[person, pidxs]
-                if not np.sum(psample):
-                    continue
-                
-                sigmarows = np.zeros((np.sum(psample), obs_size))
-                Sigma_p = np.linalg.inv(self.pref_gp[person].Ks[psample, :][:, psample])
-                qidxstart = np.sum(self.data_obs_idx_i[:person, :])
-                qidxend = qidxstart + np.sum(psample)
-                sigmarows[:, qidxstart:qidxend] = Sigma_p
-                invQi[qidxstart:qidxend, :] += sigmarows
-            
-            self.t, self.t_cov, self.t_invS, self.t_invSm, self.t_m = svi_update_gaussian(z, mu0, self.t_mu0, 
-                self.Kts_mm, self.inv_Kts_mm, self.Kts_nm, self.Kts_nm[self.t_idxs_i, :], 
-                self.K*self.rate_st/self.shape_st, invQi, self.t_invS, self.t_invSm, self.vb_iter, self.delay, 
-                self.forgetting_rate, self.N, self.update_size)
+            self.t, self.t_cov, self.t_invS, self.t_invSm, self.t_m = svi_update_gaussian(x, 
+                self.t_mu0[self.data_idx_i], self.t_mu0, 
+                self.Kts_mm, self.inv_Kts_mm, self.Kts_nm, self.Kts_nm[self.data_idx_i, :], 
+                self.K*self.rate_st/self.shape_st, Sigma, self.t_invS, self.t_invSm, self.vb_iter, self.delay, 
+                self.forgetting_rate, np.sum(self.data_obs_idx), np.sum(self.data_obs_idx_i) )#self.N, self.update_size)
 
         #self.t, self.t_cov = vb_gp_regression(m, K, shape_s0, rate_s0, Sigma, x, cholK=cholK)
         _, self.shape_st, self.rate_st = expec_output_scale(self.shape_st0, self.rate_st0, self.N, self.cholK, 
@@ -820,14 +758,10 @@ class PreferenceComponents(object):
                     
         self.Kws_mm = self.Kw_mm / sw_mm
         self.inv_Kws_mm  = self.invKw_mm * sw_mm
-        
-        self.w_idxs_i = (np.argwhere(self.data_obs_idx_i)[:, 1][np.newaxis, :] * np.arange(self.Nfactors)[:, np.newaxis]).flatten()
         self.Kws_nm = self.Kw_nm  / sw_nm
 
         self.Kts_mm = self.Kt_mm / st
         self.inv_Kts_mm  = self.invKt_mm * st
-        
-        self.t_idxs_i = np.argwhere(self.data_obs_idx_i)[:, 1]
         self.Kts_nm = self.Kt_nm / st   
         
         if self.use_svi_people:
@@ -841,8 +775,7 @@ class PreferenceComponents(object):
             
             self.Kys_mm = self.Ky_mm / sy_mm
             self.inv_Kys_mm  = self.invKy_mm * sy_mm
-            self.y_idxs_i = (np.argwhere(self.data_obs_idx_i)[:, 0][np.newaxis, :] * np.arange(self.Nfactors)[:, np.newaxis]).flatten()            
-            self.Kys_nm = self.Ky_nm / sy_nm      
+            self.Kys_nm = self.Ky_nm / sy_nm
         
     def _update_sample_idxs(self, personIDs):
         self.data_idx_i = np.random.choice(self.N, self.update_size, replace=False)        
@@ -878,7 +811,7 @@ class PreferenceComponents(object):
             #logging.debug("logps_y: %.2f" % logps_y)
             #logging.debug("logqs_y: %.2f" % logqs_y)
             
-        _logpt = mvn.logpdf(self.t.flatten(), mean=np.zeros(self.N) + self.t_mu0, cov=self.K * self.rate_st / self.shape_st)
+        _logpt = mvn.logpdf(self.t.flatten(), mean=np.zeros(self.N) + self.t_mu0.flatten(), cov=self.K * self.rate_st / self.shape_st)
         logqt = mvn.logpdf(self.t.flatten(), mean=self.t.flatten(), cov=self.t_cov)
         logps_t = lnp_output_scale(self.shape_st0, self.rate_st0, self.shape_st, self.rate_st) 
         logqs_t = lnq_output_scale(self.shape_st, self.rate_st)

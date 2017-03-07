@@ -42,7 +42,7 @@ class GPPrefLearning(GPClassifierSVI):
     pref_v = [] # the first items in each pair -- index to the observation coordinates in self.obsx and self.obsy
     pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
     
-    def __init__(self, dims, mu0=0, shape_s0=2, rate_s0=2, shape_ls=10, rate_ls=0.1, ls_initial=None, 
+    def __init__(self, ninput_features, mu0=0, shape_s0=2, rate_s0=2, shape_ls=10, rate_ls=0.1, ls_initial=None, 
          force_update_all_points=False, kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True):
         
         # We set the function scale and noise scale to the same value so that we assume apriori that the differences
@@ -61,7 +61,7 @@ class GPPrefLearning(GPClassifierSVI):
         if rate_s0 <= 0:
             rate_s0 = 0.5
         
-        super(GPPrefLearning, self).__init__(dims, mu0, shape_s0, rate_s0, shape_ls, rate_ls, ls_initial, 
+        super(GPPrefLearning, self).__init__(ninput_features, mu0, shape_s0, rate_s0, shape_ls, rate_ls, ls_initial, 
                              force_update_all_points, kernel_func, max_update_size, ninducing, use_svi)
     
     # Initialisation --------------------------------------------------------------------------------------------------
@@ -273,14 +273,15 @@ class GPPrefLearning(GPClassifierSVI):
         
         if not isinstance(items_0_coords, np.ndarray):
             items_0_coords = np.array(items_0_coords)
-        if items_0_coords.ndim==2 and items_0_coords.shape[1]!=len(self.dims) and items_0_coords.shape[0]==len(self.dims):
+        if items_0_coords.ndim==2 and items_0_coords.shape[1]!=self.ninput_features and \
+                                                                        items_0_coords.shape[0]==self.ninput_features:
             items_0_coords = items_0_coords.T
             
         if not len(items_1_coords):
             items_1_coords = items_0_coords.copy()
             
-        if items_1_coords.ndim==2 and items_1_coords.shape[1]!=len(self.dims) and \
-                            items_1_coords.shape[0]==len(self.dims):
+        if items_1_coords.ndim==2 and items_1_coords.shape[1]!=self.ninput_features and \
+                            items_1_coords.shape[0]==self.ninput_features:
             items_1_coords = items_1_coords.T       
         
         output_coords, out_pref_v, out_pref_u = get_unique_locations(items_0_coords, items_1_coords)
