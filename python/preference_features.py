@@ -1,9 +1,14 @@
 '''
-TODO: find out whether we correctly model correlations between people.
+TODO: SVI with person features on -- doesn't extract latent features correctly. Does it work without SVI? It kind of 
+works without SVI for y but with SVI for w. Lower bound goes negative at times though and features are very blurred, 
+perhaps the sampling is somehow causing them to merge rather than find a single solution in the cluster identifiability
+problem. 
 
 TODO: length-scale learning through MLII
 
-TODO: some of the matrix inversions should use Cholesky. E.g. for Kw and Ky
+TODO: some of the matrix inversions should use Cholesky. E.g. for Kw and Ky --> Needs to be passed into the SVI function
+
+TODO: why is posterior covariance all the same for all features?
 
 Preference learning model for identifying relevant input features of items and people, plus finding latent 
 characteristics of items and people. Can be used to predict preferences or rank items, therefore could be part of
@@ -366,7 +371,7 @@ class PreferenceComponents(object):
             if self.y_ninducing > init_size:
                 init_size = self.y_ninducing
             kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.y_ninducing)
-            kmeans.fit(self.person_features)
+            kmeans.fit(self.person_features.T)
             
             #self.inducing_coords = self.obs_coords[np.random.randint(0, nobs, size=(ninducing)), :]
             self.y_inducing_coords = kmeans.cluster_centers_
@@ -380,7 +385,7 @@ class PreferenceComponents(object):
             nm_dist = np.zeros((self.Npeople, self.y_ninducing, self.nperson_features))
             for d in range(self.nperson_features):
                 mm_dist[:, :, d] = self.y_inducing_coords[:, d:d+1].T - self.y_inducing_coords[:, d:d+1]
-                nm_dist[:, :, d] = self.y_inducing_coords[:, d:d+1].T - self.person_features[:, d:d+1].astype(float)
+                nm_dist[:, :, d] = self.y_inducing_coords[:, d:d+1].T - self.person_features.T[:, d:d+1].astype(float)
              
             self.Ky_mm = self.kernel_func(mm_dist, self.lsy)
             self.Ky_mm += 1e-6 * np.eye(len(self.Ky_mm)) # jitter 
@@ -408,7 +413,7 @@ class PreferenceComponents(object):
         # deal only with the original IDs to simplify prediction steps and avoid conversions 
         self.people = np.unique(personIDs)
         self.pref_gp = {}
-        self.obs_coords, self.pref_v, self.pref_u = get_unique_locations(items_1_coords, items_2_coords)
+        self.obs_coords, self.pref_v, self.pref_u, _ = get_unique_locations(items_1_coords, items_2_coords)
         self.person_features = person_features # rows per person, columns for feature values         
         self._init_params()
         if self.use_svi:

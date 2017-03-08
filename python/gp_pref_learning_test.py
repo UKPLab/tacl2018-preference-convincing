@@ -4,13 +4,13 @@ Created on 3 Mar 2017
 
 @author: simpson
 '''
-from scipy.stats import multivariate_normal as mvn, kendalltau, norm
+from scipy.stats import multivariate_normal as mvn, kendalltau, norm, bernoulli
 import numpy as np
 from gp_classifier_vb import matern_3_2_from_raw_vals, coord_arr_to_1d
 from gp_pref_learning import GPPrefLearning
 import logging
 
-def gen_synthetic_prefs(f_prior_mean=None, nx=100, ny=100, N=5, P=100, ls=[10, 10], s=1, sigma=0.1):
+def gen_synthetic_prefs(f_prior_mean=None, nx=100, ny=100, N=5, P=100, ls=[10, 10], s=1):
     # f_prior_mean should contain the means for all the grid squares
     # P is number of pairs for training
     # s is inverse precision scale for the latent function.
@@ -30,6 +30,7 @@ def gen_synthetic_prefs(f_prior_mean=None, nx=100, ny=100, N=5, P=100, ls=[10, 1
         
     K = matern_3_2_from_raw_vals(np.array([xvals, yvals]), ls)
 
+    # generate the function values for the pairs
     if f_prior_mean is None:
         f = mvn.rvs(cov=K/s) # zero mean        
     else:
@@ -44,12 +45,10 @@ def gen_synthetic_prefs(f_prior_mean=None, nx=100, ny=100, N=5, P=100, ls=[10, 1
         matchingidxs = pair1idxs==pair2idxs
         pair2idxs[matchingidxs] = np.random.choice(N, np.sum(matchingidxs), replace=True)
       
-    # generate the noisy function values for the pairs
-    f1noisy = norm.rvs(scale=sigma, size=P) + f[pair1idxs]
-    f2noisy = norm.rvs(scale=sigma, size=P) + f[pair2idxs]
-    
     # generate the discrete labels from the noisy preferences
-    prefs = f1noisy > f2noisy
+    g_f = (f[pair1idxs] - f[pair2idxs]) / np.sqrt(2)
+    phi = norm.cdf(g_f)
+    prefs = bernoulli.rvs(phi)
     
     return N, nx, ny, prefs, xvals, yvals, pair1idxs, pair2idxs, f, K
 

@@ -23,7 +23,7 @@ def get_unique_locations(obs_coords_0, obs_coords_1):
     pref_v = pref_vu[:obs_coords_0.shape[0]]
     pref_u = pref_vu[obs_coords_0.shape[0]:]
     
-    return obs_coords, pref_v, pref_u
+    return obs_coords, pref_v, pref_u, uidxs
 
 class GPPrefLearning(GPClassifierSVI):
     '''
@@ -154,7 +154,7 @@ class GPPrefLearning(GPClassifierSVI):
             return grid_obs_pos_counts[nonzero_v, nonzero_u], grid_obs_counts[nonzero_v, nonzero_u]
                     
         elif obs_coords_0.dtype=='float':
-            self.obs_coords, self.pref_v, self.pref_u = get_unique_locations(obs_coords_0, obs_coords_1)
+            self.obs_coords, self.pref_v, self.pref_u, self.original_idxs = get_unique_locations(obs_coords_0, obs_coords_1)
             
             return poscounts, totals # these remain unaltered as we have not de-duplicated
 
@@ -284,14 +284,12 @@ class GPPrefLearning(GPClassifierSVI):
                             items_1_coords.shape[0]==self.ninput_features:
             items_1_coords = items_1_coords.T       
         
-        output_coords, out_pref_v, out_pref_u = get_unique_locations(items_0_coords, items_1_coords)
+        output_coords, out_pref_v, out_pref_u, original_idxs = get_unique_locations(items_0_coords, items_1_coords)
         nblocks, noutputs = self._init_output_arrays(output_coords, max_block_size)
                 
         self.mu0_output = np.zeros((noutputs, 1)) + self.mu0_default
-        if mu0_output1 is not None:
-            self.mu0_output[out_pref_v, :] = mu0_output1
-        if mu0_output2 is not None:
-            self.mu0_output[out_pref_u, :] = mu0_output2
+        if mu0_output1 is not None and mu0_output2 is not None:
+            self.mu0_output = np.concatenate((mu0_output1, mu0_output2), axis=0)[original_idxs, :]
                 
         for block in range(nblocks):
             if self.verbose:
