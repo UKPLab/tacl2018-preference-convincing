@@ -1,14 +1,34 @@
 '''
-TODO: SVI with person features on -- doesn't extract latent features correctly. Does it work without SVI? It kind of 
-works without SVI for y but with SVI for w. Lower bound goes negative at times though and features are very blurred, 
-perhaps the sampling is somehow causing them to merge rather than find a single solution in the cluster identifiability
-problem. 
+TODO: Does not converge well -- LB problems? 
 
-TODO: length-scale learning through MLII
+Observed features -- Why is it good to use them as inputs to latent features? The GP will consider dependencies between
+the input features. However, if the input features for items were added to columns of w, and the input features of 
+people created new rows in y, we could learn the weighting of these features without length-scale optimisation in both 
+w and y. Problem is we cannot then interpolate between any true latent features. 
 
-TODO: some of the matrix inversions should use Cholesky. E.g. for Kw and Ky --> Needs to be passed into the SVI function
+Run with SVI for child GPs but not for y or w. Using complete SVI implementation is not working. -- 
+-- Requires multiple SVI steps in each VB iteration to be able to run without crashing
+-- However, running multiple child iterations results in no features being found with either SVI or without
+-- Try with increased child GP iterations required in each VB iteration
+-- : Run with SVI for y and w but not child GPs produces same result (no features found)
 
-TODO: why is posterior covariance all the same for all features?
+TOOD: possible fix is to ensure that the data subsample at each iteration is the same for w and y as for the child GPs.
+-- Inducing points need to be the same?
+
+TODO: investigate why running with large update size does not give same result as non-SVI. Specifically, where do values
+differ? Perhaps the sampling is somehow causing them to merge rather than find a single solution in the cluster identifiability
+problem. Possibly converging too early as SVI merges the current iteration with previous iterations using the forgetting
+rate.
+
+TODO: 2c: to debug, it might be useful to plot the predicted and true wy at each iteration.
+
+TODO: 3. Length-scale learning through MLII
+
+TODO 4: Replace np.linalg.inv(self.pref_gp[person].Ks) since this is inverted inside the child GP already as cholK
+
+TODO 5: Some of the matrix inversions should use Cholesky. E.g. for Kw and Ky --> Needs to be passed into the SVI function.
+
+TODO 6: Combine multiple initialisations.
 
 Preference learning model for identifying relevant input features of items and people, plus finding latent 
 characteristics of items and people. Can be used to predict preferences or rank items, therefore could be part of
@@ -166,7 +186,7 @@ class PreferenceComponents(object):
         # should be avoided as they lead to errors.
         self.shape_sf0 = shape_s0
         self.rate_sf0 = rate_s0
-        
+                
         # For the latent means and components, the relative sizes of the scales controls how much the components can 
         # vary relative to the overall f, i.e. how much they learn from f. A high s will mean that the wy & t functions 
         # have smaller scale relative to f, so they will be less fitted to f. By default we assume a common prior.   
@@ -174,7 +194,7 @@ class PreferenceComponents(object):
         self.rate_sw0 = rate_s0
                             
         self.shape_sy0 = shape_s0
-        self.rate_sy0 = rate_s0   
+        self.rate_sy0 = rate_s0 #* 100 --> this made it detect features, but not very well.
     
         # if the scale doesn't matter, then let's fix the mean to be scaled to one? However, fixing t's scale and not
         # the noise scale in f means that since preference learning can collapse toward very large scales, the noise
@@ -218,6 +238,8 @@ class PreferenceComponents(object):
         self._select_covariance_function(kernel_func)
         
         self.vb_iter = 0
+        
+        self.matches = {} # indexes of the obs_coords in the child noise GPs 
             
     def _select_covariance_function(self, cov_type):
         if cov_type == 'diagonal':
@@ -243,6 +265,10 @@ class PreferenceComponents(object):
         self.t_mu0 = np.zeros((self.N, 1)) + self.t_mu0
         self.t = np.zeros((self.N, 1))
         self.t_cov = np.diag(np.ones(self.N))
+
+        # put all prefs into a single GP to get a good initial mean estimate t -- this only makes sense if we can also 
+        #estimate w y in a sensibel way, e.g. through factor analysis?        
+        #self.pref_gp[person].fit(items_1_p, items_2_p, prefs_p, mu0_1=mu0_1, mu0_2=mu0_2, process_obs=self.new_obs)
         
         self.shape_sw = np.zeros(self.Nfactors) + self.shape_sw0
         self.rate_sw = np.zeros(self.Nfactors) + self.rate_sw0
@@ -262,8 +288,6 @@ class PreferenceComponents(object):
             self.pref_gp[person].min_iter_VB = 1
             self.pref_gp[person].max_iter_G = 5
             self.pref_gp[person].verbose = self.verbose
-            self.pref_gp[person].update_s = False # don't update s in the first round. Wait until we have computed f 
-            #against a reasonable mean estimate t
              
         self.new_obs = True # cause the pref GPs to process the new observations in the first iteration
                         
@@ -280,7 +304,7 @@ class PreferenceComponents(object):
         # kernel used by w
         blocks = [self.K for _ in range(self.Nfactors)]
         self.Kw = block_diag(*blocks)
-        self.sw_matrix = np.ones(self.Kw.shape)
+        self.sw_matrix = np.ones(self.Kw.shape) * self.shape_sw0 / self.rate_sw0
                 
         # kernel used by y  
         if self.person_features is None:
@@ -292,12 +316,12 @@ class PreferenceComponents(object):
         blocks = [Ky for _ in range(self.Nfactors)]
         self.Ky = block_diag(*blocks) 
         self.cholKy = cholesky(Ky, overwrite_a=False, check_finite=False)
-        self.sy_matrix = np.ones(self.Ky.shape)
+        self.sy_matrix = np.ones(self.Ky.shape) * self.shape_sy0 / self.rate_sy0     
 
         # initialise the factors randomly -- otherwise they can get stuck because there is nothing to differentiate them,
         # i.e. the cluster identifiability problem
-        self.w = mvn.rvs(np.zeros(self.Nfactors * self.N), cov=self.Kw).reshape((self.Nfactors, self.N)).T 
-        self.y = mvn.rvs(np.zeros(self.Nfactors * self.Npeople), cov=self.Ky).reshape((self.Nfactors, self.Npeople))
+        self.w = mvn.rvs(np.zeros(self.Nfactors * self.N), cov=self.Kw / self.sw_matrix).reshape((self.Nfactors, self.N)).T 
+        self.y = mvn.rvs(np.zeros(self.Nfactors * self.Npeople), cov=self.Ky / self.sy_matrix).reshape((self.Nfactors, self.Npeople))
         self.wy = self.w.dot(self.y)
         
         # Factor Analysis
@@ -423,7 +447,7 @@ class PreferenceComponents(object):
             self.data_obs_idx[personIDs, self.pref_u] = 1        
             
         diff = np.inf
-        old_x = np.inf
+#         old_w = np.inf
         old_lb = -np.inf
         while (self.vb_iter < self.min_iter) | ((diff > self.conv_threshold) and (self.vb_iter < self.max_iter)):
             if self.use_svi:
@@ -439,14 +463,14 @@ class PreferenceComponents(object):
             # find the personality components
             self.expec_w(personIDs)
              
-            diff = np.max(old_x - self.w)
-            logging.debug( "Difference in latent personality features: %f" % diff)
-            old_x = self.w
+#             diff = np.max(old_w - self.w)
+#             logging.debug( "Difference in latent item features: %f" % diff)
+#             old_w = self.w
 
             # Don't use lower bound here, it doesn't really make sense when we use ML for some parameters
             if not self.use_fa:
                 lb = self.lowerbound()
-                logging.debug('Lower bound = %.5f, difference = %.5f' % (lb, lb-old_lb ))
+                logging.debug('Iteration %i: lower bound = %.5f, difference = %.5f' % (self.vb_iter, lb, lb-old_lb))
                 diff = lb - old_lb
                 old_lb = lb
 
@@ -550,14 +574,20 @@ class PreferenceComponents(object):
             
             self.pref_gp[person].fit(items_1_p, items_2_p, prefs_p, mu0_1=mu0_1, mu0_2=mu0_2, process_obs=self.new_obs)
             # find the index of the coords in coords_p in self.obs_coords
+            # coordsidxs[person] needs to correspond to data points in same order as invKf[person]
             if person not in self.coordidxs:
                 internal_coords_p = self.pref_gp[person].obs_coords
-                matches = np.ones((internal_coords_p.shape[0], self.N), dtype=bool)
+                self.matches[person] = np.ones((internal_coords_p.shape[0], self.N), dtype=bool)
                 for dim in range(internal_coords_p.shape[1]):
-                    matches = matches & np.equal(internal_coords_p[:, dim:dim+1], self.obs_coords[:, dim:dim+1].T)
-                self.coordidxs[person] = np.argwhere(matches)[:, 1]
+                    self.matches[person] = self.matches[person] & np.equal(internal_coords_p[:, dim:dim+1], 
+                                                                           self.obs_coords[:, dim:dim+1].T)
+                self.coordidxs[person] = np.argwhere(self.matches[person])[:, 1]
             
                 self.invKf[person] = np.linalg.inv(self.pref_gp[person].K) 
+
+            if self.use_svi:
+                data_idx_i = np.argwhere(self.matches[person][:, self.data_idx_i])[:, 0]
+                self.pref_gp[person].fix_sample_idxs(data_idx_i)                
             
             f, _ = self.pref_gp[person].predict_f(items_coords=self.obs_coords, mu0_output=mu0_output)
             self.f[person, :] = f.flatten()
@@ -594,7 +624,10 @@ class PreferenceComponents(object):
             if self.use_svi:
                 psample = np.in1d(pidxs, self.data_idx_i)
                 pidxs = pidxs[psample]
-                prec_p = self.invKf[person][psample, :][:, psample] * self.pref_gp[person].s #[npidxs, npidxs] 
+                if not len(pidxs):
+                    continue # not yet tested but seemed to be missing
+                
+                prec_p = self.invKf[person][psample, :][:, psample] * self.pref_gp[person].old_s #[npidxs, npidxs] 
             else:
                 prec_p = self.invKf[person] * self.pref_gp[person].s #[npidxs, npidxs]
             y_p = self.y[:, person:person+1]
@@ -658,7 +691,7 @@ class PreferenceComponents(object):
             pidxs = self.coordidxs[person]           
             
             # the means for this person's observations 
-            prec_f_p = self.invKf[person] * self.pref_gp[person].s          
+            prec_f_p = self.invKf[person] * self.pref_gp[person].old_s          
             
             # np.zeros((self.Nfactors * len(pidxs), self.Nfactors * len(pidxs))) do we need to factorise w_cov into two NF x N factors?
             # the data points are not independent given y. The factors are independent?
@@ -723,7 +756,7 @@ class PreferenceComponents(object):
             pidxs = self.coordidxs[person]
             sigmarows = np.zeros((len(pidxs), N))
             
-            Sigma_p = np.linalg.inv(self.pref_gp[person].Ks)
+            Sigma_p = self.invKf[person] * self.pref_gp[person].s
             sigmarows[:, pidxs] = Sigma_p
             Sigma[pidxs, :] += sigmarows
             
@@ -829,8 +862,8 @@ class PreferenceComponents(object):
         #logging.debug("E[w]: %s" % self.w)       
         #logging.debug("cov(w): %s" % self.w_cov)       
 
-        logpw = mvn.logpdf(self.w.T.flatten(), mean=np.zeros(self.Kw.shape[0]), cov=self.Kw / self.sw_matrix)
-        logqw = mvn.logpdf(self.w.T.flatten(), mean=self.w.T.flatten(), cov=self.w_cov)
+        logpw = mvn.logpdf(self.w.T.flatten(), mean=np.zeros(self.Kw.shape[0]), cov=self.Kw / self.sw_matrix, allow_singular=True)
+        logqw = mvn.logpdf(self.w.T.flatten(), mean=self.w.T.flatten(), cov=self.w_cov, allow_singular=True)
         logps_w = 0
         logqs_w = 0
         for f in range(self.Nfactors):   
@@ -847,8 +880,8 @@ class PreferenceComponents(object):
                 
         lb = f_terms + t_terms + w_terms + y_terms
         if self.verbose:
-            logging.debug( "Lower bound = %.3f, fterms=%.3f, wterms=%.3f, yterms=%.3f, tterms=%.3f" % 
-                       (lb, f_terms, w_terms, y_terms, t_terms) )
+            logging.debug( "Iteration %i: Lower bound = %.3f, fterms=%.3f, wterms=%.3f, yterms=%.3f, tterms=%.3f" % 
+                       (self.vb_iter, lb, f_terms, w_terms, y_terms, t_terms) )
         
         if self.verbose:
             for person in self.people:                                                              

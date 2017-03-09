@@ -240,7 +240,7 @@ class GPPrefLearning(GPClassifierSVI):
     
     # Training methods ------------------------------------------------------------------------------------------------  
             
-    def fit(self, items1_coords=None, items2_coords=None, obs_values=None, totals=None, process_obs=True, update_s=True, mu0_1=None,
+    def fit(self, items1_coords=None, items2_coords=None, obs_values=None, totals=None, process_obs=True, mu0_1=None,
             mu0_2=None, optimize=False):
         super(GPPrefLearning, self).fit((items1_coords, items2_coords), obs_values, totals, process_obs, 
                                         mu0=(mu0_1, mu0_2), optimize=optimize)  
@@ -248,11 +248,14 @@ class GPPrefLearning(GPClassifierSVI):
     def _update_sample_idxs(self):
         nobs = self.obs_f.shape[0]
         
-        self.data_obs_idx_i = 0
+        if not self.fixed_sample_idxs:
+            self.data_obs_idx_i = 0
         
-        while not np.sum(self.data_obs_idx_i): # make sure we don't choose indices that have not been compared
-            self.data_idx_i = np.random.choice(nobs, self.update_size, replace=False)
-            self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)        
+            while not np.sum(self.data_obs_idx_i): # make sure we don't choose indices that have not been compared
+                self.data_idx_i = np.random.choice(nobs, self.update_size, replace=False)
+                self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)
+        else:
+            self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)                            
             
     # Prediction methods ---------------------------------------------------------------------------------------------
 

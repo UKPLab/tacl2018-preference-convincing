@@ -9,6 +9,7 @@ import logging
 import numpy as np
 from gp_classifier_vb import matern_3_2_from_raw_vals
 from scipy.stats import multivariate_normal as mvn
+from scipy.linalg import block_diag
 from gp_pref_learning_test import gen_synthetic_prefs
 from preference_features import PreferenceComponents
 
@@ -28,9 +29,9 @@ if __name__ == '__main__':
 
     logging.info( "Testing Bayesian preference components analysis using synthetic data..." )
 
-    Npeople = 10
+    Npeople = 20
     N = 25
-    P = 1000
+    P = 1000 # pairs per person in test+training set
     nx = 5
     ny = 5
 # 
@@ -51,14 +52,19 @@ if __name__ == '__main__':
     
     # generate a common prior:
     ls = [10, 5]
-    xvals = []
-    yvals = []
+    xvals = np.tile(np.arange(nx)[:, np.newaxis], (1, ny)).flatten()
+    yvals = np.tile(np.arange(ny)[np.newaxis, :], (nx, 1)).flatten()
     Kt = matern_3_2_from_raw_vals(np.array([xvals, yvals]), ls)
-    t = np.zeros((nx, ny))#mvn.rvs(cov=Kt).reshape(nx, ny)
+    t = mvn.rvs(cov=Kt).reshape(nx, ny)
     
-    Nfactors = 2
+    Nfactors = 3
+    
+    Kw = [Kt for _ in range(Nfactors)]
+    Kw = block_diag(*Kw)
+    w = mvn.rvs(cov=Kw).reshape(Nfactors, nx*ny).T
     
     Npeoplefeatures = 4
+    lsy = 2 + np.zeros(Npeoplefeatures)
     #person_features = None
     person_features = np.zeros((Npeoplefeatures, Npeople)) 
     for f in range(Npeoplefeatures):
@@ -67,16 +73,22 @@ if __name__ == '__main__':
         #person_features[f, :] += np.random.rand(Npeople)
         person_features[f, :] += np.arange(Npeople)
     
-    Ky = matern_3_2_from_raw_vals(person_features, 2 + np.zeros(Npeoplefeatures))
+    Ky = matern_3_2_from_raw_vals(person_features, lsy)
+    Ky = [Ky for _ in range(Nfactors)]
+    Ky = block_diag(*Ky)
+    y = mvn.rvs(cov=Ky).reshape(Nfactors, Npeople)
     
-    w = np.zeros((nx * ny, Nfactors))
-    y = np.zeros((Nfactors, Npeople))
-    for f in range(Nfactors):
-        w[:(nx * ny)/2, f] = f * 1000#mvn.rvs(cov=Kt).flatten()
-        w[(nx * ny)/2:, f] = (f-1) * 1000
-        y[f, :Npeople/2] = f * 1000#mvn.rvs(cov=Ky)
-        y[f, Npeople/2:] = (f-1) * 1000
-        
+#     w = np.zeros((nx * ny, Nfactors))
+#     y = np.zeros((Nfactors, Npeople))
+#     for f in range(Nfactors):
+#         w[:(nx * ny)/2, f] = f * 1000#mvn.rvs(cov=Kt).flatten()
+#         w[(nx * ny)/2:, f] = (f-1) * 1000
+#         y[f, :Npeople/2] = f * 1000#mvn.rvs(cov=Ky)
+#         y[f, Npeople/2:] = (f-1) * 1000
+#         
+
+    xvals = []
+    yvals = []
     for p in range(Npeople):
         
         y_p = y[:, p:p+1]
@@ -106,9 +118,12 @@ if __name__ == '__main__':
     if fix_seeds:
         np.random.seed() # do this if we want to use a different seed each time to test the variation in results
         
-    use_svi = False
-    model = PreferenceComponents(2, Npeoplefeatures, ls=ls, nfactors=Nfactors + 5, use_fa=False, use_svi=use_svi)
+    # Model initialisation --------------------------------------------------------------------------------------------
+    use_svi = True
+    model = PreferenceComponents(2, Npeoplefeatures, ls=ls, lsy=lsy, nfactors=Nfactors + 5, use_fa=False, use_svi=use_svi)
     model.verbose = False
+    model.min_iter = 5
+    model.max_iter = 1000
     model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs], person_features)
     
     # turn the values into predictions of preference pairs.
@@ -145,6 +160,11 @@ if __name__ == '__main__':
     print "ROC of %.3f" % roc_auc_score(p, p_pred)
 
     print " --- Latent item feature prediction metrics --- " 
+    
+    # get the w values that correspond to the coords seen by the model
+    widxs = np.ravel_multi_index((
+           model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)), dims=(nx, ny))
+    w = w[widxs, :]
     
     # how can we handle the permutations of the features?
     #scipy.factorial(model.Nfactors) / scipy.factorial(model.Nfactors - w.shape[1])
@@ -194,13 +214,13 @@ if __name__ == '__main__':
                    vmin=-scale*2, vmax=scale*2, interpolation='none', filterrad=0.01)
     plt.title('predictions at training points: t (item mean)')
 
-    plt.figure()
-    tmap = np.zeros((nx, ny))
-    tmap[model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)] = np.sqrt(np.diag(model.t_cov))
-    scale = np.std(tmap[model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)])
-    plt.imshow(tmap, cmap=cmap, aspect=None, origin='lower', \
-                   vmin=-scale*2, vmax=scale*2, interpolation='none', filterrad=0.01)
-    plt.title('STD at training points: t (item mean)')
+#     plt.figure()
+#     tmap = np.zeros((nx, ny))
+#     tmap[model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)] = np.sqrt(np.diag(model.t_cov))
+#     scale = np.std(tmap[model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)])
+#     plt.imshow(tmap, cmap=cmap, aspect=None, origin='lower', \
+#                    vmin=-scale*2, vmax=scale*2, interpolation='none', filterrad=0.01)
+#     plt.title('STD at training points: t (item mean)')
 
     plt.figure()
     tmap = np.zeros((nx, ny))
@@ -238,21 +258,20 @@ if __name__ == '__main__':
                    aspect=None, vmin=-2, vmax=2, interpolation='none', filterrad=0.01)
         plt.title('predictions at training points: w_%i (latent feature for items)' %f)
 
-        plt.figure()
-        wmap = np.zeros((nx, ny))
-        wmap[model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)] = np.sqrt(model.w_cov[np.arange(model.N*f, model.N*(f+1)), 
-                                                                                   np.arange(model.N*f, model.N*(f+1))])        
-        scale = np.std(wmap[model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)])
-        wmap /= scale
-        plt.imshow(wmap, cmap=cmap, origin='lower', extent=[0, wmap.shape[1], 0, wmap.shape[0]], aspect=None, vmin=-2, 
-                   vmax=2, interpolation='none', filterrad=0.01)
-        plt.title('STD at training points: w_%i (latent feature for items)' %f)
+#         plt.figure()
+#         wmap = np.zeros((nx, ny))
+#         wmap[model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)] = np.sqrt(model.w_cov[np.arange(model.N*f, model.N*(f+1)), 
+#                                                                                    np.arange(model.N*f, model.N*(f+1))])        
+#         scale = np.std(wmap[model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)])
+#         wmap /= scale
+#         plt.imshow(wmap, cmap=cmap, origin='lower', extent=[0, wmap.shape[1], 0, wmap.shape[0]], aspect=None, vmin=-2, 
+#                    vmax=2, interpolation='none', filterrad=0.01)
+#         plt.title('STD at training points: w_%i (latent feature for items)' %f)
 
     for f in range(Nfactors):
         plt.figure()
         wmap = np.zeros((nx, ny))
-        wmap[model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)] = w[np.ravel_multi_index((
-           model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)), dims=(nx, ny)), f]
+        wmap[model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)] = w[:, f]
         plt.imshow(wmap, cmap=cmap, origin='lower', extent=[0, wmap.shape[1], 0, wmap.shape[0]],
                    aspect=None, vmin=-2, vmax=2, interpolation='none', filterrad=0.01)
         plt.title('ground truth at training points: w_%i (latent feature for items' % f)  
