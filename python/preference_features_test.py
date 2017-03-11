@@ -16,127 +16,132 @@ from preference_features import PreferenceComponents
 if __name__ == '__main__':
     
     logging.basicConfig(level=logging.DEBUG)    
-    
-    import cProfile, pstats, StringIO
-    pr = cProfile.Profile()
-    pr.enable()
 
     fix_seeds = True
+    do_profiling = False
     
+    if do_profiling:
+        import cProfile, pstats, StringIO
+        pr = cProfile.Profile()
+        pr.enable()
+
     # make sure the simulation is repeatable
     if fix_seeds:
         np.random.seed(10)
 
     logging.info( "Testing Bayesian preference components analysis using synthetic data..." )
-
-    Npeople = 20
-    N = 25
-    P = 1000 # pairs per person in test+training set
-    nx = 5
-    ny = 5
-# 
-#     Npeople = 200
-#     N = 100
-#     P = 100
-#     nx = 25
-#     ny = 25
-#     
     
-    Ptest_percent = 0.2
-    pair1idxs = []
-    pair2idxs = []
-    prefs = []
-    personids = []
-    xvals = []
-    yvals = []
-    
-    # generate a common prior:
-    ls = [10, 5]
-    xvals = np.tile(np.arange(nx)[:, np.newaxis], (1, ny)).flatten()
-    yvals = np.tile(np.arange(ny)[np.newaxis, :], (nx, 1)).flatten()
-    Kt = matern_3_2_from_raw_vals(np.array([xvals, yvals]), ls)
-    t = mvn.rvs(cov=Kt).reshape(nx, ny)
-    
-    Nfactors = 3
-    
-    Kw = [Kt for _ in range(Nfactors)]
-    Kw = block_diag(*Kw)
-    w = mvn.rvs(cov=Kw).reshape(Nfactors, nx*ny).T
-    
-    Npeoplefeatures = 4
-    lsy = 2 + np.zeros(Npeoplefeatures)
-    #person_features = None
-    person_features = np.zeros((Npeoplefeatures, Npeople)) 
-    for f in range(Npeoplefeatures):
-        person_features[f, :Npeople/2] = -0.2
-        person_features[f, Npeople/2:] = 0.2
-        #person_features[f, :] += np.random.rand(Npeople)
-        person_features[f, :] += np.arange(Npeople)
-    
-    Ky = matern_3_2_from_raw_vals(person_features, lsy)
-    Ky = [Ky for _ in range(Nfactors)]
-    Ky = block_diag(*Ky)
-    y = mvn.rvs(cov=Ky).reshape(Nfactors, Npeople)
-    
-#     w = np.zeros((nx * ny, Nfactors))
-#     y = np.zeros((Nfactors, Npeople))
-#     for f in range(Nfactors):
-#         w[:(nx * ny)/2, f] = f * 1000#mvn.rvs(cov=Kt).flatten()
-#         w[(nx * ny)/2:, f] = (f-1) * 1000
-#         y[f, :Npeople/2] = f * 1000#mvn.rvs(cov=Ky)
-#         y[f, Npeople/2:] = (f-1) * 1000
-#         
-
-    xvals = []
-    yvals = []
-    for p in range(Npeople):
+    if 'xvals' not in globals():
+        Npeople = 20
+        N = 25
+        P = 1000 # pairs per person in test+training set
+        nx = 5
+        ny = 5
+    # 
+    #     Npeople = 200
+    #     N = 100
+    #     P = 100
+    #     nx = 25
+    #     ny = 25
+    #     
         
-        y_p = y[:, p:p+1]
-        wy_p = w.dot(y_p).reshape((nx, ny))
+        Ptest_percent = 0.2
+        pair1idxs = []
+        pair2idxs = []
+        prefs = []
+        personids = []
+        xvals = []
+        yvals = []
         
-        f_prior_mean = t + wy_p
+        # generate a common prior:
+        ls = [10, 5]
+        xvals = np.tile(np.arange(nx)[:, np.newaxis], (1, ny)).flatten()
+        yvals = np.tile(np.arange(ny)[np.newaxis, :], (nx, 1)).flatten()
+        Kt = matern_3_2_from_raw_vals(np.array([xvals, yvals]), ls)
+        t = mvn.rvs(cov=Kt).reshape(nx, ny)
         
-        _, nx, ny, prefs_p, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs(f_prior_mean, nx, ny, 
-                                                                                                   N, P, s=0.0001)
-        pair1idxs = np.concatenate((pair1idxs, pair1idxs_p + len(xvals))).astype(int)
-        pair2idxs = np.concatenate((pair2idxs, pair2idxs_p + len(yvals))).astype(int)
-        prefs = np.concatenate((prefs, prefs_p)).astype(int)
-        personids = np.concatenate((personids, np.zeros(len(pair1idxs_p)) + p)).astype(int)
-        xvals = np.concatenate((xvals, xvals_p.flatten()))
-        yvals = np.concatenate((yvals, yvals_p.flatten()))
-
-    pair1coords = np.concatenate((xvals[pair1idxs][:, np.newaxis], yvals[pair1idxs][:, np.newaxis]), axis=1)
-    pair2coords = np.concatenate((xvals[pair2idxs][:, np.newaxis], yvals[pair2idxs][:, np.newaxis]), axis=1) 
-
-    Ptest = int(Ptest_percent * pair1idxs.size)
-
-    testpairs = np.random.choice(pair1coords.shape[0], Ptest, replace=False)
-    testidxs = np.zeros(pair1coords.shape[0], dtype=bool)
-    testidxs[testpairs] = True
-    trainidxs = np.invert(testidxs)
+        Nfactors = 3
+        
+        Kw = [Kt for _ in range(Nfactors)]
+        Kw = block_diag(*Kw)
+        w = mvn.rvs(cov=Kw).reshape(Nfactors, nx*ny).T
+        
+        Npeoplefeatures = 4
+        lsy = 2 + np.zeros(Npeoplefeatures)
+        #person_features = None
+        person_features = np.zeros((Npeoplefeatures, Npeople)) 
+        for f in range(Npeoplefeatures):
+            person_features[f, :Npeople/2] = -0.2
+            person_features[f, Npeople/2:] = 0.2
+            #person_features[f, :] += np.random.rand(Npeople)
+            person_features[f, :] += np.arange(Npeople)
+        
+        Ky = matern_3_2_from_raw_vals(person_features, lsy)
+        Ky = [Ky for _ in range(Nfactors)]
+        Ky = block_diag(*Ky)
+        y = mvn.rvs(cov=Ky).reshape(Nfactors, Npeople)
+        
+    #     w = np.zeros((nx * ny, Nfactors))
+    #     y = np.zeros((Nfactors, Npeople))
+    #     for f in range(Nfactors):
+    #         w[:(nx * ny)/2, f] = f * 1000#mvn.rvs(cov=Kt).flatten()
+    #         w[(nx * ny)/2:, f] = (f-1) * 1000
+    #         y[f, :Npeople/2] = f * 1000#mvn.rvs(cov=Ky)
+    #         y[f, Npeople/2:] = (f-1) * 1000
+    #         
+    
+        xvals = []
+        yvals = []
+        for p in range(Npeople):
+            
+            y_p = y[:, p:p+1]
+            wy_p = w.dot(y_p).reshape((nx, ny))
+            
+            f_prior_mean = t + wy_p
+            
+            _, nx, ny, prefs_p, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs(f_prior_mean, nx, ny, 
+                                                                                                       N, P, s=0.0001)
+            pair1idxs = np.concatenate((pair1idxs, pair1idxs_p + len(xvals))).astype(int)
+            pair2idxs = np.concatenate((pair2idxs, pair2idxs_p + len(yvals))).astype(int)
+            prefs = np.concatenate((prefs, prefs_p)).astype(int)
+            personids = np.concatenate((personids, np.zeros(len(pair1idxs_p)) + p)).astype(int)
+            xvals = np.concatenate((xvals, xvals_p.flatten()))
+            yvals = np.concatenate((yvals, yvals_p.flatten()))
+    
+        pair1coords = np.concatenate((xvals[pair1idxs][:, np.newaxis], yvals[pair1idxs][:, np.newaxis]), axis=1)
+        pair2coords = np.concatenate((xvals[pair2idxs][:, np.newaxis], yvals[pair2idxs][:, np.newaxis]), axis=1) 
+    
+        Ptest = int(Ptest_percent * pair1idxs.size)
+    
+        testpairs = np.random.choice(pair1coords.shape[0], Ptest, replace=False)
+        testidxs = np.zeros(pair1coords.shape[0], dtype=bool)
+        testidxs[testpairs] = True
+        trainidxs = np.invert(testidxs)
     
     if fix_seeds:
-        np.random.seed() # do this if we want to use a different seed each time to test the variation in results
+        np.random.seed(9) # do this if we want to use a different seed each time to test the variation in results
         
     # Model initialisation --------------------------------------------------------------------------------------------
     use_svi = True
-    model = PreferenceComponents(2, Npeoplefeatures, ls=ls, lsy=lsy, nfactors=Nfactors + 5, use_fa=False, use_svi=use_svi)
+    model = PreferenceComponents(2, Npeoplefeatures, ls=ls, lsy=lsy, nfactors=Nfactors + 5, use_fa=False, 
+                                 use_svi=use_svi, delay=1, forgetting_rate=0)
     model.verbose = False
-    model.min_iter = 5
-    model.max_iter = 1000
+    model.min_iter = 1
+    model.max_iter = 200
     model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs], person_features)
     
     # turn the values into predictions of preference pairs.
     results = model.predict(personids[testidxs], pair1coords[testidxs], pair2coords[testidxs], )
     
-    pr.disable()
-    import datetime
-    pr.dump_stats('preference_features_test_svi_%i_%s.profile' % (use_svi, datetime.datetime.now()))
-    s = StringIO.StringIO()
-    sortby = 'cumulative'
-    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print s.getvalue()
+    if do_profiling:
+        pr.disable()
+        import datetime
+        pr.dump_stats('preference_features_test_svi_%i_%s.profile' % (use_svi, datetime.datetime.now()))
+        s = StringIO.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print s.getvalue()
     
     # To make sure the simulation is repeatable, re-seed the RNG after all the stochastic inference has been completed
     if fix_seeds:

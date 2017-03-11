@@ -7,18 +7,14 @@ people created new rows in y, we could learn the weighting of these features wit
 w and y. Problem is we cannot then interpolate between any true latent features. 
 
 Run with SVI for child GPs but not for y or w. Using complete SVI implementation is not working. -- 
--- Requires multiple SVI steps in each VB iteration to be able to run without crashing
 -- However, running multiple child iterations results in no features being found with either SVI or without
 -- Try with increased child GP iterations required in each VB iteration
--- : Run with SVI for y and w but not child GPs produces same result (no features found)
+-- Running with SVI for y and w but not child GPs produces same result (no features found)
+-- SVI child GPs produces values of f from predict_f that are different to the values of obs_f
 
-TOOD: possible fix is to ensure that the data subsample at each iteration is the same for w and y as for the child GPs.
--- Inducing points need to be the same?
-
-TODO: investigate why running with large update size does not give same result as non-SVI. Specifically, where do values
-differ? Perhaps the sampling is somehow causing them to merge rather than find a single solution in the cluster identifiability
-problem. Possibly converging too early as SVI merges the current iteration with previous iterations using the forgetting
-rate.
+TODO: change the y updates to do correct weighted updates from the item subsample 
+TODO: Following the pattern of the GP classifier SVI implementation, we 
+need to use same inducing points and pass expectations at the inducing points? Replace prec_p with invKmm?
 
 TODO: 2c: to debug, it might be useful to plot the predicted and true wy at each iteration.
 
@@ -159,7 +155,8 @@ class PreferenceComponents(object):
 
     def __init__(self, nitem_features, nperson_features=0, mu0=0, mu0_y=0, shape_s0=1, rate_s0=1, shape_ls=1, rate_ls=100, 
                  ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=3, use_fa=False,  
-                 kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True):
+                 kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True, forgetting_rate=0.9, 
+                 delay=1.0):
         '''
         Constructor
         dims - ranges for each of the observed features of the objects
@@ -226,8 +223,8 @@ class PreferenceComponents(object):
         self.max_update_size = max_update_size # maximum number of data points to update in each SVI iteration
         
         # initialise the forgetting rate and delay for SVI
-        self.forgetting_rate = 0.9
-        self.delay = 1.0 # delay must be at least 1
+        self.forgetting_rate = forgetting_rate
+        self.delay = delay # delay must be at least 1
         
         # number of inducing points
         self.ninducing = ninducing
@@ -282,7 +279,8 @@ class PreferenceComponents(object):
         
         for person in self.people:
             self.pref_gp[person] = GPPrefLearning(self.nitem_features, self.mu0, self.shape_sf0, self.rate_sf0,
-                                                self.shape_ls, self.rate_ls, self.ls, use_svi=self.use_svi)
+                                                self.shape_ls, self.rate_ls, self.ls, use_svi=self.use_svi, delay=self.delay, 
+                                                forgetting_rate=self.forgetting_rate)
             self.pref_gp[person]._select_covariance_function('matern_3_2')
             self.pref_gp[person].max_iter_VB = 1
             self.pref_gp[person].min_iter_VB = 1
@@ -324,11 +322,15 @@ class PreferenceComponents(object):
         self.y = mvn.rvs(np.zeros(self.Nfactors * self.Npeople), cov=self.Ky / self.sy_matrix).reshape((self.Nfactors, self.Npeople))
         self.wy = self.w.dot(self.y)
         
+        np.random.seed(4)
+        
         # Factor Analysis
         if self.use_fa:                        
             self.fa = FactorAnalysis(n_components=self.Nfactors)        
         elif self.use_svi:
             self._choose_inducing_points()
+            
+        np.random.seed(5)
 
     def _choose_inducing_points(self):
         # choose a set of inducing points -- for testing we can set these to the same as the observation points.
@@ -424,6 +426,9 @@ class PreferenceComponents(object):
             
         else:
             self.use_svi_people = False
+            
+        #for person in self.pref_gp:
+        #    self.pref_gp[person].fix_inducing_points(self.inducing_coords)
              
     def fit(self, personIDs, items_1_coords, items_2_coords, preferences, person_features=None):
         '''
@@ -452,6 +457,8 @@ class PreferenceComponents(object):
         while (self.vb_iter < self.min_iter) | ((diff > self.conv_threshold) and (self.vb_iter < self.max_iter)):
             if self.use_svi:
                 self._update_sample(personIDs)
+                
+            np.random.seed(5)
                 
             # run a VB iteration
             # compute preference latent functions for all workers
@@ -581,19 +588,22 @@ class PreferenceComponents(object):
                 for dim in range(internal_coords_p.shape[1]):
                     self.matches[person] = self.matches[person] & np.equal(internal_coords_p[:, dim:dim+1], 
                                                                            self.obs_coords[:, dim:dim+1].T)
-                self.coordidxs[person] = np.argwhere(self.matches[person])[:, 1]
+                self.coordidxs[person] = np.sort(np.argwhere(self.matches[person])[:, 1])
             
                 self.invKf[person] = np.linalg.inv(self.pref_gp[person].K) 
 
-            if self.use_svi:
-                data_idx_i = np.argwhere(self.matches[person][:, self.data_idx_i])[:, 0]
-                self.pref_gp[person].fix_sample_idxs(data_idx_i)                
+#             if self.use_svi:
+#                 data_idx_i = np.argwhere(self.matches[person][:, self.data_idx_i])[:, 0]
+#                 self.pref_gp[person].fix_sample_idxs(data_idx_i)              
             
+            #if self.use_svi:
+            #    f, _ = self.pref_gp[person].predict_f(items_coords=self.inducing_coords, mu0_output=mu0_output)
+            #else:  
             f, _ = self.pref_gp[person].predict_f(items_coords=self.obs_coords, mu0_output=mu0_output)
             self.f[person, :] = f.flatten()
-        
+            logging.debug('s_f^%i = %f' % (person, self.pref_gp[person].s))
             if self.verbose:    
-                logging.debug( "Expec_f for person %i out of %i" % (person, len(self.pref_gp.keys())) )
+                logging.debug( "Expec_f for person %i out of %i. s=%.3f" % (person, len(self.pref_gp.keys()), self.pref_gp[person].s) )
                 
         self.new_obs = False # don't process the observations again unless fit() is called
 
@@ -626,14 +636,17 @@ class PreferenceComponents(object):
                 pidxs = pidxs[psample]
                 if not len(pidxs):
                     continue # not yet tested but seemed to be missing
-                
-                prec_p = self.invKf[person][psample, :][:, psample] * self.pref_gp[person].old_s #[npidxs, npidxs] 
+                updateidxs = np.argwhere(np.in1d(self.data_idx_i, pidxs)).flatten() # indexes to save this to. Requires data_idx_i and pidxs to be in order
+
+                prec_p = self.invKf[person][psample, :][:, psample] * self.pref_gp[person].s #[npidxs, npidxs] 
             else:
                 prec_p = self.invKf[person] * self.pref_gp[person].s #[npidxs, npidxs]
+                updateidxs = pidxs
+                
             y_p = self.y[:, person:person+1]
             
             # add the means for this person's observations to the list of observations, x 
-            x[pidxs, :] += y_p.T * prec_p.dot(self.f[person:person+1, pidxs].T - self.t[pidxs])
+            x[updateidxs, :] += y_p.T * prec_p.dot(self.f[person:person+1, pidxs].T - self.t[pidxs])
             
             # add the covariance for this person's observations as a block in the covariance matrix Sigma
             Sigma_p = np.zeros((N * self.Nfactors, N * self.Nfactors))
@@ -641,9 +654,9 @@ class PreferenceComponents(object):
             Sigma_yscaling = y_p.dot(y_p.T) + self.y_cov[yidxs, :][:, yidxs] # covariance between people?
             for f in range(self.Nfactors):
                 for g in range(self.Nfactors):
-                    Sigma_p_rows = np.zeros((len(pidxs), N * self.Nfactors))
-                    Sigma_p_rows[:, pidxs + g * N] = prec_p * Sigma_yscaling[f, g]
-                    Sigma_p[pidxs + f * N, :] += Sigma_p_rows
+                    Sigma_p_rows = np.zeros((len(updateidxs), N * self.Nfactors))
+                    Sigma_p_rows[:, updateidxs + g * N] = prec_p * Sigma_yscaling[f, g]
+                    Sigma_p[updateidxs + f * N, :] += Sigma_p_rows
                         
             Sigma += Sigma_p
                 
@@ -690,9 +703,16 @@ class PreferenceComponents(object):
         for person in self.pref_gp:
             pidxs = self.coordidxs[person]           
             
-            # the means for this person's observations 
-            prec_f_p = self.invKf[person] * self.pref_gp[person].old_s          
-            
+            if self.use_svi:
+                psample = np.in1d(pidxs, self.data_idx_i)
+                pidxs = pidxs[psample]
+                if not len(pidxs):
+                    continue # not yet tested but seemed to be missing
+
+                prec_f_p = self.invKf[person][psample, :][:, psample] * self.pref_gp[person].s #[npidxs, npidxs] 
+            else:
+                prec_f_p = self.invKf[person] * self.pref_gp[person].s          
+                
             # np.zeros((self.Nfactors * len(pidxs), self.Nfactors * len(pidxs))) do we need to factorise w_cov into two NF x N factors?
             # the data points are not independent given y. The factors are independent?
             covterm = np.zeros((self.Nfactors, self.Nfactors))
@@ -722,9 +742,9 @@ class PreferenceComponents(object):
             self.y = self.y_cov.dot(x)
             
         else: # SVI implementation
-            pidxs = ((np.arange(self.Nfactors)[:, np.newaxis] * self.Npeople) + self.pdata_idx_i[np.newaxis, :]).flatten()
+            updateidxs = ((np.arange(self.Nfactors)[:, np.newaxis] * self.Npeople) + self.pdata_idx_i[np.newaxis, :]).flatten()
             self.y, self.y_cov, self.y_invS, self.y_invSm, self.y_m = svi_update_gaussian(x, 0, 0, self.Kys_mm, 
-                  self.inv_Kys_mm, self.Kys_nm, self.Kys_nm[pidxs, :], self.Ky / self.sy_matrix, Sigma, 
+                  self.inv_Kys_mm, self.Kys_nm, self.Kys_nm[updateidxs, :], self.Ky / self.sy_matrix, Sigma, 
                   self.y_invS, self.y_invSm, self.vb_iter, self.delay, self.forgetting_rate, np.sum(self.data_obs_idx), 
                   np.sum(self.pdata_obs_idx_i))
             
@@ -754,15 +774,25 @@ class PreferenceComponents(object):
         #size_added = 0
         for person in self.pref_gp:
             pidxs = self.coordidxs[person]
+            if self.use_svi:
+                psample = np.in1d(pidxs, self.data_idx_i)
+                pidxs = pidxs[psample] # indexes to read the observation data from
+                if not len(pidxs):
+                    continue # not yet tested but seemed to be missing
+                updateidxs = np.argwhere(np.in1d(self.data_idx_i, pidxs)).flatten() # indexes to save this to. Requires data_idx_i and pidxs to be in order
+                
+                Sigma_p = self.invKf[person][psample, :][:, psample] * self.pref_gp[person].s 
+            else:            
+                Sigma_p = self.invKf[person] * self.pref_gp[person].s
+                updateidxs = pidxs
+                
             sigmarows = np.zeros((len(pidxs), N))
-            
-            Sigma_p = self.invKf[person] * self.pref_gp[person].s
-            sigmarows[:, pidxs] = Sigma_p
-            Sigma[pidxs, :] += sigmarows
+            sigmarows[:, updateidxs] = Sigma_p
+            Sigma[updateidxs, :] += sigmarows
             
             # add the means for this person's observations to the list of observations, x 
-            f_obs = self.pref_gp[person].obs_f - self.wy[pidxs, person:person+1]
-            x[pidxs, :] += Sigma_p.dot(f_obs)
+            f_obs = self.f[person:person+1, pidxs].T - self.wy[pidxs, person:person+1]
+            x[updateidxs, :] += Sigma_p.dot(f_obs)
                 
         if not self.use_svi:
             self.t = invKts.dot(np.zeros((N, 1)) + self.t_mu0) + x
@@ -816,13 +846,13 @@ class PreferenceComponents(object):
             self.Kys_nm = self.Ky_nm / sy_nm
         
     def _update_sample_idxs(self, personIDs):
-        self.data_idx_i = np.random.choice(self.N, self.update_size, replace=False)        
+        self.data_idx_i = np.sort(np.random.choice(self.N, self.update_size, replace=False))        
         self.data_obs_idx_i = np.zeros(self.data_obs_idx.shape, dtype=bool)
         self.data_obs_idx_i[:, self.data_idx_i] = True
         self.data_obs_idx_i = self.data_obs_idx & self.data_obs_idx_i
         
         if self.use_svi_people:
-            self.pdata_idx_i = np.random.choice(self.Npeople, self.y_update_size, replace=False)        
+            self.pdata_idx_i = np.sort(np.random.choice(self.Npeople, self.y_update_size, replace=False))        
             self.pdata_obs_idx_i = np.in1d(personIDs, self.pdata_idx_i)
                     
     def lowerbound(self):

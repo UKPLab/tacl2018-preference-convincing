@@ -43,7 +43,8 @@ class GPPrefLearning(GPClassifierSVI):
     pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
     
     def __init__(self, ninput_features, mu0=0, shape_s0=2, rate_s0=2, shape_ls=10, rate_ls=0.1, ls_initial=None, 
-         force_update_all_points=False, kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True):
+         force_update_all_points=False, kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True,
+         delay=1, forgetting_rate=0.9):
         
         # We set the function scale and noise scale to the same value so that we assume apriori that the differences
         # in preferences can be explained by noise in the preference pairs or the latent function. Ordering patterns 
@@ -62,7 +63,7 @@ class GPPrefLearning(GPClassifierSVI):
             rate_s0 = 0.5
         
         super(GPPrefLearning, self).__init__(ninput_features, mu0, shape_s0, rate_s0, shape_ls, rate_ls, ls_initial, 
-                             force_update_all_points, kernel_func, max_update_size, ninducing, use_svi)
+                     force_update_all_points, kernel_func, max_update_size, ninducing, use_svi, delay, forgetting_rate)
     
     # Initialisation --------------------------------------------------------------------------------------------------
         
@@ -252,7 +253,7 @@ class GPPrefLearning(GPClassifierSVI):
             self.data_obs_idx_i = 0
         
             while not np.sum(self.data_obs_idx_i): # make sure we don't choose indices that have not been compared
-                self.data_idx_i = np.random.choice(nobs, self.update_size, replace=False)
+                self.data_idx_i = np.sort(np.random.choice(nobs, self.update_size, replace=False))
                 self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)
         else:
             self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)                            
