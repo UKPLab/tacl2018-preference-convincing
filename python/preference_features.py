@@ -138,14 +138,14 @@ def svi_update_gaussian(invQi_y, mu0_i, mu0_n, K_mm, invK_mm, K_nm, K_im, K_nn, 
     A = solve_triangular(L_invS, B, lower=True, trans=True, check_finite=False, overwrite_b=True)
     invK_mm_S = A.T
     
-    f_m = solve_triangular(L_invS, invSm, lower=True, check_finite=False)
-    f_m = solve_triangular(L_invS, f_m, lower=True, trans=True, check_finite=False, overwrite_b=True)
+    fhat_u = solve_triangular(L_invS, invSm, lower=True, check_finite=False)
+    fhat_u = solve_triangular(L_invS, fhat_u, lower=True, trans=True, check_finite=False, overwrite_b=True)
     
     covpair =  K_nm.dot(invK_mm)
     covpair_uS = K_nm.dot(invK_mm_S)
     fhat = covpair_uS.dot(invSm) + mu0_n
     C = K_nn + (covpair_uS - covpair.dot(K_mm)).dot(covpair.T)
-    return fhat, C, invS, invSm, f_m
+    return fhat, C, invS, invSm, fhat_u
 
 class PreferenceComponents(object):
     '''
@@ -240,6 +240,7 @@ class PreferenceComponents(object):
         self.matches = {} # indexes of the obs_coords in the child noise GPs 
             
     def _select_covariance_function(self, cov_type):
+        self.cov_type = cov_type
         if cov_type == 'diagonal':
             self.kernel_func = diagonal
         elif cov_type == 'matern_3_2':
@@ -282,7 +283,7 @@ class PreferenceComponents(object):
             self.pref_gp[person] = GPPrefLearning(self.nitem_features, self.mu0, self.shape_sf0, self.rate_sf0,
                                                 self.shape_ls, self.rate_ls, self.ls, use_svi=self.use_svi, delay=self.delay, 
                                                 forgetting_rate=self.forgetting_rate)
-            self.pref_gp[person]._select_covariance_function('matern_3_2')
+            self.pref_gp[person]._select_covariance_function(self.cov_type)
             self.pref_gp[person].max_iter_VB = 1
             self.pref_gp[person].min_iter_VB = 1
             self.pref_gp[person].max_iter_G = 5
@@ -367,13 +368,15 @@ class PreferenceComponents(object):
             mm_dist[:, :, d] = self.inducing_coords[:, d:d+1].T - self.inducing_coords[:, d:d+1]
             nm_dist[:, :, d] = self.inducing_coords[:, d:d+1].T - self.obs_coords[:, d:d+1].astype(float)
          
-        K_mm = self.kernel_func(mm_dist, self.ls)
-        K_mm += 1e-6 * np.eye(len(K_mm)) # jitter
-        self.Kt_mm = K_mm
-        self.invKt_mm = np.linalg.inv(K_mm)
+        self.K_mm = self.kernel_func(mm_dist, self.ls)
+        self.K_mm += 1e-6 * np.eye(len(self.K_mm)) # jitter
+        self.invK_mm = np.linalg.inv(self.K_mm)
+        
+        self.Kt_mm = self.K_mm
+        self.invKt_mm = self.invK_mm
         self.Kt_nm = self.kernel_func(nm_dist, self.ls)
         
-        blocks = [K_mm for _ in range(self.Nfactors)]
+        blocks = [self.K_mm for _ in range(self.Nfactors)]
         self.Kw_mm = block_diag(*blocks)
         self.invKw_mm = np.linalg.inv(self.Kw_mm)
         blocks = [self.Kt_nm for _ in range(self.Nfactors)]
@@ -414,9 +417,9 @@ class PreferenceComponents(object):
                 mm_dist[:, :, d] = self.y_inducing_coords[:, d:d+1].T - self.y_inducing_coords[:, d:d+1]
                 nm_dist[:, :, d] = self.y_inducing_coords[:, d:d+1].T - self.person_features.T[:, d:d+1].astype(float)
              
-            self.Ky_mm = self.kernel_func(mm_dist, self.lsy)
-            self.Ky_mm += 1e-6 * np.eye(len(self.Ky_mm)) # jitter 
-            blocks = [self.Ky_mm for _ in range(self.Nfactors)]
+            self.Ky_mm_block = self.kernel_func(mm_dist, self.lsy)
+            self.Ky_mm_block += 1e-6 * np.eye(len(self.Ky_mm_block)) # jitter 
+            blocks = [self.Ky_mm_block for _ in range(self.Nfactors)]
             self.Ky_mm = block_diag(*blocks)            
             
             self.invKy_mm = np.linalg.inv(self.Ky_mm)
@@ -498,43 +501,71 @@ class PreferenceComponents(object):
             if p in self.people:
                 y = self.y[:, p:p+1] 
             else:
-                if self.person_features == None:
+                if self.person_features is None:
                     Ky = np.zeros((1, self.Npeople))
+                elif self.use_svi:
+                    distances = np.zeros((1, self.y_ninducing, self.nperson_features))
+                    for d in range(self.nperson_features):
+                        distances[:, :, d] = person_features[p, d:d+1] - self.y_inducing_coords[:, d:d+1].T
+                    Ky = self.kernel_func(distances, self.lsy)                    
                 else:
                     #distances for y-space
                     distances = np.zeros((1, self.Npeople, self.nperson_features))
                     for d in range(self.nperson_features):
                         distances[:, :, d] = person_features[p, d:d+1] - self.person_features[:, d:d+1].T        
                     # kernel between p and people already seen
-                    Ky = matern_3_2(distances, self.lsy)
+                    Ky = self.kernel_func(distances, self.lsy)
                 # use kernel to compute y    
-                Ky = Ky * self.rate_sy[np.newaxis, :] / self.shape_sy[np.newaxis, :]
                 y = np.zeros((self.Nfactors, 1))
-                for f in range(self.Nfactors):               
-                    y[f,:] = Ky.dot(np.linalg.inv(self.Ky)).dot(self.y.flatten())
+                for f in range(self.Nfactors):
+                    Kys = Ky * self.rate_sy[f] / self.shape_sy[f]                
+                    if self.use_svi_people:
+                        y[f,:] = Kys.dot(np.linalg.inv(self.Ky_mm_block)).dot(self.y_u.reshape(self.Nfactors, self.Npeople).T)
+                    else:
+                        y[f,:] = Kys.dot(np.linalg.inv(self.Ky)).dot(self.y.flatten())
             
             coords_1 = items_1_coords[pidxs]
             coords_2 = items_2_coords[pidxs]
             
             # this could be made more efficient because duplicate locations are computed separately!
             # distances for t-space
-            distances1 = np.zeros((Npairs_p, self.N, self.nitem_features))
-            distances2 = np.zeros((Npairs_p, self.N, self.nitem_features))
-            for d in range(self.nitem_features):
-                distances1[:, :, d] = coords_1[:, d:d+1] - self.obs_coords[:, d:d+1].T
-                distances2[:, :, d] = coords_2[:, d:d+1] - self.obs_coords[:, d:d+1].T
-                
-            # kernel between pidxs and t
-            K1 = matern_3_2(distances1, self.ls)
-            K2 = matern_3_2(distances1, self.ls)            
+            if self.use_svi:
+                distances1 = np.zeros((Npairs_p, self.ninducing, self.nitem_features))
+                distances2 = np.zeros((Npairs_p, self.N, self.nitem_features))
+                for d in range(self.nitem_features):
+                    distances1[:, :, d] = coords_1[:, d:d+1] - self.inducing_coords[:, d:d+1].T
+                    distances2[:, :, d] = coords_2[:, d:d+1] - self.inducing_coords[:, d:d+1].T
+                    
+                # kernel between pidxs and t
+                K1 = self.kernel_func(distances1, self.ls)
+                K2 = self.kernel_func(distances1, self.ls)            
             
-            # use kernel to compute t
-            t1 = K1.dot(self.invK).dot(self.t)
-            t2 = K2.dot(self.invK).dot(self.t)
+                # use kernel to compute t
+                t1 = K1.dot(self.invKt_mm).dot(self.t_u)
+                t2 = K2.dot(self.invKt_mm).dot(self.t_u)
 
-            # kernel between pidxs and w -- use kernel to compute w
-            w1 = K1.dot(self.invK).dot(self.w)   
-            w2 = K2.dot(self.invK).dot(self.w)   
+                # kernel between pidxs and w -- use kernel to compute w
+                w_u = self.w_u.reshape(self.Nfactors, self.N).T
+                w1 = K1.dot(self.invK_mm).dot(w_u)   
+                w2 = K2.dot(self.invK_mm).dot(w_u)                    
+            else:                                
+                distances1 = np.zeros((Npairs_p, self.N, self.nitem_features))
+                distances2 = np.zeros((Npairs_p, self.N, self.nitem_features))
+                for d in range(self.nitem_features):
+                    distances1[:, :, d] = coords_1[:, d:d+1] - self.obs_coords[:, d:d+1].T
+                    distances2[:, :, d] = coords_2[:, d:d+1] - self.obs_coords[:, d:d+1].T
+                
+                # kernel between pidxs and t
+                K1 = self.kernel_func(distances1, self.ls)
+                K2 = self.kernel_func(distances1, self.ls)            
+            
+                # use kernel to compute t
+                t1 = K1.dot(self.invK).dot(self.t)
+                t2 = K2.dot(self.invK).dot(self.t)
+
+                # kernel between pidxs and w -- use kernel to compute w
+                w1 = K1.dot(self.invK).dot(self.w)   
+                w2 = K2.dot(self.invK).dot(self.w)   
                         
             wy_1p = w1.dot(y)
             wy_2p = w2.dot(y)
@@ -669,7 +700,7 @@ class PreferenceComponents(object):
             self.w = self.w_cov.dot(x)
             
         else: # SVI implementation
-            self.w, self.w_cov, self.w_invS, self.w_invSm, self.w_m = svi_update_gaussian(x, 0, 0, self.Kws_mm, 
+            self.w, self.w_cov, self.w_invS, self.w_invSm, self.w_u = svi_update_gaussian(x, 0, 0, self.Kws_mm, 
                   self.inv_Kws_mm, self.Kws_nm, self.Kws_nm, self.Kw / self.sw_matrix, Sigma, 
                   self.w_invS, self.w_invSm, self.vb_iter, self.delay, self.forgetting_rate, 
                   Nobs_counter, Nobs_counter_i)                
@@ -734,7 +765,7 @@ class PreferenceComponents(object):
             self.y = self.y_cov.dot(x)
             
         else: # SVI implementation
-            self.y, self.y_cov, self.y_invS, self.y_invSm, self.y_m = svi_update_gaussian(x, 0, 0, self.Kys_mm, 
+            self.y, self.y_cov, self.y_invS, self.y_invSm, self.y_u = svi_update_gaussian(x, 0, 0, self.Kys_mm, 
                   self.inv_Kys_mm, self.Kys_nm, self.Kys_nm, self.Ky / self.sy_matrix, Sigma, self.y_invS, self.y_invSm,
                   self.vb_iter, self.delay, self.forgetting_rate, Nobs_counter, Nobs_counter_i)
         
@@ -791,7 +822,7 @@ class PreferenceComponents(object):
 
         else:
             # SVI implementation
-            self.t, self.t_cov, self.t_invS, self.t_invSm, self.t_m = svi_update_gaussian(x, self.t_mu0, self.t_mu0, 
+            self.t, self.t_cov, self.t_invS, self.t_invSm, self.t_u = svi_update_gaussian(x, self.t_mu0, self.t_mu0, 
                 self.Kts_mm, self.inv_Kts_mm, self.Kts_nm, self.Kts_nm, self.K*self.rate_st/self.shape_st, Sigma, 
                 self.t_invS, self.t_invSm, self.vb_iter, self.delay, self.forgetting_rate, Nobs_counter, Nobs_counter_i)
 

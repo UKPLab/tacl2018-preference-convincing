@@ -122,7 +122,7 @@ if __name__ == '__main__':
         np.random.seed(9) # do this if we want to use a different seed each time to test the variation in results
         
     # Model initialisation --------------------------------------------------------------------------------------------
-    use_svi = False
+    use_svi = True
     model = PreferenceComponents(2, Npeoplefeatures, ls=ls, lsy=lsy, nfactors=Nfactors + 5, use_fa=False, 
                                  use_svi=use_svi, delay=1, forgetting_rate=0)
     model.verbose = False
