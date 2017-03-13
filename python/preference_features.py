@@ -85,6 +85,14 @@ def expec_output_scale(shape_s0, rate_s0, N, cholK, f_mean, m, f_cov):
     
     return shape_s/rate_s, shape_s, rate_s
 
+def expec_output_scale_svi(shape_s0, rate_s0, N, invK, f_mean, m, invK_f_cov):
+    # learn the output scale with VB
+    shape_s = shape_s0 + 0.5 * N
+    invK_expecFF = invK_f_cov + invK.dot( (f_mean - m).dot(f_mean.T - m.T) )
+    rate_s = rate_s0 + 0.5 * np.trace(invK_expecFF) 
+    
+    return shape_s/rate_s, shape_s, rate_s
+
 def lnp_output_scale(shape_s0, rate_s0, shape_s, rate_s):
     s = shape_s / rate_s
     Elns = psi(shape_s) - np.log(rate_s)
@@ -117,11 +125,6 @@ def svi_update_gaussian(invQi_y, mu0_i, mu0_n, K_mm, invK_mm, K_nm, K_im, K_nn, 
     # all data points i, the stochastic update weights a sample sum of Lambda_i over a mini-batch.  
     invS = (1 - rho_i) * prev_invS + rho_i * (w_i * Lambda_i + invK_mm)
     
-    # use the estimate given by the Taylor series expansion
-#     y = z_i - mu0_i
-#     if y.ndim==1:
-#         y = y[:, np.newaxis]
-    
     # Variational update to theta_1 is (1-rho)*S^-1m + rho*beta*K_mm^-1.K_mn.y  
 #     invSm = (1 - rho_i) * prev_invSm + w_i * rho_i * invK_mm.dot(K_im.T).dot(invQi).dot(y)
     invSm = (1 - rho_i) * prev_invSm + w_i * rho_i * Lambda_factor1.dot(invQi_y)
@@ -139,7 +142,7 @@ def svi_update_gaussian(invQi_y, mu0_i, mu0_n, K_mm, invK_mm, K_nm, K_im, K_nn, 
     covpair_uS = K_nm.dot(invK_mm_S)
     fhat = covpair_uS.dot(invSm) + mu0_n
     C = K_nn + (covpair_uS - covpair.dot(K_mm)).dot(covpair.T)
-    return fhat, C, invS, invSm, fhat_u
+    return fhat, C, invS, invSm, fhat_u, invK_mm_S
 
 class PreferenceComponents(object):
     '''
@@ -293,7 +296,8 @@ class PreferenceComponents(object):
         self.ls = np.zeros(self.nitem_features) + self.ls
         self.K = self.kernel_func(distances, self.ls)
         self.cholK = cholesky(self.K, overwrite_a=False, check_finite=False)
-        self.invK = np.linalg.inv(self.K)
+        if not self.use_svi:
+            self.invK = np.linalg.inv(self.K)
         
         # kernel used by w
         blocks = [self.K for _ in range(self.Nfactors)]
@@ -307,7 +311,7 @@ class PreferenceComponents(object):
             self.lsy = np.zeros(self.nperson_features) + self.lsy  
             pdistances = np.zeros((self.Npeople, self.Npeople, self.nperson_features))
             for d in range(self.nperson_features):
-                pdistances[:, :, d] = self.person_features[:, d:d+1] - self.person_features[:, d:d+1].T              
+                pdistances[:, :, d] = self.person_features[:, d:d+1] - self.person_features[:, d:d+1].T
             self.Ky_block = self.kernel_func(pdistances, self.lsy)
            
         blocks = [self.Ky_block for _ in range(self.Nfactors)]
@@ -417,6 +421,7 @@ class PreferenceComponents(object):
             blocks = [self.Ky_mm_block for _ in range(self.Nfactors)]
             self.Ky_mm = block_diag(*blocks)            
             
+            self.invKy_mm_block = np.linalg.inv(self.Ky_mm_block)
             self.invKy_mm = np.linalg.inv(self.Ky_mm)
             
             self.Ky_nm = self.kernel_func(nm_dist, self.lsy)
@@ -543,9 +548,8 @@ class PreferenceComponents(object):
                 t2 = K2.dot(self.invK_mm).dot(self.t_u)
 
                 # kernel between pidxs and w -- use kernel to compute w. Don't need Kw_mm block-diagonal matrix
-                w_u = self.w_u.reshape(self.Nfactors, self.N).T
-                w1 = K1.dot(self.invK_mm).dot(w_u)   
-                w2 = K2.dot(self.invK_mm).dot(w_u)                    
+                w1 = K1.dot(self.invK_mm).dot(self.w_u)   
+                w2 = K2.dot(self.invK_mm).dot(self.w_u)                    
             else:                                
                 distances1 = np.zeros((Npairs_p, self.N, self.nitem_features))
                 distances2 = np.zeros((Npairs_p, self.N, self.nitem_features))
@@ -558,12 +562,18 @@ class PreferenceComponents(object):
                 K2 = self.kernel_func(distances2, self.ls)            
             
                 # use kernel to compute t
-                t1 = K1.dot(self.invK).dot(self.t)
-                t2 = K2.dot(self.invK).dot(self.t)
+                invKt = solve_triangular(self.cholK, self.t, trans=True, check_finite=False)
+                invKt = solve_triangular(self.cholK, invKt, overwrite_b=True, check_finite=False)
+
+                t1 = K1.dot(invKt)
+                t2 = K2.dot(invKt)
 
                 # kernel between pidxs and w -- use kernel to compute w
-                w1 = K1.dot(self.invK).dot(self.w)   
-                w2 = K2.dot(self.invK).dot(self.w)   
+                invKw = solve_triangular(self.cholK, self.w, trans=True, check_finite=False)
+                invKw = solve_triangular(self.cholK, invKw, overwrite_b=True, check_finite=False)
+                
+                w1 = K1.dot(invKw)
+                w2 = K2.dot(invKw)   
             
             wy_1p = w1.dot(y)
             wy_2p = w2.dot(y)
@@ -593,7 +603,7 @@ class PreferenceComponents(object):
             if self.new_obs:
                 # take the initial prior so that we can calculate Q correctly -- use the prior mean as an approximation
                 # to integrating over the prior. We don't want to use a posterior or the random initialisation of wy.
-                mu0_output = np.zeros((self.N, 1)) + self.t_mu0
+                mu0_output = self.t_mu0.copy()
             else:
                 mu0_output = self.wy[:, person:person+1] + self.t
             
@@ -681,19 +691,28 @@ class PreferenceComponents(object):
             self.w_cov = np.linalg.inv(np.linalg.inv(self.Kw  / self.sw_matrix) + Sigma)
             self.w = self.w_cov.dot(x)
             
+            self.w = np.reshape(self.w, (self.Nfactors, self.N)).T # w is N x Nfactors    
+            
+            for f in range(self.Nfactors):
+                fidxs = np.arange(self.N) + (self.N * f)
+                _, self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, self.N, 
+                                self.cholK, self.w[:, f:f+1], np.zeros((self.N, 1)), self.w_cov[fidxs, :][:, fidxs])
+                self.sw_matrix[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]            
+            
         else: # SVI implementation
-            self.w, self.w_cov, self.w_invS, self.w_invSm, self.w_u = svi_update_gaussian(x, 0, 0, self.Kws_mm, 
-                  self.inv_Kws_mm, self.Kws_nm, self.Kws_nm, self.Kw / self.sw_matrix, Sigma, 
-                  self.w_invS, self.w_invSm, self.vb_iter, self.delay, self.forgetting_rate, 
-                  Nobs_counter, Nobs_counter_i)                
+            self.w, self.w_cov, self.w_invS, self.w_invSm, self.w_u, invKws_mm_S = svi_update_gaussian(x, 0, 0, 
+                self.Kws_mm, self.inv_Kws_mm, self.Kws_nm, self.Kws_nm, self.Kw / self.sw_matrix, Sigma, self.w_invS, 
+                self.w_invSm, self.vb_iter, self.delay, self.forgetting_rate, Nobs_counter, Nobs_counter_i)                
         
-        self.w = np.reshape(self.w, (self.Nfactors, self.N)).T # w is N x Nfactors    
-        
-        for f in range(self.Nfactors):
-            fidxs = np.arange(self.N) + (self.N * f)
-            _, self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, self.N, 
-                            self.cholK, self.w[:, f:f+1], np.zeros((self.N, 1)), self.w_cov[fidxs, :][:, fidxs])
-            self.sw_matrix[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]
+            self.w = np.reshape(self.w, (self.Nfactors, self.N)).T # w is N x Nfactors    
+            self.w_u = np.reshape(self.w_u, (self.Nfactors, self.N)).T # w is N x Nfactors    
+            
+            for f in range(self.Nfactors):
+                fidxs = np.arange(self.N) + (self.N * f)
+                _, self.shape_sw[f], self.rate_sw[f] = expec_output_scale_svi(self.shape_sw0, self.rate_sw0, 
+                        self.ninducing, self.invK_mm, self.w_u[:, f:f+1], np.zeros((self.N, 1)), 
+                        invKws_mm_S[fidxs, :][:, fidxs] / self.shape_sw[f] * self.rate_sw[f])
+                self.sw_matrix[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]
         
         self._expec_y(personids)
         self.wy = self.w.dot(self.y)    
@@ -745,31 +764,38 @@ class PreferenceComponents(object):
             # and p is person index
             self.y_cov = np.linalg.inv(np.linalg.inv(self.Ky  / self.sy_matrix) + Sigma)
             self.y = self.y_cov.dot(x)
-            
+           
+            # y is Nfactors x Npeople            
+            self.y = np.reshape(self.y, (self.Nfactors, self.Npeople))
+                
+            for f in range(self.Nfactors):
+                fidxs = np.arange(self.Npeople) + (self.Npeople * f)
+                _, self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.Npeople, 
+                            self.cholKy, self.y[f:f+1, :].T, np.zeros((self.Npeople, 1)), self.y_cov[fidxs, :][:, fidxs])    
+                self.sy_matrix[fidxs, :] = self.shape_sy[f] / self.rate_sy[f]                
         else: # SVI implementation
-            self.y, self.y_cov, self.y_invS, self.y_invSm, self.y_u = svi_update_gaussian(x, 0, 0, self.Kys_mm, 
+            self.y, self.y_cov, self.y_invS, self.y_invSm, self.y_u, invKys_mm_S = svi_update_gaussian(x, 0, 0, self.Kys_mm, 
                   self.inv_Kys_mm, self.Kys_nm, self.Kys_nm, self.Ky / self.sy_matrix, Sigma, self.y_invS, self.y_invSm,
                   self.vb_iter, self.delay, self.forgetting_rate, Nobs_counter, Nobs_counter_i)
         
-        # y is Nfactors x Npeople            
-        self.y = np.reshape(self.y, (self.Nfactors, self.Npeople))
-            
-        for f in range(self.Nfactors):
-            fidxs = np.arange(self.Npeople) + (self.Npeople * f)
-            _, self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.Npeople, 
-                        self.cholKy, self.y[f:f+1, :].T, np.zeros((self.Npeople, 1)), self.y_cov[fidxs, :][:, fidxs])    
-            self.sy_matrix[fidxs, :] = self.shape_sy[f] / self.rate_sy[f]    
+            # y is Nfactors x Npeople            
+            self.y = np.reshape(self.y, (self.Nfactors, self.Npeople))
+            self.y_u = np.reshape(self.y_u, (self.Nfactors, self.Npeople))
+                
+            for f in range(self.Nfactors):
+                fidxs = np.arange(self.Npeople) + (self.Npeople * f)
+                _, self.shape_sy[f], self.rate_sy[f] = expec_output_scale_svi(self.shape_sy0, self.rate_sy0, self.Npeople, 
+                    self.invKy_mm_block, self.y_u[f:f+1, :].T, np.zeros((self.Npeople, 1)), 
+                    invKys_mm_S[fidxs, :][:, fidxs] / self.shape_sy[f] * self.rate_sy[f])    
+                self.sy_matrix[fidxs, :] = self.shape_sy[f] / self.rate_sy[f]    
 
     def _expec_t(self):
         if self.use_fa:
             self.t = self.fa.mean_[:, np.newaxis]
             return
         
-        N = self.N
-        
-        invKts = self.invK * self.shape_st / self.rate_st
-        Sigma = np.zeros((N, N))
-        x = np.zeros((N, 1))
+        Sigma = np.zeros((self.N, self.N))
+        x = np.zeros((self.N, 1))
         
         Nobs_counter = 0
         Nobs_counter_i = 0
@@ -789,7 +815,7 @@ class PreferenceComponents(object):
             else:            
                 Sigma_p = self.invKf[person] * self.pref_gp[person].s
                 
-            sigmarows = np.zeros((len(pidxs), N))
+            sigmarows = np.zeros((len(pidxs), self.N))
             sigmarows[:, pidxs] = Sigma_p
             Sigma[pidxs, :] += sigmarows
             
@@ -798,19 +824,23 @@ class PreferenceComponents(object):
             x[pidxs, :] += Sigma_p.dot(f_obs)
                 
         if not self.use_svi:
-            self.t = invKts.dot(np.zeros((N, 1)) + self.t_mu0) + x
+            invKts = self.invK * self.shape_st / self.rate_st
+            self.t = invKts.dot(self.t_mu0) + x
             self.t_cov = np.linalg.inv(Sigma + invKts)
             self.t = self.t_cov.dot(self.t)
 
+            _, self.shape_st, self.rate_st = expec_output_scale(self.shape_st0, self.rate_st0, self.N, self.cholK, 
+                                                            self.t, np.zeros((self.N, 1)), self.t_cov)
+
         else:
             # SVI implementation
-            self.t, self.t_cov, self.t_invS, self.t_invSm, self.t_u = svi_update_gaussian(x, self.t_mu0, self.t_mu0, 
-                self.Kts_mm, self.inv_Kts_mm, self.Kts_nm, self.Kts_nm, self.K*self.rate_st/self.shape_st, Sigma, 
-                self.t_invS, self.t_invSm, self.vb_iter, self.delay, self.forgetting_rate, Nobs_counter, Nobs_counter_i)
+            self.t, self.t_cov, self.t_invS, self.t_invSm, self.t_u, invKts_mm_S = svi_update_gaussian(x, self.t_mu0, 
+                self.t_mu0, self.Kts_mm, self.inv_Kts_mm, self.Kts_nm, self.Kts_nm, self.K*self.rate_st/self.shape_st, 
+                Sigma, self.t_invS, self.t_invSm, self.vb_iter, self.delay, self.forgetting_rate, Nobs_counter, 
+                Nobs_counter_i)
 
-        #self.t, self.t_cov = vb_gp_regression(m, K, shape_s0, rate_s0, Sigma, x, cholK=cholK)
-        _, self.shape_st, self.rate_st = expec_output_scale(self.shape_st0, self.rate_st0, self.N, self.cholK, 
-                                                            self.t, np.zeros((self.N, 1)), self.t_cov)
+            _, self.shape_st, self.rate_st = expec_output_scale_svi(self.shape_st0, self.rate_st0, self.ninducing, 
+                            self.invK_mm, self.t_u, np.zeros((self.N, 1)), invKts_mm_S / self.shape_st * self.rate_st)
         
     def _update_sample(self, personIDs):
         self._update_sample_idxs(personIDs)
