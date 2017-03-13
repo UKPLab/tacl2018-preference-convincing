@@ -25,6 +25,42 @@ def get_unique_locations(obs_coords_0, obs_coords_1):
     
     return obs_coords, pref_v, pref_u, uidxs
 
+def pref_likelihood(f=[], subset_idxs=[], v=[], u=[], return_g_f=False):
+    '''
+    f - should be of shape nobs x 1
+    
+    This returns the probability that each pair has a value of 1, which is referred to as Phi(z) 
+    in the chu/ghahramani paper, and the latent parameter referred to as z in the chu/ghahramani paper. 
+    In this work, we use z to refer to the observations, i.e. the fraction of comparisons of a given pair with 
+    value 1, so use a different label here.
+    '''        
+    if len(subset_idxs):
+        if len(v) and len(u):
+            # keep only the pairs that reference two items in the subet
+            pair_subset = np.in1d(v, subset_idxs) & np.in1d(u, subset_idxs)
+            v = v[pair_subset]
+            u = u[pair_subset]
+        else:
+            f = f[subset_idxs]  
+
+    if f.ndim < 2:
+        f = f[:, np.newaxis]
+    
+    if len(v) and len(u):   
+        g_f = (f[v, :] - f[u, :]) / np.sqrt(2) # / np.sqrt(self.s)) # gives an NobsxNobs matrix
+    else: # provide the complete set of pairs
+        g_f = (f - f.T) / np.sqrt(2) # / np.sqrt(self.s))  # the maths shows that s cancels out -- it's already 
+        # included in our estimates of f, which are scaled by s. However, the prior mean mu0 should also be scaled
+        # to match, but this should happen automatically if we learn s, I think. 
+            
+    phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the 
+    # With the standard GP density classifier, we can skip this step because
+    # g_f is already a probability and Phi(z) is a Bernoulli distribution.
+    if return_g_f:
+        return phi, g_f
+    else:
+        return phi
+
 class GPPrefLearning(GPClassifierSVI):
     '''
     Preference learning with GP, with variational inference implementation. Can use stochastic variational inference.
@@ -177,32 +213,7 @@ class GPPrefLearning(GPClassifierSVI):
         if len(u) == 0:
             u = self.pref_u
             
-        if len(subset_idxs):
-            if len(v) and len(u):
-                # keep only the pairs that reference two items in the subet
-                pair_subset = np.in1d(v, subset_idxs) & np.in1d(u, subset_idxs)
-                v = v[pair_subset]
-                u = u[pair_subset]
-            else:
-                f = f[subset_idxs]  
-
-        if f.ndim < 2:
-            f = f[:, np.newaxis]
-        
-        if len(v) and len(u):   
-            g_f = (f[v, :] - f[u, :]) / np.sqrt(2) # / np.sqrt(self.s)) # gives an NobsxNobs matrix
-        else: # provide the complete set of pairs
-            g_f = (f - f.T) / np.sqrt(2) # / np.sqrt(self.s))  # the maths shows that s cancels out -- it's already 
-            # included in our estimates of f, which are scaled by s. However, the prior mean mu0 should also be scaled
-            # to match, but this should happen automatically if we learn s, I think. 
-                
-        phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the 
-        # With the standard GP density classifier, we can skip this step because
-        # g_f is already a probability and Phi(z) is a Bernoulli distribution.
-        if return_g_f:
-            return phi, g_f
-        else:
-            return phi
+        return pref_likelihood(f, subset_idxs, v, u, return_g_f)
     
     def _update_jacobian(self, G_update_rate=1.0):
         phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation

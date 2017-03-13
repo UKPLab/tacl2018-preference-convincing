@@ -1,22 +1,16 @@
 '''
-TODO: Does not converge well -- LB problems? 
-
 Observed features -- Why is it good to use them as inputs to latent features? The GP will consider dependencies between
 the input features. However, if the input features for items were added to columns of w, and the input features of 
 people created new rows in y, we could learn the weighting of these features without length-scale optimisation in both 
 w and y. Problem is we cannot then interpolate between any true latent features. 
 
-Run with SVI for child GPs but not for y or w. Using complete SVI implementation is not working. -- 
--- However, running multiple child iterations results in no features being found with either SVI or without
--- Try with increased child GP iterations required in each VB iteration
--- Running with SVI for y and w but not child GPs produces same result (no features found)
--- SVI child GPs produces values of f from predict_f that are different to the values of obs_f
+TODO 1: test with higher forgetting rate
 
-TODO: change the y updates to do correct weighted updates from the item subsample 
-TODO: Following the pattern of the GP classifier SVI implementation, we 
-need to use same inducing points and pass expectations at the inducing points? Replace prec_p with invKmm?
+TODO 2a: test with smaller update size & higher forgetting rate
 
-TODO: 2c: to debug, it might be useful to plot the predicted and true wy at each iteration.
+TODO 2b: test with smaller ninducing etc.
+
+For the above, it would be useful to see accuracy and convergence rate
 
 TODO: 3. Length-scale learning through MLII
 
@@ -24,7 +18,7 @@ TODO 4: Replace np.linalg.inv(self.pref_gp[person].Ks) since this is inverted in
 
 TODO 5: Some of the matrix inversions should use Cholesky. E.g. for Kw and Ky --> Needs to be passed into the SVI function.
 
-TODO 6: Combine multiple initialisations.
+TODO 6: Combine multiple initialisations.???
 
 Preference learning model for identifying relevant input features of items and people, plus finding latent 
 characteristics of items and people. Can be used to predict preferences or rank items, therefore could be part of
@@ -75,8 +69,8 @@ import numpy as np
 from sklearn.decomposition import FactorAnalysis
 from scipy.stats import multivariate_normal as mvn
 import logging
-from gp_classifier_vb import matern_3_2, diagonal, sq_exp_cov, matern_3_2_from_raw_vals
-from gp_pref_learning import GPPrefLearning, get_unique_locations
+from gp_classifier_vb import matern_3_2, diagonal, sq_exp_cov
+from gp_pref_learning import GPPrefLearning, get_unique_locations, pref_likelihood
 from scipy.linalg import cholesky, solve_triangular, block_diag
 from scipy.special import gammaln, psi
 from sklearn.cluster import MiniBatchKMeans
@@ -308,14 +302,17 @@ class PreferenceComponents(object):
                 
         # kernel used by y  
         if self.person_features is None:
-            Ky = np.diag(np.ones(self.Npeople))
+            self.Ky_block = np.diag(np.ones(self.Npeople))
         else:
-            self.lsy = np.zeros(self.nperson_features) + self.lsy    
-            Ky = matern_3_2_from_raw_vals(self.person_features, self.lsy)
+            self.lsy = np.zeros(self.nperson_features) + self.lsy  
+            pdistances = np.zeros((self.Npeople, self.Npeople, self.nperson_features))
+            for d in range(self.nperson_features):
+                pdistances[:, :, d] = self.person_features[:, d:d+1] - self.person_features[:, d:d+1].T              
+            self.Ky_block = self.kernel_func(pdistances, self.lsy)
            
-        blocks = [Ky for _ in range(self.Nfactors)]
+        blocks = [self.Ky_block for _ in range(self.Nfactors)]
         self.Ky = block_diag(*blocks) 
-        self.cholKy = cholesky(Ky, overwrite_a=False, check_finite=False)
+        self.cholKy = cholesky(self.Ky_block, overwrite_a=False, check_finite=False)
         self.sy_matrix = np.ones(self.Ky.shape) * self.shape_sy0 / self.rate_sy0     
 
         # initialise the factors randomly -- otherwise they can get stuck because there is nothing to differentiate them,
@@ -372,8 +369,6 @@ class PreferenceComponents(object):
         self.K_mm += 1e-6 * np.eye(len(self.K_mm)) # jitter
         self.invK_mm = np.linalg.inv(self.K_mm)
         
-        self.Kt_mm = self.K_mm
-        self.invKt_mm = self.invK_mm
         self.Kt_nm = self.kernel_func(nm_dist, self.ls)
         
         blocks = [self.K_mm for _ in range(self.Nfactors)]
@@ -401,7 +396,7 @@ class PreferenceComponents(object):
             if self.y_ninducing > init_size:
                 init_size = self.y_ninducing
             kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.y_ninducing)
-            kmeans.fit(self.person_features.T)
+            kmeans.fit(self.person_features)
             
             #self.inducing_coords = self.obs_coords[np.random.randint(0, nobs, size=(ninducing)), :]
             self.y_inducing_coords = kmeans.cluster_centers_
@@ -415,7 +410,7 @@ class PreferenceComponents(object):
             nm_dist = np.zeros((self.Npeople, self.y_ninducing, self.nperson_features))
             for d in range(self.nperson_features):
                 mm_dist[:, :, d] = self.y_inducing_coords[:, d:d+1].T - self.y_inducing_coords[:, d:d+1]
-                nm_dist[:, :, d] = self.y_inducing_coords[:, d:d+1].T - self.person_features.T[:, d:d+1].astype(float)
+                nm_dist[:, :, d] = self.y_inducing_coords[:, d:d+1].T - self.person_features[:, d:d+1].astype(float)
              
             self.Ky_mm_block = self.kernel_func(mm_dist, self.lsy)
             self.Ky_mm_block += 1e-6 * np.eye(len(self.Ky_mm_block)) # jitter 
@@ -469,10 +464,10 @@ class PreferenceComponents(object):
             self._expec_f(personIDs, items_1_coords, items_2_coords, preferences)
             
             # compute the preference function means
-            self.expec_t()            
+            self._expec_t()            
             
             # find the personality components
-            self.expec_w(personIDs)
+            self._expec_w(personIDs)
              
 #             diff = np.max(old_w - self.w)
 #             logging.debug( "Difference in latent item features: %f" % diff)
@@ -500,14 +495,18 @@ class PreferenceComponents(object):
             
             if p in self.people:
                 y = self.y[:, p:p+1] 
+            elif self.person_features is None:
+                y = np.zeros((self.Nfactors, 1))
             else:
-                if self.person_features is None:
-                    Ky = np.zeros((1, self.Npeople))
-                elif self.use_svi:
+                if self.use_svi_people:
                     distances = np.zeros((1, self.y_ninducing, self.nperson_features))
                     for d in range(self.nperson_features):
+    
                         distances[:, :, d] = person_features[p, d:d+1] - self.y_inducing_coords[:, d:d+1].T
                     Ky = self.kernel_func(distances, self.lsy)                    
+                    # use kernel to compute y
+                    invKy_train = self.Ky_mm_block
+                    y_train = self.y_u.reshape(self.Nfactors, self.Npeople).T
                 else:
                     #distances for y-space
                     distances = np.zeros((1, self.Npeople, self.nperson_features))
@@ -515,15 +514,14 @@ class PreferenceComponents(object):
                         distances[:, :, d] = person_features[p, d:d+1] - self.person_features[:, d:d+1].T        
                     # kernel between p and people already seen
                     Ky = self.kernel_func(distances, self.lsy)
-                # use kernel to compute y    
-                y = np.zeros((self.Nfactors, 1))
-                for f in range(self.Nfactors):
-                    Kys = Ky * self.rate_sy[f] / self.shape_sy[f]                
-                    if self.use_svi_people:
-                        y[f,:] = Kys.dot(np.linalg.inv(self.Ky_mm_block)).dot(self.y_u.reshape(self.Nfactors, self.Npeople).T)
-                    else:
-                        y[f,:] = Kys.dot(np.linalg.inv(self.Ky)).dot(self.y.flatten())
-            
+                    invKy_train = np.linalg.inv(self.Ky_block)
+                    y_train = self.y.T
+                
+                # use kernel to compute y
+                y = Ky.dot(invKy_train).dot(y_train)
+                y *= self.rate_sy / self.shape_sy      
+                y = y.T
+                
             coords_1 = items_1_coords[pidxs]
             coords_2 = items_2_coords[pidxs]
             
@@ -531,20 +529,20 @@ class PreferenceComponents(object):
             # distances for t-space
             if self.use_svi:
                 distances1 = np.zeros((Npairs_p, self.ninducing, self.nitem_features))
-                distances2 = np.zeros((Npairs_p, self.N, self.nitem_features))
+                distances2 = np.zeros((Npairs_p, self.ninducing, self.nitem_features))
                 for d in range(self.nitem_features):
                     distances1[:, :, d] = coords_1[:, d:d+1] - self.inducing_coords[:, d:d+1].T
                     distances2[:, :, d] = coords_2[:, d:d+1] - self.inducing_coords[:, d:d+1].T
                     
                 # kernel between pidxs and t
                 K1 = self.kernel_func(distances1, self.ls)
-                K2 = self.kernel_func(distances1, self.ls)            
+                K2 = self.kernel_func(distances2, self.ls)            
             
-                # use kernel to compute t
-                t1 = K1.dot(self.invKt_mm).dot(self.t_u)
-                t2 = K2.dot(self.invKt_mm).dot(self.t_u)
+                # use kernel to compute t. 
+                t1 = K1.dot(self.invK_mm).dot(self.t_u)
+                t2 = K2.dot(self.invK_mm).dot(self.t_u)
 
-                # kernel between pidxs and w -- use kernel to compute w
+                # kernel between pidxs and w -- use kernel to compute w. Don't need Kw_mm block-diagonal matrix
                 w_u = self.w_u.reshape(self.Nfactors, self.N).T
                 w1 = K1.dot(self.invK_mm).dot(w_u)   
                 w2 = K2.dot(self.invK_mm).dot(w_u)                    
@@ -557,7 +555,7 @@ class PreferenceComponents(object):
                 
                 # kernel between pidxs and t
                 K1 = self.kernel_func(distances1, self.ls)
-                K2 = self.kernel_func(distances1, self.ls)            
+                K2 = self.kernel_func(distances2, self.ls)            
             
                 # use kernel to compute t
                 t1 = K1.dot(self.invK).dot(self.t)
@@ -566,27 +564,19 @@ class PreferenceComponents(object):
                 # kernel between pidxs and w -- use kernel to compute w
                 w1 = K1.dot(self.invK).dot(self.w)   
                 w2 = K2.dot(self.invK).dot(self.w)   
-                        
+            
             wy_1p = w1.dot(y)
             wy_2p = w2.dot(y)
             mu0_1 = wy_1p + t1
-            mu0_2 = wy_2p + t2
-            
-            if p in self.people:
+            mu0_2 = wy_2p + t2                                        
+            if p in self.people:            
                 pref_gp_p = self.pref_gp[p]
-            else:
-                # create a new pref GP for a new person
-                pref_gp_p = GPPrefLearning(self.nitem_features, self.mu0, self.shape_sf0, self.rate_sf0, None, self.shape_ls, 
-                                   self.rate_ls, self.ls)
-                pref_gp_p._select_covariance_function('matern_3_2')
-                pref_gp_p.max_iter_VB = 1
-                pref_gp_p.min_iter_VB = 1
-                pref_gp_p.max_iter_G = 5
-                pref_gp_p.verbose = self.verbose
-                pref_gp_p.update_s = False # don't update s in the first round. Wait until we have computed f             
-            
-            results[pidxs] = pref_gp_p.predict(coords_1, coords_2, 
+                results[pidxs] = pref_gp_p.predict(coords_1, coords_2, 
                                                   mu0_output1=mu0_1, mu0_output2=mu0_2, return_var=False).flatten()
+            else:
+                mu0 = np.concatenate((mu0_1, mu0_2), axis=0)
+                results[pidxs] = pref_likelihood(f=mu0, subset_idxs=[], v=np.arange(len(mu0_1)), 
+                                                                      u=np.arange(len(mu0_1), len(mu0_1)+len(mu0_2)))
             
         return results
         
@@ -623,16 +613,8 @@ class PreferenceComponents(object):
             
                 self.invKf[person] = np.linalg.inv(self.pref_gp[person].K) 
 
-#             if self.use_svi:
-#                 data_idx_i = np.argwhere(self.matches[person][:, self.data_idx_i])[:, 0]
-#                 self.pref_gp[person].fix_sample_idxs(data_idx_i)              
-            
-            #if self.use_svi:
-            #    f, _ = self.pref_gp[person].predict_f(items_coords=self.inducing_coords, mu0_output=mu0_output)
-            #else:  
             f, _ = self.pref_gp[person].predict_f(items_coords=self.obs_coords, mu0_output=mu0_output)
             self.f[person, :] = f.flatten()
-            logging.debug('s_f^%i = %f' % (person, self.pref_gp[person].s))
             if self.verbose:    
                 logging.debug( "Expec_f for person %i out of %i. s=%.3f" % (person, len(self.pref_gp.keys()), self.pref_gp[person].s) )
                 
@@ -641,7 +623,7 @@ class PreferenceComponents(object):
         if self.verbose:
             logging.debug('Updated q(f)')
              
-    def expec_w(self, personids):
+    def _expec_w(self, personids):
         '''
         Compute the expectation over the latent features of the items and the latent personality components
         '''
@@ -713,11 +695,11 @@ class PreferenceComponents(object):
                             self.cholK, self.w[:, f:f+1], np.zeros((self.N, 1)), self.w_cov[fidxs, :][:, fidxs])
             self.sw_matrix[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]
         
-        self.expec_y(personids)
+        self._expec_y(personids)
         self.wy = self.w.dot(self.y)    
         return
 
-    def expec_y(self, personids):
+    def _expec_y(self, personids):
         '''
         Compute expectation over the personality components using VB
         '''
@@ -778,7 +760,7 @@ class PreferenceComponents(object):
                         self.cholKy, self.y[f:f+1, :].T, np.zeros((self.Npeople, 1)), self.y_cov[fidxs, :][:, fidxs])    
             self.sy_matrix[fidxs, :] = self.shape_sy[f] / self.rate_sy[f]    
 
-    def expec_t(self):
+    def _expec_t(self):
         if self.use_fa:
             self.t = self.fa.mean_[:, np.newaxis]
             return
@@ -847,8 +829,8 @@ class PreferenceComponents(object):
         self.inv_Kws_mm  = self.invKw_mm * sw_mm
         self.Kws_nm = self.Kw_nm  / sw_nm
 
-        self.Kts_mm = self.Kt_mm / st
-        self.inv_Kts_mm  = self.invKt_mm * st
+        self.Kts_mm = self.K_mm / st
+        self.inv_Kts_mm  = self.invK_mm * st
         self.Kts_nm = self.Kt_nm / st   
         
         if self.use_svi_people:

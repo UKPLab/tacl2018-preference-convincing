@@ -119,7 +119,7 @@ if __name__ == '__main__':
         trainidxs = np.invert(testidxs)
     
     if fix_seeds:
-        np.random.seed(9) # do this if we want to use a different seed each time to test the variation in results
+        np.random.seed() # do this if we want to use a different seed each time to test the variation in results
         
     # Model initialisation --------------------------------------------------------------------------------------------
     use_svi = True
@@ -128,10 +128,17 @@ if __name__ == '__main__':
     model.verbose = False
     model.min_iter = 1
     model.max_iter = 200
-    model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs], person_features)
+    model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs], person_features.T)
     
     # turn the values into predictions of preference pairs.
-    results = model.predict(personids[testidxs], pair1coords[testidxs], pair2coords[testidxs], )
+    results = model.predict(personids[testidxs], pair1coords[testidxs], pair2coords[testidxs])
+    
+    # make the test more difficult: we predict for a person we haven't seen before who has same features as another
+    result_new_person = model.predict([np.max(personids) + 1], pair1coords[testidxs][0:1], pair2coords[testidxs][0:1], 
+                                      np.concatenate((person_features.T, person_features[:, personids[0:1]].T), axis=0))
+    print "Test using new person: %.3f" % result_new_person
+    print "Old prediction: %.3f" % results[0]
+    #print "Result is correct = " + str(np.abs(results[0] - result_new_person) < 1e-6) 
     
     if do_profiling:
         pr.disable()
