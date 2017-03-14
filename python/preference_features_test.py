@@ -124,7 +124,7 @@ if __name__ == '__main__':
     # Model initialisation --------------------------------------------------------------------------------------------
     use_svi = True
     model = PreferenceComponents(2, Npeoplefeatures, ls=ls, lsy=lsy, nfactors=Nfactors + 5, use_fa=False, 
-                                 use_svi=use_svi, delay=1, forgetting_rate=0)
+                                 use_svi=use_svi, delay=5, forgetting_rate=0.9, ninducing=20, max_update_size=5)
     model.verbose = False
     model.min_iter = 1
     model.max_iter = 200
@@ -287,3 +287,5 @@ if __name__ == '__main__':
         plt.imshow(wmap, cmap=cmap, origin='lower', extent=[0, wmap.shape[1], 0, wmap.shape[0]],
                    aspect=None, vmin=-2, vmax=2, interpolation='none', filterrad=0.01)
         plt.title('ground truth at training points: w_%i (latent feature for items' % f)  
+        
+    plt.show()
