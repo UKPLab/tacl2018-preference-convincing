@@ -122,13 +122,14 @@ if __name__ == '__main__':
         np.random.seed() # do this if we want to use a different seed each time to test the variation in results
         
     # Model initialisation --------------------------------------------------------------------------------------------
-    use_svi = True
+    use_svi = False
     model = PreferenceComponents(2, Npeoplefeatures, ls=ls, lsy=lsy, nfactors=Nfactors + 5, use_fa=False, 
                                  use_svi=use_svi, delay=5, forgetting_rate=0.9, ninducing=20, max_update_size=5)
     model.verbose = False
     model.min_iter = 1
     model.max_iter = 200
-    model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs], person_features.T)
+    model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs], person_features.T, 
+              optimize=True)
     
     # turn the values into predictions of preference pairs.
     results = model.predict(personids[testidxs], pair1coords[testidxs], pair2coords[testidxs])
