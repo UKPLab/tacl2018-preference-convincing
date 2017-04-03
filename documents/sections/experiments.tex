@@ -4,7 +4,7 @@ The first dataset contains a number of pairwise convincingness preference labels
 
 The task is to train the models then predict the preference labels for held-out data. Each method can be assessed in terms of classification accuracy, since the labels have three possible values. In the first set of experiments we evaluate the baselines and the different methods for modelling correlations between workers' preferences. In the second set of experiments, we assess the value of different language features. Finally, the third experiment evaluates approaches that integrate both argument features and models of preference correlations.
 
-\subsection{Hypotheses -- needs to be reconciled with the above} 
+\subsection{Hypotheses -- needs to be reconciled with the above paragraph} 
 
 Prior work on convincingness:
 \begin{itemize}
@@ -50,6 +50,71 @@ The steps to show this are:
   uncertainty about a person, an item with too little data, or disagreement/stochasticity in the likelihood). The plot can be added to the previous results and should be run with rival methods.
 \end{enumerate}
 
+\begin{table*}
+  \begin{tabularx}{\textwidth}{ l  X  X  X }
+  Dataset & Dataset properties & Hypothesis & Methods \\
+  \hline\hline\\
+  1. UKPConvArgStrict & 
+  MACE output with confidence $\ge 95\%$; \newline
+  Discard arguments marked as equally convincing; \newline
+  Discard conflicting preferences. & 
+  Bayesian method is competitive with previous methods at predicting clean preference pairs from a clean dataset. &
+  GP Preference learning + linguistic features + embeddings. \\\hline\\
+  2. UKPConvArgMACE & 
+  MACE output with confidence $\ge 95\%$;\newline
+  No further filtering. & 
+  Bayesian method is competitive with previous methods if filtering step is removed. &
+  GP Preference learning + linguistic features + embeddings. \\\hline\\      
+  3. UKPConvArgRank & 
+  MACE output with confidence $\ge 95\%$;\newline
+  Equal arguments included; \newline
+  PageRank used to rank arguments. & 
+  Bayesian method is competitive with previous methods at ranking arguments and 
+   can perform ranking given pairs rather than rank scores. &
+  GP regression with preference learning output + linguistic features + embeddings (trained on rank scores); \newline
+  GP Preference learning + linguistic features + embeddings (trained on pairs). \\\hline\\  
+  4. UKPConvArgAll & 
+  No filtering, all pairs from original workers are provided. & 
+  Bayesian method can predict argument pairs for individual annotators with competitive performance to rival methods on clean, combined data; \newline
+  There are patterns of common agreement/disagreement among workers. &
+  Bayesian Preference Components + linguistic features + embeddings (pair prediction). \\\hline\\
+  5. UKPConvArgAllR & 
+  No filtering, all pairs from original workers are provided; \newline 
+  PageRank used to produce gold-standard ranking. & 
+  Bayesian model can predict individual argument rankings;\newline
+  Significant differences between individual rankings and gold-standard ranking. &
+  Bayesian Preference Components + linguistic features + embeddings (ranking output). \\\hline\\ 
+  %UKPConvArgAll (train), UKPConvArgStrict (test) &
+  %Use the original pairs for training and try to predict the cleaned output &
+  %(Optional -- more about preference learning from noisy data, so probably deserves a separate paper/student project?)
+  %Show that the model can also be used to predict a gold standard -- end-to-end preference learning &
+  %Bayesian Preference Components + linguistic features + embeddings + gold-standard pairs on the training data (model is not really designed for aggregation, but for sharing information between similar people and items; without gold standard training labels, we need to know the y-feature mixture of the gold-standard); 
+  %HeatmapBCC with preference learning forward model (deals directly with noisy labels, rather than different opinions about convincingness; useful for learning from implicit feedback)
+  \end{tabularx}
+  \caption{\label{tab:expt_data} The datasets and hypotheses in each experiment.}
+\end{table*}
+
+\subsection{Progress Notes}
+
+Implementation to-do list:
+\begin{enumerate}
+  \item Ensure all the datasets are available by running preprocessing steps.
+  For each dataset in Table \ref{tab:expt_data}:
+  \begin{enumerate}
+    \item Implement best sentence embeddings for combining the word embeddings of an argument; run linguistic features pipeline.
+    \item Run MACE on the "all" dataset or somehow reverse the filtering step
+    \item -
+    \item - 
+    \item Produce the gold-standard personalised rankings for the items seen by each worker. Use to create train and test sets.
+  \end{enumerate}
+  \item Code up scripts to input the different datasets and run experiments.
+  \item Investigate the way we output 0, 1, and 2; rounding is likely to cause a lot of "don't know" outputs; strict data set has no "don't know" labels; UKPConvArgAll does include them and we can compute
+  RMSE and possibly cross entropy error with them included, but to compute accuracy we need to 
+  also learn how to map the probabilities back to classes.
+  \item Investigate the accuracy computation -- is it comparable to Habernal 2016? 
+  \item Include experiments with the Lukin 2017 dataset 
+\end{enumerate}
+
 \subsection{Alternative Application -- Notes}
 
 The core contribution is to do preference learning with sparse observations with text data. 
@@ -62,4 +127,3 @@ This needs us to discuss and distinguish the class of problems and novelty of th
 What are the alternative methods, e.g. if we were to use this for classification? One could supply all 
 item and person data to a neural network and train it in a semi-supervised manner?
 Sticking to the idea of preference learning or ranking, what other tasks could be handled in this way?
-

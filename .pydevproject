@@ -3,6 +3,10 @@
 <pydev_pathproperty name="org.python.pydev.PROJECT_SOURCE_PATH">
 <path>/${PROJECT_DIR_NAME}</path>
 <path>/${PROJECT_DIR_NAME}/python</path>
+<path>/${PROJECT_DIR_NAME}/python/models</path>
+<path>/${PROJECT_DIR_NAME}/python/analysis</path>
+<path>/${PROJECT_DIR_NAME}/python/analysis/habernal_comparison</path>
+<path>/${PROJECT_DIR_NAME}/python/test</path>
 </pydev_pathproperty>
 <pydev_property name="org.python.pydev.PYTHON_PROJECT_VERSION">python 2.7</pydev_property>
 <pydev_property name="org.python.pydev.PYTHON_PROJECT_INTERPRETER">Default</pydev_property>

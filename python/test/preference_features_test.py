@@ -34,7 +34,7 @@ if __name__ == '__main__':
     if 'xvals' not in globals():
         Npeople = 20
         N = 25
-        P = 1000 # pairs per person in test+training set
+        P = 100 # pairs per person in test+training set
         nx = 5
         ny = 5
     # 
@@ -99,8 +99,8 @@ if __name__ == '__main__':
             
             f_prior_mean = t + wy_p
             
-            _, nx, ny, prefs_p, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs(f_prior_mean, nx, ny, 
-                                                                                                       N, P, s=0.0001)
+            _, nx, ny, prefs_p, xvals_p, yvals_p, pair1idxs_p, pair2idxs_p, f, K = gen_synthetic_prefs(f_prior_mean, 
+                                                                                    nx, ny, N, P, s=0.0001, ls=ls)
             pair1idxs = np.concatenate((pair1idxs, pair1idxs_p + len(xvals))).astype(int)
             pair2idxs = np.concatenate((pair2idxs, pair2idxs_p + len(yvals))).astype(int)
             prefs = np.concatenate((prefs, prefs_p)).astype(int)
@@ -122,14 +122,21 @@ if __name__ == '__main__':
         np.random.seed() # do this if we want to use a different seed each time to test the variation in results
         
     # Model initialisation --------------------------------------------------------------------------------------------
-    use_svi = False
-    model = PreferenceComponents(2, Npeoplefeatures, ls=ls, lsy=lsy, nfactors=Nfactors + 5, use_fa=False, 
+    use_svi = True
+    ls_initial = np.array(ls) + 5
+    print "Initial guess of length scale for items: %s, true length scale is %s" % (ls_initial, ls)
+    lsy_initial = np.array(lsy) + 7
+    print "Initial guess of length scale for people: %s, true length scale is %s" % (lsy_initial, lsy)
+    model = PreferenceComponents(2, Npeoplefeatures, ls=ls_initial, lsy=lsy_initial, nfactors=Nfactors + 5, use_fa=False, 
                                  use_svi=use_svi, delay=5, forgetting_rate=0.9, ninducing=20, max_update_size=5)
     model.verbose = False
     model.min_iter = 1
     model.max_iter = 200
     model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs], person_features.T, 
               optimize=True)
+    
+    print "Difference between true item length scale and inferred item length scale = %s" % (ls - model.ls)
+    print "Difference between true person length scale and inferred person length scale = %s" % (lsy - model.lsy)
     
     # turn the values into predictions of preference pairs.
     results = model.predict(personids[testidxs], pair1coords[testidxs], pair2coords[testidxs])

@@ -7,7 +7,7 @@ import numpy as np
 from scipy.stats import norm
 from scipy.sparse import coo_matrix
 import logging
-from gp_classifier_vb import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs, matern_3_2_from_raw_vals
+from gp_classifier_vb import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
 from gp_classifier_svi import GPClassifierSVI
 
 def get_unique_locations(obs_coords_0, obs_coords_1):
@@ -149,52 +149,48 @@ class GPPrefLearning(GPClassifierSVI):
         if obs_coords_1.ndim == 1:
             obs_coords_1 = obs_coords_1[:, np.newaxis]
                             
-        if obs_coords_0.dtype=='int': # duplicate locations should be merged and the number of duplicates counted
-            poscounts = poscounts.astype(int)
-            totals = totals.astype(int)        
+        # duplicate locations should be merged and the number of duplicates counted
+        poscounts = poscounts.astype(int)
+        totals = totals.astype(int)        
+        
+        # TODO: This code could be merged with get_unique_locations()
+        # Ravel the coordinates
+        ravelled_coords_0 = coord_arr_to_1d(obs_coords_0)
+        ravelled_coords_1 = coord_arr_to_1d(obs_coords_1) 
+        
+        # SWAP PAIRS SO THEY ALL HAVE LOWEST COORD FIRST so we can count prefs for duplicate location pairs
+        # get unique keys
+        all_ravelled_coords = np.concatenate((ravelled_coords_0, ravelled_coords_1), axis=0)
+        uravelled_coords, origidxs, keys = np.unique(all_ravelled_coords, return_index=True, return_inverse=True)
+        keys_0 = keys[:len(ravelled_coords_0)]
+        keys_1 = keys[len(ravelled_coords_0):]
+        idxs_to_swap = keys_0 < keys_1
+        
+        swap_coords_0 = keys_0[idxs_to_swap]
+        poscounts[idxs_to_swap] = totals[idxs_to_swap] - poscounts[idxs_to_swap]
+        keys_0[idxs_to_swap] = keys_1[idxs_to_swap]
+        keys_1[idxs_to_swap] = swap_coords_0
+        
+        grid_obs_counts = coo_matrix((totals, (keys_0, keys_1)) ).toarray()            
+        grid_obs_pos_counts = coo_matrix((poscounts, (keys_0, keys_1)) ).toarray()
+                                                          
+        nonzero_v, nonzero_u = grid_obs_counts.nonzero() # coordinate key pairs with duplicate pairs removed
+        nonzero_all = np.concatenate((nonzero_v, nonzero_u), axis=0)
+        ukeys, pref_vu = np.unique(nonzero_all, return_inverse=True) # get unique locations
+        
+        self.original_idxs = origidxs[ukeys] # indexes of unique observation locations into the original input data
+        
+        # Record the coordinates of all points that were compared
+        self.obs_coords = coord_arr_from_1d(uravelled_coords[ukeys], obs_coords_0.dtype, 
+                                            dims=(len(ukeys), obs_coords_0.shape[1]))
+        
+        # Record the indexes into the list of coordinates for the pairs that were compared 
+        self.pref_v = pref_vu[:len(nonzero_v)]
+        self.pref_u = pref_vu[len(nonzero_v):]
+               
+        # Return the counts for each of the observed pairs
+        return grid_obs_pos_counts[nonzero_v, nonzero_u], grid_obs_counts[nonzero_v, nonzero_u]
             
-            # Ravel the coordinates
-            ravelled_coords_0 = coord_arr_to_1d(obs_coords_0)
-            ravelled_coords_1 = coord_arr_to_1d(obs_coords_1) 
-            
-            # SWAP PAIRS SO THEY ALL HAVE LOWEST COORD FIRST so we can count prefs for duplicate location pairs
-            # get unique keys
-            all_ravelled_coords = np.concatenate((ravelled_coords_0, ravelled_coords_1), axis=0)
-            uravelled_coords, origidxs, keys = np.unique(all_ravelled_coords, return_index=True, return_inverse=True)
-            keys_0 = keys[:len(ravelled_coords_0)]
-            keys_1 = keys[len(ravelled_coords_0):]
-            idxs_to_swap = keys_0 < keys_1
-            
-            swap_coords_0 = keys_0[idxs_to_swap]
-            poscounts[idxs_to_swap] = totals[idxs_to_swap] - poscounts[idxs_to_swap]
-            keys_0[idxs_to_swap] = keys_1[idxs_to_swap]
-            keys_1[idxs_to_swap] = swap_coords_0
-            
-            grid_obs_counts = coo_matrix((totals, (keys_0, keys_1)) ).toarray()            
-            grid_obs_pos_counts = coo_matrix((poscounts, (keys_0, keys_1)) ).toarray()
-                                                              
-            nonzero_v, nonzero_u = grid_obs_counts.nonzero() # coordinate key pairs with duplicate pairs removed
-            nonzero_all = np.concatenate((nonzero_v, nonzero_u), axis=0)
-            ukeys, pref_vu = np.unique(nonzero_all, return_inverse=True) # get unique locations
-            
-            self.original_idxs = origidxs[ukeys] # indexes of unique observation locations into the original input data
-            
-            # Record the coordinates of all points that were compared
-            self.obs_coords = coord_arr_from_1d(uravelled_coords[ukeys], obs_coords_0.dtype, 
-                                                dims=(len(ukeys), obs_coords_0.shape[1]))
-            
-            # Record the indexes into the list of coordinates for the pairs that were compared 
-            self.pref_v = pref_vu[:len(nonzero_v)]
-            self.pref_u = pref_vu[len(nonzero_v):]
-                   
-            # Return the counts for each of the observed pairs
-            return grid_obs_pos_counts[nonzero_v, nonzero_u], grid_obs_counts[nonzero_v, nonzero_u]
-                    
-        elif obs_coords_0.dtype=='float':
-            self.obs_coords, self.pref_v, self.pref_u, self.original_idxs = get_unique_locations(obs_coords_0, obs_coords_1)
-            
-            return poscounts, totals # these remain unaltered as we have not de-duplicated
-
     # Mapping between latent and observation spaces -------------------------------------------------------------------
               
     def forward_model(self, f=[], subset_idxs=[], v=[], u=[], return_g_f=False):
@@ -252,9 +248,28 @@ class GPPrefLearning(GPClassifierSVI):
     
     # Training methods ------------------------------------------------------------------------------------------------  
             
-    def fit(self, items1_coords=None, items2_coords=None, obs_values=None, totals=None, process_obs=True, mu0_1=None,
-            mu0_2=None, optimize=False):
-        super(GPPrefLearning, self).fit((items1_coords, items2_coords), obs_values, totals, process_obs, 
+    def fit(self, items1_coords=None, items2_coords=None, preferences=None, totals=None, process_obs=True, mu0_1=None,
+            mu0_2=None, optimize=False, input_type='binary'):
+        '''
+        preferences -- Preferences by default are 1 = item 1 is preferred to item 2, or 0 = item 2 is preferred to item 1, 
+        0.5 = no preference. This is controlled by input_type.
+        input_type -- can be 'binary', meaning preferences must be [0,1], or 'zero-centered' meaning that value 1 
+        indicates item 1 is preferred, value -1 indicates item 2 is preferred, and 0 indicates no preference. The value
+        are converted internally to [0,1]. 
+        '''
+        pref_values_in_input = np.unique(preferences)
+        if process_obs and input_type == 'binary' and np.sum((pref_values_in_input < 0) | (pref_values_in_input > 1)):
+            raise ValueError('Binary input preferences specified but the data contained the values %s' % pref_values_in_input)
+        elif process_obs and input_type == 'zero-centered' and np.sum((pref_values_in_input < -1) | (pref_values_in_input > 1)):
+            raise ValueError('Zero-centered input preferences specified but the data contained the values %s' % pref_values_in_input)
+        elif process_obs and input_type == 'zero-centered':
+            #convert them to [0,1]
+            preferences += 1
+            preferences /= 2.0
+        elif process_obs and input_type != 'binary':
+            raise ValueError('input_type for preference labels must be either "binary" or "zero-centered"') 
+            
+        super(GPPrefLearning, self).fit((items1_coords, items2_coords), preferences, totals, process_obs, 
                                         mu0=(mu0_1, mu0_2), optimize=optimize)  
         
     def _update_sample_idxs(self):

@@ -107,6 +107,21 @@ def process_list(pairlist):
         
     return np.array(crowdlabels)
 
+def process_list_with_text(pairlist):
+    
+    crowdlabels = []
+    
+    pairlist = pairlist['annotatedArgumentPair']
+    for pair in pairlist:
+        for workerlabel in pair['mTurkAssignments']['mTurkAssignment']:
+            row = [pair['id'].encode('utf-8'), workerlabel['turkID'].encode('utf-8'), 
+                   workerlabel['value'].encode('utf-8'),
+                   pair['arg1']['text'].encode('utf-8').replace('\n', ' ').replace('\t', ' '), 
+                   pair['arg2']['text'].encode('utf-8').replace('\n', ' ').replace('\t', ' ')]
+            crowdlabels.append(row)
+        
+    return np.array(crowdlabels)
+
 def translate_to_local(all_labels):
     _, localworkers = np.unique(all_labels[:, 0], return_inverse=True)
     _, localargs = np.unique([all_labels[:, 1], all_labels[:, 2]], return_inverse=True)
@@ -121,6 +136,17 @@ def translate_to_local(all_labels):
     all_labels[:, 2] = localargs2
     all_labels[:, 3] = locallabels
     return all_labels
+
+def generate_separate_CSV(datadir, outputdir):
+    datafiles = os.listdir(datadir)
+    for i, f in enumerate(datafiles):
+        print "Processing file %i of %i, filename=%s" % (i, len(datafiles), f)
+        with open(datadir + f) as ffile:
+            doc = xmltodict.parse(ffile.read())
+            pairlist = doc['list']
+            labels = process_list_with_text(pairlist)    
+            np.savetxt(outputdir + '/' + f.split('.')[0] + '.csv', labels, fmt='%s\t%s\t%s\t%s\t%s', delimiter='\t', 
+                       header='#id    turkerid    label    a1    a2', )          
 
 if __name__ == '__main__':
     '''

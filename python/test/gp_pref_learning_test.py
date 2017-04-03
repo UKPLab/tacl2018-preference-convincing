@@ -10,7 +10,7 @@ from gp_classifier_vb import matern_3_2_from_raw_vals, coord_arr_to_1d
 from gp_pref_learning import GPPrefLearning
 import logging
 
-def gen_synthetic_prefs(f_prior_mean=None, nx=100, ny=100, N=5, P=100, ls=[10, 10], s=1):
+def gen_synthetic_prefs(f_prior_mean=None, nx=5, ny=5, N=25, P=500, ls=[4, 10], s=100):
     # f_prior_mean should contain the means for all the grid squares
     # P is number of pairs for training
     # s is inverse precision scale for the latent function.
@@ -83,16 +83,15 @@ if __name__ == '__main__':
     models = {}
     
     # Create a GPPrefLearning model
-    model = GPPrefLearning(2, mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], use_svi=True, ninducing=100)    
+    model = GPPrefLearning(2, mu0=0, shape_s0=1000, rate_s0=100, ls_initial=[5, 10], use_svi=True, ninducing=100)    
     #model.verbose = True
     model.delay = 1
     
     models['SVI'] = model
     
     # Create a GPPrefLearning model
-    model = GPPrefLearning(2, mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10], use_svi=False, ninducing=100)    
+    model = GPPrefLearning(2, mu0=0, shape_s0=1000, rate_s0=100, ls_initial=[5, 10], use_svi=False)    
     #model.verbose = True
-    model.delay = 1    
     
     models['VB'] = model
     
