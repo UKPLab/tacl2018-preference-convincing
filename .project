@@ -3,6 +3,7 @@
 	<name>personalised_convincingness</name>
 	<comment></comment>
 	<projects>
+		<project>acl2016-convincing-arguments-experiments-python</project>
 		<project>HeatMapBCC</project>
 	</projects>
 	<buildSpec>
