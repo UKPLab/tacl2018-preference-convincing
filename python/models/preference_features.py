@@ -540,7 +540,6 @@ class PreferenceComponents(object):
             logging.debug("Optimising item length-scale for %i dimension" % d)
             
             nfits = 0 # number of calls to fit function
-            njacs = 0 # number of calls to gradient function
             
             # optimise each length-scale sequentially in turn
             for r in range(nrestarts):
@@ -566,7 +565,6 @@ class PreferenceComponents(object):
                 opt_hyperparams = res['x']
                 nlml = res['fun']
                 nfits += res['nfev']
-                njacs += res['njev']
                 
                 if nlml < min_nlml:
                     min_nlml = nlml
@@ -582,8 +580,8 @@ class PreferenceComponents(object):
                 if d == len(self.ls) - 1 and person_features is None:
                     self.neg_marginal_likelihood(best_opt_hyperparams, 'item', d, use_MAP=False)
 
-            logging.debug("Chosen item length-scale %.5f for dimension %i. Last initialguess=%.5f, used %i evals of NLML, \
-            and %i evals of Jacobian over %i restarts" % (self.ls[d], d, np.exp(initialguess), nfits, njacs, nrestarts))
+            logging.debug("Chosen item length-scale %.5f for dimension %i. Last initialguess=%.5f, used %i evals of \
+            NLML over %i restarts" % (self.ls[d], d, np.exp(initialguess), nfits, nrestarts))
 
         if person_features is None:
             return self.ls, self.lsy, -min_nlml
@@ -592,7 +590,9 @@ class PreferenceComponents(object):
             min_nlml = np.inf
             best_opt_hyperparams = None
             best_iter = -1            
-            
+                        
+            nfits = 0 # number of calls to fit function
+
             logging.debug("Optimising item length-scale for %i dimension" % e)
             
             # optimise each length-scale sequentially in turn
@@ -614,6 +614,7 @@ class PreferenceComponents(object):
                   jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter':maxfun, 'return_all':True})
                 opt_hyperparams = res['x']
                 nlml = res['fun']
+                nfits += res['nfev']
                                                 
                 if nlml < min_nlml:
                     min_nlml = nlml
@@ -625,11 +626,12 @@ class PreferenceComponents(object):
     
             if best_iter < r:
                 # need to go back to the best result
-                self.lsy[d] = np.exp(best_opt_hyperparams)
+                self.lsy[e] = np.exp(best_opt_hyperparams)
                 if e == len(self.ls) - 1:
                     self.neg_marginal_likelihood(best_opt_hyperparams, 'person', e, use_MAP=False)
 
-            logging.debug("Chosen person length-scale %.5f for dimension %i" % (self.lsy[e], e))
+            logging.debug("Chosen person length-scale %.5f for dimension %i. Last initialguess=%.5f, used %i evals of \
+            NLML over %i restarts" % (self.lsy[e], e, np.exp(initialguess), nfits, nrestarts))
 
         logging.debug("Optimal hyper-parameters: item = %s, person = %s" % (self.ls, self.lsy))   
         return self.ls, self.lsy, -min_nlml # return the log marginal likelihood
