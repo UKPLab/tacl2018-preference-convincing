@@ -94,27 +94,6 @@ The steps to show this are:
   \caption{\label{tab:expt_data} The datasets and hypotheses in each experiment.}
 \end{table*}
 
-\subsection{Progress Notes}
-
-Implementation to-do list:
-\begin{enumerate}
-  \item Ensure all the datasets are available by running preprocessing steps.
-  For each dataset in Table \ref{tab:expt_data}:
-  \begin{enumerate}
-    \item Implement best sentence embeddings for combining the word embeddings of an argument; run linguistic features pipeline.
-    \item Run MACE on the "all" dataset or somehow reverse the filtering step
-    \item -
-    \item - 
-    \item Produce the gold-standard personalised rankings for the items seen by each worker. Use to create train and test sets.
-  \end{enumerate}
-  \item Code up scripts to input the different datasets and run experiments.
-  \item Investigate the way we output 0, 1, and 2; rounding is likely to cause a lot of "don't know" outputs; strict data set has no "don't know" labels; UKPConvArgAll does include them and we can compute
-  RMSE and possibly cross entropy error with them included, but to compute accuracy we need to 
-  also learn how to map the probabilities back to classes.
-  \item Investigate the accuracy computation -- is it comparable to Habernal 2016? 
-  \item Include experiments with the Lukin 2017 dataset 
-\end{enumerate}
-
 \subsection{Alternative Application -- Notes}
 
 The core contribution is to do preference learning with sparse observations with text data. 

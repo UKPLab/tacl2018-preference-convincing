@@ -1,13 +1,14 @@
 '''
 Script for comparing our Bayesian preference learning approach with the results from Habernal 2016. 
 
-Tasks:
+Steps in this test:
 
-1. Load word embeddings for the original text data that were used in the NN approach in Habernal 2016.
+1. Load word embeddings for the original text data that were used in the NN approach in Habernal 2016. -- done, but 
+only using averages to combine them.
 2. Load feature data that was used in the SVM-based approach in Habernal 2016.
-3. Load the crowdsourced data.
+3. Load the crowdsourced data. -- done. 
 4. Copy a similar testing setup to Habernal 2016 (training/test split?) and run the Bayesian approach (during testing,
-we can set aside some held-out data). 
+we can set aside some held-out data). -- done, results saved to file with no metrics computed yet except acc. 
 5. Print some simple metrics that are comparable to those used in Habernal 2016. 
 
 
@@ -35,6 +36,11 @@ import sys, os
 import numpy as np
 from sklearn.metrics import accuracy_score
 import time
+from scipy import sparse
+from sklearn.datasets import load_svmlight_file
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 from preference_features import PreferenceComponents
 from preproc_raw_data import generate_separate_CSV
@@ -116,55 +122,101 @@ def pad_sequences(sequences, maxlen=None, dtype='int32',
             raise ValueError('Padding type "%s" not understood' % padding)
     return x
 
-# TODO: create function for loading embeddings data and separate function for SVM feature data
+
+def combine_lines_into_one_file(dataset, dirname="/home/local/UKP/simpson/data/outputdata/UKPConvArg1-Full-libsvm", 
+        outputfile="/home/local/UKP/simpson/git/crowdsourcing_argumentation/data/lingdata/%s-libsvm.txt"): 
+    outputfile = outputfile % dataset
+    
+    outputstr = ""
+    dataids = [] # contains the argument document IDs in the same order as in the ouputfile and outputstr
+    
+    if os.path.isfile(outputfile):
+        os.remove(outputfile)
+        
+    with open(outputfile, 'a') as ofh: 
+        for filename in os.listdir(dirname):
+            fid = filename.split('.')[0]
+            print "writing file %s with row ID %s" % (filename, fid)
+            with open(dirname + "/" + filename) as fh:
+                lines = fh.readlines()
+            for line in lines:
+                dataids.append(fid)
+                outputline = line
+                ofh.write(outputline)
+                outputstr += outputline + '\n'
+                
+    return outputfile, outputstr, np.array(dataids)
 
 if __name__ == '__main__':
-    # Word embeddings -- load from file for full dataset
-    
+    # Set experiment options and ensure CSV data is ready -------------------------------------------------------------
+    # Select the directory containing original XML files with argument data + crowdsourced annotations.
+    # See the readme in the data folder from Habernal 2016 for further explanation of folder names.
+    dataset = 'UKPConvArgStrict' #'UKPConvArgMACE''UKPConvArgRank''UKPConvArgAll''UKPConvArgAllR'
+     
     if len(sys.argv) > 1:
         dirname = sys.argv[1]
-    else:
-        dirname = '../../git/acl2016-convincing-arguments/data/UKPConvArg1-full-XML/'
+    elif dataset == 'UKPConvArgAll' or dataset == 'UKPConvArgMACE' or dataset == 'UKPConvArgAllR':
+        # basic dataset for UKPConvArgAll, which requires additional steps to produce the other datasets        
+        dirname = '../../git/acl2016-convincing-arguments/data/UKPConvArg1-full-XML/'  
+    elif dataset == 'UKPConvArgRank':
+        dirname = None # don't need to create a new CSV file
+    elif dataset == 'UKPConvArgStrict':
+        dirname = '../../git/acl2016-convincing-arguments/data/UKPConvArg1Strict-XML/'
     
     print "Data directory = %s" % dirname
     
+    # Select output paths for CSV files and final results
     if len(sys.argv) > 2:
-        embeddings_dir = sys.argv[2]
+        resultsfile = sys.argv[2] % ('habernal_%s_embeddings_test.pkl' % dataset)
+        csvdirname = sys.argv[2] % ('%s-CSV' % dataset)
     else:
-        embeddings_dir = '../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python/'
-    print "Looking for embeddings in directory %s" % embeddings_dir
-    
-    if len(sys.argv) > 3:
-        resultsfile = sys.argv[3] % 'test'
-        csvdirname = sys.argv[3] % 'UKPConvArg1All-turkerids-CSV'
-    else:
-        resultsfile = './results/habernal_embeddings_test.pkl'
-        csvdirname = './data/UKPConvArg1All-turkerids-CSV/'
+        resultsfile = './results/habernal_%s_embeddings_test.pkl' % dataset
+        csvdirname = './data/%s-CSV/' % dataset    
         
-    if len(sys.argv) > 4:
-        feature_type = sys.argv[4]
-    else:
-        feature_type = 'both' # can be 'embeddings' or 'ling'
-        
-    # generate the CSV files
+    # Generate the CSV files from the XML files. These are easier to work with! The CSV files from Habernal do not 
+    # contain all turker info that we need, so we generate them afresh here.
     print("Writing CSV files with turker IDs...")
     if not os.path.isdir(csvdirname):
         os.mkdir(csvdirname)
         generate_separate_CSV(dirname, csvdirname)
+    #generate_separate_CSV(dirname, csvdirname)
+
+    # Select type of features to use for the test
+    if len(sys.argv) > 3:
+        feature_type = sys.argv[3]
+    else:
+        feature_type = 'both' # can be 'embeddings' or 'ling'
+        
+    # Select word embeddings file
+    if len(sys.argv) > 4:
+        embeddings_dir = sys.argv[4]
+    else:
+        embeddings_dir = '../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python/'
+    if not feature_type == 'ling':
+        print "Looking for embeddings in directory %s" % embeddings_dir
+
+    # Select linguistic features file
+    if len(sys.argv) > 5:
+        ling_dir = sys.argv[4]
+    else:
+        ling_dir = './data/lingdata/'
+    if not feature_type == 'embeddings':
+        print "Looking for linguistic features in directory %s" % ling_dir    
     
+    # Load the train/test data into a folds object. -------------------------------------------------------------------
+    # Here we keep each the features of each argument in a pair separate, rather than concatenating them. 
     print('Loading data...')
     if feature_type == 'both' or feature_type == 'embeddings':
         folds, word_index_to_embeddings_map = load_my_data_separate_args(csvdirname, embeddings_dir=embeddings_dir)
         # converting embeddings to numpy 2d array: shape = (vocabulary_size, 300)
         embeddings = np.asarray([np.array(x, dtype=np.float32) for x in word_index_to_embeddings_map.values()])
         
-    if feature_type == 'both':
-        # TODO: add in the svm features
-        pass
-    elif feature_type == 'ling':
-        # TODO: load only the svm features
-        pass
+    if feature_type == 'both' or feature_type == 'ling':
+        ling_file, _ , docids = combine_lines_into_one_file(dataset, outputfile=ling_dir+"/%s-libsvm.txt")
+        ling_feat_spmatrix, _ = load_svmlight_file(ling_file)
+        Nlingfeat = ling_feat_spmatrix.shape[1]
     
+    # Run test --------------------------------------------------------------------------------------------------------
     all_proba = np.zeros(0)
     all_predictions = np.zeros(0)
     fold_idxs = np.zeros(0)
@@ -180,60 +232,106 @@ if __name__ == '__main__':
     item_ids = []
     times = []
     
-    # Run the experiments!
     for foldidx, fold in enumerate(folds.keys()):
+        # Get data for this fold --------------------------------------------------------------------------------------
         print("Fold name ", fold)
-        X_train_a1, X_train_a2, y_train, ids_train, turkerids_train = folds.get(fold)["training"]
-        X_test_a1, X_test_a2, y_test, ids_test, turkerids_test = folds.get(fold)["test"]
+        X_train_a1, X_train_a2, prefs_train, ids_train, personIDs_train = folds.get(fold)["training"]
+        X_test_a1, X_test_a2, prefs_test, ids_test, personIDs_test = folds.get(fold)["test"]
+        
+        trainids = np.array([ids_pair.split('_') for ids_pair in ids_train])
+        trainids_a1 = [np.argwhere(trainid==docids)[0][0] for trainid in trainids[:, 0]]
+        trainids_a2 = [np.argwhere(trainid==docids)[0][0] for trainid in trainids[:, 1]]
+        
+        testids = np.array([ids_pair.split('_') for ids_pair in ids_test])
+        testids_a1 = [np.argwhere(testid==docids)[0][0] for testid in testids[:, 0]]
+        testids_a2 = [np.argwhere(testid==docids)[0][0] for testid in testids[:, 1]]        
 
-        print("Training instances ", len(X_train_a1), " training labels ", len(y_train))
-        print("Test instances ", len(X_test_a1), " test labels ", len(y_test))
+        print("Training instances ", len(X_train_a1), " training labels ", len(prefs_train))
+        print("Test instances ", len(X_test_a1), " test labels ", len(prefs_test))
         
         # get the embedding values for the test data -- need to find embeddings of the whole piece of text
-        # See previous emails about sentence embeddings for a better method!
-        print "Converting texts to mean embeddings (we should really use a better sentence embedding)..."
-        Xe_train1 = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_train_a1])
-        Xe_train2 = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_train_a2])
-        print "...training data embeddings done."
-        Xe_test1 = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_test_a1])
-        Xe_test2 = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_test_a2])
-        print "...test data embeddings done."
+        # TODO: allow alternatives to mean embeddings for sentences/documents
+        if feature_type == 'both' or feature_type == 'embeddings':
+            print "Converting texts to mean embeddings (we could use a better sentence embedding?)..."
+            items_1_train = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_train_a1])
+            items_2_train = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_train_a2])
+            print "...training data embeddings done."
+            items_1_test = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_test_a1])
+            items_2_test = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_test_a2])
+            print "...test data embeddings done."  
+        elif feature_type == 'ling':
+            # initialise the coordinates objects 
+            items_1_train = np.zeros((X_train_a1.shape[0], 0))
+            items_2_train = np.zeros((X_train_a2.shape[0], 0))
+            items_1_test = np.zeros((X_test_a1.shape[0], 0))
+            items_2_test = np.zeros((X_test_a2.shape[0], 0))
+            
+        if feature_type == 'both' or feature_type == 'ling':
+            items_1_train = sparse.csr_matrix(items_1_train)
+            items_2_train = sparse.csr_matrix(items_2_train)
+            items_1_train = sparse.csr_matrix(items_1_train)
+            items_2_test = sparse.csr_matrix(items_2_test)
+            
+            print "Obtaining linguistic features for argument texts."
+            items_1_train = sparse.hstack((items_1_train, ling_feat_spmatrix[trainids_a1, :]), format='csr')
+            items_2_train = sparse.hstack((items_2_train, ling_feat_spmatrix[trainids_a2, :]), format='csr')
+            items_1_test = sparse.hstack((items_1_test, ling_feat_spmatrix[testids_a1, :]), format='csr')
+            items_2_test = sparse.hstack((items_2_test, ling_feat_spmatrix[testids_a2, :]), format='csr')
+            print "...loaded all linguistic features for training and test data."
+                
+        prefs_train = np.array(prefs_train) 
+        prefs_test = np.array(prefs_test)     
+        personIDs_train = np.array(personIDs_train)
+        personIDs_test = np.array(personIDs_test) 
         
-        ndims = Xe_train1.shape[1]
-        ls_initial_guess = np.std(Xe_train1, axis=0)
+        # subsample training data for debugging purposes only
+        subsample = np.arange(100)               
+                
+        #personIDs_train = np.zeros(len(Xe_train1), dtype=int)[subsample, :] #
+        items_1_train = items_1_train[subsample, :]
+        items_2_train = items_2_train[subsample, :]
+        prefs_train = prefs_train[subsample]
+        personIDs_train = personIDs_train[subsample]
+                
+        # subsampled test data for debugging purposes only
+        #personIDs_test = np.zeros(len(items_1_test), dtype=int)[subsample, :]
+        personIDs_test = personIDs_test[subsample]
+        items_1_test = items_1_test[subsample, :]
+        items_2_test = items_2_test[subsample, :]
         
+        # Run the chosen method ---------------------------------------------------------------------------------------
         starttime = time.time()
         
-        model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=False, nfactors=10, 
+        if sparse.issparse(items_1_train):            
+            valid_feats = ((np.sum(items_1_train, axis=0)>0) & (np.sum(items_2_train, axis=0)>0)).nonzero()[1]
+            items_1_train = items_1_train[:, valid_feats].toarray()
+            items_2_train = items_2_train[:, valid_feats].toarray()
+            items_1_train = items_1_test[:, valid_feats].toarray()
+            items_2_test = items_2_test[:, valid_feats].toarray()
+            
+        personIDs = np.concatenate((personIDs_train, personIDs_test))
+        _, personIdxs = np.unique(personIDs, return_inverse=True)
+        personIDs_train = personIdxs[:len(personIDs_train)]
+        personIDs_test = personIdxs[len(personIDs_train):]
+
+        ndims = items_1_train.shape[1]
+        ls_initial_guess = (np.std(items_1_train, axis=0) + np.std(items_2_train, axis=0)) / 2.0
+                
+        model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=True, nfactors=10, 
                                                             rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True)
-        personIDs = np.zeros(len(Xe_train1), dtype=int) # personIDs = turkerids_train
+        model.fit(personIDs_train, items_1_train, items_2_train, np.array(prefs_train, dtype=float)-1, _optimize=True, 
+                  nrestarts=1, input_type='zero-centered')
         
-        # subsampled for debugging purposes only
-        items_1_coords = Xe_train1
-        items_2_coords = Xe_train2
-        preferences = y_train
-        personIDs = personIDs
-        model.fit(personIDs, items_1_coords, items_2_coords, np.array(preferences, dtype=float)-1, optimize=False, nrestarts=1, 
-                  input_type='zero-centered')
-        
-        personIDs = np.zeros(len(Xe_test1), dtype=int)
-        # personIDs = turkerids_test
-        items_1_coords = Xe_test1
-        items_2_coords = Xe_test2
-        proba = model.predict(personIDs, items_1_coords, items_2_coords, return_f=True)
+        proba = model.predict(personIDs_test, items_1_test, items_2_test, return_f=True)
         predictions = np.round(proba * 2)
         
         endtime = time.time()
-        
-        y_test = np.array(y_test, dtype=float)
-        acc = accuracy_score(y_test, predictions)
-        print('Test accuracy:', acc)
-        
-        # saving the data for later analysis:
+       
+        # Save the data for later analysis ----------------------------------------------------------------------------
         all_proba = np.concatenate((all_proba, proba))
         all_predictions = np.concatenate((all_predictions, predictions))
-        fold_idxs = np.concatenate((fold_idxs, foldidx + np.zeros(len(y_test))))
-        all_truth = np.concatenate((all_truth, y_test))
+        fold_idxs = np.concatenate((fold_idxs, foldidx + np.zeros(len(prefs_test))))
+        all_truth = np.concatenate((all_truth, prefs_test))
         length_scales = np.concatenate((length_scales, model.ls))
         latent_item_features.append(model.w)
         latent_p_features.append(model.y)
@@ -256,3 +354,9 @@ if __name__ == '__main__':
                    person_noise_var, people, item_coords, item_ids, times)
         with open(resultsfile, 'w') as fh:
             pickle.dump(results, fh)
+            
+        # Compute metrics ---------------------------------------------------------------------------------------------
+        
+        prefs_test = np.array(prefs_test, dtype=float)
+        acc = accuracy_score(prefs_test, predictions)
+        print('Test accuracy:', acc)            

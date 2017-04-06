@@ -450,7 +450,7 @@ class PreferenceComponents(object):
             self.use_svi_people = False
             
     def fit(self, personIDs=None, items_1_coords=None, items_2_coords=None, preferences=None, person_features=None, 
-            optimize=False, maxfun=20, use_MAP=False, nrestarts=1, input_type='binary'):
+            _optimize=False, maxfun=20, use_MAP=False, nrestarts=1, input_type='binary'):
         '''
         Learn the model with data as follows:
         personIDs - a list of the person IDs of the people who expressed their preferences
@@ -458,9 +458,9 @@ class PreferenceComponents(object):
         items_2_coords - coordinates of the second items in each pair being compared
         preferences - the values, 0 or 1 to express that item 1 was preferred to item 2.
         '''
-        if optimize:
-            return self.optimize(personIDs, items_1_coords, items_2_coords, preferences, person_features, maxfun, 
-                                 use_MAP, nrestarts)
+        if _optimize:
+            return self._optimize(personIDs, items_1_coords, items_2_coords, preferences, person_features, maxfun, 
+                                 use_MAP, nrestarts, input_type)
         
         
         if personIDs is not None:
@@ -524,12 +524,12 @@ class PreferenceComponents(object):
             
         logging.debug( "Preference personality model converged in %i iterations." % self.vb_iter )
 
-    def optimize(self, personIDs, items_1_coords, items_2_coords, preferences, person_features=None, 
-                 maxfun=20, use_MAP=False, nrestarts=1):
+    def _optimize(self, personIDs, items_1_coords, items_2_coords, preferences, person_features=None, 
+                 maxfun=20, use_MAP=False, nrestarts=1, input_type='binary'):
 
         max_iter = self.max_iter
         self.max_iter = 1 # set this temporarily
-        self.fit(personIDs, items_1_coords, items_2_coords, preferences, person_features)
+        self.fit(personIDs, items_1_coords, items_2_coords, preferences, person_features, input_type=input_type)
         self.max_iter = max_iter
 
         for d, ls in enumerate(self.ls):
@@ -560,7 +560,7 @@ class PreferenceComponents(object):
                 # approximation. If we also have Hessian or Hessian x arbitrary vector p, we can use Newton-CG, dogleg, 
                 # or trust-ncg, which may be faster still?
                 res = minimize(self.neg_marginal_likelihood, initialguess, args=('item', d, use_MAP,), 
-                    jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter':maxfun, 'return_all':True})
+                    jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter':maxfun})
 
                 opt_hyperparams = res['x']
                 nlml = res['fun']

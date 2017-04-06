@@ -133,7 +133,7 @@ if __name__ == '__main__':
     model.min_iter = 1
     model.max_iter = 200
     model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs], person_features.T, 
-              optimize=True)
+              _optimize=True)
     
     print "Difference between true item length scale and inferred item length scale = %s" % (ls - model.ls)
     print "Difference between true person length scale and inferred person length scale = %s" % (lsy - model.lsy)

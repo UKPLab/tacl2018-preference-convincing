@@ -103,7 +103,7 @@ if __name__ == '__main__':
         
         print "--- Running model %s ---" % modelkey
         
-        model.fit(pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs], optimize=True)
+        model.fit(pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs], _optimize=True)
         print "Final lower bound: %f" % model.lowerbound()
         
         # Predict at the test locations
