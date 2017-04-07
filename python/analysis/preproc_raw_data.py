@@ -107,7 +107,7 @@ def process_list(pairlist):
         
     return np.array(crowdlabels)
 
-def process_list_with_text(pairlist):
+def process_list_of_turker_assts(pairlist):
     
     crowdlabels = []
     
@@ -116,6 +116,21 @@ def process_list_with_text(pairlist):
         for workerlabel in pair['mTurkAssignments']['mTurkAssignment']:
             row = [pair['id'].encode('utf-8'), workerlabel['turkID'].encode('utf-8'), 
                    workerlabel['value'].encode('utf-8'),
+                   pair['arg1']['text'].encode('utf-8').replace('\n', ' ').replace('\t', ' '), 
+                   pair['arg2']['text'].encode('utf-8').replace('\n', ' ').replace('\t', ' ')]
+            crowdlabels.append(row)
+        
+    return np.array(crowdlabels)
+
+def process_list_of_gold(pairlist):
+    
+    crowdlabels = []
+    
+    pairlist = pairlist['annotatedArgumentPair']
+    for pair in pairlist:
+        if 'goldLabel' in pair:            
+            row = [pair['id'].encode('utf-8'), 'goldLabel'.encode('utf-8'), 
+                   pair['goldLabel'].encode('utf-8'),
                    pair['arg1']['text'].encode('utf-8').replace('\n', ' ').replace('\t', ' '), 
                    pair['arg2']['text'].encode('utf-8').replace('\n', ' ').replace('\t', ' ')]
             crowdlabels.append(row)
@@ -137,14 +152,25 @@ def translate_to_local(all_labels):
     all_labels[:, 3] = locallabels
     return all_labels
 
-def generate_separate_CSV(datadir, outputdir):
+def generate_gold_CSV(datadir, outputdir):
     datafiles = os.listdir(datadir)
     for i, f in enumerate(datafiles):
         print "Processing file %i of %i, filename=%s" % (i, len(datafiles), f)
         with open(datadir + f) as ffile:
             doc = xmltodict.parse(ffile.read())
             pairlist = doc['list']
-            labels = process_list_with_text(pairlist)    
+            labels = process_list_of_gold(pairlist)    
+            np.savetxt(outputdir + '/' + f.split('.')[0] + '.csv', labels, fmt='%s\t%s\t%s\t%s\t%s', delimiter='\t', 
+                       header='#id    annotatorid    label    a1    a2', )
+
+def generate_turker_CSV(datadir, outputdir):
+    datafiles = os.listdir(datadir)
+    for i, f in enumerate(datafiles):
+        print "Processing file %i of %i, filename=%s" % (i, len(datafiles), f)
+        with open(datadir + f) as ffile:
+            doc = xmltodict.parse(ffile.read())
+            pairlist = doc['list']
+            labels = process_list_of_turker_assts(pairlist)    
             np.savetxt(outputdir + '/' + f.split('.')[0] + '.csv', labels, fmt='%s\t%s\t%s\t%s\t%s', delimiter='\t', 
                        header='#id    turkerid    label    a1    a2', )          
 

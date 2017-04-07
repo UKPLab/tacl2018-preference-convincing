@@ -450,7 +450,7 @@ class PreferenceComponents(object):
             self.use_svi_people = False
             
     def fit(self, personIDs=None, items_1_coords=None, items_2_coords=None, preferences=None, person_features=None, 
-            _optimize=False, maxfun=20, use_MAP=False, nrestarts=1, input_type='binary'):
+            optimize=False, maxfun=20, use_MAP=False, nrestarts=1, input_type='binary'):
         '''
         Learn the model with data as follows:
         personIDs - a list of the person IDs of the people who expressed their preferences
@@ -458,7 +458,7 @@ class PreferenceComponents(object):
         items_2_coords - coordinates of the second items in each pair being compared
         preferences - the values, 0 or 1 to express that item 1 was preferred to item 2.
         '''
-        if _optimize:
+        if optimize:
             return self._optimize(personIDs, items_1_coords, items_2_coords, preferences, person_features, maxfun, 
                                  use_MAP, nrestarts, input_type)
         
@@ -510,12 +510,11 @@ class PreferenceComponents(object):
 #             old_w = self.w
 
             # Don't use lower bound here, it doesn't really make sense when we use ML for some parameters
-            if not self.use_fa:
-                lb = self.lowerbound()
-                if self.verbose:
-                    logging.debug('Iteration %i: lower bound = %.5f, difference = %.5f' % (self.vb_iter, lb, lb-old_lb))
-                diff = lb - old_lb
-                old_lb = lb
+            lb = self.lowerbound()
+            if self.verbose:
+                logging.debug('Iteration %i: lower bound = %.5f, difference = %.5f' % (self.vb_iter, lb, lb-old_lb))
+            diff = lb - old_lb
+            old_lb = lb
 
             self.vb_iter += 1
             
@@ -583,7 +582,16 @@ class PreferenceComponents(object):
             logging.debug("Chosen item length-scale %.5f for dimension %i. Last initialguess=%.5f, used %i evals of \
             NLML over %i restarts" % (self.ls[d], d, np.exp(initialguess), nfits, nrestarts))
 
+        if self.use_fa: # don't do restarts here as the surface should be less complex.
+            initialguess = np.log(self.Nfactors)
+            res = minimize(self.neg_marginal_likelihood, initialguess, args=('fa', d, 
+                    use_MAP,), method='Nelder-Mead', options={'maxfev':maxfun, 'xatol':ls * 1e100, 'return_all':True})
+            min_nlml = res['fun']
+            logging.debug("Optimal number of factors = %s, with initialguess=%i and %i function evals" % (self.Nfactors,
+                                                                           int(np.exp(initialguess)), res['nfev']))     
+
         if person_features is None:
+            logging.debug("Optimal hyper-parameters: item = %s" % (self.ls))               
             return self.ls, self.lsy, -min_nlml
 
         for e, lsy in enumerate(self.lsy):
@@ -646,13 +654,16 @@ class PreferenceComponents(object):
             self.ls[dimension] = np.exp(hyperparams)
         elif lstype=='person':
             self.lsy[dimension] = np.exp(hyperparams)
+        elif lstype=='fa':
+            new_Nfactors = int(np.round(np.exp(hyperparams)))
         if np.any(np.isinf(self.ls)):
             return np.inf
         if np.any(np.isinf(self.lsy)):
             return np.inf
                 
         # make sure we start again -- fit should set the value of parameters back to the initial guess
-        self.fit()
+        if lstype!='fa' or new_Nfactors != self.Nfactors: #don't rerun if the number of factors is same.
+            self.fit()
         marginal_log_likelihood = self.lowerbound()        
         if use_MAP:
             log_model_prior = self.ln_modelprior()        
@@ -759,7 +770,8 @@ class PreferenceComponents(object):
  
     def predict(self, personids, items_1_coords, items_2_coords, person_features=None):
         Npairs = len(personids)
-        results = np.zeros(Npairs)
+        predicted_prefs = np.zeros(Npairs)
+        predicted_f = {}
          
         upeople = np.unique(personids)
         for p in upeople:            
@@ -849,13 +861,17 @@ class PreferenceComponents(object):
             mu0_2 = wy_2p + t2                                        
             if p in self.people:            
                 pref_gp_p = self.pref_gp[p]
-                results[pidxs] = pref_gp_p.predict(coords_1, coords_2, 
-                                                  mu0_output1=mu0_1, mu0_output2=mu0_2, return_var=False).flatten()
+                predicted_prefs[pidxs] = pref_gp_p.predict(coords_1, coords_2, 
+                                      mu0_output1=mu0_1, mu0_output2=mu0_2, return_var=False).flatten()
+                predicted_f[p] = [pref_gp_p.f, pref_gp_p.output_coords]
             else:
                 mu0 = np.concatenate((mu0_1, mu0_2), axis=0)
-                results[pidxs] = pref_likelihood(f=mu0, subset_idxs=[], v=np.arange(len(mu0_1)), 
-                                                                      u=np.arange(len(mu0_1), len(mu0_1)+len(mu0_2)))
-        return results
+                predicted_prefs[pidxs] = pref_likelihood(f=mu0, subset_idxs=[], 
+                                     v=np.arange(len(mu0_1)), u=np.arange(len(mu0_1), len(mu0_1)+len(mu0_2)))
+                output_coords, _, _, uidxs = get_unique_locations(coords_1, coords_2)
+                predicted_f[p] = [mu0[uidxs], output_coords]
+                
+        return predicted_prefs, predicted_f
         
     def _expec_f(self):
         '''
@@ -1201,43 +1217,49 @@ class PreferenceComponents(object):
             if self.verbose:
                 logging.debug('s_f^%i=%.2f' % (p, self.pref_gp[p].s))
             
-        if self.use_svi:
-            logpw = mvn.logpdf(self.w_u.T.flatten(), cov=self.Kws_mm)
-            logqw = mvn.logpdf(self.w_u.T.flatten(), mean=self.w_u.T.flatten(), cov=self.Kws_mm.dot(self.invKws_mm_S))
-
-            logpt = mvn.logpdf(self.t_u.flatten(), cov=self.Kts_mm)
-            logqt = mvn.logpdf(self.t_u.flatten(), mean=self.t_u.flatten(), cov=self.Kts_mm.dot(self.invKts_mm_S))    
-        else:
-            logpw = mvn.logpdf(self.w.T.flatten(), cov=self.Kw / self.sw_matrix, allow_singular=True)
-            logqw = mvn.logpdf(self.w.T.flatten(), mean=self.w.T.flatten(), cov=self.w_cov, allow_singular=True)
+        if self.use_fa:
+            lb = np.sum(self.fa.score_samples(self.f)) + f_terms
             
-            logpt = mvn.logpdf(self.t.flatten(), mean=self.t_mu0.flatten(), cov=self.K * self.rate_st / self.shape_st)
-            logqt = mvn.logpdf(self.t.flatten(), mean=self.t.flatten(), cov=self.t_cov)    
-
-        if self.use_svi_people:
-            logpy = mvn.logpdf(self.y_u.flatten(), cov=self.Kys_mm)
-            logqy = mvn.logpdf(self.y_u.flatten(), mean=self.y_u.flatten(), cov=self.Kys_mm.dot(self.invKys_mm_S))
-        else:                        
-            logpy = mvn.logpdf(self.y.flatten(), cov=self.Ky / self.sy_matrix)
-            logqy = mvn.logpdf(self.y.flatten(), mean=self.y.flatten(), cov=self.y_cov)
+            if self.verbose:
+                logging.debug( "Iteration %i: approx. lower bound = %.3f" % (self.vb_iter, lb) )
+        else:
+            if self.use_svi:
+                logpw = mvn.logpdf(self.w_u.T.flatten(), cov=self.Kws_mm)
+                logqw = mvn.logpdf(self.w_u.T.flatten(), mean=self.w_u.T.flatten(), cov=self.Kws_mm.dot(self.invKws_mm_S))
+    
+                logpt = mvn.logpdf(self.t_u.flatten(), cov=self.Kts_mm)
+                logqt = mvn.logpdf(self.t_u.flatten(), mean=self.t_u.flatten(), cov=self.Kts_mm.dot(self.invKts_mm_S))    
+            else:
+                logpw = mvn.logpdf(self.w.T.flatten(), cov=self.Kw / self.sw_matrix, allow_singular=True)
+                logqw = mvn.logpdf(self.w.T.flatten(), mean=self.w.T.flatten(), cov=self.w_cov, allow_singular=True)
+                
+                logpt = mvn.logpdf(self.t.flatten(), mean=self.t_mu0.flatten(), cov=self.K * self.rate_st / self.shape_st)
+                logqt = mvn.logpdf(self.t.flatten(), mean=self.t.flatten(), cov=self.t_cov)    
+    
+            if self.use_svi_people:
+                logpy = mvn.logpdf(self.y_u.flatten(), cov=self.Kys_mm)
+                logqy = mvn.logpdf(self.y_u.flatten(), mean=self.y_u.flatten(), cov=self.Kys_mm.dot(self.invKys_mm_S))
+            else:                        
+                logpy = mvn.logpdf(self.y.flatten(), cov=self.Ky / self.sy_matrix)
+                logqy = mvn.logpdf(self.y.flatten(), mean=self.y.flatten(), cov=self.y_cov)
         
-        logps_y = 0
-        logqs_y = 0
-        logps_w = 0
-        logqs_w = 0        
-        for f in range(self.Nfactors):
-            logps_w += lnp_output_scale(self.shape_sw0, self.rate_sw0, self.shape_sw[f], self.rate_sw[f])
-            logqs_w += lnq_output_scale(self.shape_sw[f], self.rate_sw[f])
-                    
-            logps_y += lnp_output_scale(self.shape_sy0, self.rate_sy0, self.shape_sy[f], self.rate_sy[f])
-            logqs_y += lnq_output_scale(self.shape_sy[f], self.rate_sy[f])
+            logps_y = 0
+            logqs_y = 0
+            logps_w = 0
+            logqs_w = 0        
+            for f in range(self.Nfactors):
+                logps_w += lnp_output_scale(self.shape_sw0, self.rate_sw0, self.shape_sw[f], self.rate_sw[f])
+                logqs_w += lnq_output_scale(self.shape_sw[f], self.rate_sw[f])
+                        
+                logps_y += lnp_output_scale(self.shape_sy0, self.rate_sy0, self.shape_sy[f], self.rate_sy[f])
+                logqs_y += lnq_output_scale(self.shape_sy[f], self.rate_sy[f])
+            
+            logps_t = lnp_output_scale(self.shape_st0, self.rate_st0, self.shape_st, self.rate_st) 
+            logqs_t = lnq_output_scale(self.shape_st, self.rate_st)        
         
-        logps_t = lnp_output_scale(self.shape_st0, self.rate_st0, self.shape_st, self.rate_st) 
-        logqs_t = lnq_output_scale(self.shape_st, self.rate_st)        
-        
-        w_terms = logpw - logqw + logps_w - logqs_w
-        y_terms += logpy - logqy + logps_y - logqs_y
-        t_terms = logpt - logqt + logps_t - logqs_t
+            w_terms = logpw - logqw + logps_w - logqs_w
+            y_terms += logpy - logqy + logps_y - logqs_y
+            t_terms = logpt - logqt + logps_t - logqs_t
 
         if self.verbose:
             logging.debug('s_w=%s' % (self.shape_sw/self.rate_sw))        
