@@ -148,13 +148,11 @@ def combine_lines_into_one_file(dataset, dirname="/home/local/UKP/simpson/data/o
                 outputstr += outputline + '\n'
                 
     return outputfile, outputstr, np.array(dataids)   
-    
-def run_test(dataset, method, feature_type, subsample_amount=0):
-    
+
+def load_train_test_data(dataset):
     # Set experiment options and ensure CSV data is ready -------------------------------------------------------------
     # Select the directory containing original XML files with argument data + crowdsourced annotations.
-    # See the readme in the data folder from Habernal 2016 for further explanation of folder names.
-         
+    # See the readme in the data folder from Habernal 2016 for further explanation of folder names.    
     if dataset == 'UKPConvArgAll':
         # basic dataset for UKPConvArgAll, which requires additional steps to produce the other datasets        
         dirname = '../../git/acl2016-convincing-arguments/data/UKPConvArg1-full-XML/'  
@@ -177,13 +175,8 @@ def run_test(dataset, method, feature_type, subsample_amount=0):
     else:
         raise Exception("Invalid dataset %s" % dataset)    
     
-    print "Data directory = %s, dataset=%s" % (dirname, dataset)
-    
-    # Select output paths for CSV files and final results
-
-    resultsfile = './results/habernal_%s_%s_%s_test.pkl' % (dataset, method, feature_type) 
+    print "Data directory = %s, dataset=%s" % (dirname, dataset)    
     csvdirname = './data/%s-CSV/' % dataset
-        
     # Generate the CSV files from the XML files. These are easier to work with! The CSV files from Habernal do not 
     # contain all turker info that we need, so we generate them afresh here.
     print("Writing CSV files...")
@@ -193,41 +186,48 @@ def run_test(dataset, method, feature_type, subsample_amount=0):
             generate_turker_CSV(dirname, csvdirname) # select all labels provided by turkers
         elif dataset == 'UKPConvArgStrict' or dataset == 'UKPConvArgMACE':
             generate_gold_CSV(dirname, csvdirname) # select only the gold labels
-        
+                
     embeddings_dir = '../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python/'
-    if not feature_type == 'ling':
-        print "Looking for embeddings in directory %s" % embeddings_dir
-
-    # Select linguistic features file
-    ling_dir = './data/lingdata/'
-    if not feature_type == 'embeddings':
-        print "Looking for linguistic features in directory %s" % ling_dir    
+    print "Embeddings directory: %s" % embeddings_dir
     
     # Load the train/test data into a folds object. -------------------------------------------------------------------
     # Here we keep each the features of each argument in a pair separate, rather than concatenating them.
     print('Loading train/test data...')
     folds, word_index_to_embeddings_map = load_my_data_separate_args(csvdirname, embeddings_dir=embeddings_dir)             
     folds_regression, _ = load_my_data_regression(ranking_csvdirname, load_embeddings=False)
-    
-    if feature_type == 'both' or feature_type == 'embeddings':
-        print('Loading embeddings')
-        # converting embeddings to numpy 2d array: shape = (vocabulary_size, 300)
-        embeddings = np.asarray([np.array(x, dtype=np.float32) for x in word_index_to_embeddings_map.values()])
         
-    if feature_type == 'both' or feature_type == 'ling':
-        print('Loading linguistic features')
-        ling_file = ling_dir + "/%s-libsvm.txt" % dataset
-        if not os.path.isfile(ling_file):
-            ling_file, _ , docids = combine_lines_into_one_file(dataset, outputfile=ling_dir+"/%s-libsvm.txt")
-        else:
-            dataids = []
-            for filename in os.listdir("/home/local/UKP/simpson/data/outputdata/UKPConvArg1-Full-libsvm"):
-                fid = filename.split('.')[0]
-                dataids.append(fid)
-            docids = np.array(dataids)
-            
-        ling_feat_spmatrix, _ = load_svmlight_file(ling_file)
+    return folds, folds_regression, word_index_to_embeddings_map
+        
+def load_embeddings(word_index_to_embeddings_map):
+    print('Loading embeddings')
+    # converting embeddings to numpy 2d array: shape = (vocabulary_size, 300)
+    embeddings = np.asarray([np.array(x, dtype=np.float32) for x in word_index_to_embeddings_map.values()])
+    return embeddings
     
+def load_ling_features():
+    ling_dir = './data/lingdata/'
+    print "Looking for linguistic features in directory %s" % ling_dir    
+    print('Loading linguistic features')
+    ling_file = ling_dir + "/%s-libsvm.txt" % dataset
+    if not os.path.isfile(ling_file):
+        ling_file, _ , docids = combine_lines_into_one_file(dataset, outputfile=ling_dir+"/%s-libsvm.txt")
+    else:
+        dataids = []
+        for filename in os.listdir("/home/local/UKP/simpson/data/outputdata/UKPConvArg1-Full-libsvm"):
+            fid = filename.split('.')[0]
+            dataids.append(fid)
+        docids = np.array(dataids)
+        
+    ling_feat_spmatrix, _ = load_svmlight_file(ling_file)
+    return ling_feat_spmatrix, docids
+    
+def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=None, ling_feat_spmatrix=None, 
+             docids=None, subsample_amount=0):
+        
+    # Select output paths for CSV files and final results
+
+    resultsfile = './results/habernal_%s_%s_%s_test.pkl' % (dataset, method, feature_type) 
+                
     # Run test --------------------------------------------------------------------------------------------------------
     all_proba = {}
     all_predictions = {}
@@ -279,6 +279,13 @@ def run_test(dataset, method, feature_type, subsample_amount=0):
             items_1_test = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_test_a1])
             items_2_test = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_test_a2])
             print "...test data embeddings done."  
+            
+            valid_feats = (np.sum(items_1_train, axis=0)>0) & (np.sum(items_2_train, axis=0)>0)
+            items_1_train = items_1_train[:, valid_feats]
+            items_2_train = items_2_train[:, valid_feats]
+            items_1_test = items_1_test[:, valid_feats]
+            items_2_test = items_2_test[:, valid_feats]            
+            
         elif feature_type == 'ling':
             # initialise the coordinates objects 
             items_1_train = np.zeros((X_train_a1.shape[0], 0))
@@ -287,16 +294,22 @@ def run_test(dataset, method, feature_type, subsample_amount=0):
             items_2_test = np.zeros((X_test_a2.shape[0], 0))
             
         if feature_type == 'both' or feature_type == 'ling':
-            items_1_train = sparse.csr_matrix(items_1_train)
-            items_2_train = sparse.csr_matrix(items_2_train)
-            items_1_train = sparse.csr_matrix(items_1_train)
-            items_2_test = sparse.csr_matrix(items_2_test)
+            items_1_train = sparse.csc_matrix(items_1_train)
+            items_2_train = sparse.csc_matrix(items_2_train)
+            items_1_train = sparse.csc_matrix(items_1_train)
+            items_2_test = sparse.csc_matrix(items_2_test)
+            
             
             print "Obtaining linguistic features for argument texts."
+            valid_feats = ((np.sum(ling_feat_spmatrix[trainids_a1, :], axis=0)>0) & 
+                           (np.sum(ling_feat_spmatrix[trainids_a2, :], axis=0)>0)).nonzero()[1]
+            ling_feat_spmatrix = ling_feat_spmatrix[:, valid_feats]
+            
             items_1_train = sparse.hstack((items_1_train, ling_feat_spmatrix[trainids_a1, :]), format='csr')
             items_2_train = sparse.hstack((items_2_train, ling_feat_spmatrix[trainids_a2, :]), format='csr')
             items_1_test = sparse.hstack((items_1_test, ling_feat_spmatrix[testids_a1, :]), format='csr')
             items_2_test = sparse.hstack((items_2_test, ling_feat_spmatrix[testids_a2, :]), format='csr')
+            
             print "...loaded all linguistic features for training and test data."
                 
         prefs_train = np.array(prefs_train) 
@@ -324,21 +337,18 @@ def run_test(dataset, method, feature_type, subsample_amount=0):
         # Run the chosen method ---------------------------------------------------------------------------------------
         print "Starting test with method %s..." % (method)
         starttime = time.time()
-        
-        if sparse.issparse(items_1_train):            
-            valid_feats = ((np.sum(items_1_train, axis=0)>0) & (np.sum(items_2_train, axis=0)>0)).nonzero()[1]
-            items_1_train = items_1_train[:, valid_feats].toarray()
-            items_2_train = items_2_train[:, valid_feats].toarray()
-            items_1_test = items_1_test[:, valid_feats].toarray()
-            items_2_test = items_2_test[:, valid_feats].toarray()
-            
+                    
         personIDs = np.concatenate((personIDs_train, personIDs_test))
         _, personIdxs = np.unique(personIDs, return_inverse=True)
         personIDs_train = personIdxs[:len(personIDs_train)]
         personIDs_test = personIdxs[len(personIDs_train):]
 
         ndims = items_1_train.shape[1]
-        ls_initial_guess = (np.std(items_1_train, axis=0) + np.std(items_2_train, axis=0)) / 2.0
+        if sparse.issparse(items_1_train):
+            ls_initial_guess = np.power(((items_1_train.power(2)).mean(axis=0) - np.power(items_1_train.mean(axis=0), 2) + 
+                        (items_2_train.power(2)).mean(axis=0) - np.power(items_2_train.mean(axis=0), 2)) / 2.0, 0.5)
+        else:
+            ls_initial_guess = (np.std(items_1_train, axis=0) + np.std(items_2_train, axis=0)) / 2.0
         
         verbose = True
         optimize_hyper = False
@@ -448,6 +458,11 @@ if __name__ == '__main__':
     feature_types = ['both', 'embeddings', 'ling'] # can be 'embeddings' or 'ling'
           
     for dataset in datasets:
+        folds, folds_regression, word_index_to_embeddings_map = load_train_test_data(dataset)
+        embeddings = load_embeddings(word_index_to_embeddings_map)
+        ling_feat_spmatrix, docids = load_ling_features()
+        
         for method in methods: 
             for feature_type in feature_types:
-                run_test(dataset, method, feature_type, subsample_amount=0)        
+                run_test(folds, folds_regression, dataset, method, feature_type, embeddings, ling_feat_spmatrix, docids, 
+                         subsample_amount=0)        

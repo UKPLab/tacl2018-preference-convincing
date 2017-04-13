@@ -5,19 +5,51 @@ Created on 18 May 2016
 '''
 import numpy as np
 from scipy.stats import norm
-from scipy.sparse import coo_matrix
+from scipy.sparse import coo_matrix, issparse, hstack
 import logging
 from gp_classifier_vb import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
 from gp_classifier_svi import GPClassifierSVI
 
 def get_unique_locations(obs_coords_0, obs_coords_1):
-    coord_rows_0 = coord_arr_to_1d(obs_coords_0)
-    coord_rows_1 = coord_arr_to_1d(obs_coords_1)
-    all_coord_rows = np.concatenate((coord_rows_0, coord_rows_1), axis=0)
-    _, uidxs, pref_vu = np.unique(all_coord_rows, return_index=True, return_inverse=True) # get unique locations
-    
-    # Record the coordinates of all points that were compared
-    obs_coords = np.concatenate((obs_coords_0, obs_coords_1), axis=0)[uidxs]
+    if issparse(obs_coords_0) or issparse(obs_coords_1):
+        uidxs_0 = []
+        pref_vu = []
+        
+        for r, row in enumerate(obs_coords_0):
+            print "%i out of %i" % (r, obs_coords_0.shape[0])
+            idx = row == obs_coords_0[uidxs_0]
+            if not np.sum(idx):
+                uidxs_0.append(r)
+                pref_vu.append(len(uidxs_0) - 1)
+            else:
+                pref_vu.append(np.argwhere(idx)[0])
+                
+        len_0 = obs_coords_0.shape[0]
+        uidxs_1 = []
+        for r, row in enumerate(obs_coords_1):
+            print "%i out of %i" % (r, obs_coords_0.shape[0])
+            idx = row == obs_coords_0[uidxs_0]
+            if not np.sum(idx):
+                idx = row == obs_coords_1[uidxs_1]
+                if not np.sum(idx):
+                    uidxs_1.append(r + len_0)
+                    pref_vu.append(len(uidxs_1) - 1)
+                else:
+                    pref_vu.append(np.argwhere(idx)[0] + len_0)
+            else:
+                pref_vu.append(np.argwhere(idx)[0])
+                
+        # convert urows to a sparse matrix
+        obs_coords = hstack((obs_coords_0[uidxs_0], obs_coords_1[uidxs_1]), format='csc')
+        uidxs = np.concatenate((uidxs_0, np.array(uidxs_1) + len_0))
+    else:                  
+        coord_rows_0 = coord_arr_to_1d(obs_coords_0)
+        coord_rows_1 = coord_arr_to_1d(obs_coords_1)
+        all_coord_rows = np.concatenate((coord_rows_0, coord_rows_1), axis=0)
+        _, uidxs, pref_vu = np.unique(all_coord_rows, return_index=True, return_inverse=True) # get unique locations
+        
+        # Record the coordinates of all points that were compared
+        obs_coords = np.concatenate((obs_coords_0, obs_coords_1), axis=0)[uidxs]
    
     # Record the indexes into the list of coordinates for the pairs that were compared 
     pref_v = pref_vu[:obs_coords_0.shape[0]]

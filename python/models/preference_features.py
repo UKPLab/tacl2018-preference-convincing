@@ -258,7 +258,7 @@ class PreferenceComponents(object):
     
         
     def _init_params(self):
-        self.N = len(self.obs_coords)
+        self.N = self.obs_coords.shape[0]
         self.Npeople = np.max(self.people).astype(int) + 1
         
         self.f = np.zeros((self.Npeople, self.N))
@@ -559,7 +559,7 @@ class PreferenceComponents(object):
                 # approximation. If we also have Hessian or Hessian x arbitrary vector p, we can use Newton-CG, dogleg, 
                 # or trust-ncg, which may be faster still?
                 res = minimize(self.neg_marginal_likelihood, initialguess, args=('item', d, use_MAP,), 
-                    jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter':maxfun})
+                    jac=self.nml_jacobian, method='CG', options={'maxiter':maxfun})
 
                 opt_hyperparams = res['x']
                 nlml = res['fun']
@@ -619,7 +619,7 @@ class PreferenceComponents(object):
 #                         'xatol':ls * 1e100, 'return_all':True})
                 # replace Nelder-Mead, as above.
                 res = minimize(self.neg_marginal_likelihood, initialguess, args=('person', e, use_MAP,),  
-                  jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter':maxfun, 'return_all':True})
+                  jac=self.nml_jacobian, method='CG', options={'maxiter':maxfun, 'return_all':True})
                 opt_hyperparams = res['x']
                 nlml = res['fun']
                 nfits += res['nfev']
