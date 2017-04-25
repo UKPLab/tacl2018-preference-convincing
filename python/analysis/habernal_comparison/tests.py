@@ -252,17 +252,35 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
     for foldidx, fold in enumerate(folds.keys()):
         # Get data for this fold --------------------------------------------------------------------------------------
         print("Fold name ", fold)
+        #X_train_a1, X_train_a2 are lists of lists of word indexes 
         X_train_a1, X_train_a2, prefs_train, ids_train, personIDs_train = folds.get(fold)["training"]
         X_test_a1, X_test_a2, prefs_test, ids_test, personIDs_test = folds.get(fold)["test"]
         
+        #trainids_a1, trainids_a2 are lists of argument ids
         trainids = np.array([ids_pair.split('_') for ids_pair in ids_train])
         trainids_a1 = [np.argwhere(trainid==docids)[0][0] for trainid in trainids[:, 0]]
         trainids_a2 = [np.argwhere(trainid==docids)[0][0] for trainid in trainids[:, 1]]
         
         testids = np.array([ids_pair.split('_') for ids_pair in ids_test])
         testids_a1 = [np.argwhere(testid==docids)[0][0] for testid in testids[:, 0]]
-        testids_a2 = [np.argwhere(testid==docids)[0][0] for testid in testids[:, 1]]        
-
+        testids_a2 = [np.argwhere(testid==docids)[0][0] for testid in testids[:, 1]]
+        
+        # X_train_a1 and trainids_a1 both have one entry per observation. We want to replace them with a list of 
+        # unique arguments, and the indexes into that list. First, get the unique argument ids from trainids and testids:
+        allids = np.concatenate((trainids_a1, trainids_a2, testids_a1, testids_a2))
+        uids, uidxs = np.unique(allids, return_index=True)
+        # get the word index vectors corresponding to the unique arguments
+        X = np.zeros(np.max(uids) + 1, dtype=object)
+        start = 0
+        fin = len(X_train_a1)
+        X_list = [X_train_a1, X_train_a2, X_test_a1, X_test_a2]
+        for i in range(len(X_list)):
+            idxs = (uidxs>=start) & (uidxs<fin)
+            # keep the original IDs to try to make life easier. This means the IDs become indexes into X    
+            X[uids[idxs]] = np.array(X_list[i])[uidxs[idxs] - start]
+            start += len(X_list[i])
+            fin += len(X_list[i])
+            
         print("Training instances ", len(X_train_a1), " training labels ", len(prefs_train))
         print("Test instances ", len(X_test_a1), " test labels ", len(prefs_test))
         
@@ -273,42 +291,49 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
         # TODO: allow alternatives to mean embeddings for sentences/documents
         if feature_type == 'both' or feature_type == 'embeddings':
             print "Converting texts to mean embeddings (we could use a better sentence embedding?)..."
-            items_1_train = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_train_a1])
-            items_2_train = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_train_a2])
-            print "...training data embeddings done."
-            items_1_test = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_test_a1])
-            items_2_test = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_test_a2])
-            print "...test data embeddings done."  
+            items_feat = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X])
+            print "...embeddings loaded."
+            #items_1_train = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_train_a1])
+            #items_2_train = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_train_a2])
+            #print "...training data embeddings done."
+            #items_1_test = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_test_a1])
+            #items_2_test = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_test_a2])
+            #print "...test data embeddings done."  
             
-            valid_feats = (np.sum(items_1_train, axis=0)>0) & (np.sum(items_2_train, axis=0)>0)
-            items_1_train = items_1_train[:, valid_feats]
-            items_2_train = items_2_train[:, valid_feats]
-            items_1_test = items_1_test[:, valid_feats]
-            items_2_test = items_2_test[:, valid_feats]            
+            # trim away any features not in the training data because we can't learn from them
+            valid_feats = (np.sum(items_feat[trainids_a1], axis=0)>0) & (np.sum(items_feat[trainids_a2], axis=0)>0)
+            items_feat = items_feat[:, valid_feats]
+            #items_1_train = items_1_train[:, valid_feats]
+            #items_2_train = items_2_train[:, valid_feats]
+            #items_1_test = items_1_test[:, valid_feats]
+            #items_2_test = items_2_test[:, valid_feats]            
             
         elif feature_type == 'ling':
             # initialise the coordinates objects 
-            items_1_train = np.zeros((X_train_a1.shape[0], 0))
-            items_2_train = np.zeros((X_train_a2.shape[0], 0))
-            items_1_test = np.zeros((X_test_a1.shape[0], 0))
-            items_2_test = np.zeros((X_test_a2.shape[0], 0))
+            #items_1_train = np.zeros((X_train_a1.shape[0], 0))
+            #items_2_train = np.zeros((X_train_a2.shape[0], 0))
+            #items_1_test = np.zeros((X_test_a1.shape[0], 0))
+            #items_2_test = np.zeros((X_test_a2.shape[0], 0))
+            
+            items_feat = np.zeros((X.shape[0], 0))
             
         if feature_type == 'both' or feature_type == 'ling':
-            items_1_train = sparse.csc_matrix(items_1_train)
-            items_2_train = sparse.csc_matrix(items_2_train)
-            items_1_train = sparse.csc_matrix(items_1_train)
-            items_2_test = sparse.csc_matrix(items_2_test)
-            
+            #items_1_train = sparse.csc_matrix(items_1_train)
+            #items_2_train = sparse.csc_matrix(items_2_train)
+            #items_1_train = sparse.csc_matrix(items_1_train)
+            #items_2_test = sparse.csc_matrix(items_2_test)
             
             print "Obtaining linguistic features for argument texts."
+            # trim the features that are not used in training
             valid_feats = ((np.sum(ling_feat_spmatrix[trainids_a1, :], axis=0)>0) & 
-                           (np.sum(ling_feat_spmatrix[trainids_a2, :], axis=0)>0)).nonzero()[1]
+                           (np.sum(ling_feat_spmatrix[trainids_a2, :], axis=0)>0)).nonzero()[1]            
             ling_feat_spmatrix = ling_feat_spmatrix[:, valid_feats]
             
-            items_1_train = sparse.hstack((items_1_train, ling_feat_spmatrix[trainids_a1, :]), format='csr')
-            items_2_train = sparse.hstack((items_2_train, ling_feat_spmatrix[trainids_a2, :]), format='csr')
-            items_1_test = sparse.hstack((items_1_test, ling_feat_spmatrix[testids_a1, :]), format='csr')
-            items_2_test = sparse.hstack((items_2_test, ling_feat_spmatrix[testids_a2, :]), format='csr')
+            items_feat = np.concatenate((items_feat, ling_feat_spmatrix[uids, :].toarray()), axis=1)
+            #items_1_train = sparse.hstack((items_1_train, ling_feat_spmatrix[trainids_a1, :]), format='csr')
+            #items_2_train = sparse.hstack((items_2_train, ling_feat_spmatrix[trainids_a2, :]), format='csr')
+            #items_1_test = sparse.hstack((items_1_test, ling_feat_spmatrix[testids_a1, :]), format='csr')
+            #items_2_test = sparse.hstack((items_2_test, ling_feat_spmatrix[testids_a2, :]), format='csr')
             
             print "...loaded all linguistic features for training and test data."
                 
@@ -322,16 +347,17 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
             subsample = np.arange(subsample_amount)               
                     
             #personIDs_train = np.zeros(len(Xe_train1), dtype=int)[subsample, :] #
-            items_1_train = items_1_train[subsample, :]
-            items_2_train = items_2_train[subsample, :]
+            items_feat = items_feat[subsample, :]
+            #items_1_train = items_1_train[subsample, :]
+            #items_2_train = items_2_train[subsample, :]
             prefs_train = prefs_train[subsample]
             personIDs_train = personIDs_train[subsample]
                     
             # subsampled test data for debugging purposes only
             #personIDs_test = np.zeros(len(items_1_test), dtype=int)[subsample, :]
             personIDs_test = personIDs_test[subsample]
-            items_1_test = items_1_test[subsample, :]
-            items_2_test = items_2_test[subsample, :]
+            #items_1_test = items_1_test[subsample, :]
+            #items_2_test = items_2_test[subsample, :]
             prefs_test = prefs_test[subsample]
         
         # Run the chosen method ---------------------------------------------------------------------------------------
@@ -343,38 +369,39 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
         personIDs_train = personIdxs[:len(personIDs_train)]
         personIDs_test = personIdxs[len(personIDs_train):]
 
-        ndims = items_1_train.shape[1]
-        if sparse.issparse(items_1_train):
-            ls_initial_guess = np.power(((items_1_train.power(2)).mean(axis=0) - np.power(items_1_train.mean(axis=0), 2) + 
-                        (items_2_train.power(2)).mean(axis=0) - np.power(items_2_train.mean(axis=0), 2)) / 2.0, 0.5)
+        #ndims = items_1_train.shape[1]
+        ndims = items_feat.shape[1]
+        if sparse.issparse(items_feat):
+            ls_initial_guess = np.power((items_feat.power(2).mean(axis=0) - np.power(items_feat.mean(axis=0), 2) + 
+                        items_feat.power(2).mean(axis=0) - np.power(items_feat.mean(axis=0), 2)) / 2.0, 0.5)
         else:
-            ls_initial_guess = (np.std(items_1_train, axis=0) + np.std(items_2_train, axis=0)) / 2.0
+            ls_initial_guess = (np.std(items_feat, axis=0) + np.std(items_feat, axis=0)) / 2.0
         
         verbose = True
-        optimize_hyper = False
+        optimize_hyper = False # !!! Change this for final run!
         
         # Run the selected method
         if method == 'PersonalisedPrefsBayes':        
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=10, 
                                             rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False)
-            model.fit(personIDs_train, items_1_train, items_2_train, np.array(prefs_train, dtype=float)-1, 
+            model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
-            proba, predicted_f = model.predict(personIDs_test, items_1_test, items_2_test)
+            proba, predicted_f = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
                         
         elif method == 'PersonalisedPrefsFA':
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=10, 
                                             rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=True)
-            model.fit(personIDs_train, items_1_train, items_2_train, np.array(prefs_train, dtype=float)-1, 
+            model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
-            proba, predicted_f = model.predict(personIDs_test, items_1_test, items_2_test)
+            proba, predicted_f = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
                         
         elif method == 'SinglePrefGP':
             model = GPPrefLearning(nitem_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
                                                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True)
-            model.fit(items_1_train, items_2_train, np.array(prefs_train, dtype=float)-1, 
+            model.fit(trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, input_type='zero-centered')            
         
-            proba = model.predict(items_1_test, items_2_test)
+            proba = model.predict(testids_a1, testids_a2, items_feat)
             predicted_f = [model.f, model.output_coords]
             
         predictions = np.round(proba * 2)

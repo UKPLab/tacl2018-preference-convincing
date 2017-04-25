@@ -173,31 +173,35 @@ class GPPrefLearning(GPClassifierSVI):
         '''
         obs_coords - a tuple with two elements, the first containing the list of coordinates for the first items in each
         pair, and the second containing the coordinates of the second item in the pair.
-        '''        
+        '''                
         obs_coords_0 = np.array(obs_coords[0])
         obs_coords_1 = np.array(obs_coords[1])
         if obs_coords_0.ndim == 1:
             obs_coords_0 = obs_coords_0[:, np.newaxis]
         if obs_coords_1.ndim == 1:
             obs_coords_1 = obs_coords_1[:, np.newaxis]
-                            
+                
         # duplicate locations should be merged and the number of duplicates counted
         poscounts = poscounts.astype(int)
-        totals = totals.astype(int)        
+        totals = totals.astype(int)  
+                               
+        if self.item_features is not None:
+            keys_0 = obs_coords_0
+            keys_1 = obs_coords_1
+        else:
+            # TODO: This code could be merged with get_unique_locations()
+            ravelled_coords_0 = coord_arr_to_1d(obs_coords_0)# Ravel the coordinates
+            ravelled_coords_1 = coord_arr_to_1d(obs_coords_1) 
         
-        # TODO: This code could be merged with get_unique_locations()
-        # Ravel the coordinates
-        ravelled_coords_0 = coord_arr_to_1d(obs_coords_0)
-        ravelled_coords_1 = coord_arr_to_1d(obs_coords_1) 
-        
+            # get unique keys
+            all_ravelled_coords = np.concatenate((ravelled_coords_0, ravelled_coords_1), axis=0)
+            uravelled_coords, origidxs, keys = np.unique(all_ravelled_coords, return_index=True, return_inverse=True)
+            
+            keys_0 = keys[:len(ravelled_coords_0)]
+            keys_1 = keys[len(ravelled_coords_0):]
+                        
         # SWAP PAIRS SO THEY ALL HAVE LOWEST COORD FIRST so we can count prefs for duplicate location pairs
-        # get unique keys
-        all_ravelled_coords = np.concatenate((ravelled_coords_0, ravelled_coords_1), axis=0)
-        uravelled_coords, origidxs, keys = np.unique(all_ravelled_coords, return_index=True, return_inverse=True)
-        keys_0 = keys[:len(ravelled_coords_0)]
-        keys_1 = keys[len(ravelled_coords_0):]
         idxs_to_swap = keys_0 < keys_1
-        
         swap_coords_0 = keys_0[idxs_to_swap]
         poscounts[idxs_to_swap] = totals[idxs_to_swap] - poscounts[idxs_to_swap]
         keys_0[idxs_to_swap] = keys_1[idxs_to_swap]
@@ -207,21 +211,30 @@ class GPPrefLearning(GPClassifierSVI):
         grid_obs_pos_counts = coo_matrix((poscounts, (keys_0, keys_1)) ).toarray()
                                                           
         nonzero_v, nonzero_u = grid_obs_counts.nonzero() # coordinate key pairs with duplicate pairs removed
-        nonzero_all = np.concatenate((nonzero_v, nonzero_u), axis=0)
-        ukeys, pref_vu = np.unique(nonzero_all, return_inverse=True) # get unique locations
         
-        self.original_idxs = origidxs[ukeys] # indexes of unique observation locations into the original input data
+        if self.item_features is not None:
+            self.original_idxs = np.arange(self.item_features.shape[0])
+            self.pref_v = obs_coords_0
+            self.pref_u = obs_coords_1
+            self.obs_coords = self.item_features            
+        else:
+            nonzero_all = np.concatenate((nonzero_v, nonzero_u), axis=0)
+            ukeys, pref_vu = np.unique(nonzero_all, return_inverse=True) # get unique locations
+            
+            self.original_idxs = origidxs[ukeys] # indexes of unique observation locations into the original input data
         
-        # Record the coordinates of all points that were compared
-        self.obs_coords = coord_arr_from_1d(uravelled_coords[ukeys], obs_coords_0.dtype, 
+            # Record the coordinates of all points that were compared
+            self.obs_coords = coord_arr_from_1d(uravelled_coords[ukeys], obs_coords_0.dtype, 
                                             dims=(len(ukeys), obs_coords_0.shape[1]))
         
-        # Record the indexes into the list of coordinates for the pairs that were compared 
-        self.pref_v = pref_vu[:len(nonzero_v)]
-        self.pref_u = pref_vu[len(nonzero_v):]
+            # Record the indexes into the list of coordinates for the pairs that were compared 
+            self.pref_v = pref_vu[:len(nonzero_v)]
+            self.pref_u = pref_vu[len(nonzero_v):]
                
         # Return the counts for each of the observed pairs
-        return grid_obs_pos_counts[nonzero_v, nonzero_u], grid_obs_counts[nonzero_v, nonzero_u]
+        pos_counts = grid_obs_pos_counts[nonzero_v, nonzero_u]
+        total_counts = grid_obs_counts[nonzero_v, nonzero_u]
+        return pos_counts, total_counts
             
     # Mapping between latent and observation spaces -------------------------------------------------------------------
               
@@ -280,8 +293,8 @@ class GPPrefLearning(GPClassifierSVI):
     
     # Training methods ------------------------------------------------------------------------------------------------  
             
-    def fit(self, items1_coords=None, items2_coords=None, preferences=None, totals=None, process_obs=True, mu0_1=None,
-            mu0_2=None, optimize=False, input_type='binary'):
+    def fit(self, items1_coords=None, items2_coords=None, item_features=None, preferences=None, totals=None, 
+            process_obs=True, mu0_1=None, mu0_2=None, optimize=False, input_type='binary'):
         '''
         preferences -- Preferences by default are 1 = item 1 is preferred to item 2, or 0 = item 2 is preferred to item 1, 
         0.5 = no preference. This is controlled by input_type.
@@ -301,6 +314,8 @@ class GPPrefLearning(GPClassifierSVI):
         elif process_obs and input_type != 'binary':
             raise ValueError('input_type for preference labels must be either "binary" or "zero-centered"') 
             
+        self.item_features = item_features
+            
         super(GPPrefLearning, self).fit((items1_coords, items2_coords), preferences, totals, process_obs, 
                                         mu0=(mu0_1, mu0_2), optimize=optimize)  
         
@@ -318,7 +333,7 @@ class GPPrefLearning(GPClassifierSVI):
             
     # Prediction methods ---------------------------------------------------------------------------------------------
 
-    def predict(self, items_0_coords=[], items_1_coords=[], max_block_size=1e5, 
+    def predict(self, items_0_coords=[], items_1_coords=[], item_features=None, max_block_size=1e5, 
                 expectedlog=False, return_var=True, return_not=False, mu0_output1=None, mu0_output2=None):
         '''
         Evaluate the function posterior mean and variance at the given co-ordinates using the 2D squared exponential 
@@ -335,18 +350,23 @@ class GPPrefLearning(GPClassifierSVI):
         
         if not isinstance(items_0_coords, np.ndarray):
             items_0_coords = np.array(items_0_coords)
-        if items_0_coords.ndim==2 and items_0_coords.shape[1]!=self.ninput_features and \
-                                                                        items_0_coords.shape[0]==self.ninput_features:
-            items_0_coords = items_0_coords.T
             
         if not len(items_1_coords):
-            items_1_coords = items_0_coords.copy()
+            items_1_coords = items_0_coords.copy()            
             
-        if items_1_coords.ndim==2 and items_1_coords.shape[1]!=self.ninput_features and \
-                            items_1_coords.shape[0]==self.ninput_features:
-            items_1_coords = items_1_coords.T       
+        if item_features is None:
+            if items_0_coords.ndim==2 and items_0_coords.shape[1]!=self.ninput_features and \
+                                                                        items_0_coords.shape[0]==self.ninput_features:
+                items_0_coords = items_0_coords.T
+            if items_1_coords.ndim==2 and items_1_coords.shape[1]!=self.ninput_features and \
+                                items_1_coords.shape[0]==self.ninput_features:
+                items_1_coords = items_1_coords.T                
+            output_coords, out_pref_v, out_pref_u, original_idxs = get_unique_locations(items_0_coords, items_1_coords)
+        else:
+            output_coords = item_features
+            out_pref_v = items_0_coords
+            out_pref_u = items_1_coords
         
-        output_coords, out_pref_v, out_pref_u, original_idxs = get_unique_locations(items_0_coords, items_1_coords)
         nblocks, noutputs = self._init_output_arrays(output_coords, max_block_size)
                 
         self.mu0_output = np.zeros((noutputs, 1)) + self.mu0_default
