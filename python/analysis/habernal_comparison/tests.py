@@ -213,7 +213,9 @@ def load_ling_features():
         ling_file, _ , docids = combine_lines_into_one_file(dataset, outputfile=ling_dir+"/%s-libsvm.txt")
     else:
         dataids = []
-        for filename in os.listdir("/home/local/UKP/simpson/data/outputdata/UKPConvArg1-Full-libsvm"):
+        #libsvm_dir = '/Users/edwin/convincingness_data/UKPConvArg1-Strict-libsvm'
+        libsvm_dir = "/home/local/UKP/simpson/data/outputdata/UKPConvArg1-Full-libsvm"
+        for filename in os.listdir(libsvm_dir):
             fid = filename.split('.')[0]
             dataids.append(fid)
         docids = np.array(dataids)
@@ -258,12 +260,14 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
         
         #trainids_a1, trainids_a2 are lists of argument ids
         trainids = np.array([ids_pair.split('_') for ids_pair in ids_train])
-        trainids_a1 = [np.argwhere(trainid==docids)[0][0] for trainid in trainids[:, 0]]
-        trainids_a2 = [np.argwhere(trainid==docids)[0][0] for trainid in trainids[:, 1]]
+        if docids is None:
+            docids = np.arange(np.unique(trainids).size)
+        trainids_a1 = np.array([np.argwhere(trainid==docids)[0][0] for trainid in trainids[:, 0]])
+        trainids_a2 = np.array([np.argwhere(trainid==docids)[0][0] for trainid in trainids[:, 1]])
         
         testids = np.array([ids_pair.split('_') for ids_pair in ids_test])
-        testids_a1 = [np.argwhere(testid==docids)[0][0] for testid in testids[:, 0]]
-        testids_a2 = [np.argwhere(testid==docids)[0][0] for testid in testids[:, 1]]
+        testids_a1 = np.array([np.argwhere(testid==docids)[0][0] for testid in testids[:, 0]])
+        testids_a2 = np.array([np.argwhere(testid==docids)[0][0] for testid in testids[:, 1]])
         
         # X_train_a1 and trainids_a1 both have one entry per observation. We want to replace them with a list of 
         # unique arguments, and the indexes into that list. First, get the unique argument ids from trainids and testids:
@@ -293,48 +297,20 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
             print "Converting texts to mean embeddings (we could use a better sentence embedding?)..."
             items_feat = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X])
             print "...embeddings loaded."
-            #items_1_train = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_train_a1])
-            #items_2_train = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_train_a2])
-            #print "...training data embeddings done."
-            #items_1_test = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_test_a1])
-            #items_2_test = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X_test_a2])
-            #print "...test data embeddings done."  
-            
             # trim away any features not in the training data because we can't learn from them
             valid_feats = (np.sum(items_feat[trainids_a1], axis=0)>0) & (np.sum(items_feat[trainids_a2], axis=0)>0)
             items_feat = items_feat[:, valid_feats]
-            #items_1_train = items_1_train[:, valid_feats]
-            #items_2_train = items_2_train[:, valid_feats]
-            #items_1_test = items_1_test[:, valid_feats]
-            #items_2_test = items_2_test[:, valid_feats]            
             
         elif feature_type == 'ling':
-            # initialise the coordinates objects 
-            #items_1_train = np.zeros((X_train_a1.shape[0], 0))
-            #items_2_train = np.zeros((X_train_a2.shape[0], 0))
-            #items_1_test = np.zeros((X_test_a1.shape[0], 0))
-            #items_2_test = np.zeros((X_test_a2.shape[0], 0))
-            
             items_feat = np.zeros((X.shape[0], 0))
             
         if feature_type == 'both' or feature_type == 'ling':
-            #items_1_train = sparse.csc_matrix(items_1_train)
-            #items_2_train = sparse.csc_matrix(items_2_train)
-            #items_1_train = sparse.csc_matrix(items_1_train)
-            #items_2_test = sparse.csc_matrix(items_2_test)
-            
             print "Obtaining linguistic features for argument texts."
             # trim the features that are not used in training
             valid_feats = ((np.sum(ling_feat_spmatrix[trainids_a1, :], axis=0)>0) & 
                            (np.sum(ling_feat_spmatrix[trainids_a2, :], axis=0)>0)).nonzero()[1]            
             ling_feat_spmatrix = ling_feat_spmatrix[:, valid_feats]
-            
             items_feat = np.concatenate((items_feat, ling_feat_spmatrix[uids, :].toarray()), axis=1)
-            #items_1_train = sparse.hstack((items_1_train, ling_feat_spmatrix[trainids_a1, :]), format='csr')
-            #items_2_train = sparse.hstack((items_2_train, ling_feat_spmatrix[trainids_a2, :]), format='csr')
-            #items_1_test = sparse.hstack((items_1_test, ling_feat_spmatrix[testids_a1, :]), format='csr')
-            #items_2_test = sparse.hstack((items_2_test, ling_feat_spmatrix[testids_a2, :]), format='csr')
-            
             print "...loaded all linguistic features for training and test data."
                 
         prefs_train = np.array(prefs_train) 
@@ -348,18 +324,22 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
                     
             #personIDs_train = np.zeros(len(Xe_train1), dtype=int)[subsample, :] #
             items_feat = items_feat[subsample, :]
-            #items_1_train = items_1_train[subsample, :]
-            #items_2_train = items_2_train[subsample, :]
-            prefs_train = prefs_train[subsample]
-            personIDs_train = personIDs_train[subsample]
+            
+            pair_subsample_idxs = (trainids_a1<subsample_amount) & (trainids_a2<subsample_amount)
+            
+            trainids_a1 = trainids_a1[pair_subsample_idxs]
+            trainids_a2 = trainids_a2[pair_subsample_idxs]
+            prefs_train = prefs_train[pair_subsample_idxs]
+            personIDs_train = personIDs_train[pair_subsample_idxs]
                     
             # subsampled test data for debugging purposes only
             #personIDs_test = np.zeros(len(items_1_test), dtype=int)[subsample, :]
-            personIDs_test = personIDs_test[subsample]
-            #items_1_test = items_1_test[subsample, :]
-            #items_2_test = items_2_test[subsample, :]
-            prefs_test = prefs_test[subsample]
-        
+            pair_subsample_idxs = (testids_a1<subsample_amount) & (testids_a2<subsample_amount)
+            testids_a1 = testids_a1[pair_subsample_idxs]
+            testids_a2 = testids_a2[pair_subsample_idxs]
+            prefs_test = prefs_test[pair_subsample_idxs]
+            personIDs_test = personIDs_test[pair_subsample_idxs]
+            
         # Run the chosen method ---------------------------------------------------------------------------------------
         print "Starting test with method %s..." % (method)
         starttime = time.time()
@@ -371,11 +351,12 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
 
         #ndims = items_1_train.shape[1]
         ndims = items_feat.shape[1]
-        if sparse.issparse(items_feat):
-            ls_initial_guess = np.power((items_feat.power(2).mean(axis=0) - np.power(items_feat.mean(axis=0), 2) + 
-                        items_feat.power(2).mean(axis=0) - np.power(items_feat.mean(axis=0), 2)) / 2.0, 0.5)
-        else:
-            ls_initial_guess = (np.std(items_feat, axis=0) + np.std(items_feat, axis=0)) / 2.0
+#         if sparse.issparse(items_feat):
+#             ls_initial_guess = np.power((items_feat.power(2).mean(axis=0) - np.power(items_feat.mean(axis=0), 2) + 
+#                         items_feat.power(2).mean(axis=0) - np.power(items_feat.mean(axis=0), 2)) / 2.0, 0.5)
+#         else:
+#             ls_initial_guess = (np.std(items_feat, axis=0) + np.std(items_feat, axis=0)) / 2.0
+        ls_initial_guess = np.ones(ndims)
         
         verbose = True
         optimize_hyper = False # !!! Change this for final run!
@@ -394,7 +375,21 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
             model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba, predicted_f = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
-                        
+
+        elif method == 'PersonalisedPrefsNoFactors':
+            model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=10, 
+                            rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, no_factors=True)
+            model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
+                      optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
+            proba, predicted_f = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
+
+        elif method == 'IndPrefGP':
+            model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=10, 
+                rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, no_factors=True, no_mean=True)
+            model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
+                      optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
+            proba, predicted_f = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)            
+                              
         elif method == 'SinglePrefGP':
             model = GPPrefLearning(nitem_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
                                                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True)
@@ -416,7 +411,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
         all_predictions[foldidx] = predictions
         all_f[foldidx] = predicted_f
         
-        if method == 'PersonalisedPrefsBayes':
+        if method == 'PersonalisedPrefsBayes' or method == 'PersonalisedPrefsNoFactors':
             length_scales[foldidx] = [model.ls, model.lsy]
             latent_item_features[foldidx] = model.w
             latent_p_features[foldidx] = model.y
@@ -437,6 +432,8 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
             people[foldidx] = model.people
         elif method == 'SinglePrefGP':
             length_scales[foldidx] = [model.ls, -1]
+        elif method == 'IndPrefGP' or method == 'CombinedPrefGP':
+            length_scales[foldidx] = [model[0].ls, -1]
 
         item_coords[foldidx] = model.obs_coords
         
@@ -464,25 +461,12 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
         print('Test accuracy:', acc)            
         
 if __name__ == '__main__':
-#     if len(sys.argv) > 1:
-#         dirname = sys.argv[1]
-#     if len(sys.argv) > 2:
-#         resultsfile = sys.argv[2] % ('habernal_%s_embeddings_test.pkl' % dataset)
-#         csvdirname = sys.argv[2] % ('%s-CSV' % dataset)              
-#     if len(sys.argv) > 3:
-#         method = sys.argv[3] 
-    # Select type of features to use for the test
-#     if len(sys.argv) > 4:
-#         feature_type = sys.argv[4]
-    # Select word embeddings file
-#     if len(sys.argv) > 5:
-#         embeddings_dir = sys.argv[5]
-#     if len(sys.argv) > 6:
-#         ling_dir = sys.argv[6]
-
     datasets = ['UKPConvArgAll', 'UKPConvArgMACE', 'UKPConvArgStrict'] 
-    methods = ['PersonalisedPrefsBayes', 'PersonalisedPrefsFA', 'SinglePrefGP']  
+    methods = ['PersonalisedPrefsBayes', 'PersonalisedPrefsFA', 'PersonalisedPrefsNoFactors', #'CombinedPrefGP', <-- this is same as prefsnofactors but with only 2 VB iterations 
+               'IndPrefGP', 'SinglePrefGP']  
     feature_types = ['both', 'embeddings', 'ling'] # can be 'embeddings' or 'ling'
+          
+    model = None
           
     for dataset in datasets:
         folds, folds_regression, word_index_to_embeddings_map = load_train_test_data(dataset)
@@ -491,5 +475,6 @@ if __name__ == '__main__':
         
         for method in methods: 
             for feature_type in feature_types:
+                print "**** Running method %s with features %s ****" % (method, feature_type)
                 run_test(folds, folds_regression, dataset, method, feature_type, embeddings, ling_feat_spmatrix, docids, 
                          subsample_amount=0)        

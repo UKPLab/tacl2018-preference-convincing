@@ -61,7 +61,7 @@ Created on 2 Jun 2016
 
 import numpy as np
 from sklearn.decomposition import FactorAnalysis
-from scipy.stats import multivariate_normal as mvn
+from scipy.stats import multivariate_normal as mvn, norm
 import logging
 from gp_classifier_vb import matern_3_2_from_raw_vals, deriv_matern_3_2_from_raw_vals
 from gp_pref_learning import GPPrefLearning, get_unique_locations, pref_likelihood
@@ -151,9 +151,9 @@ class PreferenceComponents(object):
     '''
 
     def __init__(self, nitem_features, nperson_features=0, mu0=0, mu0_y=0, shape_s0=1, rate_s0=1, shape_ls=1, rate_ls=100, 
-                 ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=3, use_fa=False,  
-                 kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True, forgetting_rate=0.9, 
-                 delay=1.0):
+                 ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=3, use_fa=False, no_factors=False,
+                 no_mean=False, kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True, 
+                 forgetting_rate=0.9, delay=1.0):
         '''
         Constructor
         dims - ranges for each of the observed features of the objects
@@ -229,6 +229,8 @@ class PreferenceComponents(object):
         self.Nfactors = nfactors
         
         self.use_fa = use_fa # flag to indicate whether to use the simple factor analysis ML update instead of the VB GP
+        self.no_factors = no_factors
+        self.no_mean = no_mean
         
         self.max_update_size = max_update_size # maximum number of data points to update in each SVI iteration
         
@@ -314,16 +316,14 @@ class PreferenceComponents(object):
             self.sw_matrix = np.ones(self.Kw.shape) * self.shape_sw0 / self.rate_sw0
                 
         # kernel used by y  
-        if self.person_features is None:
-            self.Ky_block = np.diag(np.ones(self.Npeople))
-        else:
+        if self.person_features is not None and not self.use_svi_people:
             self.lsy = np.zeros(self.nperson_features) + self.lsy  
             self.Ky_block = self.kernel_func(self.person_features, self.lsy)
-           
-        blocks = [self.Ky_block for _ in range(self.Nfactors)]
-        self.Ky = block_diag(*blocks) 
-        self.cholKy = cholesky(self.Ky_block, overwrite_a=False, check_finite=False)
-        self.sy_matrix = np.ones(self.Ky.shape) * self.shape_sy0 / self.rate_sy0     
+        
+            blocks = [self.Ky_block for _ in range(self.Nfactors)]
+            self.Ky = block_diag(*blocks) 
+            self.cholKy = cholesky(self.Ky_block, overwrite_a=False, check_finite=False)
+            self.sy_matrix = np.ones(self.Ky.shape) * self.shape_sy0 / self.rate_sy0     
 
         # Factor Analysis
         if self.use_fa:                        
@@ -333,13 +333,18 @@ class PreferenceComponents(object):
         
         # initialise the factors randomly -- otherwise they can get stuck because there is nothing to differentiate them,
         # i.e. the cluster identifiability problem
-        self.y = mvn.rvs(np.zeros(self.Nfactors * self.Npeople), cov=self.Ky / self.sy_matrix).reshape((self.Nfactors, 
-                                                                                                        self.Npeople))
-        if not self.use_svi:
-            self.w = mvn.rvs(np.zeros(self.Nfactors * self.N), cov=self.Kw / self.sw_matrix).reshape((self.Nfactors, 
-                                                                                                      self.N)).T    
+        if not self.use_svi and not self.no_factors:
+            self.w = mvn.rvs(np.zeros(self.Nfactors * self.N), cov=self.Kw / self.sw_matrix).reshape((self.Nfactors,
+                                                                                                       self.N)).T    
         else:
             self.w = np.zeros((self.N, self.Nfactors))
+            
+        if not self.use_svi_people and not self.no_factors:
+            self.y = mvn.rvs(np.zeros(self.Nfactors * self.Npeople), cov=self.Ky / self.sy_matrix).reshape((self.Nfactors, 
+                                                                                                        self.Npeople))            
+        else:
+            self.y = np.zeros((self.Nfactors, self.Npeople))
+            
         self.wy = self.w.dot(self.y)
         
     def _choose_inducing_points(self):
@@ -372,7 +377,7 @@ class PreferenceComponents(object):
         
         self.K_mm = self.kernel_func(self.inducing_coords, self.ls) + 1e-6 * np.eye(self.ninducing) # jitter
         self.invK_mm = np.linalg.inv(self.K_mm)
-        self.K_nm = self.kernel_func(self.inducing_coords, self.ls, self.obs_coords)
+        self.K_nm = self.kernel_func(self.obs_coords, self.ls, self.inducing_coords)
         
         blocks = [self.K_mm for _ in range(self.Nfactors)]
         self.Kw_mm = block_diag(*blocks)
@@ -418,14 +423,7 @@ class PreferenceComponents(object):
             self.y_invSm = np.zeros((self.y_ninducing * self.Nfactors, 1), dtype=float)# theta_1
             self.y_invS = np.zeros((self.y_ninducing * self.Nfactors, self.y_ninducing * self.Nfactors), dtype=float) # theta_2
     
-            mm_dist = np.zeros((self.y_ninducing, self.y_ninducing, self.nperson_features))
-            # should be okay up to here.    
-            nm_dist = np.zeros((self.Npeople, self.y_ninducing, self.nperson_features))
-            for d in range(self.nperson_features):
-                mm_dist[:, :, d] = self.y_inducing_coords[:, d:d+1].T - self.y_inducing_coords[:, d:d+1]
-                nm_dist[:, :, d] = self.y_inducing_coords[:, d:d+1].T - self.person_features[:, d:d+1].astype(float)
-             
-            self.Ky_mm_block = self.kernel_func(mm_dist, self.lsy)
+            self.Ky_mm_block = self.kernel_func(self.y_inducing_coords, self.lsy)
             self.Ky_mm_block += 1e-6 * np.eye(len(self.Ky_mm_block)) # jitter 
             blocks = [self.Ky_mm_block for _ in range(self.Nfactors)]
             self.Ky_mm = block_diag(*blocks)            
@@ -434,10 +432,9 @@ class PreferenceComponents(object):
             blocks = [self.invKy_mm_block for _ in range(self.Nfactors)]
             self.invKy_mm = block_diag(*blocks)  
             
-            self.Ky_nm = self.kernel_func(nm_dist, self.lsy)
+            self.Ky_nm = self.kernel_func(self.y_inducing_coords, self.lsy, self.person_features)
             blocks = [self.Ky_nm for _ in range(self.Nfactors)]
             self.Ky_nm = block_diag(*blocks)
-            
         else:
             self.use_svi_people = False
             
@@ -468,12 +465,15 @@ class PreferenceComponents(object):
             if item_features is None:
                 self.obs_coords, self.pref_v, self.pref_u, self.obs_uidxs = get_unique_locations(items_1_coords, items_2_coords)
             else:
-                self.obs_coords = item_features
-                self.pref_v = items_1_coords
-                self.pref_u = items_2_coords
-                
-            self.person_features = person_features # rows per person, columns for feature values
-            self.preferences = np.array(preferences)
+                self.obs_coords = np.array(item_features, copy=False)
+                self.pref_v = np.array(items_1_coords, copy=False)
+                self.pref_u = np.array(items_2_coords, copy=False)
+            
+            if person_features is not None:
+                self.person_features = np.array(person_features, copy=False) # rows per person, columns for feature values
+            else:
+                self.person_features = None
+            self.preferences = np.array(preferences, copy=False)
         else:  
             self.new_obs = False # do we have new data? If so, reset everything. If not, don't reset the child GPs.
  
@@ -750,19 +750,32 @@ class PreferenceComponents(object):
         elif lstype == 'person':
             der_logpw_logqw = 0
             
-            # try to make the s scale cancel as much as possible
-            invK_y = solve_triangular(self.cholKy, self.y.T, trans=True, check_finite=False)
-            invK_y = solve_triangular(self.cholKy, invK_y, check_finite=False)
+            if self.person_features is None:
+                return 0                 
+                
+            elif not self.use_svi_people:
+                dKdls = self.kernel_der(self.person_features, self.ls, dimension) 
+
+                # try to make the s scale cancel as much as possible
+                invK_y = solve_triangular(self.cholKy, self.y.T, trans=True, check_finite=False)
+                invK_y = solve_triangular(self.cholKy, invK_y, check_finite=False)
             
-            invK_dkdls = solve_triangular(self.cholK, dKdls, trans=True, check_finite=False)
-            invK_dkdls = solve_triangular(self.cholK, invK_dkdls, check_finite=False)            
+                invK_dkdls = solve_triangular(self.cholKy, dKdls, trans=True, check_finite=False)
+                invK_dkdls = solve_triangular(self.cholK, invK_dkdls, check_finite=False)
+                N = self.Npeople
+            else:
+                dKdls = self.kernel_der(self.y_inducing_coords, self.ls, dimension) 
+                invK_y = self.inv_Kys_mm.dot(self.y_u)
+                invK_dkdls = self.inv_Kys_mm.dot(dKdls)
+                y_cov = self.y_cov_u
+                N = self.y_ninducing                                             
             
             der_logpy_logqy = 0
             for f in range(self.Nfactors):
-                fidxs = np.arange(self.Npeople) + (self.Npeople * f)
+                fidxs = np.arange(N) + (N * f)
                 invK_yf = invK_y[:, f]
                 der_logpy_logqy += 0.5 * np.sum(invK_yf.T.dot(dKdls).dot(invK_yf) * (self.shape_sy[f] / self.rate_sy[f]))
-                der_logpy_logqy -= 0.5 * np.trace(self.y_cov[fidxs, :][:, fidxs].dot(invK_dkdls))            
+                der_logpy_logqy -= 0.5 * np.trace(y_cov[fidxs, :][:, fidxs].dot(invK_dkdls))            
             
             der_logpt_logqt = 0
             der_logpf_logqf = 0
@@ -893,6 +906,8 @@ class PreferenceComponents(object):
         Compute the expectation over each worker's latent preference function values for the set of objects.
         '''
         for p in self.pref_gp:
+            if self.verbose:    
+                logging.debug( "Running expec_f for person %i..." % p )
             plabelidxs = self.personIDs == p
             if self.pref_v is not None:
                 items_1_p = self.pref_v[plabelidxs]
@@ -910,13 +925,10 @@ class PreferenceComponents(object):
             else:
                 mu0_output = self.wy[:, p:p+1] + self.t
             
-            mu0_1 = mu0_output[self.pref_v[plabelidxs], :]
-            mu0_2 = mu0_output[self.pref_u[plabelidxs], :]
-            
             if not self.new_obs and self.vb_iter==0:
-                self.pref_gp[p]._init_params((mu0_1, mu0_2))
-            self.pref_gp[p].fit(items_1_p, items_2_p, self.obs_coords, prefs_p, mu0_1=mu0_1, mu0_2=mu0_2, process_obs=self.new_obs, 
-                                input_type=self.input_type)                
+                self.pref_gp[p]._init_params(mu0_output)
+            self.pref_gp[p].fit(items_1_p, items_2_p, self.obs_coords, prefs_p, mu0=mu0_output, 
+                                process_obs=self.new_obs, input_type=self.input_type)                
             # find the index of the coords in coords_p in self.obs_coords
             # coordsidxs[p] needs to correspond to data points in same order as invKf[p]
             if p not in self.coordidxs:
@@ -953,6 +965,8 @@ class PreferenceComponents(object):
             self.w = self.fa.components_.T
             self.wy = self.w.dot(self.y)
             return
+        elif self.no_factors:
+            return
             
         # Put a GP prior on w with covariance K/gamma and mean 0
         if self.use_svi:
@@ -967,8 +981,18 @@ class PreferenceComponents(object):
         Nobs_counter_i = 0
 
         for p in self.pref_gp:
+            if self.use_svi_people and p not in self.pdata_idx_i:
+                continue
+                        
             pidxs = self.coordidxs[p]
-            y_p = self.y[:, p:p+1]
+            if self.use_svi_people:
+                y_p = self.y_u
+                y_cov = self.Kys_mm.dot(self.invKys_mm_S)
+                yidxs = p + self.y_ninducing * np.arange(self.Nfactors)
+            else:
+                y_p = self.y[:, p:p+1]
+                y_cov = self.y_cov
+                yidxs = p + self.Npeople * np.arange(self.Nfactors)
 
             if self.use_svi:
                 Nobs_counter += len(pidxs)
@@ -991,8 +1015,7 @@ class PreferenceComponents(object):
             
             # add the covariance for this person's observations as a block in the covariance matrix Sigma
             Sigma_p = np.zeros((N * self.Nfactors, N * self.Nfactors))
-            yidxs = p + self.Npeople * np.arange(self.Nfactors)
-            Sigma_yscaling = y_p.dot(y_p.T) + self.y_cov[yidxs, :][:, yidxs] # covariance between people?
+            Sigma_yscaling = y_p.dot(y_p.T) + y_cov[yidxs, :][:, yidxs] # covariance between people?
             
             for f in range(self.Nfactors):
                 for g in range(self.Nfactors):
@@ -1020,7 +1043,7 @@ class PreferenceComponents(object):
                 self.sw_matrix[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]            
             
         else: # SVI implementation
-            self.w, self.w_cov, self.w_invS, self.w_invSm, self.w_u, self.invKws_mm_S = svi_update_gaussian(x, 0, 0,
+            self.w, _, self.w_invS, self.w_invSm, self.w_u, self.invKws_mm_S = svi_update_gaussian(x, 0, 0,
                 self.Kws_mm, self.inv_Kws_mm, self.Kws_nm, self.Kws_mm, None, Sigma, self.w_invS, 
                 self.w_invSm, self.vb_iter, self.delay, self.forgetting_rate, Nobs_counter, Nobs_counter_i)                
         
@@ -1044,7 +1067,10 @@ class PreferenceComponents(object):
         '''
         Compute expectation over the personality components using VB
         '''
-        Npeople = self.Npeople  
+        if self.use_svi_people:
+            Npeople = self.y_ninducing
+        else:
+            Npeople = self.Npeople  
                     
         Sigma = np.zeros((self.Nfactors * Npeople, self.Nfactors * Npeople))
         x = np.zeros((Npeople, self.Nfactors))
@@ -1052,6 +1078,7 @@ class PreferenceComponents(object):
         Nobs_counter = 0
         Nobs_counter_i = 0
 
+        pidx = 0
         for p in self.pref_gp:
             pidxs = self.coordidxs[p]                       
             Nobs_counter += len(pidxs)
@@ -1082,19 +1109,27 @@ class PreferenceComponents(object):
                     covterm[f, g] = np.sum(prec_f_p * w_cov_f[:, w_cov_idxs])
             Sigma_p = w.T.dot(prec_f_p).dot(w) + covterm
                 
-            sigmaidxs = np.arange(self.Nfactors) * self.Npeople + p
+            sigmaidxs = np.arange(self.Nfactors) * Npeople  + pidx
             Sigmarows = np.zeros((self.Nfactors, Sigma.shape[1]))
             Sigmarows[:, sigmaidxs] =  Sigma_p
             Sigma[sigmaidxs, :] += Sigmarows             
               
-            x[p, :] = w.T.dot(invQ_f).T
+            x[pidx, :] = w.T.dot(invQ_f).T
+            pidx += 1
                 
         x = x.T.flatten()[:, np.newaxis]
                     
         if not self.use_svi_people:
             # y_cov is same format as K and Sigma with rows corresponding to (f*Npeople) + p where f is factor index from 0 
             # and p is person index
-            self.y_cov = np.linalg.inv(np.linalg.inv(self.Ky  / self.sy_matrix) + Sigma)
+            if self.person_features is None:
+                for f in range(self.Nfactors):
+                    sigmaidxs = np.arange(self.Npeople) + f*self.Npeople
+                    Sigmarows = np.zeros((self.Nfactors, Sigma.shape[1]))
+                    Sigmarows[:, sigmaidxs] = self.rate_sy[f] / self.shape_sy[f]
+                    Sigma[sigmaidxs, :] += Sigmarows # add relevant bits of sy_matrix to sigma
+            else:
+                self.y_cov = np.linalg.inv(np.linalg.inv(self.Ky  / self.sy_matrix) + Sigma)
             self.y = self.y_cov.dot(x)
            
             # y is Nfactors x Npeople            
@@ -1103,28 +1138,33 @@ class PreferenceComponents(object):
             for f in range(self.Nfactors):
                 fidxs = np.arange(self.Npeople) + (self.Npeople * f)
                 _, self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.Npeople, 
-                            self.cholKy, self.y[f:f+1, :].T, np.zeros((self.Npeople, 1)), self.y_cov[fidxs, :][:, fidxs])    
-                self.sy_matrix[fidxs, :] = self.shape_sy[f] / self.rate_sy[f]                
+                            self.cholKy, self.y[f:f+1, :].T, np.zeros((self.Npeople, 1)), self.y_cov[fidxs, :][:, fidxs])
+                
+                if self.person_features is not None:
+                    sy_rows = np.zeros(self.Npeople, self.sy_matrix.shape[1])
+                    sy_rows[:, fidxs] = self.shape_sy[f] / self.rate_sy[f]    
+                    self.sy_matrix[fidxs, :] = sy_rows           
         else: # SVI implementation
-            self.y, self.y_cov, self.y_invS, self.y_invSm, self.y_u, self.invKys_mm_S = svi_update_gaussian(x, 0, 0, 
-                self.Kys_mm, self.inv_Kys_mm, self.Kys_nm, self.Kys_nm, self.Ky / self.sy_matrix, Sigma, self.y_invS, 
+            self.y, _, self.y_invS, self.y_invSm, self.y_u, self.invKys_mm_S = svi_update_gaussian(x, 0, 0, 
+                self.Kys_mm, self.inv_Kys_mm, self.Kys_nm, self.Kys_nm, None, Sigma, self.y_invS, 
                 self.y_invSm, self.vb_iter, self.delay, self.forgetting_rate, Nobs_counter, Nobs_counter_i)
         
             # y is Nfactors x Npeople            
             self.y = np.reshape(self.y, (self.Nfactors, self.Npeople))
-            self.y_u = np.reshape(self.y_u, (self.Nfactors, self.Npeople))
+            self.y_u = np.reshape(self.y_u, (self.Nfactors, self.y_ninducing))
                 
             for f in range(self.Nfactors):
                 fidxs = np.arange(self.y_ninducing) + (self.y_ninducing * f)
                 self.shape_sy[f], self.rate_sy[f] = expec_output_scale_svi(self.shape_sy0, self.rate_sy0, 
-                    self.y_ninducing, self.invKy_mm_block, self.y_u[f:f+1, :].T, np.zeros((self.Npeople, 1)), 
+                    self.y_ninducing, self.invKy_mm_block, self.y_u[f:f+1, :].T, np.zeros((self.y_ninducing, 1)), 
                     self.invKys_mm_S[fidxs, :][:, fidxs] / self.shape_sy[f] * self.rate_sy[f])    
                 fidxs = np.arange(self.Npeople) + (self.Npeople * f)
-                self.sy_matrix[fidxs, :] = self.shape_sy[f] / self.rate_sy[f]    
 
     def _expec_t(self):
         if self.use_fa:
             self.t = self.fa.mean_[:, np.newaxis]
+            return
+        if self.no_mean:
             return
         if self.use_svi:
             N = self.ninducing
@@ -1257,8 +1297,13 @@ class PreferenceComponents(object):
             if self.use_svi_people:
                 logpy = mvn.logpdf(self.y_u.flatten(), cov=self.Kys_mm)
                 logqy = mvn.logpdf(self.y_u.flatten(), mean=self.y_u.flatten(), cov=self.Kys_mm.dot(self.invKys_mm_S))
-            else:                        
-                logpy = mvn.logpdf(self.y.flatten(), cov=self.Ky / self.sy_matrix)
+            else:
+                if self.person_features is not None: 
+                    logpy = mvn.logpdf(self.y.flatten(), cov=self.Ky / self.sy_matrix)
+                else:
+                    logpy = 0
+                    for f in range(self.Nfactors):
+                        logpy += norm.logpdf(self.y[f, :], scale=np.sqrt(self.rate_sy / self.shape_sy))
                 logqy = mvn.logpdf(self.y.flatten(), mean=self.y.flatten(), cov=self.y_cov)
         
             logps_y = 0
