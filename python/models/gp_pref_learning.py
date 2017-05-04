@@ -112,7 +112,7 @@ class GPPrefLearning(GPClassifierSVI):
     
     def __init__(self, ninput_features, mu0=0, shape_s0=2, rate_s0=2, shape_ls=10, rate_ls=0.1, ls_initial=None, 
          force_update_all_points=False, kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True,
-         delay=1, forgetting_rate=0.9):
+         delay=1, forgetting_rate=0.9, verbose=False):
         
         # We set the function scale and noise scale to the same value so that we assume apriori that the differences
         # in preferences can be explained by noise in the preference pairs or the latent function. Ordering patterns 
@@ -131,7 +131,7 @@ class GPPrefLearning(GPClassifierSVI):
             rate_s0 = 0.5
         
         super(GPPrefLearning, self).__init__(ninput_features, mu0, shape_s0, rate_s0, shape_ls, rate_ls, ls_initial, 
-                     force_update_all_points, kernel_func, max_update_size, ninducing, use_svi, delay, forgetting_rate)
+         force_update_all_points, kernel_func, max_update_size, ninducing, use_svi, delay, forgetting_rate, verbose=verbose)
     
     # Initialisation --------------------------------------------------------------------------------------------------
         
@@ -156,14 +156,10 @@ class GPPrefLearning(GPClassifierSVI):
         self.Ntrain = self.pref_u.size 
         
     def _init_obs_mu0(self, mu0):
-        self.mu0 = np.zeros((self.n_locs, 1)) + self.mu0_default
-        
-        if mu0 is not None and mu0[0] is not None and mu0[1] is not None:
-            self.mu0_1 = mu0[0]
-            self.mu0_2 = mu0[1]
-            
-            all_mu0 = np.concatenate((self.mu0_1, self.mu0_2), axis=0)
-            self.mu0 = all_mu0[self.original_idxs] # the means corresponding to uravelled_coords
+        if mu0 is None or not len(mu0):
+            self.mu0 = np.zeros((self.n_locs, 1)) + self.mu0_default
+        else:
+            self.mu0 = mu0
             self.mu0_1 = self.mu0[self.pref_v, :]
             self.mu0_2 = self.mu0[self.pref_u, :]
     
@@ -186,8 +182,11 @@ class GPPrefLearning(GPClassifierSVI):
         totals = totals.astype(int)  
                                
         if self.item_features is not None:
-            keys_0 = obs_coords_0
-            keys_1 = obs_coords_1
+            self.original_idxs = np.arange(self.item_features.shape[0])
+            self.pref_v = obs_coords_0.flatten()
+            self.pref_u = obs_coords_1.flatten()
+            self.obs_coords = self.item_features
+            return poscounts, totals             
         else:
             # TODO: This code could be merged with get_unique_locations()
             ravelled_coords_0 = coord_arr_to_1d(obs_coords_0)# Ravel the coordinates
@@ -199,25 +198,20 @@ class GPPrefLearning(GPClassifierSVI):
             
             keys_0 = keys[:len(ravelled_coords_0)]
             keys_1 = keys[len(ravelled_coords_0):]
+
+            # SWAP PAIRS SO THEY ALL HAVE LOWEST COORD FIRST so we can count prefs for duplicate location pairs
+            idxs_to_swap = keys_0 < keys_1
+            swap_coords_0 = keys_0[idxs_to_swap]
+            poscounts[idxs_to_swap] = totals[idxs_to_swap] - poscounts[idxs_to_swap]            
+            
+            keys_0[idxs_to_swap] = keys_1[idxs_to_swap]
+            keys_1[idxs_to_swap] = swap_coords_0
+            
+            grid_obs_counts = coo_matrix((totals, (keys_0, keys_1)) ).toarray()            
+            grid_obs_pos_counts = coo_matrix((poscounts, (keys_0, keys_1)) ).toarray()
+                                                              
+            nonzero_v, nonzero_u = grid_obs_counts.nonzero() # coordinate key pairs with duplicate pairs removed
                         
-        # SWAP PAIRS SO THEY ALL HAVE LOWEST COORD FIRST so we can count prefs for duplicate location pairs
-        idxs_to_swap = keys_0 < keys_1
-        swap_coords_0 = keys_0[idxs_to_swap]
-        poscounts[idxs_to_swap] = totals[idxs_to_swap] - poscounts[idxs_to_swap]
-        keys_0[idxs_to_swap] = keys_1[idxs_to_swap]
-        keys_1[idxs_to_swap] = swap_coords_0
-        
-        grid_obs_counts = coo_matrix((totals, (keys_0, keys_1)) ).toarray()            
-        grid_obs_pos_counts = coo_matrix((poscounts, (keys_0, keys_1)) ).toarray()
-                                                          
-        nonzero_v, nonzero_u = grid_obs_counts.nonzero() # coordinate key pairs with duplicate pairs removed
-        
-        if self.item_features is not None:
-            self.original_idxs = np.arange(self.item_features.shape[0])
-            self.pref_v = obs_coords_0
-            self.pref_u = obs_coords_1
-            self.obs_coords = self.item_features            
-        else:
             nonzero_all = np.concatenate((nonzero_v, nonzero_u), axis=0)
             ukeys, pref_vu = np.unique(nonzero_all, return_inverse=True) # get unique locations
             
@@ -231,10 +225,10 @@ class GPPrefLearning(GPClassifierSVI):
             self.pref_v = pref_vu[:len(nonzero_v)]
             self.pref_u = pref_vu[len(nonzero_v):]
                
-        # Return the counts for each of the observed pairs
-        pos_counts = grid_obs_pos_counts[nonzero_v, nonzero_u]
-        total_counts = grid_obs_counts[nonzero_v, nonzero_u]
-        return pos_counts, total_counts
+            # Return the counts for each of the observed pairs
+            pos_counts = grid_obs_pos_counts[nonzero_v, nonzero_u]
+            total_counts = grid_obs_counts[nonzero_v, nonzero_u]
+            return pos_counts, total_counts
             
     # Mapping between latent and observation spaces -------------------------------------------------------------------
               
@@ -294,7 +288,7 @@ class GPPrefLearning(GPClassifierSVI):
     # Training methods ------------------------------------------------------------------------------------------------  
             
     def fit(self, items1_coords=None, items2_coords=None, item_features=None, preferences=None, totals=None, 
-            process_obs=True, mu0_1=None, mu0_2=None, optimize=False, input_type='binary'):
+            process_obs=True, mu0=None, optimize=False, input_type='binary'):
         '''
         preferences -- Preferences by default are 1 = item 1 is preferred to item 2, or 0 = item 2 is preferred to item 1, 
         0.5 = no preference. This is controlled by input_type.
@@ -317,7 +311,7 @@ class GPPrefLearning(GPClassifierSVI):
         self.item_features = item_features
             
         super(GPPrefLearning, self).fit((items1_coords, items2_coords), preferences, totals, process_obs, 
-                                        mu0=(mu0_1, mu0_2), optimize=optimize)  
+                                        mu0=mu0, optimize=optimize)  
         
     def _update_sample_idxs(self):
         nobs = self.obs_f.shape[0]
@@ -426,12 +420,12 @@ class GPPrefLearning(GPClassifierSVI):
         not_m_post = 1 - m_post
 
         if f_var is not None:
-            f_samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(f_mean.shape[0], 5000))
-            rho_samples = self.forward_model(f_samples, v=pref_v, u=pref_u, return_g_f=False)
-            v_post = np.var(rho_samples, axis=1)[:, np.newaxis]
+            samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(f_mean.shape[0], 1000))
+            samples = self.forward_model(samples, v=pref_v, u=pref_u, return_g_f=False)
+            v_post = np.var(samples, axis=1)[:, np.newaxis]
             v_post = temper_extreme_probs(v_post, zero_only=True)
             v_post[m_post * (1 - not_m_post) <= 1e-7] = 1e-8 # important to make sure our fixes for extreme values lead
             # to sensible values
             return m_post, not_m_post, v_post            
         else:        
-            return m_post, not_m_post   
+            return m_post, not_m_post

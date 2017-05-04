@@ -260,7 +260,7 @@ class PreferenceComponents(object):
 #             self.kernel_func = sq_exp_cov
 #             self.kernel_der = deriv_sq_exp_cov
         else:
-            logging.error('GPClassifierVB: Invalid covariance type %s' % cov_type)        
+            logging.error('PreferenceComponents: Invalid covariance type %s' % cov_type)        
     
         
     def _init_params(self):
@@ -527,61 +527,48 @@ class PreferenceComponents(object):
         self.fit(personIDs, items_1_coords, items_2_coords, preferences, person_features, input_type=input_type)
         self.max_iter = max_iter
 
-        for d, ls in enumerate(self.ls):
-            min_nlml = np.inf
-            best_opt_hyperparams = None
-            best_iter = -1            
+        min_nlml = np.inf
+        best_opt_hyperparams = None
+        best_iter = -1            
             
-            logging.debug("Optimising item length-scale for %i dimension" % d)
+        logging.debug("Optimising item length-scale for all dimensions")
             
-            nfits = 0 # number of calls to fit function
+        nfits = 0 # number of calls to fit function
             
-            # optimise each length-scale sequentially in turn
-            for r in range(nrestarts):
-                if ls == 1:
-                    logging.warning("Changing item length-scale of 1 to 2 to avoid optimisation problems.")
-                    ls = 2.0
-            
-                initialguess = np.log(ls) 
-                logging.debug("Initial item length-scale guess for dimension %i in restart %i: %.3f" % (d, r, ls))
-        
-                #ftol = self.conv_threshold * 1e2
-                #logging.debug("Ftol = %.5f" % ftol)
-#                 opt_hyperparams, nlml, _, _, _ = minimize(self.neg_marginal_likelihood, initialguess, 
-#                       args=('item', d, use_MAP,), method='Nelder-Mead', options={'maxfev':maxfun, 'fatol':ftol, 
-#                         'xatol':ls * 1e100, 'return_all':True})
-
-                # try to do it using the conjugate gradient method instead. Requires Jacobian (gradient) of LML 
-                # approximation. If we also have Hessian or Hessian x arbitrary vector p, we can use Newton-CG, dogleg, 
-                # or trust-ncg, which may be faster still?
-                res = minimize(self.neg_marginal_likelihood, initialguess, args=('item', d, use_MAP,), 
-                    jac=self.nml_jacobian, method='CG', options={'maxiter':maxfun})
-
-                opt_hyperparams = res['x']
-                nlml = res['fun']
-                nfits += res['nfev']
-                
-                if nlml < min_nlml:
-                    min_nlml = nlml
-                    best_opt_hyperparams = opt_hyperparams
-                    best_iter = r
-                    
-                # choose a new lengthscale for the initial guess of the next attempt
-                ls = gamma.rvs(self.shape_ls, scale=1.0/self.rate_ls)
+        # optimise each length-scale sequentially in turn
+        for r in range(nrestarts):
+            initialguess = np.log(self.ls)
+            logging.debug("Initial item length-scale guess in restart %i: %s" % (r, self.ls))
     
-            if best_iter < r:
-                # need to go back to the best result
-                self.ls[d] = np.exp(best_opt_hyperparams)
-                if d == len(self.ls) - 1 and person_features is None:
-                    self.neg_marginal_likelihood(best_opt_hyperparams, 'item', d, use_MAP=False)
+            # try to do it using the conjugate gradient method instead. Requires Jacobian (gradient) of LML 
+            # approximation. If we also have Hessian or Hessian x arbitrary vector p, we can use Newton-CG, dogleg, 
+            # or trust-ncg, which may be faster still?
+            res = minimize(self.neg_marginal_likelihood, initialguess, args=('item', -1, use_MAP,), 
+                jac=self.nml_jacobian, method='CG', options={'maxiter':maxfun})
 
-            logging.debug("Chosen item length-scale %.5f for dimension %i. Last initialguess=%.5f, used %i evals of \
-            NLML over %i restarts" % (self.ls[d], d, np.exp(initialguess), nfits, nrestarts))
+            opt_hyperparams = res['x']
+            nlml = res['fun']
+            nfits += res['nfev']
+            
+            if nlml < min_nlml:
+                min_nlml = nlml
+                best_opt_hyperparams = opt_hyperparams
+                best_iter = r
+                
+            # choose a new lengthscale for the initial guess of the next attempt
+            self.ls = gamma.rvs(self.shape_ls, scale=1.0/self.rate_ls, size=len(self.ls))
+
+        if best_iter < r:
+            # need to go back to the best result
+            if person_features is None: # don't do this if further optimisation required anyway
+                self.neg_marginal_likelihood(best_opt_hyperparams, 'item', -1, use_MAP=False)
+
+        logging.debug("Chosen item length-scale %s, used %i evals of NLML over %i restarts" % (self.ls, nfits, nrestarts))
 
         if self.use_fa: # don't do restarts here as the surface should be less complex.
             initialguess = np.log(self.Nfactors)
-            res = minimize(self.neg_marginal_likelihood, initialguess, args=('fa', d, 
-                    use_MAP,), method='Nelder-Mead', options={'maxfev':maxfun, 'xatol':ls * 1e100, 'return_all':True})
+            res = minimize(self.neg_marginal_likelihood, initialguess, args=('fa', -1, use_MAP,), 
+                   method='Nelder-Mead', options={'maxfev':maxfun, 'xatol':np.mean(self.ls) * 1e100, 'return_all':True})
             min_nlml = res['fun']
             logging.debug("Optimal number of factors = %s, with initialguess=%i and %i function evals" % (self.Nfactors,
                                                                            int(np.exp(initialguess)), res['nfev']))     
@@ -590,53 +577,42 @@ class PreferenceComponents(object):
             logging.debug("Optimal hyper-parameters: item = %s" % (self.ls))               
             return self.ls, self.lsy, -min_nlml
 
-        for e, lsy in enumerate(self.lsy):
-            min_nlml = np.inf
-            best_opt_hyperparams = None
-            best_iter = -1            
+        min_nlml = np.inf
+        best_opt_hyperparams = None
+        best_iter = -1            
                         
-            nfits = 0 # number of calls to fit function
+        nfits = 0 # number of calls to fit function
 
-            logging.debug("Optimising item length-scale for %i dimension" % e)
+        logging.debug("Optimising item length-scale for all dimensions")
             
-            # optimise each length-scale sequentially in turn
-            for r in range(nrestarts):
-                if lsy == 1:
-                    logging.warning("Changing person length-scale of 1 to 2 to avoid optimisation problems.")
-                    lsy = 2.0
-            
-                initialguess = np.log(lsy) 
-                logging.debug("Initial person length-scale guess for dimension %i in restart %i: %.3f" % (e, r, lsy))
-        
-                ftol = self.conv_threshold * 1e2
-                logging.debug("Ftol = %.5f" % ftol)
-#                 opt_hyperparams, nlml, _, _, _ = minimize(self.neg_marginal_likelihood, initialguess, 
-#                       args=('person', e, use_MAP,), method='Nelder-Mead', options={'maxfev':maxfun, 'fatol':ftol, 
-#                         'xatol':ls * 1e100, 'return_all':True})
-                # replace Nelder-Mead, as above.
-                res = minimize(self.neg_marginal_likelihood, initialguess, args=('person', e, use_MAP,),  
-                  jac=self.nml_jacobian, method='CG', options={'maxiter':maxfun, 'return_all':True})
-                opt_hyperparams = res['x']
-                nlml = res['fun']
-                nfits += res['nfev']
-                                                
-                if nlml < min_nlml:
-                    min_nlml = nlml
-                    best_opt_hyperparams = opt_hyperparams
-                    best_iter = r
-                    
-                # choose a new lengthscale for the initial guess of the next attempt
-                lsy = gamma.rvs(self.shape_lsy, scale=1.0/self.rate_lsy)
+        # optimise each length-scale sequentially in turn
+        for r in range(nrestarts):
+            initialguess = np.log(self.lsy) 
+            logging.debug("Initial person length-scale guess in restart %i: %s" % (r, self.lsy))
     
-            if best_iter < r:
-                # need to go back to the best result
-                self.lsy[e] = np.exp(best_opt_hyperparams)
-                if e == len(self.ls) - 1:
-                    self.neg_marginal_likelihood(best_opt_hyperparams, 'person', e, use_MAP=False)
+            ftol = self.conv_threshold * 1e2
+            logging.debug("Ftol = %.5f" % ftol)
 
-            logging.debug("Chosen person length-scale %.5f for dimension %i. Last initialguess=%.5f, used %i evals of \
-            NLML over %i restarts" % (self.lsy[e], e, np.exp(initialguess), nfits, nrestarts))
+            # replace Nelder-Mead, as above.
+            res = minimize(self.neg_marginal_likelihood, initialguess, args=('person', -1, use_MAP,),  
+              jac=self.nml_jacobian, method='CG', options={'maxiter':maxfun, 'return_all':True})
+            opt_hyperparams = res['x']
+            nlml = res['fun']
+            nfits += res['nfev']
+                                            
+            if nlml < min_nlml:
+                min_nlml = nlml
+                best_opt_hyperparams = opt_hyperparams
+                best_iter = r
+                
+            # choose a new lengthscale for the initial guess of the next attempt
+            self.lsy = gamma.rvs(self.shape_lsy, scale=1.0/self.rate_lsy, size=len(self.lsy))
 
+        if best_iter < r:
+            # need to go back to the best result
+            self.neg_marginal_likelihood(best_opt_hyperparams, 'person', -1, use_MAP=False)
+
+        logging.debug("Chosen person length-scale %s, used %i evals of NLML over %i restarts" % (self.lsy, nfits, nrestarts))
         logging.debug("Optimal hyper-parameters: item = %s, person = %s" % (self.ls, self.lsy))   
         return self.ls, self.lsy, -min_nlml # return the log marginal likelihood
 
@@ -647,9 +623,15 @@ class PreferenceComponents(object):
         if np.any(np.isnan(hyperparams)):
             return np.inf
         if lstype=='item':
-            self.ls[dimension] = np.exp(hyperparams)
+            if dimension == -1:
+                self.ls = np.exp(hyperparams)
+            else:
+                self.ls[dimension] = np.exp(hyperparams)
         elif lstype=='person':
-            self.lsy[dimension] = np.exp(hyperparams)
+            if dimension == -1:
+                self.lsy = np.exp(hyperparams)
+            else:
+                self.lsy[dimension] = np.exp(hyperparams)
         elif lstype=='fa':
             new_Nfactors = int(np.round(np.exp(hyperparams)))
         if np.any(np.isinf(self.ls)):
@@ -668,9 +650,15 @@ class PreferenceComponents(object):
             lml = marginal_log_likelihood
             
         if lstype=='person':
-            logging.debug("LML: %f, %s length-scale for dim %i = %.3f" % (lml, lstype, dimension, self.lsy[dimension]))
+            if dimension == -1:
+                logging.debug("LML: %f, %s length-scales = %s" % (lml, lstype, self.lsy))
+            else:
+                logging.debug("LML: %f, %s length-scale for dim %i = %.3f" % (lml, lstype, dimension, self.lsy[dimension]))
         elif lstype=='item':
-            logging.debug("LML: %f, %s length-scale for dim %i = %.3f" % (lml, lstype, dimension, self.ls[dimension]))
+            if dimension == -1:
+                logging.debug("LML: %f, %s length-scales = %s" % (lml, lstype, self.ls))
+            else:
+                logging.debug("LML: %f, %s length-scale for dim %i = %.3f" % (lml, lstype, dimension, self.ls[dimension]))
             
         return -lml
     
@@ -682,14 +670,30 @@ class PreferenceComponents(object):
             return np.inf
         
         needs_fitting = self.people is None
-        if lstype=='item':
-            if self.ls[dimension] != np.exp(hyperparams):
+        if dimension == -1:
+            needs_fitting = True            
+            if lstype=='item':
+                self.ls = np.exp(hyperparams)
+                der_logpw_logqw = np.zeros(len(self.ls))
+                der_logpf_logqf = np.zeros(len(self.ls))
+                der_logpt_logqt = np.zeros(len(self.ls))
+                dimensions = np.arange(len(self.ls))
+            elif lstype=='person':
+                self.lsy = np.exp(hyperparams)        
+                der_logpy_logqy = np.zeros(len(self.lsy))
+                dimensions = np.arange(len(self.lsi))
+        elif self.ls[dimension] != np.exp(hyperparams):
+            needs_fitting = True            
+            if lstype=='item':            
                 self.ls[dimension] = np.exp(hyperparams)
-                needs_fitting = True
-        elif lstype=='person':
-            if self.lsy[dimension] != np.exp(hyperparams):
+                der_logpw_logqw = [0]
+                der_logpf_logqf = [0]
+                der_logpt_logqt = [0]                
+            elif lstype=='person':
                 self.lsy[dimension] = np.exp(hyperparams)
-                needs_fitting = True
+                der_logpy_logqy = [0]
+            dimensions = [dimension]
+
         if np.any(np.isinf(self.ls)):
             return np.inf
         if np.any(np.isinf(self.lsy)):
@@ -699,88 +703,88 @@ class PreferenceComponents(object):
         if needs_fitting:
             self.fit()
 
-        # compute the gradient
-        # all of the terms below can use the same function except der_logpf. This should follow the MAP estimate from 
-        # chu and ghahramani. 
-        # Terms that don't involve the hyperparameter are zero; implicit dependencies drop out if we only calculate 
-        #gradient when converged due to the coordinate ascent method.
-        if lstype == 'item':            
-            if self.use_svi:                
-                dKdls = self.kernel_der(self.inducing_coords, self.ls, dimension) 
-                # try to make the s scale cancel as much as possible
-                invK_w = self.inv_Kws_mm.dot(self.w_u)
-                invK_dkdls = self.inv_Kws_mm.dot(dKdls)
-                w_cov = self.w_cov_u
-                N = self.ninducing     
-            else:
-                dKdls = self.kernel_der(self.obs_coords, self.ls, dimension) 
-
-                # try to make the s scale cancel as much as possible
-                invK_w = solve_triangular(self.cholK, self.w, trans=True, check_finite=False)
-                invK_w = solve_triangular(self.cholK, invK_w, check_finite=False)
-            
-                invK_dkdls = solve_triangular(self.cholK, dKdls, trans=True, check_finite=False)
-                invK_dkdls = solve_triangular(self.cholK, invK_dkdls, check_finite=False)            
-            
-                w_cov = self.w_cov
-                N = self.N
+        for d, dimension in enumerate(dimensions):
+            # compute the gradient
+            # all of the terms below can use the same function except der_logpf. This should follow the MAP estimate from 
+            # chu and ghahramani. 
+            # Terms that don't involve the hyperparameter are zero; implicit dependencies drop out if we only calculate 
+            #gradient when converged due to the coordinate ascent method.
+            if lstype == 'item':
+                if self.use_svi:                
+                    dKdls = self.kernel_der(self.inducing_coords, self.ls, dimension) 
+                    # try to make the s scale cancel as much as possible
+                    invK_w = self.inv_Kws_mm.dot(self.w_u)
+                    invK_dkdls = self.inv_Kws_mm.dot(dKdls)
+                    w_cov = self.w_cov_u
+                    N = self.ninducing     
+                else:
+                    dKdls = self.kernel_der(self.obs_coords, self.ls, dimension) 
+    
+                    # try to make the s scale cancel as much as possible
+                    invK_w = solve_triangular(self.cholK, self.w, trans=True, check_finite=False)
+                    invK_w = solve_triangular(self.cholK, invK_w, check_finite=False)
                 
-            der_logpw_logqw = 0
-            for f in range(self.Nfactors):
-                fidxs = np.arange(N) + (N * f)
-                invK_wf = invK_w[:, f]
-                der_logpw_logqw += 0.5 * (np.sum(invK_wf.T.dot(dKdls).dot(invK_wf) * (self.shape_sw[f] / self.rate_sw[f]))
-                                           - np.trace(w_cov[fidxs, :][:, fidxs].dot(invK_dkdls)))
-            
-            der_logpy_logqy = 0
-            if self.use_svi:
-                invK_t = self.inv_Kts_mm.dot(self.t_u)
-                der_logpt_logqt = 0.5 * np.sum(invK_t.T.dot(dKdls).dot(invK_t) * (self.shape_st / self.rate_st))
-                der_logpt_logqt -= 0.5 * np.trace(self.t_cov_u.dot(invK_dkdls))
-            else:
-                invK_t = solve_triangular(self.cholK, self.t, trans=True, check_finite=False)
-                invK_t = solve_triangular(self.cholK, invK_t, check_finite=False)
-                der_logpt_logqt = 0.5 * np.sum(invK_t.T.dot(dKdls).dot(invK_t) * (self.shape_st / self.rate_st))                
-                der_logpt_logqt -= 0.5 * np.trace(self.t_cov.dot(invK_dkdls))
-            
-            der_logpf_logqf = 0
-            for p in self.pref_gp:
-                der_logpf_logqf = self.pref_gp[p].lowerbound_gradient(dimension)
-            
-        elif lstype == 'person':
-            der_logpw_logqw = 0
-            
-            if self.person_features is None:
-                return 0                 
+                    invK_dkdls = solve_triangular(self.cholK, dKdls, trans=True, check_finite=False)
+                    invK_dkdls = solve_triangular(self.cholK, invK_dkdls, check_finite=False)            
                 
-            elif not self.use_svi_people:
-                dKdls = self.kernel_der(self.person_features, self.ls, dimension) 
-
-                # try to make the s scale cancel as much as possible
-                invK_y = solve_triangular(self.cholKy, self.y.T, trans=True, check_finite=False)
-                invK_y = solve_triangular(self.cholKy, invK_y, check_finite=False)
-            
-                invK_dkdls = solve_triangular(self.cholKy, dKdls, trans=True, check_finite=False)
-                invK_dkdls = solve_triangular(self.cholK, invK_dkdls, check_finite=False)
-                N = self.Npeople
-            else:
-                dKdls = self.kernel_der(self.y_inducing_coords, self.ls, dimension) 
-                invK_y = self.inv_Kys_mm.dot(self.y_u)
-                invK_dkdls = self.inv_Kys_mm.dot(dKdls)
-                y_cov = self.y_cov_u
-                N = self.y_ninducing                                             
-            
-            der_logpy_logqy = 0
-            for f in range(self.Nfactors):
-                fidxs = np.arange(N) + (N * f)
-                invK_yf = invK_y[:, f]
-                der_logpy_logqy += 0.5 * np.sum(invK_yf.T.dot(dKdls).dot(invK_yf) * (self.shape_sy[f] / self.rate_sy[f]))
-                der_logpy_logqy -= 0.5 * np.trace(y_cov[fidxs, :][:, fidxs].dot(invK_dkdls))            
-            
-            der_logpt_logqt = 0
-            der_logpf_logqf = 0
+                    w_cov = self.w_cov
+                    N = self.N
+                    
+                der_logpw_logqw = 0
+                for f in range(self.Nfactors):
+                    fidxs = np.arange(N) + (N * f)
+                    invK_wf = invK_w[:, f]
+                    der_logpw_logqw[d] += 0.5 * (np.sum(invK_wf.T.dot(dKdls).dot(invK_wf) * (self.shape_sw[f] / self.rate_sw[f]))
+                                               - np.trace(w_cov[fidxs, :][:, fidxs].dot(invK_dkdls)))
+                
+                der_logpy_logqy = 0
+                if self.use_svi:
+                    invK_t = self.inv_Kts_mm.dot(self.t_u)
+                    der_logpt_logqt[d] = 0.5 * np.sum(invK_t.T.dot(dKdls).dot(invK_t) * (self.shape_st / self.rate_st))
+                    der_logpt_logqt[d] -= 0.5 * np.trace(self.t_cov_u.dot(invK_dkdls))
+                else:
+                    invK_t = solve_triangular(self.cholK, self.t, trans=True, check_finite=False)
+                    invK_t = solve_triangular(self.cholK, invK_t, check_finite=False)
+                    der_logpt_logqt[d] = 0.5 * np.sum(invK_t.T.dot(dKdls).dot(invK_t) * (self.shape_st / self.rate_st))                
+                    der_logpt_logqt[d] -= 0.5 * np.trace(self.t_cov.dot(invK_dkdls))
+                
+                for p in self.pref_gp:
+                    der_logpf_logqf[d] += self.pref_gp[p].lowerbound_gradient(dimension)
+                
+            elif lstype == 'person':               
+                if self.person_features is None:
+                    continue          
+                    
+                elif not self.use_svi_people:
+                    dKdls = self.kernel_der(self.person_features, self.ls, dimension) 
+    
+                    # try to make the s scale cancel as much as possible
+                    invK_y = solve_triangular(self.cholKy, self.y.T, trans=True, check_finite=False)
+                    invK_y = solve_triangular(self.cholKy, invK_y, check_finite=False)
+                
+                    invK_dkdls = solve_triangular(self.cholKy, dKdls, trans=True, check_finite=False)
+                    invK_dkdls = solve_triangular(self.cholK, invK_dkdls, check_finite=False)
+                    N = self.Npeople
+                else:
+                    dKdls = self.kernel_der(self.y_inducing_coords, self.ls, dimension) 
+                    invK_y = self.inv_Kys_mm.dot(self.y_u)
+                    invK_dkdls = self.inv_Kys_mm.dot(dKdls)
+                    y_cov = self.y_cov_u
+                    N = self.y_ninducing                                             
+                
+                for f in range(self.Nfactors):
+                    fidxs = np.arange(N) + (N * f)
+                    invK_yf = invK_y[:, f]
+                    der_logpy_logqy[d] += 0.5 * np.sum(invK_yf.T.dot(dKdls).dot(invK_yf) * (self.shape_sy[f] / self.rate_sy[f]))
+                    der_logpy_logqy[d] -= 0.5 * np.trace(y_cov[fidxs, :][:, fidxs].dot(invK_dkdls))            
+                
+                der_logpw_logqw = 0
+                der_logpt_logqt = 0
+                der_logpf_logqf = 0
             
         mll_jac = der_logpw_logqw + der_logpy_logqy + der_logpt_logqt + der_logpf_logqf
+        if len(mll_jac) == 1: # don't need an array if we only compute for one dimension
+            mll_jac = mll_jac[0]
 
         if use_MAP: # gradient of the log prior
             log_model_prior_grad = self.ln_modelprior_grad()        

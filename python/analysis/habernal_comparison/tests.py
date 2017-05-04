@@ -213,11 +213,12 @@ def load_ling_features():
         ling_file, _ , docids = combine_lines_into_one_file(dataset, outputfile=ling_dir+"/%s-libsvm.txt")
     else:
         dataids = []
-        #libsvm_dir = '/Users/edwin/convincingness_data/UKPConvArg1-Strict-libsvm'
-        libsvm_dir = "/home/local/UKP/simpson/data/outputdata/UKPConvArg1-Full-libsvm"
+        libsvm_dir = os.path.expanduser('~/Dropbox/UKPConvArg1-Full-libsvm')
+        #libsvm_dir = "/home/local/UKP/simpson/data/outputdata/UKPConvArg1-Full-libsvm"
         for filename in os.listdir(libsvm_dir):
             fid = filename.split('.')[0]
             dataids.append(fid)
+            # TODO: make sure we get the ids in the right order
         docids = np.array(dataids)
         
     ling_feat_spmatrix, _ = load_svmlight_file(ling_file)
@@ -391,7 +392,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
             proba, predicted_f = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)            
                               
         elif method == 'SinglePrefGP':
-            model = GPPrefLearning(nitem_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
+            model = GPPrefLearning(ninput_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
                                                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True)
             model.fit(trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, input_type='zero-centered')            
@@ -461,20 +462,24 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
         print('Test accuracy:', acc)            
         
 if __name__ == '__main__':
-    datasets = ['UKPConvArgAll', 'UKPConvArgMACE', 'UKPConvArgStrict'] 
-    methods = ['PersonalisedPrefsBayes', 'PersonalisedPrefsFA', 'PersonalisedPrefsNoFactors', #'CombinedPrefGP', <-- this is same as prefsnofactors but with only 2 VB iterations 
-               'IndPrefGP', 'SinglePrefGP']  
-    feature_types = ['both', 'embeddings', 'ling'] # can be 'embeddings' or 'ling'
-          
-    model = None
-          
-    for dataset in datasets:
-        folds, folds_regression, word_index_to_embeddings_map = load_train_test_data(dataset)
-        embeddings = load_embeddings(word_index_to_embeddings_map)
-        ling_feat_spmatrix, docids = load_ling_features()
-        
-        for method in methods: 
-            for feature_type in feature_types:
-                print "**** Running method %s with features %s ****" % (method, feature_type)
-                run_test(folds, folds_regression, dataset, method, feature_type, embeddings, ling_feat_spmatrix, docids, 
-                         subsample_amount=0)        
+    if 'folds' not in globals():
+        datasets = ['UKPConvArgAll', 'UKPConvArgMACE', 'UKPConvArgStrict'] 
+        methods = ['SinglePrefGP']#'PersonalisedPrefsBayes', 'PersonalisedPrefsFA', 'PersonalisedPrefsNoFactors', #'CombinedPrefGP', <-- this is same as prefsnofactors but with only 2 VB iterations 
+    #                'IndPrefGP', 'SinglePrefGP']  
+        feature_types = ['both', 'embeddings', 'ling'] # can be 'embeddings' or 'ling' or 'both'
+                
+        model = None
+                
+        for dataset in datasets:
+            folds, folds_regression, word_index_to_embeddings_map = load_train_test_data(dataset)
+            embeddings = load_embeddings(word_index_to_embeddings_map)
+            ling_feat_spmatrix, docids = load_ling_features()
+              
+            for method in methods: 
+                for feature_type in feature_types:
+                    print "**** Running method %s with features %s ****" % (method, feature_type)
+                    run_test(folds, folds_regression, dataset, method, feature_type, embeddings, ling_feat_spmatrix, docids, 
+                             subsample_amount=0)
+                      
+    run_test(folds, folds_regression, dataset, method, feature_type, embeddings, ling_feat_spmatrix, docids, 
+                        subsample_amount=0)         
