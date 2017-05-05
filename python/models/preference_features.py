@@ -556,7 +556,8 @@ class PreferenceComponents(object):
                 best_iter = r
                 
             # choose a new lengthscale for the initial guess of the next attempt
-            self.ls = gamma.rvs(self.shape_ls, scale=1.0/self.rate_ls, size=len(self.ls))
+            if r < nrestarts - 1:
+                self.ls = gamma.rvs(self.shape_ls, scale=1.0/self.rate_ls, size=len(self.ls))
 
         if best_iter < r:
             # need to go back to the best result

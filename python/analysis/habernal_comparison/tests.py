@@ -33,16 +33,15 @@ Created on 20 Mar 2017
 import pickle
 from data_loader import load_my_data_separate_args
 from data_loader_regression import load_my_data as load_my_data_regression
-import sys, os
+import os
 import numpy as np
 from sklearn.metrics import accuracy_score
 import time
-from scipy import sparse
 from sklearn.datasets import load_svmlight_file
-
+import skipthoughts
+import wordEmbeddings as siamese_cbow
 import logging
 logging.basicConfig(level=logging.DEBUG)
-
 from preference_features import PreferenceComponents
 from gp_pref_learning import GPPrefLearning
 from preproc_raw_data import generate_turker_CSV, generate_gold_CSV
@@ -193,16 +192,27 @@ def load_train_test_data(dataset):
     # Load the train/test data into a folds object. -------------------------------------------------------------------
     # Here we keep each the features of each argument in a pair separate, rather than concatenating them.
     print('Loading train/test data...')
-    folds, word_index_to_embeddings_map = load_my_data_separate_args(csvdirname, embeddings_dir=embeddings_dir)             
+    folds, word_index_to_embeddings_map, word_to_indices_map = load_my_data_separate_args(csvdirname, embeddings_dir=embeddings_dir)             
     folds_regression, _ = load_my_data_regression(ranking_csvdirname, load_embeddings=False)
         
-    return folds, folds_regression, word_index_to_embeddings_map
-        
+    return folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map
+    
 def load_embeddings(word_index_to_embeddings_map):
     print('Loading embeddings')
     # converting embeddings to numpy 2d array: shape = (vocabulary_size, 300)
+    # TODO: check that the order of the values matches the map keys
     embeddings = np.asarray([np.array(x, dtype=np.float32) for x in word_index_to_embeddings_map.values()])
     return embeddings
+
+def load_siamese_cbow_embeddings(word_to_indices_map):
+    print('Loading Siamese CBOW embeddings...')
+    filename = os.path.expanduser('~/data/embeddings/Siamese-CBOW/cosine_sharedWeights_adadelta_lr_1_noGradClip_epochs_2_batch_100_neg_2_voc_65536x300_noReg_lc_noPreInit_vocab_65535.end_of_epoch_2.pickle')
+    return siamese_cbow.wordEmbeddings(filename)
+    
+def load_skipthoughts_embeddings(word_to_indices_map):
+    print('Loading Skip-thoughts model...')
+    model = skipthoughts.load_model()
+    return model
     
 def load_ling_features():
     ling_dir = './data/lingdata/'
@@ -224,8 +234,8 @@ def load_ling_features():
     ling_feat_spmatrix, _ = load_svmlight_file(ling_file)
     return ling_feat_spmatrix, docids
     
-def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=None, ling_feat_spmatrix=None, 
-             docids=None, subsample_amount=0):
+def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type=None, embeddings=None, 
+             siamese_cbow_e=None, skipthoughts_model=None, ling_feat_spmatrix=None, docids=None, subsample_amount=0):
         
     # Select output paths for CSV files and final results
 
@@ -293,10 +303,16 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
         _, rankscores_test, argids_rank_test, turkIDs_rank_test = folds_regression.get(fold)["test"]
         
         # get the embedding values for the test data -- need to find embeddings of the whole piece of text
-        # TODO: allow alternatives to mean embeddings for sentences/documents
         if feature_type == 'both' or feature_type == 'embeddings':
             print "Converting texts to mean embeddings (we could use a better sentence embedding?)..."
-            items_feat = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X])
+            if embeddings_type == 'word_mean':
+                items_feat = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X])
+            elif embeddings_type == 'skipthoughts':
+                items_feat = skipthoughts.encode(skipthoughts_model, X)
+            elif embeddings_type == 'siamese_cbow':
+                items_feat = np.array([siamese_cbow_e.getAggregate(Xi) for Xi in X])
+            else:
+                print "invalid embeddings type! %s" % embeddings_type
             print "...embeddings loaded."
             # trim away any features not in the training data because we can't learn from them
             valid_feats = (np.sum(items_feat[trainids_a1], axis=0)>0) & (np.sum(items_feat[trainids_a2], axis=0)>0)
@@ -360,7 +376,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings=
         ls_initial_guess = np.ones(ndims)
         
         verbose = True
-        optimize_hyper = False # !!! Change this for final run!
+        optimize_hyper = True # !!! Change this for final run!
         
         # Run the selected method
         if method == 'PersonalisedPrefsBayes':        
@@ -467,19 +483,26 @@ if __name__ == '__main__':
         methods = ['SinglePrefGP']#'PersonalisedPrefsBayes', 'PersonalisedPrefsFA', 'PersonalisedPrefsNoFactors', #'CombinedPrefGP', <-- this is same as prefsnofactors but with only 2 VB iterations 
     #                'IndPrefGP', 'SinglePrefGP']  
         feature_types = ['both', 'embeddings', 'ling'] # can be 'embeddings' or 'ling' or 'both'
+        embeddings_types = ['word_mean', 'skipthoughts', 'siamese_cbow']
                 
         model = None
                 
         for dataset in datasets:
-            folds, folds_regression, word_index_to_embeddings_map = load_train_test_data(dataset)
-            embeddings = load_embeddings(word_index_to_embeddings_map)
+            folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map = load_train_test_data(dataset)
+            word_embeddings = load_embeddings(word_index_to_embeddings_map)
+            siamese_cbow_embeddings = load_siamese_cbow_embeddings(word_to_indices_map)
+            skipthoughts_model = load_skipthoughts_embeddings(word_to_indices_map)
             ling_feat_spmatrix, docids = load_ling_features()
               
             for method in methods: 
                 for feature_type in feature_types:
-                    print "**** Running method %s with features %s ****" % (method, feature_type)
-                    run_test(folds, folds_regression, dataset, method, feature_type, embeddings, ling_feat_spmatrix, docids, 
-                             subsample_amount=0)
-                      
-    run_test(folds, folds_regression, dataset, method, feature_type, embeddings, ling_feat_spmatrix, docids, 
-                        subsample_amount=0)         
+                    if feature_type == 'embeddings' or feature_type == 'both':
+                        embeddings_to_use = embeddings_types
+                    else:
+                        embeddings_to_use = None
+                    for embeddings_type in embeddings_to_use:
+                        print "**** Running method %s with features %s, embeddings %s ****" % (method, feature_type, 
+                                                                                               embeddings_type)
+                        run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type, 
+                             word_embeddings, siamese_cbow_embeddings, skipthoughts_model, ling_feat_spmatrix, docids, 
+                             subsample_amount=100)
