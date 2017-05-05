@@ -126,6 +126,7 @@ def pad_sequences(sequences, maxlen=None, dtype='int32',
 
 def combine_lines_into_one_file(dataset, dirname="/home/local/UKP/simpson/data/outputdata/UKPConvArg1-Full-libsvm", 
         outputfile="/home/local/UKP/simpson/git/crowdsourcing_argumentation/data/lingdata/%s-libsvm.txt"): 
+    output_argid_file = outputfile % ("argids_%s" % dataset)
     outputfile = outputfile % dataset
     
     outputstr = ""
@@ -146,7 +147,13 @@ def combine_lines_into_one_file(dataset, dirname="/home/local/UKP/simpson/data/o
                 ofh.write(outputline)
                 outputstr += outputline + '\n'
                 
-    return outputfile, outputstr, np.array(dataids)   
+    if os.path.isfile(output_argid_file):
+        os.remove(outputfile)
+        
+    dataids = np.array(dataids)[:, np.newaxis]
+    np.savetxt(output_argid_file, dataids, '%s')
+                
+    return outputfile, outputstr, dataids   
 
 def load_train_test_data(dataset):
     # Set experiment options and ensure CSV data is ready -------------------------------------------------------------
@@ -200,8 +207,9 @@ def load_train_test_data(dataset):
 def load_embeddings(word_index_to_embeddings_map):
     print('Loading embeddings')
     # converting embeddings to numpy 2d array: shape = (vocabulary_size, 300)
-    # TODO: check that the order of the values matches the map keys
-    embeddings = np.asarray([np.array(x, dtype=np.float32) for x in word_index_to_embeddings_map.values()])
+    embeddings = np.zeros((1 + np.max(word_index_to_embeddings_map.keys()), len(word_index_to_embeddings_map.values()[0])))
+    embeddings[word_index_to_embeddings_map.keys()] = word_index_to_embeddings_map.values()
+    #embeddings = np.asarray([np.array(x, dtype=np.float32) for x in word_index_to_embeddings_map.values()])
     return embeddings
 
 def load_siamese_cbow_embeddings(word_to_indices_map):
@@ -219,17 +227,11 @@ def load_ling_features():
     print "Looking for linguistic features in directory %s" % ling_dir    
     print('Loading linguistic features')
     ling_file = ling_dir + "/%s-libsvm.txt" % dataset
-    if not os.path.isfile(ling_file):
+    argids_file = ling_dir + "/%s-libsvm.txt" % ("argids_%s" % dataset)
+    if not os.path.isfile(ling_file) or not os.path.isfile(argids_file):
         ling_file, _ , docids = combine_lines_into_one_file(dataset, outputfile=ling_dir+"/%s-libsvm.txt")
     else:
-        dataids = []
-        libsvm_dir = os.path.expanduser('~/Dropbox/UKPConvArg1-Full-libsvm')
-        #libsvm_dir = "/home/local/UKP/simpson/data/outputdata/UKPConvArg1-Full-libsvm"
-        for filename in os.listdir(libsvm_dir):
-            fid = filename.split('.')[0]
-            dataids.append(fid)
-            # TODO: make sure we get the ids in the right order
-        docids = np.array(dataids)
+        docids = np.genfromtxt(argids_file, str)
         
     ling_feat_spmatrix, _ = load_svmlight_file(ling_file)
     return ling_feat_spmatrix, docids

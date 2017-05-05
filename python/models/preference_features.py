@@ -453,8 +453,8 @@ class PreferenceComponents(object):
         preferences - the values, 0 or 1 to express that item 1 was preferred to item 2.
         '''
         if optimize:
-            return self._optimize(personIDs, items_1_coords, items_2_coords, preferences, person_features, maxfun, 
-                                 use_MAP, nrestarts, input_type)
+            return self._optimize(personIDs, items_1_coords, items_2_coords, item_features, preferences, person_features, 
+                            maxfun, use_MAP, nrestarts, input_type)
         
         
         if personIDs is not None:
@@ -507,8 +507,8 @@ class PreferenceComponents(object):
 
             # Don't use lower bound here, it doesn't really make sense when we use ML for some parameters
             lb = self.lowerbound()
-            if self.verbose:
-                logging.debug('Iteration %i: lower bound = %.5f, difference = %.5f' % (self.vb_iter, lb, lb-old_lb))
+            #if self.verbose:
+            logging.debug('Iteration %i: lower bound = %.5f, difference = %.5f' % (self.vb_iter, lb, lb-old_lb))
             diff = lb - old_lb
             old_lb = lb
 
@@ -519,12 +519,12 @@ class PreferenceComponents(object):
             
         logging.debug( "Preference personality model converged in %i iterations." % self.vb_iter )
 
-    def _optimize(self, personIDs, items_1_coords, items_2_coords, preferences, person_features=None, 
+    def _optimize(self, personIDs, items_1_coords, items_2_coords, item_features, preferences, person_features=None, 
                  maxfun=20, use_MAP=False, nrestarts=1, input_type='binary'):
 
         max_iter = self.max_iter
         self.max_iter = 1 # set this temporarily
-        self.fit(personIDs, items_1_coords, items_2_coords, preferences, person_features, input_type=input_type)
+        self.fit(personIDs, items_1_coords, items_2_coords, item_features, preferences, person_features, input_type=input_type)
         self.max_iter = max_iter
 
         min_nlml = np.inf
@@ -714,8 +714,8 @@ class PreferenceComponents(object):
                 if self.use_svi:                
                     dKdls = self.kernel_der(self.inducing_coords, self.ls, dimension) 
                     # try to make the s scale cancel as much as possible
-                    invK_w = self.inv_Kws_mm.dot(self.w_u)
-                    invK_dkdls = self.inv_Kws_mm.dot(dKdls)
+                    invK_w = self.invK_mm.dot(self.w_u)
+                    invK_dkdls = self.invK_mm.dot(dKdls)
                     w_cov = self.w_cov_u
                     N = self.ninducing     
                 else:
@@ -992,7 +992,10 @@ class PreferenceComponents(object):
             pidxs = self.coordidxs[p]
             if self.use_svi_people:
                 y_p = self.y_u
-                y_cov = self.Kys_mm.dot(self.invKys_mm_S)
+                if hasattr(self, 'invKy_mm_S'):
+                    y_cov = self.Kys_mm.dot(self.invKys_mm_S)
+                else:
+                    y_cov = self.y_cov
                 yidxs = p + self.y_ninducing * np.arange(self.Nfactors)
             else:
                 y_p = self.y[:, p:p+1]
@@ -1133,8 +1136,8 @@ class PreferenceComponents(object):
                     Sigmarows = np.zeros((self.Nfactors, Sigma.shape[1]))
                     Sigmarows[:, sigmaidxs] = self.rate_sy[f] / self.shape_sy[f]
                     Sigma[sigmaidxs, :] += Sigmarows # add relevant bits of sy_matrix to sigma
-            else:
-                self.y_cov = np.linalg.inv(np.linalg.inv(self.Ky  / self.sy_matrix) + Sigma)
+
+            self.y_cov = np.linalg.inv(np.linalg.inv(self.Ky  / self.sy_matrix) + Sigma)
             self.y = self.y_cov.dot(x)
            
             # y is Nfactors x Npeople            

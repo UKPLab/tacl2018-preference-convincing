@@ -63,8 +63,6 @@ if __name__ == '__main__':
     
     N, nx, ny, prefs, xvals, yvals, pair1idxs, pair2idxs, f, _ = gen_synthetic_prefs()
     item_features = np.concatenate((xvals, yvals), axis=1)
-    _, uidxs = np.unique(coord_arr_to_1d(item_features), return_index=True)
-    item_features = item_features[uidxs]
         
     # separate training and test data
     Ptest = int(len(prefs) * 0.1)
@@ -73,7 +71,7 @@ if __name__ == '__main__':
     testidxs[testpairs] = True
     trainidxs = np.invert(testidxs)
 
-    f_test = f[uidxs]
+    f_test = f
     
     models = {}
     

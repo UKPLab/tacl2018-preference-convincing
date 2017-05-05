@@ -7,7 +7,7 @@ Created on 3 Mar 2017
 '''
 import logging
 import numpy as np
-from gp_classifier_vb import matern_3_2_from_raw_vals
+from gp_classifier_vb import matern_3_2_from_raw_vals, coord_arr_to_1d
 from scipy.stats import multivariate_normal as mvn
 from scipy.linalg import block_diag
 from gp_pref_learning_test import gen_synthetic_prefs
@@ -57,7 +57,7 @@ if __name__ == '__main__':
         ls = [10, 5]
         xvals = np.tile(np.arange(nx)[:, np.newaxis], (1, ny)).flatten()
         yvals = np.tile(np.arange(ny)[np.newaxis, :], (nx, 1)).flatten()
-        Kt = matern_3_2_from_raw_vals(np.array([xvals, yvals]), ls)
+        Kt = matern_3_2_from_raw_vals(np.concatenate((xvals[:, np.newaxis], yvals[:, np.newaxis]), axis=1), ls)
         t = mvn.rvs(cov=Kt).reshape(nx, ny)
         
         Nfactors = 3
@@ -73,23 +73,13 @@ if __name__ == '__main__':
         for f in range(Npeoplefeatures):
             person_features[f, :Npeople/2] = -0.2
             person_features[f, Npeople/2:] = 0.2
-            #person_features[f, :] += np.random.rand(Npeople)
             person_features[f, :] += np.arange(Npeople)
         
-        Ky = matern_3_2_from_raw_vals(person_features, lsy)
+        Ky = matern_3_2_from_raw_vals(person_features.T, lsy)
         Ky = [Ky for _ in range(Nfactors)]
         Ky = block_diag(*Ky)
         y = mvn.rvs(cov=Ky).reshape(Nfactors, Npeople)
         
-    #     w = np.zeros((nx * ny, Nfactors))
-    #     y = np.zeros((Nfactors, Npeople))
-    #     for f in range(Nfactors):
-    #         w[:(nx * ny)/2, f] = f * 1000#mvn.rvs(cov=Kt).flatten()
-    #         w[(nx * ny)/2:, f] = (f-1) * 1000
-    #         y[f, :Npeople/2] = f * 1000#mvn.rvs(cov=Ky)
-    #         y[f, Npeople/2:] = (f-1) * 1000
-    #         
-    
         xvals = []
         yvals = []
         for p in range(Npeople):
@@ -107,14 +97,18 @@ if __name__ == '__main__':
             personids = np.concatenate((personids, np.zeros(len(pair1idxs_p)) + p)).astype(int)
             xvals = np.concatenate((xvals, xvals_p.flatten()))
             yvals = np.concatenate((yvals, yvals_p.flatten()))
-    
-        pair1coords = np.concatenate((xvals[pair1idxs][:, np.newaxis], yvals[pair1idxs][:, np.newaxis]), axis=1)
-        pair2coords = np.concatenate((xvals[pair2idxs][:, np.newaxis], yvals[pair2idxs][:, np.newaxis]), axis=1) 
-    
+
+        xvals = xvals[:, np.newaxis]
+        yvals = yvals[:, np.newaxis]
+        item_features = np.concatenate((xvals, yvals), axis=1)
+        _, uidxs, inverseidxs = np.unique(coord_arr_to_1d(item_features), return_index=True, return_inverse=True)
+        item_features = item_features[uidxs]    
+        pair1idxs = inverseidxs[pair1idxs]
+        pair2idxs = inverseidxs[pair2idxs]
         Ptest = int(Ptest_percent * pair1idxs.size)
     
-        testpairs = np.random.choice(pair1coords.shape[0], Ptest, replace=False)
-        testidxs = np.zeros(pair1coords.shape[0], dtype=bool)
+        testpairs = np.random.choice(pair1idxs.shape[0], Ptest, replace=False)
+        testidxs = np.zeros(pair1idxs.shape[0], dtype=bool)
         testidxs[testpairs] = True
         trainidxs = np.invert(testidxs)
     
@@ -123,27 +117,27 @@ if __name__ == '__main__':
         
     # Model initialisation --------------------------------------------------------------------------------------------
     use_svi = True
-    ls_initial = np.array(ls) + 5
+    ls_initial = np.array([10]) + 5
     print "Initial guess of length scale for items: %s, true length scale is %s" % (ls_initial, ls)
     lsy_initial = np.array(lsy) + 7
     print "Initial guess of length scale for people: %s, true length scale is %s" % (lsy_initial, lsy)
     model = PreferenceComponents(2, Npeoplefeatures, ls=ls_initial, lsy=lsy_initial, nfactors=Nfactors + 5, use_fa=False, 
-                                 use_svi=use_svi, delay=5, forgetting_rate=0.9, ninducing=20, max_update_size=5)
+                                 use_svi=use_svi, delay=5, forgetting_rate=0.9, ninducing=2000, max_update_size=5)
     model.verbose = False
     model.min_iter = 1
-    model.max_iter = 200
-    model.fit(personids[trainidxs], pair1coords[trainidxs], pair2coords[trainidxs], prefs[trainidxs], person_features.T, 
-              _optimize=True)
-    
+    model.max_iter = 20
+    model.fit(personids[trainidxs], pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], 
+              person_features.T, optimize=True)
+#               None, optimize=True)    
     print "Difference between true item length scale and inferred item length scale = %s" % (ls - model.ls)
     print "Difference between true person length scale and inferred person length scale = %s" % (lsy - model.lsy)
     
     # turn the values into predictions of preference pairs.
-    results = model.predict(personids[testidxs], pair1coords[testidxs], pair2coords[testidxs])
+    results = model.predict(personids[testidxs], pair1idxs[testidxs], pair2idxs[testidxs], item_features)
     
     # make the test more difficult: we predict for a person we haven't seen before who has same features as another
-    result_new_person = model.predict([np.max(personids) + 1], pair1coords[testidxs][0:1], pair2coords[testidxs][0:1], 
-                                      np.concatenate((person_features.T, person_features[:, personids[0:1]].T), axis=0))
+    result_new_person = model.predict([np.max(personids) + 1], pair1idxs[testidxs][0:1], pair2idxs[testidxs][0:1], 
+                      item_features, np.concatenate((person_features.T, person_features[:, personids[0:1]].T), axis=0))
     print "Test using new person: %.3f" % result_new_person
     print "Old prediction: %.3f" % results[0]
     #print "Result is correct = " + str(np.abs(results[0] - result_new_person) < 1e-6) 
