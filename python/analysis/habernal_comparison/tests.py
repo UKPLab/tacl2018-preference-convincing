@@ -246,7 +246,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         
     # Select output paths for CSV files and final results
 
-    resultsfile = './results/habernal_%s_%s_%s_test.pkl' % (dataset, method, feature_type) 
+    resultsfile = './results/habernal_%s_%s_%s_%s_test.pkl' % (dataset, method, feature_type, embeddings_type) 
                 
     # Run test --------------------------------------------------------------------------------------------------------
     all_proba = {}
@@ -512,4 +512,4 @@ if __name__ == '__main__':
                                                                                                embeddings_type)
                         run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type, 
                              word_embeddings, siamese_cbow_embeddings, skipthoughts_model, ling_feat_spmatrix, docids, 
-                             subsample_amount=100)
+                             subsample_amount=0)
