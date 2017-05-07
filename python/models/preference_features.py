@@ -130,9 +130,12 @@ def svi_update_gaussian(invQi_y, mu0_n, mu_u, K_mm, invK_mm, K_nm, K_im, K_nn, i
     B = solve_triangular(L_invS, invK_mm.T, lower=True, check_finite=False)
     A = solve_triangular(L_invS, B, lower=True, trans=True, check_finite=False, overwrite_b=True)
     invK_mm_S = A.T
+    #S = np.linalg.inv(invS)
+    #invK_mm_S = invK_mm.dot(S)
     
     fhat_u = solve_triangular(L_invS, invSm, lower=True, check_finite=False)
     fhat_u = solve_triangular(L_invS, fhat_u, lower=True, trans=True, check_finite=False, overwrite_b=True)
+    #fhat_u = S.dot(invSm)
     fhat_u += mu_u
     
     covpair =  K_nm.dot(invK_mm)
@@ -363,7 +366,7 @@ class PreferenceComponents(object):
         self.w_invS = np.zeros((self.ninducing * self.Nfactors, self.ninducing * self.Nfactors), dtype=float) # theta_2
 
         self.t_invSm = np.zeros((self.ninducing, 1), dtype=float)# theta_1
-        self.t_invS = np.zeros((self.ninducing, self.ninducing), dtype=float) # theta_2             
+        self.t_invS = np.diag(np.ones(self.ninducing, dtype=float)) # theta_2
                 
         init_size = 300
         if self.ninducing > init_size:
@@ -421,7 +424,7 @@ class PreferenceComponents(object):
             self.y_inducing_coords = kmeans.cluster_centers_
     
             self.y_invSm = np.zeros((self.y_ninducing * self.Nfactors, 1), dtype=float)# theta_1
-            self.y_invS = np.zeros((self.y_ninducing * self.Nfactors, self.y_ninducing * self.Nfactors), dtype=float) # theta_2
+            self.y_invS = np.diag(np.ones(self.y_ninducing * self.Nfactors, dtype=float)) # theta_2
     
             self.Ky_mm_block = self.kernel_func(self.y_inducing_coords, self.lsy)
             self.Ky_mm_block += 1e-6 * np.eye(len(self.Ky_mm_block)) # jitter 
@@ -704,6 +707,10 @@ class PreferenceComponents(object):
         if needs_fitting:
             self.fit()
 
+        der_logpw_logqw = np.zeros(len(dimensions))
+        der_logpy_logqy = np.zeros(len(dimensions))
+        der_logpt_logqt = np.zeros(len(dimensions))
+        der_logpf_logqf = np.zeros(len(dimensions))
         for d, dimension in enumerate(dimensions):
             # compute the gradient
             # all of the terms below can use the same function except der_logpf. This should follow the MAP estimate from 
@@ -731,14 +738,13 @@ class PreferenceComponents(object):
                     w_cov = self.w_cov
                     N = self.N
                     
-                der_logpw_logqw = 0
                 for f in range(self.Nfactors):
                     fidxs = np.arange(N) + (N * f)
                     invK_wf = invK_w[:, f]
                     der_logpw_logqw[d] += 0.5 * (np.sum(invK_wf.T.dot(dKdls).dot(invK_wf) * (self.shape_sw[f] / self.rate_sw[f]))
                                                - np.trace(w_cov[fidxs, :][:, fidxs].dot(invK_dkdls)))
                 
-                der_logpy_logqy = 0
+                
                 if self.use_svi:
                     invK_t = self.inv_Kts_mm.dot(self.t_u)
                     der_logpt_logqt[d] = 0.5 * np.sum(invK_t.T.dot(dKdls).dot(invK_t) * (self.shape_st / self.rate_st))
@@ -779,10 +785,6 @@ class PreferenceComponents(object):
                     der_logpy_logqy[d] += 0.5 * np.sum(invK_yf.T.dot(dKdls).dot(invK_yf) * (self.shape_sy[f] / self.rate_sy[f]))
                     der_logpy_logqy[d] -= 0.5 * np.trace(y_cov[fidxs, :][:, fidxs].dot(invK_dkdls))            
                 
-                der_logpw_logqw = 0
-                der_logpt_logqt = 0
-                der_logpf_logqf = 0
-            
         mll_jac = der_logpw_logqw + der_logpy_logqy + der_logpt_logqt + der_logpf_logqf
         if len(mll_jac) == 1: # don't need an array if we only compute for one dimension
             mll_jac = mll_jac[0]
@@ -792,10 +794,10 @@ class PreferenceComponents(object):
             lml_jac = mll_jac + log_model_prior_grad
         else:
             lml_jac = mll_jac
-        logging.debug("Jacobian of LML: %f" % lml_jac)
+        logging.debug("Jacobian of LML: %s" % lml_jac)
         if self.verbose:
             logging.debug("...with item length-scales = %s, person length-scales = %s" % (self.ls, self.lsy))
-        return -lml_jac # negative because the objective function is also negated
+        return lml_jac # negative because the objective function is also negated
  
     def predict(self, personids, items_1_coords, items_2_coords, item_features=None, person_features=None):
         Npairs = len(personids)
@@ -990,15 +992,14 @@ class PreferenceComponents(object):
                 continue
                         
             pidxs = self.coordidxs[p]
+            y_p = self.y[:, p:p+1]
             if self.use_svi_people:
-                y_p = self.y_u
                 if hasattr(self, 'invKy_mm_S'):
-                    y_cov = self.Kys_mm.dot(self.invKys_mm_S)
+                    y_cov = self.Ky_nm.dot(self.Kys_mm.dot(self.invKys_mm_S)).dot(self.Ky_nm.T)
                 else:
                     y_cov = self.y_cov
                 yidxs = p + self.y_ninducing * np.arange(self.Nfactors)
             else:
-                y_p = self.y[:, p:p+1]
                 y_cov = self.y_cov
                 yidxs = p + self.Npeople * np.arange(self.Nfactors)
 

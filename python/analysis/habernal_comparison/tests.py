@@ -34,17 +34,22 @@ import pickle
 from data_loader import load_my_data_separate_args
 from data_loader_regression import load_my_data as load_my_data_regression
 import os
+import sys
 import numpy as np
 from sklearn.metrics import accuracy_score
 import time
 from sklearn.datasets import load_svmlight_file
-import skipthoughts
-import wordEmbeddings as siamese_cbow
 import logging
 logging.basicConfig(level=logging.DEBUG)
 from preference_features import PreferenceComponents
 from gp_pref_learning import GPPrefLearning
 from preproc_raw_data import generate_turker_CSV, generate_gold_CSV
+
+sys.path.append(os.path.expanduser("~/data/embeddings/Siamese-CBOW/siamese-cbow"))
+sys.path.append(os.path.expanduser("~/data/embeddings/skip-thoughts"))
+
+import skipthoughts
+import wordEmbeddings as siamese_cbow
 
 max_len = 300  # cut texts after this number of words (among top max_features most common words)
 
@@ -216,12 +221,12 @@ def load_siamese_cbow_embeddings(word_to_indices_map):
     print('Loading Siamese CBOW embeddings...')
     filename = os.path.expanduser('~/data/embeddings/Siamese-CBOW/cosine_sharedWeights_adadelta_lr_1_noGradClip_epochs_2_batch_100_neg_2_voc_65536x300_noReg_lc_noPreInit_vocab_65535.end_of_epoch_2.pickle')
     return siamese_cbow.wordEmbeddings(filename)
-    
+     
 def load_skipthoughts_embeddings(word_to_indices_map):
     print('Loading Skip-thoughts model...')
     model = skipthoughts.load_model()
     return model
-    
+     
 def load_ling_features():
     ling_dir = './data/lingdata/'
     print "Looking for linguistic features in directory %s" % ling_dir    
@@ -485,15 +490,15 @@ if __name__ == '__main__':
         methods = ['SinglePrefGP']#'PersonalisedPrefsBayes', 'PersonalisedPrefsFA', 'PersonalisedPrefsNoFactors', #'CombinedPrefGP', <-- this is same as prefsnofactors but with only 2 VB iterations 
     #                'IndPrefGP', 'SinglePrefGP']  
         feature_types = ['both', 'embeddings', 'ling'] # can be 'embeddings' or 'ling' or 'both'
-        embeddings_types = ['word_mean', 'skipthoughts', 'siamese_cbow']
+        embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
                 
         model = None
                 
         for dataset in datasets:
             folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map = load_train_test_data(dataset)
             word_embeddings = load_embeddings(word_index_to_embeddings_map)
-            siamese_cbow_embeddings = load_siamese_cbow_embeddings(word_to_indices_map)
-            skipthoughts_model = load_skipthoughts_embeddings(word_to_indices_map)
+            siamese_cbow_embeddings = None#load_siamese_cbow_embeddings(word_to_indices_map)
+            skipthoughts_model = None#load_skipthoughts_embeddings(word_to_indices_map)
             ling_feat_spmatrix, docids = load_ling_features()
               
             for method in methods: 

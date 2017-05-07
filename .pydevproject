@@ -10,8 +10,5 @@
 </pydev_pathproperty>
 <pydev_property name="org.python.pydev.PYTHON_PROJECT_VERSION">python 2.7</pydev_property>
 <pydev_property name="org.python.pydev.PYTHON_PROJECT_INTERPRETER">Default</pydev_property>
-<pydev_pathproperty name="org.python.pydev.PROJECT_EXTERNAL_SOURCE_PATH">
-<path>/home/local/UKP/simpson/data/embeddings/skip-thoughts</path>
-<path>/home/local/UKP/simpson/data/embeddings/Siamese-CBOW/siamese-cbow</path>
-</pydev_pathproperty>
+
 </pydev_project>

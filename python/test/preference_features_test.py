@@ -55,8 +55,8 @@ if __name__ == '__main__':
         
         # generate a common prior:
         ls = [10, 5]
-        xvals = np.tile(np.arange(nx)[:, np.newaxis], (1, ny)).flatten()
-        yvals = np.tile(np.arange(ny)[np.newaxis, :], (nx, 1)).flatten()
+        xvals = np.tile(np.arange(nx)[:, np.newaxis], (1, ny)).flatten().astype(float)
+        yvals = np.tile(np.arange(ny)[np.newaxis, :], (nx, 1)).flatten().astype(float)
         Kt = matern_3_2_from_raw_vals(np.concatenate((xvals[:, np.newaxis], yvals[:, np.newaxis]), axis=1), ls)
         t = mvn.rvs(cov=Kt).reshape(nx, ny)
         
@@ -122,10 +122,10 @@ if __name__ == '__main__':
     lsy_initial = np.array(lsy) + 7
     print "Initial guess of length scale for people: %s, true length scale is %s" % (lsy_initial, lsy)
     model = PreferenceComponents(2, Npeoplefeatures, ls=ls_initial, lsy=lsy_initial, nfactors=Nfactors + 5, use_fa=False, 
-                                 use_svi=use_svi, delay=5, forgetting_rate=0.9, ninducing=2000, max_update_size=5)
+                                 use_svi=use_svi, delay=5, forgetting_rate=0.9, ninducing=1000, max_update_size=5)
     model.verbose = False
     model.min_iter = 1
-    model.max_iter = 20
+    model.max_iter = 100
     model.fit(personids[trainidxs], pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], 
               person_features.T, optimize=True)
 #               None, optimize=True)    

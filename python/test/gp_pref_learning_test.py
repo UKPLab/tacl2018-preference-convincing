@@ -28,7 +28,7 @@ def gen_synthetic_prefs(f_prior_mean=None, nx=10, ny=10, N=100, P=5000, ls=[1, 4
             xvals[coord] = np.random.choice(nx, 1)
             yvals[coord] = np.random.choice(ny, 1)           
         
-    K = matern_3_2_from_raw_vals(np.concatenate((xvals, yvals), axis=1), ls)
+    K = matern_3_2_from_raw_vals(np.concatenate((xvals.astype(float), yvals.astype(float)), axis=1), ls)
 
     # generate the function values for the pairs
     if f_prior_mean is None:
