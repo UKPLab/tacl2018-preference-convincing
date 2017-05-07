@@ -182,10 +182,11 @@ class GPPrefLearning(GPClassifierSVI):
         totals = totals.astype(int)  
                                
         if self.item_features is not None:
-            self.original_idxs = np.arange(self.item_features.shape[0])
+            self.obs_uidxs = np.arange(self.item_features.shape[0])
             self.pref_v = obs_coords_0.flatten()
             self.pref_u = obs_coords_1.flatten()
             self.obs_coords = self.item_features
+            self.obs_uidxs = np.arange(self.item_features.shape[0])
             return poscounts, totals             
         else:
             # TODO: This code could be merged with get_unique_locations()
@@ -215,8 +216,8 @@ class GPPrefLearning(GPClassifierSVI):
             nonzero_all = np.concatenate((nonzero_v, nonzero_u), axis=0)
             ukeys, pref_vu = np.unique(nonzero_all, return_inverse=True) # get unique locations
             
-            self.original_idxs = origidxs[ukeys] # indexes of unique observation locations into the original input data
-        
+            self.obs_uidxs = origidxs[ukeys] # indexes of unique observation locations into the original input data
+            
             # Record the coordinates of all points that were compared
             self.obs_coords = coord_arr_from_1d(uravelled_coords[ukeys], obs_coords_0.dtype, 
                                             dims=(len(ukeys), obs_coords_0.shape[1]))
@@ -360,6 +361,8 @@ class GPPrefLearning(GPClassifierSVI):
             output_coords = item_features
             out_pref_v = items_0_coords
             out_pref_u = items_1_coords
+        
+        self.output_coords = output_coords
         
         nblocks, noutputs = self._init_output_arrays(output_coords, max_block_size)
                 

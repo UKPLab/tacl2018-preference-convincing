@@ -380,10 +380,10 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
 #                         items_feat.power(2).mean(axis=0) - np.power(items_feat.mean(axis=0), 2)) / 2.0, 0.5)
 #         else:
 #             ls_initial_guess = (np.std(items_feat, axis=0) + np.std(items_feat, axis=0)) / 2.0
-        ls_initial_guess = np.ones(ndims)
+        ls_initial_guess = np.ones(ndims) * 2.0
         
         verbose = True
-        optimize_hyper = True # !!! Change this for final run!
+        optimize_hyper = True
         
         # Run the selected method
         if method == 'PersonalisedPrefsBayes':        
@@ -420,12 +420,12 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             model.fit(trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, input_type='zero-centered')            
         
-            proba = model.predict(testids_a1, testids_a2, items_feat)
-            predicted_f = [model.f, model.output_coords]
+            proba, _ = model.predict(testids_a1, testids_a2, items_feat)
+            predicted_f = [model.f, items_feat]
             
-        predictions = np.round(proba * 2)
+        predictions = np.round(proba)
         
-        endtime = time.time()
+        endtime = time.time() 
         
         print "Completed running the test with method %s in %f seconds." % (method, endtime-starttime)
         endtime-starttime
@@ -481,8 +481,8 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         # Compute metrics ---------------------------------------------------------------------------------------------
         
         prefs_test = np.array(prefs_test, dtype=float)
-        acc = accuracy_score(prefs_test, predictions)
-        print('Test accuracy:', acc)            
+        acc = accuracy_score(prefs_test[prefs_test != 1] / 2, predictions[prefs_test != 1]) #skip the don't knows
+        print('Test accuracy:', acc) 
         
 if __name__ == '__main__':
     if 'folds' not in globals():
