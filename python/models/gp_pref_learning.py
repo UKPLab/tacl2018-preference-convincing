@@ -391,7 +391,7 @@ class GPPrefLearning(GPClassifierSVI):
         else:
             return m_post     
         
-    def predict_f(self, items_coords=[], max_block_size=1e5, mu0_output=None):
+    def predict_f(self, items_coords=None, max_block_size=1e5, mu0_output=None):
         nblocks, noutputs = self._init_output_arrays(items_coords, max_block_size)
                 
         if mu0_output is not None and len(mu0_output):
@@ -402,7 +402,7 @@ class GPPrefLearning(GPClassifierSVI):
         for block in range(nblocks):
             if self.verbose:
                 logging.debug("GPClassifierVB predicting block %i of %i" % (block, nblocks))            
-            self._predict_block(block, max_block_size, noutputs)
+            self._predict_block(block, max_block_size, noutputs, items_coords is not None)
         
         return self.f, self.v
             

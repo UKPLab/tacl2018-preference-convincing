@@ -520,6 +520,8 @@ class PreferenceComponents(object):
             
             if diff <= self.conv_threshold:
                 converged_count += 1
+            elif diff > self.conv_threshold and converged_count > 0:
+                converged_count -= 1
             
         logging.debug( "Preference personality model converged in %i iterations." % self.vb_iter )
 
@@ -952,7 +954,8 @@ class PreferenceComponents(object):
                 if not self.use_svi:
                     self.invKf[p] = np.linalg.inv(self.pref_gp[p].K) 
 
-            f, _ = self.pref_gp[p].predict_f(items_coords=self.obs_coords, mu0_output=mu0_output)
+            f, _ = self.pref_gp[p].predict_f(items_coords=self.obs_coords if self.vb_iter==0 else None, 
+                                             mu0_output=mu0_output)
             self.f[p, :] = f.flatten()
             
             if self.use_svi:

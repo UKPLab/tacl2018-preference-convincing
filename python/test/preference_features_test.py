@@ -125,7 +125,7 @@ if __name__ == '__main__':
                                  use_svi=use_svi, delay=1, forgetting_rate=0.9, ninducing=500, max_update_size=5)
     model.verbose = False
     model.min_iter = 1
-    model.max_iter = 100
+    model.max_iter = 1000
     model.fit(personids[trainidxs], pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], 
               person_features.T, optimize=True)
 #               None, optimize=True)    
