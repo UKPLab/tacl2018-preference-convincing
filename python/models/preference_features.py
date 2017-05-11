@@ -156,7 +156,7 @@ class PreferenceComponents(object):
     def __init__(self, nitem_features, nperson_features=0, mu0=0, mu0_y=0, shape_s0=1, rate_s0=1, shape_ls=1, rate_ls=100, 
                  ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=3, use_fa=False, no_factors=False,
                  no_mean=False, kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True, 
-                 forgetting_rate=0.9, delay=1.0):
+                 forgetting_rate=0.9, delay=1.0, use_common_mean_t = True):
         '''
         Constructor
         dims - ranges for each of the observed features of the objects
@@ -194,10 +194,10 @@ class PreferenceComponents(object):
         # vary relative to the overall f, i.e. how much they learn from f. A high s will mean that the wy & t functions 
         # have smaller scale relative to f, so they will be less fitted to f. By default we assume a common prior.   
         self.shape_sw0 = shape_s0
-        self.rate_sw0 = rate_s0
+        self.rate_sw0 = rate_s0 * 10
                             
         self.shape_sy0 = shape_s0
-        self.rate_sy0 = rate_s0 #* 100 --> this made it detect features, but not very well.
+        self.rate_sy0 = rate_s0 * 10 #* 100 --> this made it detect features, but not very well.
     
         # if the scale doesn't matter, then let's fix the mean to be scaled to one? However, fixing t's scale and not
         # the noise scale in f means that since preference learning can collapse toward very large scales, the noise
@@ -256,6 +256,8 @@ class PreferenceComponents(object):
         self._select_covariance_function(kernel_func)
         
         self.matches = {} # indexes of the obs_coords in the child noise GPs 
+        
+        self.use_t = use_common_mean_t
             
     def _select_covariance_function(self, cov_type):
         self.cov_type = cov_type
@@ -344,8 +346,7 @@ class PreferenceComponents(object):
             self.w = np.zeros((self.N, self.Nfactors))
             
         if not self.no_factors: #not self.use_svi_people and 
-            self.y = mvn.rvs(np.zeros(self.Nfactors * self.Npeople), cov=self.Ky / self.sy_matrix).reshape((self.Nfactors, 
-                                                                                                        self.Npeople))            
+            self.y = 2 * (np.random.rand(self.Nfactors, self.Npeople) - 0.5) * self.rate_sy[:, np.newaxis] / self.shape_sy[:, np.newaxis]
         else:
             self.y = np.zeros((self.Nfactors, self.Npeople))
             
@@ -389,10 +390,11 @@ class PreferenceComponents(object):
         self.invKw_mm = block_diag(*blocks)
         blocks = [self.K_nm for _ in range(self.Nfactors)]
         self.Kw_nm = block_diag(*blocks)        
-                
+         
+        self.w_u = np.zeros((self.ninducing, self.Nfactors))       
         #self.w_u = mvn.rvs(np.zeros(self.Nfactors * self.ninducing), cov=self.Kw_mm).reshape((self.Nfactors, self.ninducing)).T
         #self.w_u *= (self.shape_sw/self.rate_sw)[np.newaxis, :]
-        self.w_u = np.random.rand(self.ninducing, self.Nfactors) - 0.5 #np.zeros((self.ninducing, self.Nfactors))
+        #self.w_u = 2 * (np.random.rand(self.ninducing, self.Nfactors) - 0.5) * self.rate_sw / self.shape_sw #np.zeros((self.ninducing, self.Nfactors))
         self.t_u = np.zeros((self.ninducing, 1)) 
         self.f_u = {}
                 
@@ -499,8 +501,9 @@ class PreferenceComponents(object):
             # compute preference latent functions for all workers
             self._expec_f()
             
-            # compute the preference function means
-            self._expec_t()            
+            if self.use_t:
+                # compute the preference function means
+                self._expec_t()            
             
             # find the personality components
             self._expec_w()
@@ -743,16 +746,17 @@ class PreferenceComponents(object):
                                                - np.trace(w_cov[fidxs, :][:, fidxs].dot(invK_dkdls)))
                 
                 
-                if self.use_svi:
-                    invK_t = self.inv_Kts_mm.dot(self.t_u)
-                    der_logpt_logqt[d] = 0.5 * np.sum(invK_t.T.dot(dKdls).dot(invK_t) * (self.shape_st / self.rate_st))
-                    der_logpt_logqt[d] -= 0.5 * np.trace(self.t_cov_u.dot(invK_dkdls))
-                else:
-                    invK_t = solve_triangular(self.cholK, self.t, trans=True, check_finite=False)
-                    invK_t = solve_triangular(self.cholK, invK_t, check_finite=False)
-                    der_logpt_logqt[d] = 0.5 * np.sum(invK_t.T.dot(dKdls).dot(invK_t) * (self.shape_st / self.rate_st))                
-                    der_logpt_logqt[d] -= 0.5 * np.trace(self.t_cov.dot(invK_dkdls))
-                
+                if self.use_t:
+                    if self.use_svi:
+                        invK_t = self.inv_Kts_mm.dot(self.t_u)
+                        der_logpt_logqt[d] = 0.5 * np.sum(invK_t.T.dot(dKdls).dot(invK_t) * (self.shape_st / self.rate_st))
+                        der_logpt_logqt[d] -= 0.5 * np.trace(self.t_cov_u.dot(invK_dkdls))
+                    else:
+                        invK_t = solve_triangular(self.cholK, self.t, trans=True, check_finite=False)
+                        invK_t = solve_triangular(self.cholK, invK_t, check_finite=False)
+                        der_logpt_logqt[d] = 0.5 * np.sum(invK_t.T.dot(dKdls).dot(invK_t) * (self.shape_st / self.rate_st))                
+                        der_logpt_logqt[d] -= 0.5 * np.trace(self.t_cov.dot(invK_dkdls))
+                    
                 for p in self.pref_gp:
                     der_logpf_logqf[d] += self.pref_gp[p].lowerbound_gradient(dimension)
                 
@@ -812,8 +816,6 @@ class PreferenceComponents(object):
         upeople = np.unique(personids)
         for p in upeople:            
             pidxs = personids == p
-            Npairs_p = np.sum(pidxs)
-            
             if p in self.people:
                 y = self.y[:, p:p+1] 
             elif self.person_features is None:
@@ -853,15 +855,9 @@ class PreferenceComponents(object):
             # this could be made more efficient because duplicate locations are computed separately!
             # distances for t-space
             if self.use_svi:
-                distances1 = np.zeros((Npairs_p, self.ninducing, self.nitem_features))
-                distances2 = np.zeros((Npairs_p, self.ninducing, self.nitem_features))
-                for d in range(self.nitem_features):
-                    distances1[:, :, d] = coords_1[:, d:d+1] - self.inducing_coords[:, d:d+1].T
-                    distances2[:, :, d] = coords_2[:, d:d+1] - self.inducing_coords[:, d:d+1].T
-                    
                 # kernel between pidxs and t
-                K1 = self.kernel_func(distances1, self.ls)
-                K2 = self.kernel_func(distances2, self.ls)            
+                K1 = self.kernel_func(coords_1, self.ls, self.inducing_coords)
+                K2 = self.kernel_func(coords_2, self.ls, self.inducing_coords)
             
                 # use kernel to compute t. 
                 t1 = K1.dot(self.invK_mm).dot(self.t_u)
@@ -871,15 +867,9 @@ class PreferenceComponents(object):
                 w1 = K1.dot(self.invK_mm).dot(self.w_u)   
                 w2 = K2.dot(self.invK_mm).dot(self.w_u)                    
             else:                                
-                distances1 = np.zeros((Npairs_p, self.N, self.nitem_features))
-                distances2 = np.zeros((Npairs_p, self.N, self.nitem_features))
-                for d in range(self.nitem_features):
-                    distances1[:, :, d] = coords_1[:, d:d+1] - self.obs_coords[:, d:d+1].T
-                    distances2[:, :, d] = coords_2[:, d:d+1] - self.obs_coords[:, d:d+1].T
-                
                 # kernel between pidxs and t
-                K1 = self.kernel_func(distances1, self.ls)
-                K2 = self.kernel_func(distances2, self.ls)            
+                K1 = self.kernel_func(coords_1, self.ls, self.obs_coords)
+                K2 = self.kernel_func(coords_2, self.ls, self.obs_coords) 
             
                 # use kernel to compute t
                 invKt = solve_triangular(self.cholK, self.t, trans=True, check_finite=False)
@@ -1303,14 +1293,22 @@ class PreferenceComponents(object):
                 logqw = mvn.logpdf(self.w_u.T.flatten(), mean=self.w_u.T.flatten(), cov=self.Kws_mm.dot(self.invKws_mm_S), 
                                    allow_singular=True)
     
-                logpt = mvn.logpdf(self.t_u.flatten(), cov=self.Kts_mm)
-                logqt = mvn.logpdf(self.t_u.flatten(), mean=self.t_u.flatten(), cov=self.Kts_mm.dot(self.invKts_mm_S))    
+                if self.use_t:
+                    logpt = mvn.logpdf(self.t_u.flatten(), cov=self.Kts_mm)
+                    logqt = mvn.logpdf(self.t_u.flatten(), mean=self.t_u.flatten(), cov=self.Kts_mm.dot(self.invKts_mm_S))
+                else:
+                    logpt = 0
+                    logqt = 0        
             else:
                 logpw = mvn.logpdf(self.w.T.flatten(), cov=self.Kw / self.sw_matrix, allow_singular=True)
                 logqw = mvn.logpdf(self.w.T.flatten(), mean=self.w.T.flatten(), cov=self.w_cov, allow_singular=True)
                 
-                logpt = mvn.logpdf(self.t.flatten(), mean=self.t_mu0.flatten(), cov=self.K * self.rate_st / self.shape_st)
-                logqt = mvn.logpdf(self.t.flatten(), mean=self.t.flatten(), cov=self.t_cov)    
+                if self.use_t:
+                    logpt = mvn.logpdf(self.t.flatten(), mean=self.t_mu0.flatten(), cov=self.K * self.rate_st / self.shape_st)
+                    logqt = mvn.logpdf(self.t.flatten(), mean=self.t.flatten(), cov=self.t_cov)
+                else:
+                    logpt = 0
+                    logqt = 0        
     
             if self.use_svi_people:
                 logpy = mvn.logpdf(self.y_u.flatten(), cov=self.Kys_mm)
