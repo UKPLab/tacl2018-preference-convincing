@@ -117,12 +117,12 @@ if __name__ == '__main__':
         
     # Model initialisation --------------------------------------------------------------------------------------------
     use_svi = True
-    ls_initial = np.array([10]) + 5
+    ls_initial = np.array(ls) + 5
     print "Initial guess of length scale for items: %s, true length scale is %s" % (ls_initial, ls)
     lsy_initial = np.array(lsy) + 7
     print "Initial guess of length scale for people: %s, true length scale is %s" % (lsy_initial, lsy)
     model = PreferenceComponents(2, Npeoplefeatures, ls=ls_initial, lsy=lsy_initial, nfactors=Nfactors + 5, use_fa=False, 
-                                 use_svi=use_svi, delay=5, forgetting_rate=0.9, ninducing=1000, max_update_size=5)
+                                 use_svi=use_svi, delay=1, forgetting_rate=0.9, ninducing=500, max_update_size=5)
     model.verbose = False
     model.min_iter = 1
     model.max_iter = 100
