@@ -30,11 +30,24 @@ Created on 20 Mar 2017
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
 
+import sys
+import os
+
+sys.path.append('../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python')
+
+sys.path.append("./python")
+sys.path.append("./python/analysis")
+sys.path.append("./python/models")
+
+sys.path.append("../../git/HeatMapBCC/python")
+sys.path.append("../../git/pyIBCC/python")
+
+sys.path.append(os.path.expanduser("~/data/embeddings/Siamese-CBOW/siamese-cbow"))
+sys.path.append(os.path.expanduser("~/data/embeddings/skip-thoughts"))
+
 import pickle
 from data_loader import load_my_data_separate_args
 from data_loader_regression import load_my_data as load_my_data_regression
-import os
-import sys
 import numpy as np
 from sklearn.metrics import accuracy_score
 import time
@@ -44,10 +57,6 @@ logging.basicConfig(level=logging.DEBUG)
 from preference_features import PreferenceComponents
 from gp_pref_learning import GPPrefLearning
 from preproc_raw_data import generate_turker_CSV, generate_gold_CSV
-
-sys.path.append(os.path.expanduser("~/data/embeddings/Siamese-CBOW/siamese-cbow"))
-sys.path.append(os.path.expanduser("~/data/embeddings/skip-thoughts"))
-
 import skipthoughts
 import wordEmbeddings as siamese_cbow
 
@@ -506,7 +515,7 @@ if __name__ == '__main__':
                     if feature_type == 'embeddings' or feature_type == 'both':
                         embeddings_to_use = embeddings_types
                     else:
-                        embeddings_to_use = None
+                        embeddings_to_use = [None]
                     for embeddings_type in embeddings_to_use:
                         print "**** Running method %s with features %s, embeddings %s ****" % (method, feature_type, 
                                                                                                embeddings_type)
