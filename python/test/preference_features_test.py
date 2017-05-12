@@ -32,18 +32,18 @@ if __name__ == '__main__':
     logging.info( "Testing Bayesian preference components analysis using synthetic data..." )
     
     if 'xvals' not in globals():
-        Npeople = 20
-        N = 25
-        P = 100 # pairs per person in test+training set
-        nx = 5
-        ny = 5
-    # 
-    #     Npeople = 200
-    #     N = 100
-    #     P = 100
-    #     nx = 25
-    #     ny = 25
-    #     
+#         Npeople = 20
+#         N = 25
+#         P = 100 # pairs per person in test+training set
+#         nx = 5
+#         ny = 5
+     
+        Npeople = 200
+        N = 100
+        P = 100
+        nx = 25
+        ny = 25
+         
         
         Ptest_percent = 0.2
         pair1idxs = []
@@ -121,11 +121,11 @@ if __name__ == '__main__':
     print "Initial guess of length scale for items: %s, true length scale is %s" % (ls_initial, ls)
     lsy_initial = np.array(lsy) + 7
     print "Initial guess of length scale for people: %s, true length scale is %s" % (lsy_initial, lsy)
-    model = PreferenceComponents(2, Npeoplefeatures, ls=ls_initial, lsy=lsy_initial, nfactors=Nfactors + 5, use_fa=False, 
-             use_svi=use_svi, delay=1, forgetting_rate=0.9, ninducing=500, max_update_size=5, use_common_mean_t=False)
+    model = PreferenceComponents(2, Npeoplefeatures, ls=ls_initial, lsy=lsy_initial, use_fa=False, 
+             use_svi=use_svi, delay=1, forgetting_rate=0.9, ninducing=5000, max_update_size=5, use_common_mean_t=False)
     model.verbose = False
     model.min_iter = 1
-    model.max_iter = 1000
+    model.max_iter = 200
     model.fit(personids[trainidxs], pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], 
               person_features.T, optimize=True)
 #               None, optimize=True)    

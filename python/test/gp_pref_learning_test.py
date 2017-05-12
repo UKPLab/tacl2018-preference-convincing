@@ -76,7 +76,7 @@ if __name__ == '__main__':
     models = {}
     
     #initial_ls = [5, 10]
-    initial_ls = [10, 10]
+    initial_ls = [100, 100]
     
     # Create a GPPrefLearning model
     model = GPPrefLearning(2, mu0=0, shape_s0=1000, rate_s0=100, ls_initial=initial_ls, use_svi=True, ninducing=100)    

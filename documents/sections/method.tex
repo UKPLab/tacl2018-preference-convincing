@@ -63,7 +63,7 @@ where $t_i$ is the preference label for the $i$th pair,
 
 To perform feature selection with large numbers of features, we introduce 
 an automatic relevance determination
-(ARD) approach that uses the gradient of the lower bound on the log marginal likelihood to optimise the kernel length-scales using the conjugate gradient method. The gradient is given by:
+(ARD) approach that uses the gradient of the lower bound on the log marginal likelihood to optimise the kernel length-scales using the L-BFGS-B method\cite{??}. The gradient is given by:
 \begin{flalign*}
 \nabla\mathcal{L} = \left[ \frac{\partial \mathcal{L}}{\partial l_{w,1}}, ...,  \frac{\partial \mathcal{L}}{\partial l_{w,D_w}},  \frac{\partial \mathcal{L}}{\partial l_{y,1}}, ...,  \frac{\partial \mathcal{L}}{\partial l_{y,D_y}} \right], &&\\
 \frac{\partial \mathcal{L}}{\partial l_{w,d}} = \frac{\partial}{\partial l_{w,d}} 

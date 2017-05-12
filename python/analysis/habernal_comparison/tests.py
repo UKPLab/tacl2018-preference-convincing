@@ -495,7 +495,8 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         
 if __name__ == '__main__':
     if 'folds' not in globals():
-        datasets = ['UKPConvArgAll', 'UKPConvArgMACE', 'UKPConvArgStrict'] 
+        datasets = ['UKPConvArgAll', 'UKPConvArgMACE', 'UKPConvArgStrict']
+        # TODO: add a method for one of the 'both' runs only that tests single length-scale versus free length scales 
         methods = ['SinglePrefGP']#'PersonalisedPrefsBayes', 'PersonalisedPrefsFA', 'PersonalisedPrefsNoFactors', #'CombinedPrefGP', <-- this is same as prefsnofactors but with only 2 VB iterations 
     #                'IndPrefGP', 'SinglePrefGP']  
         feature_types = ['both', 'embeddings', 'ling'] # can be 'embeddings' or 'ling' or 'both'
@@ -515,7 +516,7 @@ if __name__ == '__main__':
                     if feature_type == 'embeddings' or feature_type == 'both':
                         embeddings_to_use = embeddings_types
                     else:
-                        embeddings_to_use = [None]
+                        embeddings_to_use = ['']
                     for embeddings_type in embeddings_to_use:
                         print "**** Running method %s with features %s, embeddings %s ****" % (method, feature_type, 
                                                                                                embeddings_type)
