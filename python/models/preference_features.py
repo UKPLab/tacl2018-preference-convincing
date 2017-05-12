@@ -742,9 +742,10 @@ class PreferenceComponents(object):
                 for f in range(self.Nfactors):
                     fidxs = np.arange(N) + (N * f)
                     invK_wf = invK_w[:, f]
-                    der_logpw_logqw[d] += 0.5 * (np.sum(invK_wf.T.dot(dKdls).dot(invK_wf) * (self.shape_sw[f] / self.rate_sw[f]))
-                                               - np.trace(w_cov[fidxs, :][:, fidxs].dot(invK_dkdls)))
-                
+                    sw = self.shape_sw[f] / self.rate_sw[f]
+                    invKs_dkdls = invK_dkdls * sw
+                    der_logpw_logqw[d] += 0.5 * (np.sum(invK_wf.T.dot(dKdls).dot(invK_wf) * sw) + np.trace(
+                                                       invKs_dkdls - w_cov[fidxs, :][:, fidxs].dot(dkdls)/sw ))
                 
                 if self.use_t:
                     if self.use_svi:
