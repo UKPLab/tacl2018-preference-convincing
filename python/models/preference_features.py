@@ -155,8 +155,8 @@ class PreferenceComponents(object):
 
     def __init__(self, nitem_features, nperson_features=0, mu0=0, mu0_y=0, shape_s0=1, rate_s0=1, shape_ls=1, rate_ls=100, 
                  ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=100, use_fa=False, no_factors=False,
-                 no_mean=False, kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True, 
-                 forgetting_rate=0.9, delay=1.0, use_common_mean_t = True):
+                 use_common_mean_t=True, kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True, 
+                 forgetting_rate=0.9, delay=1.0):
         '''
         Constructor
         dims - ranges for each of the observed features of the objects
@@ -242,7 +242,7 @@ class PreferenceComponents(object):
         
         self.use_fa = use_fa # flag to indicate whether to use the simple factor analysis ML update instead of the VB GP
         self.no_factors = no_factors
-        self.no_mean = no_mean
+        self.use_t = use_common_mean_t
         
         self.max_update_size = max_update_size # maximum number of data points to update in each SVI iteration
         
@@ -257,8 +257,6 @@ class PreferenceComponents(object):
         
         self.matches = {} # indexes of the obs_coords in the child noise GPs 
         
-        self.use_t = use_common_mean_t
-            
     def _select_covariance_function(self, cov_type):
         self.cov_type = cov_type
         if cov_type == 'matern_3_2':

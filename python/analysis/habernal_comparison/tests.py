@@ -42,8 +42,10 @@ sys.path.append("./python/models")
 sys.path.append("../../git/HeatMapBCC/python")
 sys.path.append("../../git/pyIBCC/python")
 
-sys.path.append(os.path.expanduser("~/data/embeddings/Siamese-CBOW/siamese-cbow"))
-sys.path.append(os.path.expanduser("~/data/embeddings/skip-thoughts"))
+data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
+
+sys.path.append(data_root_dir + '/embeddings/Siamese-CBOW/siamese-cbow')
+sys.path.append(data_root_dir + '/embeddings/skip-thoughts')
 
 import pickle
 from data_loader import load_my_data_separate_args
@@ -138,8 +140,8 @@ def pad_sequences(sequences, maxlen=None, dtype='int32',
     return x
 
 
-def combine_lines_into_one_file(dataset, dirname="/home/local/UKP/simpson/data/outputdata/UKPConvArg1-Full-libsvm", 
-        outputfile="/home/local/UKP/simpson/git/crowdsourcing_argumentation/data/lingdata/%s-libsvm.txt"): 
+def combine_lines_into_one_file(dataset, dirname=data_root_dir + '/lingdata/UKPConvArg1-Full-libsvm', 
+        outputfile=data_root_dir + '/lingdata/%s-libsvm.txt'): 
     output_argid_file = outputfile % ("argids_%s" % dataset)
     outputfile = outputfile % dataset
     
@@ -175,14 +177,14 @@ def load_train_test_data(dataset):
     # See the readme in the data folder from Habernal 2016 for further explanation of folder names.    
     if dataset == 'UKPConvArgAll':
         # basic dataset for UKPConvArgAll, which requires additional steps to produce the other datasets        
-        dirname = '../../git/acl2016-convincing-arguments/data/UKPConvArg1-full-XML/'  
-        ranking_csvdirname = './data/UKPConvArgAllRank/'
+        dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'  
+        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArgAllRank-CSV/'
     elif dataset == 'UKPConvArgMACE':        
-        dirname = '../../git/acl2016-convincing-arguments/data/UKPConvArg1-full-XML/'
-        ranking_csvdirname = '/home/local/UKP/simpson/git/acl2016-convincing-arguments/data/UKPConvArg1-Ranking-CSV/'          
+        dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'
+        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-Ranking-CSV/'          
     elif dataset == 'UKPConvArgStrict':
-        dirname = '../../git/acl2016-convincing-arguments/data/UKPConvArg1Strict-XML/'
-        ranking_csvdirname = '/home/local/UKP/simpson/git/acl2016-convincing-arguments/data/UKPConvArg1-Ranking-CSV/'        
+        dirname = data_root_dir + 'argument_data/UKPConvArg1Strict-XML/'
+        ranking_csvdirname = None        
     # these are not valid labels because ranking data is produced as part of other experiments        
     elif dataset == 'UKPConvArgAllR':
         dirname = None # don't need to create a new CSV file
@@ -191,12 +193,12 @@ def load_train_test_data(dataset):
     elif dataset == 'UKPConvArgRank':
         dirname = None # don't need to create a new CSV file
         raise Exception('This dataset cannot be used to select an experiment. To test ranking, run with \
-        dataset=UKPConvArgMACE or dataset=UKPConvArgStrict')
+        dataset=UKPConvArgMACE')
     else:
         raise Exception("Invalid dataset %s" % dataset)    
     
     print "Data directory = %s, dataset=%s" % (dirname, dataset)    
-    csvdirname = './data/%s-CSV/' % dataset
+    csvdirname = data_root_dir + 'argument_data/%s-CSV/' % dataset
     # Generate the CSV files from the XML files. These are easier to work with! The CSV files from Habernal do not 
     # contain all turker info that we need, so we generate them afresh here.
     print("Writing CSV files...")
@@ -207,14 +209,18 @@ def load_train_test_data(dataset):
         elif dataset == 'UKPConvArgStrict' or dataset == 'UKPConvArgMACE':
             generate_gold_CSV(dirname, csvdirname) # select only the gold labels
                 
-    embeddings_dir = '../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python/'
+    embeddings_dir = data_root_dir + '/embeddings/'
     print "Embeddings directory: %s" % embeddings_dir
     
     # Load the train/test data into a folds object. -------------------------------------------------------------------
     # Here we keep each the features of each argument in a pair separate, rather than concatenating them.
     print('Loading train/test data...')
-    folds, word_index_to_embeddings_map, word_to_indices_map = load_my_data_separate_args(csvdirname, embeddings_dir=embeddings_dir)             
-    folds_regression, _ = load_my_data_regression(ranking_csvdirname, load_embeddings=False)
+    folds, word_index_to_embeddings_map, word_to_indices_map = load_my_data_separate_args(csvdirname, 
+                                                                                          embeddings_dir=embeddings_dir)
+    if ranking_csvdirname is not None:             
+        folds_regression, _ = load_my_data_regression(ranking_csvdirname, load_embeddings=False)
+    else:
+        folds_regression = None
         
     return folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map
     
@@ -236,8 +242,8 @@ def load_skipthoughts_embeddings(word_to_indices_map):
     model = skipthoughts.load_model()
     return model
      
-def load_ling_features():
-    ling_dir = './data/lingdata/'
+def load_ling_features(dataset):
+    ling_dir = data_root_dir + 'lingdata/'
     print "Looking for linguistic features in directory %s" % ling_dir    
     print('Loading linguistic features')
     ling_file = ling_dir + "/%s-libsvm.txt" % dataset
@@ -255,7 +261,11 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         
     # Select output paths for CSV files and final results
 
-    resultsfile = '../../data/outputdata/crowdsourcing_argumentation_expts/habernal_%s_%s_%s_%s_test.pkl' % (dataset, method, feature_type, embeddings_type) 
+    resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/habernal_%s_%s_%s_%s_test.pkl' % (dataset, method, feature_type, embeddings_type) 
+    if not os.path.isdir(data_root_dir + 'outputdata'):
+        os.mkdir(data_root_dir + 'outputdata')
+    if not os.path.isdir(data_root_dir + 'outputdata/crowdsourcing_argumentation_expts'):
+        os.mkdir(data_root_dir + 'outputdata/crowdsourcing_argumentation_expts')
                 
     # Run test --------------------------------------------------------------------------------------------------------
     all_proba = {}
@@ -316,7 +326,8 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         print("Test instances ", len(X_test_a1), " test labels ", len(prefs_test))
         
         # ranking folds
-        _, rankscores_test, argids_rank_test, turkIDs_rank_test = folds_regression.get(fold)["test"]
+        if folds_regression is not None:
+            _, rankscores_test, argids_rank_test, turkIDs_rank_test = folds_regression.get(fold)["test"]
         
         # get the embedding values for the test data -- need to find embeddings of the whole piece of text
         if feature_type == 'both' or feature_type == 'embeddings':
@@ -382,13 +393,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         personIDs_train = personIdxs[:len(personIDs_train)]
         personIDs_test = personIdxs[len(personIDs_train):]
 
-        #ndims = items_1_train.shape[1]
         ndims = items_feat.shape[1]
-#         if sparse.issparse(items_feat):
-#             ls_initial_guess = np.power((items_feat.power(2).mean(axis=0) - np.power(items_feat.mean(axis=0), 2) + 
-#                         items_feat.power(2).mean(axis=0) - np.power(items_feat.mean(axis=0), 2)) / 2.0, 0.5)
-#         else:
-#             ls_initial_guess = (np.std(items_feat, axis=0) + np.std(items_feat, axis=0)) / 2.0
 
         if method == 'SinglePrefGP_oneLS':
             ls_initial_guess = 2.0
@@ -420,9 +425,17 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba, predicted_f = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
 
+        elif method == 'PersonalisedPrefsNoCommonMean':        
+            model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=10, 
+                        rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, use_common_mean_t=False)
+            model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
+                      optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
+            proba, predicted_f = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
+            
         elif method == 'IndPrefGP':
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=10, 
-                rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, no_factors=True, no_mean=True)
+                            rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, no_factors=True, 
+                            use_common_mean_t=False)
             model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba, predicted_f = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)            
@@ -448,7 +461,8 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         all_predictions[foldidx] = predictions
         all_f[foldidx] = predicted_f
         
-        if method == 'PersonalisedPrefsBayes' or method == 'PersonalisedPrefsNoFactors':
+        if method == 'PersonalisedPrefsBayes' or method == 'PersonalisedPrefsNoFactors' or \
+                                                                    method == 'PersonalisedPrefsNoCommonMean':
             length_scales[foldidx] = [model.ls, model.lsy]
             latent_item_features[foldidx] = model.w
             latent_p_features[foldidx] = model.y
@@ -479,9 +493,10 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 
         # Save the ground truth
         all_target_prefs[foldidx] = prefs_test
-        all_target_rankscores[foldidx] = rankscores_test
-        all_argids_rankscores[foldidx] = argids_rank_test
-        all_turkids_rankscores[foldidx] = turkIDs_rank_test
+        if folds_regression is not None:
+            all_target_rankscores[foldidx] = rankscores_test
+            all_argids_rankscores[foldidx] = argids_rank_test
+            all_turkids_rankscores[foldidx] = turkIDs_rank_test
         
         # Save the time taken
         times[foldidx] = endtime-starttime
@@ -494,24 +509,23 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         # Compute metrics ---------------------------------------------------------------------------------------------
         
         prefs_test = np.array(prefs_test, dtype=float)
-        acc = accuracy_score(prefs_test[prefs_test != 1] / 2, predictions[prefs_test != 1]) #skip the don't knows
-        print('Test accuracy:', acc) 
+        try:
+            acc = accuracy_score(prefs_test[prefs_test != 1] / 2, predictions[prefs_test != 1]) #skip the don't knows
+            print('Test accuracy:', acc)
+        except:
+            logging.error('Error when computing accuracy.')
 
 '''        
 Where to run the tests:
 
-desktop-169: all feature types, word_mean embeddings, singleprefgp + singleprefgp_onels
-barney: all feature types, word_mean embeddings, PersonalisedPrefsBayes
-apu: all feature types, word_mean embeddings, IndPrefGP
-florence: all feature types, word_mean embeddings, PersonalisedPrefsFA + PersonalisedPrefsNoFactors
+desktop-169: all feature types, word_mean embeddings, singleprefgp + singleprefgp_onels + PersonalisedPrefsNoCommonMean
+barney: all feature types, word_mean embeddings, PersonalisedPrefsBayes + PersonalisedPrefsFA
+apu: all feature types, word_mean embeddings, IndPrefGP + PersonalisedPrefsNoFactors
 
+Florence?
 Google code trial server? --> all server jobs.
 
 Run the other embeddings types on the first servers to finish.
-
-TODO: It is questionable to run all methods on all the datasets -- make the code skip personalised methods for 
-UKPConvArgMACE and UKPConvArgStrict
-TODO: ranking task
 
 Steps needed to run them:
 
@@ -525,23 +539,31 @@ Steps needed to run them:
 if __name__ == '__main__':
     if 'folds' not in globals():
         datasets = ['UKPConvArgAll', 'UKPConvArgMACE', 'UKPConvArgStrict']
-        # TODO: add a method for one of the 'both' runs only that tests single length-scale versus free length scales 
-        methods = ['SinglePrefGP', 'SinglePrefGP_oneLS']#'PersonalisedPrefsBayes', 'PersonalisedPrefsFA', 'PersonalisedPrefsNoFactors', 
-        #'CombinedPrefGP', <-- this is same as prefsnofactors but with only 2 VB iterations. Has no factors but... common t and common length scales? 
-        #'IndPrefGP']  <--- separate preference GPs for each worker 
+        
+        methods = ['SinglePrefGP', 'SinglePrefGP_oneLS', 'PersonalisedPrefsNoCommonMean']
+        #methods = ['PersonalisedPrefsBayes', 'PersonalisedPrefsFA']
+        #methods = ['IndPrefGP', 'PersonalisedPrefsNoFactors'] # IndPrefGP means separate preference GPs for each worker 
+        
         feature_types = ['both', 'embeddings', 'ling'] # can be 'embeddings' or 'ling' or 'both'
         embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
                 
         model = None
-                
-        for dataset in datasets:
-            folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map = load_train_test_data(dataset)
-            word_embeddings = load_embeddings(word_index_to_embeddings_map)
-            siamese_cbow_embeddings = None#load_siamese_cbow_embeddings(word_to_indices_map)
-            skipthoughts_model = None#load_skipthoughts_embeddings(word_to_indices_map)
-            ling_feat_spmatrix, docids = load_ling_features()
               
-            for method in methods: 
+        for method in methods:
+                
+            for dataset in datasets:
+                folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map = load_train_test_data(dataset)
+                word_embeddings = load_embeddings(word_index_to_embeddings_map)
+                siamese_cbow_embeddings = None#load_siamese_cbow_embeddings(word_to_indices_map)
+                skipthoughts_model = None#load_skipthoughts_embeddings(word_to_indices_map)
+                ling_feat_spmatrix, docids = load_ling_features(dataset)
+               
+                if (dataset == 'UKPConvArgMACE' or dataset == 'UKPConvArgStrict') and (method != 'SinglePrefGP' and
+                                                                                    method != 'SinglePrefGP_oneLS'):
+                    logging.warning('Skipping method %s on dataset %s because there are no separate worker IDs.' 
+                                    % (method, dataset))
+                    continue
+                
                 for feature_type in feature_types:
                     if feature_type == 'embeddings' or feature_type == 'both':
                         embeddings_to_use = embeddings_types
@@ -552,4 +574,4 @@ if __name__ == '__main__':
                                                                                                embeddings_type)
                         run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type, 
                              word_embeddings, siamese_cbow_embeddings, skipthoughts_model, ling_feat_spmatrix, docids, 
-                             subsample_amount=0)
+                             subsample_amount=20)
