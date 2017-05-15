@@ -255,7 +255,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         
     # Select output paths for CSV files and final results
 
-    resultsfile = './results/habernal_%s_%s_%s_%s_test.pkl' % (dataset, method, feature_type, embeddings_type) 
+    resultsfile = '../../data/outputdata/crowdsourcing_argumentation_expts/habernal_%s_%s_%s_%s_test.pkl' % (dataset, method, feature_type, embeddings_type) 
                 
     # Run test --------------------------------------------------------------------------------------------------------
     all_proba = {}
@@ -389,7 +389,11 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
 #                         items_feat.power(2).mean(axis=0) - np.power(items_feat.mean(axis=0), 2)) / 2.0, 0.5)
 #         else:
 #             ls_initial_guess = (np.std(items_feat, axis=0) + np.std(items_feat, axis=0)) / 2.0
-        ls_initial_guess = np.ones(ndims) * 2.0
+
+        if method == 'SinglePrefGP_oneLS':
+            ls_initial_guess = 2.0
+        else:
+            ls_initial_guess = np.ones(ndims) * 2.0
         
         verbose = True
         optimize_hyper = True
@@ -463,7 +467,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 person_noise_var_fold[p] = 1.0 / model.pref_gp[p].s
             person_noise_var[foldidx] = person_noise_var_fold        
             people[foldidx] = model.people
-        elif method == 'SinglePrefGP':
+        elif method == 'SinglePrefGP' or method == 'SinglePrefGP_oneLS':
             length_scales[foldidx] = [model.ls, -1]
         elif method == 'IndPrefGP' or method == 'CombinedPrefGP':
             length_scales[foldidx] = [model[0].ls, -1]
@@ -492,13 +496,39 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         prefs_test = np.array(prefs_test, dtype=float)
         acc = accuracy_score(prefs_test[prefs_test != 1] / 2, predictions[prefs_test != 1]) #skip the don't knows
         print('Test accuracy:', acc) 
+
+'''        
+Where to run the tests:
+
+desktop-169: all feature types, word_mean embeddings, singleprefgp + singleprefgp_onels
+barney: all feature types, word_mean embeddings, PersonalisedPrefsBayes
+apu: all feature types, word_mean embeddings, IndPrefGP
+florence: all feature types, word_mean embeddings, PersonalisedPrefsFA + PersonalisedPrefsNoFactors
+
+Google code trial server? --> all server jobs.
+
+Run the other embeddings types on the first servers to finish.
+
+TODO: It is questionable to run all methods on all the datasets -- make the code skip personalised methods for 
+UKPConvArgMACE and UKPConvArgStrict
+TODO: ranking task
+
+Steps needed to run them:
+
+1. Git clone personalised_argumentation and HeatMapBCC
+2. Make a local copy of the language feature data:
+3. Make a local copy of the embeddings:
+4. Run!
+
+'''
         
 if __name__ == '__main__':
     if 'folds' not in globals():
         datasets = ['UKPConvArgAll', 'UKPConvArgMACE', 'UKPConvArgStrict']
         # TODO: add a method for one of the 'both' runs only that tests single length-scale versus free length scales 
-        methods = ['SinglePrefGP']#'PersonalisedPrefsBayes', 'PersonalisedPrefsFA', 'PersonalisedPrefsNoFactors', #'CombinedPrefGP', <-- this is same as prefsnofactors but with only 2 VB iterations 
-    #                'IndPrefGP', 'SinglePrefGP']  
+        methods = ['SinglePrefGP', 'SinglePrefGP_oneLS']#'PersonalisedPrefsBayes', 'PersonalisedPrefsFA', 'PersonalisedPrefsNoFactors', 
+        #'CombinedPrefGP', <-- this is same as prefsnofactors but with only 2 VB iterations. Has no factors but... common t and common length scales? 
+        #'IndPrefGP']  <--- separate preference GPs for each worker 
         feature_types = ['both', 'embeddings', 'ling'] # can be 'embeddings' or 'ling' or 'both'
         embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
                 
