@@ -210,7 +210,7 @@ class PreferenceComponents(object):
         self.rate_ls = rate_ls
         
         if ls is not None:
-            self.n_wlengthscales = len(np.array(ls)) # can pass in a single length scale to be used for all dimensions
+            self.n_wlengthscales = len(np.array([ls]).flatten()) # can pass in a single length scale to be used for all dimensions
         else:
             self.n_wlengthscales = self.nitem_features
         self.ls = ls
@@ -219,7 +219,7 @@ class PreferenceComponents(object):
         self.rate_lsy = rate_lsy
         self.lsy = lsy  
         if lsy is not None:
-            self.n_ylengthscales = len(np.array(lsy)) # can pass in a single length scale to be used for all dimensions
+            self.n_ylengthscales = len(np.array([lsy]).flatten()) # can pass in a single length scale to be used for all dimensions
         else:
             self.n_ylengthscales = self.nperson_features        
         

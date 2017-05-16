@@ -574,4 +574,4 @@ if __name__ == '__main__':
                                                                                                embeddings_type)
                         run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type, 
                              word_embeddings, siamese_cbow_embeddings, skipthoughts_model, ling_feat_spmatrix, docids, 
-                             subsample_amount=20)
+                             subsample_amount=0)
