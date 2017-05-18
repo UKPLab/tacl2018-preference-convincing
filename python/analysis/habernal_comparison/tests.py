@@ -39,8 +39,8 @@ sys.path.append("./python")
 sys.path.append("./python/analysis")
 sys.path.append("./python/models")
 
-sys.path.append("../../git/HeatMapBCC/python")
-sys.path.append("../../git/pyIBCC/python")
+sys.path.append(os.path.expanduser("~/git/HeatMapBCC/python"))
+sys.path.append(os.path.expanduser("~/git/pyIBCC/python"))
 
 data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
@@ -453,7 +453,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         
         endtime = time.time() 
         
-        print "Completed running the test with method %s in %f seconds." % (method, endtime-starttime)
+        print "@@@ Completed running one fold with method %s in %f seconds." % (method, endtime-starttime)
         endtime-starttime
         # Save the data for later analysis ----------------------------------------------------------------------------
         # Outputs from the tested method
@@ -540,8 +540,8 @@ if __name__ == '__main__':
     if 'folds' not in globals():
         datasets = ['UKPConvArgAll', 'UKPConvArgMACE', 'UKPConvArgStrict']
         
-        methods = ['SinglePrefGP', 'SinglePrefGP_oneLS', 'PersonalisedPrefsNoCommonMean']
-        #methods = ['PersonalisedPrefsBayes', 'PersonalisedPrefsFA']
+        #methods = ['SinglePrefGP', 'SinglePrefGP_oneLS', 'PersonalisedPrefsNoCommonMean']
+        methods = ['PersonalisedPrefsBayes', 'PersonalisedPrefsFA']
         #methods = ['IndPrefGP', 'PersonalisedPrefsNoFactors'] # IndPrefGP means separate preference GPs for each worker 
         
         feature_types = ['both', 'embeddings', 'ling'] # can be 'embeddings' or 'ling' or 'both'
@@ -575,3 +575,6 @@ if __name__ == '__main__':
                         run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type, 
                              word_embeddings, siamese_cbow_embeddings, skipthoughts_model, ling_feat_spmatrix, docids, 
                              subsample_amount=0)
+                        
+                        print "**** Completed: method %s with features %s, embeddings %s ****" % (method, feature_type, 
+                                                                                               embeddings_type)

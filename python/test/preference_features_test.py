@@ -122,8 +122,8 @@ if __name__ == '__main__':
     lsy_initial = np.array(lsy) + 7
     print "Initial guess of length scale for people: %s, true length scale is %s" % (lsy_initial, lsy)
     model = PreferenceComponents(2, Npeoplefeatures, ls=ls_initial, lsy=lsy_initial, use_fa=False, 
-             use_svi=use_svi, delay=1, forgetting_rate=0.9, ninducing=5000, max_update_size=5, use_common_mean_t=False)
-    model.verbose = False
+             use_svi=use_svi, delay=1, forgetting_rate=0.9, ninducing=500, max_update_size=100, use_common_mean_t=False)
+    model.verbose = True
     model.min_iter = 1
     model.max_iter = 200
     model.fit(personids[trainidxs], pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], 

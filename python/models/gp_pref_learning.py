@@ -147,8 +147,8 @@ class GPPrefLearning(GPClassifierSVI):
         b = (a_plus_b * not_m_prior)
 
         self.nu0 = np.array([b, a])
-        if self.verbose:
-            logging.debug("Prior parameters for the observed pairwise preference variance are: %s" % str(self.nu0))           
+        #if self.verbose:
+        #    logging.debug("Prior parameters for the observed pairwise preference variance are: %s" % str(self.nu0))           
     
     def _init_obs_f(self):
         # Mean probability at observed points given local observations
