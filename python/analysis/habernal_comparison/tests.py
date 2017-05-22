@@ -202,8 +202,8 @@ def load_train_test_data(dataset):
     csvdirname = data_root_dir + 'argument_data/%s-CSV/' % dataset
     # Generate the CSV files from the XML files. These are easier to work with! The CSV files from Habernal do not 
     # contain all turker info that we need, so we generate them afresh here.
-    print("Writing CSV files...")
     if not os.path.isdir(csvdirname):
+        print("Writing CSV files...")
         os.mkdir(csvdirname)
         if dataset == 'UKPConvArgAll':
             generate_turker_CSV(dirname, csvdirname) # select all labels provided by turkers
@@ -215,7 +215,7 @@ def load_train_test_data(dataset):
     
     # Load the train/test data into a folds object. -------------------------------------------------------------------
     # Here we keep each the features of each argument in a pair separate, rather than concatenating them.
-    print('Loading train/test data...')
+    print('Loading train/test data from %s...' % csvdirname)
     folds, word_index_to_embeddings_map, word_to_indices_map = load_my_data_separate_args(csvdirname, 
                                                                                           embeddings_dir=embeddings_dir)
     if ranking_csvdirname is not None:             
