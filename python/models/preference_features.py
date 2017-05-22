@@ -70,6 +70,8 @@ from scipy.special import gammaln, psi
 from scipy.stats import gamma
 from scipy.optimize import minimize
 from sklearn.cluster import MiniBatchKMeans
+from joblib import Parallel, delayed
+import multiprocessing
 
 def expec_output_scale(shape_s0, rate_s0, N, cholK, f_mean, m, f_cov):
     # learn the output scale with VB
@@ -153,10 +155,11 @@ class PreferenceComponents(object):
     variational Bayes.
     '''
 
-    def __init__(self, nitem_features, nperson_features=0, mu0=0, mu0_y=0, shape_s0=1, rate_s0=1, shape_ls=1, rate_ls=100, 
-                 ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=20, use_fa=False, no_factors=False,
-                 use_common_mean_t=True, uncorrelated_noise=False, kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True, 
-                 forgetting_rate=0.9, delay=1.0):
+    def __init__(self, nitem_features, nperson_features=0, mu0=0, mu0_y=0, shape_s0=1, rate_s0=1, 
+                 shape_ls=1, rate_ls=100, ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=20, 
+                 use_fa=False, no_factors=False, use_common_mean_t=True, uncorrelated_noise=False, 
+                 kernel_func='matern_3_2',
+                 max_update_size=10000, ninducing=500, use_svi=True, forgetting_rate=0.9, delay=1.0):
         '''
         Constructor
         dims - ranges for each of the observed features of the objects
@@ -660,6 +663,81 @@ class PreferenceComponents(object):
                 logging.debug("LML: %f, item length-scales = %s, person length-scales = %s" % (lml, self.ls, self.lsy))
         return -lml
     
+    def _gradient_dim(self, lstype, d, dimension):
+        der_logpw_logqw = 0
+        der_logpy_logqy = 0
+        der_logpf_logqf = 0
+        
+        # compute the gradient. This should follow the MAP estimate from chu and ghahramani. 
+        # Terms that don't involve the hyperparameter are zero; implicit dependencies drop out if we only calculate 
+        # gradient when converged due to the coordinate ascent method.
+        if lstype == 'item' or (lstype == 'both' and d < self.nitem_features):
+            if self.use_svi:                
+                dKdls = self.K_mm * self.kernel_der(self.inducing_coords, self.ls, dimension) 
+                # try to make the s scale cancel as much as possible
+                invK_w = self.invK_mm.dot(self.w_u)
+                invKs_C = self.invKws_mm_S
+                N = self.ninducing
+            else:
+                dKdls = self.K * self.kernel_der(self.obs_coords, self.ls, dimension) 
+                # try to make the s scale cancel as much as possible
+                invK_w = solve_triangular(self.cholK, self.w, trans=True, check_finite=False)
+                invK_w = solve_triangular(self.cholK, invK_w, check_finite=False)
+                invKs_C = self.sw_matrix * self.invKw.dot(self.w_cov)
+                N = self.N
+                
+            for f in range(self.Nfactors):
+                fidxs = np.arange(N) + (N * f)
+                invK_wf = invK_w[:, f]
+                invKs_C_f = invKs_C[fidxs, :][:, fidxs] 
+                sw = self.shape_sw[f] / self.rate_sw[f]
+                Sigma_w_f = self.Sigma_w[fidxs, :][:, fidxs]
+                der_logpw_logqw += 0.5 * (invK_wf.T.dot(dKdls).dot(invK_wf) * sw - 
+                                    np.trace(invKs_C_f.dot(Sigma_w_f).dot(dKdls / sw)))
+            
+            if self.use_t:
+                if self.use_svi:
+                    invKs_t = self.inv_Kts_mm.dot(self.t_u)
+                    invKs_C = self.invKts_mm_S
+                else:
+                    invK_t = solve_triangular(self.cholK, self.t, trans=True, check_finite=False)
+                    invK_t = solve_triangular(self.cholK, invK_t, check_finite=False)
+                    invKs_t = invK_t * self.shape_st / self.rate_st
+                    invKs_C = self.shape_st / self.rate_st * self.invKt.dot(self.t_cov)
+            
+                der_logpt_logqt = 0.5 * (invKs_t.T.dot(dKdls).dot(invKs_t) - 
+                            np.trace(invKs_C.dot(self.Sigma_t).dot(dKdls / self.shape_st * self.rate_st)))
+                
+            for p in self.pref_gp:
+                der_logpf_logqf += self.pref_gp[p].lowerbound_gradient(dimension)
+            
+        elif lstype == 'person' or (lstype == 'both' and d >= self.nitem_features):               
+            if self.person_features is None:
+                continue          
+                
+            elif not self.use_svi_people:
+                dKdls = self.Ky * self.kernel_der(self.person_features, self.lsy, dimension) 
+                # try to make the s scale cancel as much as possible
+                invK_y = self.invKy.dot(self.y.T)
+                invKs_C = self.sy_matrix * self.invKy.dot(self.y_cov)
+                N = self.Npeople
+            else:
+                dKdls = self.Ky_mm * self.kernel_der(self.y_inducing_coords, self.lsy, dimension) 
+                invK_y = self.invKy_mm_block.dot(self.y_u.T)
+                invKs_C = self.invKys_mm_S
+                N = self.y_ninducing                                             
+            
+            for f in range(self.Nfactors):
+                fidxs = np.arange(N) + (N * f)
+                invK_yf = invK_y[:, f]
+                invKs_C_f = invKs_C[fidxs, :][:, fidxs]                     
+                sy = self.shape_sy[f] / self.rate_sy[f]
+                Sigma_y_f = self.Sigma_y[fidxs, :][:, fidxs]             
+                der_logpy_logqy += 0.5 * (invK_yf.T.dot(dKdls).dot(invK_yf) * sy - 
+                                    np.trace(invKs_C_f.dot(Sigma_y_f).dot(dKdls / sy)))
+                         
+        return der_logpw_logqw + der_logpy_logqy + der_logpt_logqt + der_logpf_logqf
+    
     def nml_jacobian(self, hyperparams, lstype, dimension, use_MAP=False):
         '''
         Weight the marginal log data likelihood by the hyper-prior. Unnormalised posterior over the hyper-parameters.
@@ -717,80 +795,10 @@ class PreferenceComponents(object):
         if needs_fitting:
             self.fit()
 
-        der_logpw_logqw = np.zeros(len(dimensions))
-        der_logpy_logqy = np.zeros(len(dimensions))
-        der_logpt_logqt = np.zeros(len(dimensions))
-        der_logpf_logqf = np.zeros(len(dimensions))
-        for d, dimension in enumerate(dimensions):
-            # compute the gradient. This should follow the MAP estimate from chu and ghahramani. 
-            # Terms that don't involve the hyperparameter are zero; implicit dependencies drop out if we only calculate 
-            # gradient when converged due to the coordinate ascent method.
-            if lstype == 'item' or (lstype == 'both' and d < self.nitem_features):
-                if self.use_svi:                
-                    dKdls = self.K_mm * self.kernel_der(self.inducing_coords, self.ls, dimension) 
-                    # try to make the s scale cancel as much as possible
-                    invK_w = self.invK_mm.dot(self.w_u)
-                    invKs_C = self.invKws_mm_S
-                    N = self.ninducing
-                else:
-                    dKdls = self.K * self.kernel_der(self.obs_coords, self.ls, dimension) 
-                    # try to make the s scale cancel as much as possible
-                    invK_w = solve_triangular(self.cholK, self.w, trans=True, check_finite=False)
-                    invK_w = solve_triangular(self.cholK, invK_w, check_finite=False)
-                    invKs_C = self.sw_matrix * self.invKw.dot(self.w_cov)
-                    N = self.N
-                    
-                for f in range(self.Nfactors):
-                    fidxs = np.arange(N) + (N * f)
-                    invK_wf = invK_w[:, f]
-                    invKs_C_f = invKs_C[fidxs, :][:, fidxs] 
-                    sw = self.shape_sw[f] / self.rate_sw[f]
-                    Sigma_w_f = self.Sigma_w[fidxs, :][:, fidxs]
-                    der_logpw_logqw[d] += 0.5 * (invK_wf.T.dot(dKdls).dot(invK_wf) * sw - 
-                                        np.trace(invKs_C_f.dot(Sigma_w_f).dot(dKdls / sw)))
-                
-                if self.use_t:
-                    if self.use_svi:
-                        invKs_t = self.inv_Kts_mm.dot(self.t_u)
-                        invKs_C = self.invKts_mm_S
-                    else:
-                        invK_t = solve_triangular(self.cholK, self.t, trans=True, check_finite=False)
-                        invK_t = solve_triangular(self.cholK, invK_t, check_finite=False)
-                        invKs_t = invK_t * self.shape_st / self.rate_st
-                        invKs_C = self.shape_st / self.rate_st * self.invKt.dot(self.t_cov)
-                
-                    der_logpt_logqt[d] = 0.5 * (invKs_t.T.dot(dKdls).dot(invKs_t) - 
-                                np.trace(invKs_C.dot(self.Sigma_t).dot(dKdls / self.shape_st * self.rate_st)))
-                    
-                for p in self.pref_gp:
-                    der_logpf_logqf[d] += self.pref_gp[p].lowerbound_gradient(dimension)
-                
-            elif lstype == 'person' or (lstype == 'both' and d >= self.nitem_features):               
-                if self.person_features is None:
-                    continue          
-                    
-                elif not self.use_svi_people:
-                    dKdls = self.Ky * self.kernel_der(self.person_features, self.lsy, dimension) 
-                    # try to make the s scale cancel as much as possible
-                    invK_y = self.invKy.dot(self.y.T)
-                    invKs_C = self.sy_matrix * self.invKy.dot(self.y_cov)
-                    N = self.Npeople
-                else:
-                    dKdls = self.Ky_mm * self.kernel_der(self.y_inducing_coords, self.lsy, dimension) 
-                    invK_y = self.invKy_mm_block.dot(self.y_u.T)
-                    invKs_C = self.invKys_mm_S
-                    N = self.y_ninducing                                             
-                
-                for f in range(self.Nfactors):
-                    fidxs = np.arange(N) + (N * f)
-                    invK_yf = invK_y[:, f]
-                    invKs_C_f = invKs_C[fidxs, :][:, fidxs]                     
-                    sy = self.shape_sy[f] / self.rate_sy[f]
-                    Sigma_y_f = self.Sigma_y[fidxs, :][:, fidxs]             
-                    der_logpy_logqy[d] += 0.5 * (invK_yf.T.dot(dKdls).dot(invK_yf) * sy - 
-                                        np.trace(invKs_C_f.dot(Sigma_y_f).dot(dKdls / sy))) 
-                    
-        mll_jac = der_logpw_logqw + der_logpy_logqy + der_logpt_logqt + der_logpf_logqf
+        num_jobs = multiprocessing.cpu_count()
+        mll_jac = Parallel(num_jobs=num_jobs)(delayed(self._gradient_dim)(lstype, d, dim)
+                                              for d, dim in enumerate(dimensions))
+        
         if len(mll_jac) == 1: # don't need an array if we only compute for one dimension
             mll_jac = mll_jac[0]
         elif (lstype == 'item' and self.n_wlengthscales == 1) or (lstype == 'person' and self.n_ylengthscales == 1):
@@ -814,7 +822,6 @@ class PreferenceComponents(object):
     def predict(self, personids, items_1_coords, items_2_coords, item_features=None, person_features=None):
         Npairs = len(personids)
         predicted_prefs = np.zeros(Npairs)
-        predicted_f = {}
          
         upeople = np.unique(personids)
         for p in upeople:            
@@ -888,15 +895,82 @@ class PreferenceComponents(object):
                 pref_gp_p = self.pref_gp[p]
                 predicted_prefs[pidxs] = pref_gp_p.predict(coords_1, coords_2, 
                                       mu0_output1=mu0_1, mu0_output2=mu0_2, return_var=False).flatten()
-                predicted_f[p] = [pref_gp_p.f, pref_gp_p.output_coords]
             else:
                 mu0 = np.concatenate((mu0_1, mu0_2), axis=0)
                 predicted_prefs[pidxs] = pref_likelihood(f=mu0, subset_idxs=[], 
                                      v=np.arange(len(mu0_1)), u=np.arange(len(mu0_1), len(mu0_1)+len(mu0_2)))
-                output_coords, _, _, uidxs = get_unique_locations(coords_1, coords_2)
-                predicted_f[p] = [mu0[uidxs], output_coords]
                 
-        return predicted_prefs, predicted_f
+        return predicted_prefs
+    
+    def predict_f(self, personids, items_1_coords, item_features=None, person_features=None):
+        N = items_1_coords.shape[0]
+        predicted_f = np.zeros(N)
+         
+        upeople = np.unique(personids)
+        for p in upeople:            
+            pidxs = personids == p
+            if p in self.people:
+                y = self.y[:, p:p+1] 
+            elif self.person_features is None:
+                y = np.zeros((self.Nfactors, 1))
+            else:
+                if self.use_svi_people:
+                    Ky = self.kernel_func(person_features[p, :], self.lsy, self.y_inducing_coords)                    
+                    # use kernel to compute y
+                    invKy_train = self.Ky_mm_block
+                    y_train = self.y_u.reshape(self.Nfactors, self.Npeople).T
+                else:
+                    #distances for y-space. Kernel between p and people already seen
+                    Ky = self.kernel_func(person_features[p, :], self.lsy, self.person_features)
+                    invKy_train = np.linalg.inv(self.Ky_block)
+                    y_train = self.y.T
+                
+                # use kernel to compute y
+                y = Ky.dot(invKy_train).dot(y_train)
+                y *= self.rate_sy / self.shape_sy      
+                y = y.T
+                
+            if item_features is None:
+                coords_1 = items_1_coords[pidxs]
+            else:
+                coords_1 = item_features[items_1_coords[pidxs]]
+            
+            # this could be made more efficient because duplicate locations are computed separately!
+            # distances for t-space
+            if self.use_svi:
+                # kernel between pidxs and t
+                K1 = self.kernel_func(coords_1, self.ls, self.inducing_coords)
+            
+                # use kernel to compute t. 
+                t1 = K1.dot(self.invK_mm).dot(self.t_u)
+
+                # kernel between pidxs and w -- use kernel to compute w. Don't need Kw_mm block-diagonal matrix
+                w1 = K1.dot(self.invK_mm).dot(self.w_u)   
+            else:                                
+                # kernel between pidxs and t
+                K1 = self.kernel_func(coords_1, self.ls, self.obs_coords)
+            
+                # use kernel to compute t
+                invKt = solve_triangular(self.cholK, self.t, trans=True, check_finite=False)
+                invKt = solve_triangular(self.cholK, invKt, overwrite_b=True, check_finite=False)
+
+                t1 = K1.dot(invKt)
+
+                # kernel between pidxs and w -- use kernel to compute w
+                invKw = solve_triangular(self.cholK, self.w, trans=True, check_finite=False)
+                invKw = solve_triangular(self.cholK, invKw, overwrite_b=True, check_finite=False)
+                
+                w1 = K1.dot(invKw)
+            
+            wy_1p = w1.dot(y)
+            mu0_1 = wy_1p + t1
+            if p in self.people:            
+                pref_gp_p = self.pref_gp[p]
+                predicted_f[pidxs] = pref_gp_p.predict_f(coords_1, mu0_output=mu0_1)[0].flatten()
+            else:
+                predicted_f[pidxs] = mu0_1
+                
+        return predicted_f
         
     def _expec_f(self):
         '''
