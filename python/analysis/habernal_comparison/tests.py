@@ -507,7 +507,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         
             proba, _ = model.predict(testids_a1, testids_a2, items_feat)
             if folds_regression is not None:
-                predicted_f = model.predict_f(items_feat[item_idx_ranktest]) 
+                predicted_f, _ = model.predict_f(items_feat[item_idx_ranktest]) 
             
         predictions = np.round(proba)
         
