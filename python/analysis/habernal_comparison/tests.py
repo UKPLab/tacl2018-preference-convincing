@@ -32,7 +32,7 @@ Created on 20 Mar 2017
 
 import sys
 import os
-from scipy.spatial.distance import pdist
+from Crypto.SelfTest.Random.test__UserFriendlyRNG import multiprocessing
 
 sys.path.append('../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python')
 
@@ -61,6 +61,8 @@ from gp_pref_learning import GPPrefLearning
 from preproc_raw_data import generate_turker_CSV, generate_gold_CSV
 #import skipthoughts
 #import wordEmbeddings as siamese_cbow
+from joblib import Parallel, delayed
+import multiprocessing
 
 max_len = 300  # cut texts after this number of words (among top max_features most common words)
 
@@ -256,6 +258,13 @@ def load_ling_features(dataset):
     ling_feat_spmatrix, _ = load_svmlight_file(ling_file)
     return ling_feat_spmatrix, docids
     
+def _dists_f(items_feat_sample, f):
+    if np.mod(f, 1000) == 0:
+        print 'computed lengthscale for feature %i' % f                
+    dists = np.abs(items_feat_sample[:, np.newaxis, f] - items_feat_sample[np.newaxis, :, f])
+    # we exclude the zero distances. With sparse features, these would likely downplay the lengthscale.                                
+    return np.median(dists[dists>0])    
+    
 def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type=None, embeddings=None, 
              siamese_cbow_e=None, skipthoughts_model=None, ling_feat_spmatrix=None, docids=None, subsample_amount=0, 
              default_ls_value=None):
@@ -283,13 +292,6 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
     all_turkids_rankscores = {}
     length_scales = {}
     
-    latent_item_features = {}
-    latent_p_features = {}
-    person_noise_var = {}
-    item_means = {}
-    people = {}
-    
-    item_coords = {}
     item_ids = {}
     times = {}
     
@@ -371,7 +373,33 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         personIDs_train = np.array(personIDs_train)
         personIDs_test = np.array(personIDs_test) 
         
-        # subsample training data for debugging purposes only
+        # Lengthscale initialisation -----------------------------------------------------------------------------------
+        # use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.
+        # First, grab a sample of points because N^2 could be too large.
+        ndims = items_feat.shape[1]
+                
+        if default_ls_value is None:
+            N_max = 2000
+            starttime = time.time()
+            if items_feat.shape[0] > N_max:
+                items_feat_sample = items_feat[np.random.choice(items_feat.shape[0], N_max, replace=False)]
+            else:
+                items_feat_sample = items_feat
+            default_ls_value = np.zeros(items_feat.shape[1])
+                        
+            #for f in range(items_feat.shape[1]):  
+            num_jobs = multiprocessing.cpu_count()
+            default_ls_value = Parallel(n_jobs=num_jobs)(delayed(_dists_f)(items_feat_sample, f) for f in range(ndims))
+                
+            if method == 'SinglePrefGP_oneLS':
+                ls_initial_guess = np.median(default_ls_value)
+            else:
+                ls_initial_guess = np.ones(ndims) * default_ls_value
+                
+            endtime = time.time()
+            print '@@@ Selected initial lengthscales in %f seconds' % (endtime - starttime)        
+        
+        # subsample training data for debugging purposes only ----------------------------------------------------------
         if subsample_amount > 0:
             subsample = np.arange(subsample_amount)               
                     
@@ -397,34 +425,6 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 argids_rank_test = argids_rank_test[item_idx_ranktest < subsample_amount]
                 rankscores_test = rankscores_test[item_idx_ranktest < subsample_amount]
                 item_idx_ranktest = item_idx_ranktest[item_idx_ranktest < subsample_amount]
-            
-        ndims = items_feat.shape[1]
-
-        # Lengthscale initialisation -----------------------------------------------------------------------------------
-        # use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.
-        # First, grab a sample of points because N^2 could be too large.
-        if default_ls_value is None:
-            N_max = 2000
-            starttime = time.time()
-            if items_feat.shape[0] > N_max:
-                items_feat_sample = items_feat[np.random.choice(items_feat.shape[0], N_max, replace=False)]
-            else:
-                items_feat_sample = items_feat
-            default_ls_value = np.zeros(items_feat.shape[1])
-            for f in range(items_feat.shape[1]):  
-                dists = np.abs(items_feat_sample[:, np.newaxis, f] - items_feat_sample[np.newaxis, :, f])
-                # we exclude the zero distances. With sparse features, these would likely downplay the lengthscale.
-                default_ls_value[f] = np.median(dists[dists>0])
-                if np.mod(f, 1000) == 0:
-                    print 'computed lengthscale for feature %i' % f
-                
-            if method == 'SinglePrefGP_oneLS':
-                ls_initial_guess = np.median(default_ls_value)
-            else:
-                ls_initial_guess = np.ones(ndims) * default_ls_value
-                
-            endtime = time.time()
-            print '@@@ Selected initial lengthscales in %f seconds' % (endtime - starttime)
                 
         # Run the chosen method ---------------------------------------------------------------------------------------
         print "Starting test with method %s..." % (method)
@@ -616,7 +616,7 @@ if __name__ == '__main__':
                         default_ls_value = None
                     default_ls_values[feature_type], model = run_test(folds, folds_regression, dataset, method, 
                         feature_type, embeddings_type, word_embeddings, siamese_cbow_embeddings, 
-                        skipthoughts_model, ling_feat_spmatrix, docids, subsample_amount=0, default_ls_value=default_ls_value)
+                        skipthoughts_model, ling_feat_spmatrix, docids, subsample_amount=100, default_ls_value=default_ls_value)
                     
                     print "**** Completed: method %s with features %s, embeddings %s ****" % (method, feature_type, 
                                                                                            embeddings_type)

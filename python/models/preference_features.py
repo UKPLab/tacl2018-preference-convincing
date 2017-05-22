@@ -713,8 +713,7 @@ class PreferenceComponents(object):
             
         elif lstype == 'person' or (lstype == 'both' and d >= self.nitem_features):               
             if self.person_features is None:
-                continue          
-                
+                pass          
             elif not self.use_svi_people:
                 dKdls = self.Ky * self.kernel_der(self.person_features, self.lsy, dimension) 
                 # try to make the s scale cancel as much as possible
@@ -796,7 +795,7 @@ class PreferenceComponents(object):
             self.fit()
 
         num_jobs = multiprocessing.cpu_count()
-        mll_jac = Parallel(num_jobs=num_jobs)(delayed(self._gradient_dim)(lstype, d, dim)
+        mll_jac = Parallel(n_jobs=num_jobs)(delayed(self._gradient_dim)(lstype, d, dim)
                                               for d, dim in enumerate(dimensions))
         
         if len(mll_jac) == 1: # don't need an array if we only compute for one dimension
