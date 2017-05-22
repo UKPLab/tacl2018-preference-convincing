@@ -32,7 +32,6 @@ Created on 20 Mar 2017
 
 import sys
 import os
-from Crypto.SelfTest.Random.test__UserFriendlyRNG import multiprocessing
 
 sys.path.append('../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python')
 
