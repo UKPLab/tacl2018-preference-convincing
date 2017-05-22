@@ -616,7 +616,8 @@ if __name__ == '__main__':
                         default_ls_value = None
                     default_ls_values[feature_type], model = run_test(folds, folds_regression, dataset, method, 
                         feature_type, embeddings_type, word_embeddings, siamese_cbow_embeddings, 
-                        skipthoughts_model, ling_feat_spmatrix, docids, subsample_amount=100, default_ls_value=default_ls_value)
+                        skipthoughts_model, ling_feat_spmatrix, docids, subsample_amount=0, 
+                        default_ls_value=default_ls_value)
                     
                     print "**** Completed: method %s with features %s, embeddings %s ****" % (method, feature_type, 
                                                                                            embeddings_type)
