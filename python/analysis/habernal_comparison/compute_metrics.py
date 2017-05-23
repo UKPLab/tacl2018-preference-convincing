@@ -28,13 +28,21 @@ from scipy.stats import pearsonr, spearmanr, kendalltau
 from tests import load_train_test_data
 
 def get_fold_data(data, f):
-    gold_disc = np.array(data[3][f]) / 2
-    pred_disc = np.array(data[1][f])
+    # discrete labels are 0, 1 or 2
+    gold_disc = np.array(data[3][f])
+    pred_disc = np.array(data[1][f]) * 2
+    # probabilities
+    gold_prob = gold_disc / 2.0
     pred_prob = np.array(data[0][f])
+    # scores used to rank
     gold_rank = np.array(data[4][f])
     pred_rank = np.array(data[2][f])
+    
+    if pred_rank.ndim == 3:
+        pred_rank = pred_rank[0]
+    pred_rank = pred_rank.flatten()
 
-    return gold_disc, pred_disc, pred_prob, gold_rank, pred_rank
+    return gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank
 
 if __name__ == '__main__':
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
@@ -85,17 +93,20 @@ if __name__ == '__main__':
                         nFolds = len(data[0])
 
                         for f in range(nFolds):
-                            gold_disc, pred_disc, pred_prob, gold_rank, pred_rank = get_fold_data(data, f)
+                            gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank = get_fold_data(data, f)
                         
-                            results_f1[row, col, f]      = f1_score(gold_disc, pred_disc, average='macro')
+                            results_f1[row, col, f]      = f1_score(gold_disc[gold_disc!=1], pred_disc[gold_disc!=1], 
+                                                                    average='macro')
                             #skip the don't knows
-                            results_acc[row, col, f]     = accuracy_score(gold_disc[gold_disc!=1], pred_disc[gold_disc!=1]) 
-                            results_logloss[row, col, f] = log_loss(gold_disc, pred_prob)
-                            results_auc[row, col, f]     = roc_auc_score(gold_disc, pred_prob) # macro
+                            results_acc[row, col, f]     = accuracy_score(gold_disc[gold_disc!=1], 
+                                                                          pred_disc[gold_disc!=1]) 
+                            
+                            results_logloss[row, col, f] = log_loss(gold_prob[gold_disc!=1], pred_prob[gold_disc!=1])
+                            results_auc[row, col, f]     = roc_auc_score(gold_prob[gold_disc!=1], pred_prob[gold_disc!=1]) # macro
     
-                            results_pearson[row, col, f]  = pearsonr(gold_rank, pred_rank)
-                            results_spearman[row, col, f] = spearmanr(gold_rank, pred_rank)
-                            results_kendall[row, col, f]  = kendalltau(gold_rank, pred_rank)
+                            results_pearson[row, col, f]  = pearsonr(gold_rank, pred_rank)[0]
+                            results_spearman[row, col, f] = spearmanr(gold_rank, pred_rank)[0]
+                            results_kendall[row, col, f]  = kendalltau(gold_rank, pred_rank)[0]
                           
                         results_f1[row, col, -1] = np.mean(results_f1[row, col, :-1])
                         results_acc[row, col, -1] = np.mean(results_acc[row, col, :-1])
@@ -117,35 +128,35 @@ if __name__ == '__main__':
                     
             row += 1
 
-    results_f1 = pd.DataFrame(results_f1, columns=columns, index=row_index)
+    mean_results_f1 = pd.DataFrame(results_f1[:, :, -1], columns=columns, index=row_index)
     print "Macro-F1 scores: "
-    print results_f1[:, :, -1]
+    print mean_results_f1
         
-    results_acc = pd.DataFrame(results_acc, columns=columns, index=row_index)
+    mean_results_acc = pd.DataFrame(results_acc[:, :, -1], columns=columns, index=row_index)
     print "Accuracy (for UKPConvArgAll and UKPConvArgMACE we now exclude don't knows; for UKPConvArgStrict they are\
     already ommitted):"
-    print results_acc[:, :, -1]
+    print mean_results_acc
     
-    results_auc = pd.DataFrame(results_auc, columns=columns, index=row_index)
+    mean_results_auc = pd.DataFrame(results_auc[:, :, -1], columns=columns, index=row_index)
     print "AUC ROC (if AUC is higher than accuracy and F1 score, it suggests that decision boundary is not calibrated\
     or that accuracy may improve if we exclude data points close to the decision boundary): "
-    print results_auc[:, :, -1]
+    print mean_results_auc
     
-    results_logloss = pd.DataFrame(results_logloss, columns=columns, index=row_index)
+    mean_results_logloss = pd.DataFrame(results_logloss[:, :, -1], columns=columns, index=row_index)
     print "Cross Entropy classification error (quality of the probability labels is taken into account)"
-    print results_logloss[:, :, -1]
+    print mean_results_logloss
     
-    results_pearson = pd.DataFrame(results_pearson, columns=columns, index=row_index)
+    mean_results_pearson = pd.DataFrame(results_pearson[:, :, -1], columns=columns, index=row_index)
     print "Pearson's r:"
-    print results_pearson[:, :, -1]
+    print mean_results_pearson
     
-    results_spearman = pd.DataFrame(results_spearman, columns=columns, index=row_index)
+    mean_results_spearman = pd.DataFrame(results_spearman[:, :, -1], columns=columns, index=row_index)
     print "Spearman's rho:"
-    print results_spearman[:, :, -1]
+    print mean_results_spearman
     
-    results_kendall = pd.DataFrame(results_kendall, columns=columns, index=row_index)
+    mean_results_kendall = pd.DataFrame(results_kendall[:, :, -1], columns=columns, index=row_index)
     print "Kendall's tau:"
-    print results_kendall[:, :, -1]
+    print mean_results_kendall
     
     # TODO: Show how the method resolves cycles
     
