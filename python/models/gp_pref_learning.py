@@ -251,21 +251,26 @@ class GPPrefLearning(GPClassifierSVI):
             
         return pref_likelihood(f, subset_idxs, v, u, return_g_f)
     
-    def _update_jacobian(self, G_update_rate=1.0):
+    def _compute_jacobian(self, data_idx_i=None):
         phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
-            
         J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * np.sqrt(0.5)
+        
         obs_idxs = np.arange(self.n_locs)[np.newaxis, :]
         
-        if hasattr(self, 'data_obs_idx_i') and len(self.data_obs_idx_i): 
-            obs_idxs = obs_idxs[:, self.data_idx_i]
+        if data_idx_i is not None and hasattr(self, 'data_obs_idx_i') and len(self.data_obs_idx_i): 
+            obs_idxs = obs_idxs[:, data_idx_i]
             J = J[self.data_obs_idx_i, :]
             s = (self.pref_v[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int) -\
                                                     (self.pref_u[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int)
         else:    
             s = (self.pref_v[:, np.newaxis]==obs_idxs).astype(int) - (self.pref_u[:, np.newaxis]==obs_idxs).astype(int)
             
-        J = J * s 
+        J = J * s         
+        
+        return phi, J
+    
+    def _update_jacobian(self, G_update_rate=1.0):            
+        phi, J = self._compute_jacobian(self.data_idx_i)
         
         if self.G is None or not np.any(self.G) or self.G.shape != J.shape: 
             # either G has not been initialised, or is from different observations:

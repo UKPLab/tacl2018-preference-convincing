@@ -444,7 +444,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         if method == 'PersonalisedPrefsBayes':        
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
                                             rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, 
-                                            max_update_size=1000)
+                                            max_update_size=200)
             model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba, predicted_f = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
@@ -457,7 +457,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
                                         rate_ls = 1.0 / np.mean(ls_initial_guess), 
                                         use_svi=True, use_fa=False, uncorrelated_noise=True, use_common_mean=False, 
-                                        max_update_size=1000)
+                                        max_update_size=200)
             model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
@@ -467,7 +467,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         elif method == 'PersonalisedPrefsFA':
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
                                             rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=True, 
-                                            max_update_size=1000)
+                                            max_update_size=200)
             model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
@@ -477,7 +477,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         elif method == 'PersonalisedPrefsNoFactors':
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
                             rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, no_factors=True, 
-                            max_update_size=1000)
+                            max_update_size=200)
             model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
@@ -487,7 +487,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         elif method == 'PersonalisedPrefsNoCommonMean':        
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, use_common_mean_t=False, 
-                        max_update_size=1000)
+                        max_update_size=200)
             model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
@@ -497,7 +497,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         elif method == 'IndPrefGP':
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
                             rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, no_factors=True, 
-                            use_common_mean_t=False, max_update_size=1000)
+                            use_common_mean_t=False, max_update_size=200)
             model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)            
@@ -506,7 +506,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
 
         elif method == 'SinglePrefGP' or method == 'SinglePrefGP_oneLS':
             model = GPPrefLearning(ninput_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
-                                        rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, max_update_size=1000)
+                                        rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, max_update_size=200)
             model.fit(trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, input_type='zero-centered')            
         
@@ -579,7 +579,7 @@ if __name__ == '__main__':
 #                    'PersonalisedPrefsNoCommonMean', 'PersonalisedPrefsFA', 'PersonalisedPrefsNoFactors']
     #methods = [] # IndPrefGP means separate preference GPs for each worker 
     
-    feature_types = ['both', 'embeddings', 'ling'] # can be 'embeddings' or 'ling' or 'both'
+    feature_types = ['embeddings', 'ling', 'both'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
                       
     if 'folds' in globals() and 'dataset' in globals() and dataset == datasets[0]:
