@@ -564,13 +564,13 @@ class PreferenceComponents(object):
                 initialguess = np.log(self.ls)
                 logging.debug("Initial item length-scale guess in restart %i: %s" % (r, self.ls))                
                 res = minimize(self.neg_marginal_likelihood, initialguess, args=('item', -1, use_MAP,), 
-                               jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter':maxfun})
+                   jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter':maxfun, 'gtol': 0.1 / self.nitem_features})
             else:
                 initialguess = np.append(np.log(self.ls), np.log(self.lsy))
                 logging.debug("Initial item length-scale guess in restart %i: %s" % (r, self.ls))
                 logging.debug("Initial person length-scale guess in restart %i: %s" % (r, self.lsy))
                 res = minimize(self.neg_marginal_likelihood, initialguess, args=('both', -1, use_MAP,), 
-                               jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter':maxfun})
+                   jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter':maxfun, 'gtol': 0.1 / self.nitem_features})
                 
             opt_hyperparams = res['x']
             nlml = res['fun']
