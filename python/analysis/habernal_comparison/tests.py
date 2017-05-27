@@ -515,7 +515,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             #model.max_iter_VB = 10
             
             model.fit(trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
-                      optimize=, input_type='zero-centered')            
+                      optimize=optimize_hyper, input_type='zero-centered')            
         
             proba, _ = model.predict(testids_a1, testids_a2, items_feat)
             if folds_regression is not None:
