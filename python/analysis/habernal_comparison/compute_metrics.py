@@ -34,6 +34,13 @@ def get_fold_data(data, f):
     # probabilities
     gold_prob = gold_disc / 2.0
     pred_prob = np.array(data[0][f])
+    
+    gold_disc = gold_disc[np.abs(pred_prob - 0.5) > 0.3]
+    pred_disc = pred_disc[np.abs(pred_prob - 0.5) > 0.3] 
+    
+    gold_prob = gold_prob[np.abs(pred_prob - 0.5) > 0.3] 
+    pred_prob = pred_prob[np.abs(pred_prob - 0.5) > 0.3] 
+    
     # scores used to rank
     gold_rank = np.array(data[4][f])
     pred_rank = np.array(data[2][f])

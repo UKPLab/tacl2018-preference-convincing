@@ -32,6 +32,7 @@ Created on 20 Mar 2017
 
 import sys
 import os
+from gp_classifier_svi import GPClassifierSVI
 
 sys.path.append('../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python')
 
@@ -289,7 +290,6 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
     all_target_rankscores = {}
     all_argids_rankscores = {}
     all_turkids_rankscores = {}
-    length_scales = {}
     
     item_ids = {}
     times = {}
@@ -394,6 +394,9 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 ls_initial_guess = np.median(default_ls_value)
             else:
                 ls_initial_guess = np.ones(ndims) * default_ls_value
+              
+            
+            ls_initial_guess *= 1000
                 
             endtime = time.time()
             print '@@@ Selected initial lengthscales in %f seconds' % (endtime - starttime)        
@@ -506,13 +509,32 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
 
         elif method == 'SinglePrefGP' or method == 'SinglePrefGP_oneLS':
             model = GPPrefLearning(ninput_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
-                                        rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, max_update_size=200)
+                        shape_s0 = 2.0, rate_s0 = 200.0,  
+                        rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200)
+            
+            #model.max_iter_VB = 10
+            
             model.fit(trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
-                      optimize=optimize_hyper, input_type='zero-centered')            
+                      optimize=, input_type='zero-centered')            
         
             proba, _ = model.predict(testids_a1, testids_a2, items_feat)
             if folds_regression is not None:
                 predicted_f, _ = model.predict_f(items_feat[item_idx_ranktest]) 
+            
+        elif method == 'SingleGPC' or method == 'SingleGPC_oneLS':
+            model = GPClassifierSVI(ninput_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
+                        shape_s0 = 2.0, rate_s0 = 200.0,  
+                        rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200)
+            
+            #model.max_iter_VB = 10
+            
+            model.fit(np.concatenate((items_feat[trainids_a1], items_feat[trainids_a2]), axis=1), 
+                      np.array(prefs_train, dtype=float)-1, optimize=optimize_hyper)            
+        
+            proba, _ = model.predict(np.concatenate((items_feat[testids_a1], items_feat[testids_a2]), axis=1))
+            if folds_regression is not None:
+                predicted_f = np.zeros(len(item_idx_ranktest)) # can't easily rank with this method     
+        
             
         predictions = np.round(proba)
         
@@ -539,7 +561,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         # Save the time taken
         times[foldidx] = endtime-starttime
         
-        results = (all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, length_scales,
+        results = (all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, default_ls_value,
                    item_ids, times) 
         with open(resultsfile, 'w') as fh:
             pickle.dump(results, fh)
@@ -571,15 +593,16 @@ Steps needed to run them:
 '''
         
 if __name__ == '__main__':
-    datasets = ['UKPConvArgAll', 'UKPConvArgMACE', 'UKPConvArgStrict']
+    datasets = ['UKPConvArgStrict', 'UKPConvArgAll', 'UKPConvArgMACE']
     
-    methods = ['SinglePrefGP', 'SinglePrefGP_oneLS', 'PersonalisedPrefsBayes', 'PersonalisedPrefsUncorrelatedNoise',
-               'IndPrefGP']
+    methods = ['SingleGPC']
+    #, 'SinglePrefGP', 'SinglePrefGP_oneLS', 'PersonalisedPrefsBayes', 'PersonalisedPrefsUncorrelatedNoise',
+    #           'IndPrefGP']
 #         methods = ['PersonalisedPrefsNoCommonMean',
 #                    'PersonalisedPrefsNoCommonMean', 'PersonalisedPrefsFA', 'PersonalisedPrefsNoFactors']
     #methods = [] # IndPrefGP means separate preference GPs for each worker 
     
-    feature_types = ['embeddings', 'ling', 'both'] # can be 'embeddings' or 'ling' or 'both'
+    feature_types = ['ling']#'both', 'embeddings', 'ling'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
                       
     if 'folds' in globals() and 'dataset' in globals() and dataset == datasets[0]:
@@ -625,3 +648,6 @@ if __name__ == '__main__':
                     
                     print "**** Completed: method %s with features %s, embeddings %s ****" % (method, feature_type, 
                                                                                            embeddings_type)
+
+# TODO: covariance seems to be too weak to predict from argument features. We need to shrink the distance between points.
+# Can do this by using larger lengthscales? Can we discard null features?
