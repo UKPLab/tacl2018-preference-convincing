@@ -593,10 +593,10 @@ Steps needed to run them:
 '''
         
 if __name__ == '__main__':
-    datasets = ['UKPConvArgStrict', 'UKPConvArgAll', 'UKPConvArgMACE']
+    datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll']
     
-#     methods = ['SingleGPC']
-    methods = ['SinglePrefGP']#, 'SinglePrefGP_oneLS', 'PersonalisedPrefsBayes', 'PersonalisedPrefsUncorrelatedNoise',
+    methods = ['SingleGPC']
+#    methods = ['SinglePrefGP']#, 'SinglePrefGP_oneLS', 'PersonalisedPrefsBayes', 'PersonalisedPrefsUncorrelatedNoise',
     #           'IndPrefGP']
 #         methods = ['PersonalisedPrefsNoCommonMean',
 #                    'PersonalisedPrefsNoCommonMean', 'PersonalisedPrefsFA', 'PersonalisedPrefsNoFactors']
