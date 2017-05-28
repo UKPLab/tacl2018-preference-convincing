@@ -394,7 +394,6 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 ls_initial_guess = np.median(default_ls_value)
             else:
                 ls_initial_guess = np.ones(ndims) * default_ls_value
-              
             
             ls_initial_guess *= 1000
                 
@@ -438,7 +437,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         personIDs_test = personIdxs[len(personIDs_train):]
         
         verbose = True
-        optimize_hyper = True
+        optimize_hyper = False#True
         nfactors = 10
         
         predicted_f = None
@@ -528,8 +527,9 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             
             #model.max_iter_VB = 10
             
-            model.fit(np.concatenate((items_feat[trainids_a1], items_feat[trainids_a2]), axis=1), 
-                      np.array(prefs_train, dtype=float)-1, optimize=optimize_hyper)            
+            model.fit(np.arange(len(trainids_a1)), 
+                      np.array(prefs_train, dtype=float) / 0.5, optimize=optimize_hyper, 
+                      features=np.concatenate((items_feat[trainids_a1], items_feat[trainids_a2]), axis=1))            
         
             proba, _ = model.predict(np.concatenate((items_feat[testids_a1], items_feat[testids_a2]), axis=1))
             if folds_regression is not None:
@@ -595,8 +595,8 @@ Steps needed to run them:
 if __name__ == '__main__':
     datasets = ['UKPConvArgStrict', 'UKPConvArgAll', 'UKPConvArgMACE']
     
-    methods = ['SingleGPC']
-    #, 'SinglePrefGP', 'SinglePrefGP_oneLS', 'PersonalisedPrefsBayes', 'PersonalisedPrefsUncorrelatedNoise',
+#     methods = ['SingleGPC']
+    methods = ['SinglePrefGP']#, 'SinglePrefGP_oneLS', 'PersonalisedPrefsBayes', 'PersonalisedPrefsUncorrelatedNoise',
     #           'IndPrefGP']
 #         methods = ['PersonalisedPrefsNoCommonMean',
 #                    'PersonalisedPrefsNoCommonMean', 'PersonalisedPrefsFA', 'PersonalisedPrefsNoFactors']
@@ -624,7 +624,7 @@ if __name__ == '__main__':
                 ling_feat_spmatrix, docids = load_ling_features(dataset)
            
             if (dataset == 'UKPConvArgMACE' or dataset == 'UKPConvArgStrict') and (method != 'SinglePrefGP' and
-                                                                                method != 'SinglePrefGP_oneLS'):
+                                            method != 'SinglePrefGP_oneLS' and method != 'SingleGPC'):
                 logging.warning('Skipping method %s on dataset %s because there are no separate worker IDs.' 
                                 % (method, dataset))
                 continue
