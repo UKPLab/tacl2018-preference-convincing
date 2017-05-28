@@ -32,7 +32,6 @@ Created on 20 Mar 2017
 
 import sys
 import os
-from gp_classifier_svi import GPClassifierSVI
 
 sys.path.append('../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python')
 
@@ -58,6 +57,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 from preference_features import PreferenceComponents
 from gp_pref_learning import GPPrefLearning
+from gp_classifier_svi import GPClassifierSVI
 from preproc_raw_data import generate_turker_CSV, generate_gold_CSV
 #import skipthoughts
 #import wordEmbeddings as siamese_cbow
