@@ -556,7 +556,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             model = GPPrefLearning(ninput_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
                         shape_s0 = 2.0, rate_s0 = 200.0,  
                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200)
-            
+            model.max_iter_VB = 500
             model.fit(trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, input_type='zero-centered')            
         
@@ -567,15 +567,14 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         elif 'GP+SVM' in method:
             model = GPPrefLearning(ninput_features=1, ls_initial=ls_initial_guess, verbose=verbose, 
                         shape_s0 = 2.0, rate_s0 = 200.0,  
-                        rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200,
-                        kernel_func='diagonal')
-            
+                        rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=False, kernel_func='diagonal')
+            model.max_iter_VB = 2
             model.fit(trainids_a1, trainids_a2, np.arange(items_feat.shape[0])[:, np.newaxis], 
                       np.array(prefs_train, dtype=float)-1, 
-                      optimize=optimize_hyper, input_type='zero-centered')            
+                      optimize=False, input_type='zero-centered') # never use optimize with diagonal kernel            
 
             svm = SVR()
-            svm.fit(model.obs_coords, model.obs_f)
+            svm.fit(items_feat[model.obs_coords.flatten(), :], model.obs_f.flatten())
             test_f = svm.predict(items_feat)
             
             # apply the preference likelihood from GP method
@@ -585,15 +584,18 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 predicted_f, _ = svm.predict(items_feat[item_idx_ranktest])  
             
         elif 'SingleGPC' in method:
-            model = GPClassifierSVI(ninput_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
+            model = GPClassifierSVI(ninput_features=ndims, ls_initial=np.concatenate((ls_initial_guess, ls_initial_guess)), 
+                        verbose=verbose, 
                         shape_s0 = 2.0, rate_s0 = 200.0,  
                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200)
             
             #model.max_iter_VB = 10
             
-            model.fit(np.arange(len(trainids_a1)), 
-                      np.array(prefs_train, dtype=float) / 0.5, optimize=optimize_hyper, 
-                      features=np.concatenate((items_feat[trainids_a1], items_feat[trainids_a2]), axis=1))            
+            gpc_feats = np.concatenate((np.concatenate((items_feat[trainids_a1], items_feat[trainids_a2]), axis=1),
+                                   np.concatenate((items_feat[trainids_a2], items_feat[trainids_a1]), axis=1)), axis=0)
+            gpc_labels = np.concatenate((np.array(prefs_train, dtype=float), np.array(prefs_train, dtype=float)))
+            
+            model.fit(np.arange(len(trainids_a1)), gpc_labels, optimize=optimize_hyper, features=gpc_feats)            
         
             proba, _ = model.predict(np.concatenate((items_feat[testids_a1], items_feat[testids_a2]), axis=1))
             if folds_regression is not None:
@@ -660,10 +662,9 @@ Steps needed to run them:
 if __name__ == '__main__':
     datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
     
-    #methods = ['SinglePrefGP_noOpt', ] 
-    #methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
-    #methods = ['SinglePrefGP', 'SingleGPC', 'GP+SVM'] # Barney
-    methods = ['SingleGPC', 'GP+SVM'] # Barney -- debugging  
+    methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
+    #methods = ['SinglePrefGP', 'SingleGPC'] # Barney ('GP+SVM' is not possible with optimization on)
+    #methods = ['GP+SVM'] # debugging  
     
     feature_types = ['ling', 'embeddings', 'both'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
@@ -714,7 +715,7 @@ if __name__ == '__main__':
                             
                     model = run_test(folds, folds_regression, dataset, method, 
                         feature_type, embeddings_type, word_embeddings, siamese_cbow_embeddings, 
-                        skipthoughts_model, ling_feat_spmatrix, docids, subsample_amount=0, 
+                        skipthoughts_model, ling_feat_spmatrix, docids, subsample_amount=100, 
                         ls_initial_guess=default_ls_value)
                     
                     print "**** Completed: method %s with features %s, embeddings %s ****" % (method, feature_type, 
