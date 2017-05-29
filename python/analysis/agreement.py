@@ -38,20 +38,20 @@ if __name__ == '__main__':
     # list the names of methods to test here
     methods = [
             #'GPFABayes_GP',
-            'Separate_GP',  
-            'GPFA_soft',  # no. factors?
-            'GPGMM_GP', 
-            'GPGMM_soft', 
-            'GPGMM_Averaging',
-            'GPAffProp_GP', # this takes ages because there are too many clusters
-#             'Baseline_MostCommon', 
-#             'Combined_Averaging', 
-#             'Combined_GP',
+#             'Separate_GP',  
+#             'GPFA_soft',  # no. factors?
+#             'GPGMM_GP', 
+#             'GPGMM_soft', 
+#             'GPGMM_Averaging',
+#             'GPAffProp_GP', # this takes ages because there are too many clusters
+            'Baseline_MostCommon', 
+            'Combined_Averaging', 
+            'Combined_GP',
 #             'AffProp_Averaging', 
 #             'AffProp_GP', 
 #             'Agg_Averaging', 
 #             'Agg_GP', 
-             'LDA_soft' # no. topics? Needs posterior over no. topics, not likelihood
+#              'LDA_soft' # no. topics? Needs posterior over no. topics, not likelihood
             ] 
             #'GMM_GP', 'GMM_Averaging', 'GMM_soft'] # these don't make any sense as cannot learn GMM from a discrete data
             #'GPGMM_GP', 'GPGMM_soft', 'Separate_GP', 'GPAffProp_GP' # this may be infeasible with lots of workers 
@@ -82,8 +82,8 @@ if __name__ == '__main__':
             if not os.path.isdir(plotdir):
                 os.mkdir(plotdir)
         else:
-            datadir, plotdir, nx, ny, data, pair1coords, pair2coords, pair1idxs, pair2idxs, xvals, yvals, prefs, personids,\
-                npairs, nworkers, ntexts, f = load_amt()
+            datadir, plotdir, nx, ny, data, pair1coords, pair2coords, pair1idxs, pair2idxs, xvals, yvals, prefs, \
+                personids, npairs, nworkers, ntexts, f = load_amt()
             # make sure the root exists    
             if not os.path.isdir(plotdir):
                 os.mkdir(plotdir)                

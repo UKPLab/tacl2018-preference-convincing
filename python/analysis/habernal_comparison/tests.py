@@ -56,8 +56,9 @@ from sklearn.datasets import load_svmlight_file
 import logging
 logging.basicConfig(level=logging.DEBUG)
 from preference_features import PreferenceComponents
-from gp_pref_learning import GPPrefLearning
+from gp_pref_learning import GPPrefLearning, pref_likelihood
 from gp_classifier_svi import GPClassifierSVI
+from sklearn.svm import SVR 
 from preproc_raw_data import generate_turker_CSV, generate_gold_CSV
 #import skipthoughts
 #import wordEmbeddings as siamese_cbow
@@ -175,6 +176,9 @@ def combine_lines_into_one_file(dataset, dirname=data_root_dir + '/lingdata/UKPC
 
 def load_train_test_data(dataset):
     # Set experiment options and ensure CSV data is ready -------------------------------------------------------------
+    
+    folds_test = None # can load a separate set of data for testing into here, e.g. train on workers and test on gold standard
+    
     # Select the directory containing original XML files with argument data + crowdsourced annotations.
     # See the readme in the data folder from Habernal 2016 for further explanation of folder names.    
     if dataset == 'UKPConvArgAll':
@@ -196,6 +200,11 @@ def load_train_test_data(dataset):
         dirname = None # don't need to create a new CSV file
         raise Exception('This dataset cannot be used to select an experiment. To test ranking, run with \
         dataset=UKPConvArgMACE')
+    elif dataset == 'UKPConvArgAll_evalMACE': # train on the All datasets and evaluate on the MACE dataset -- the pref
+        # learning method does the combination so we can see how that compares to MACE -- can we skip those steps?
+        dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'  
+        ranking_csvdirname = None
+        folds_test, folds_regression, _, _ = load_train_test_data('UKPConvArgMACE')
     else:
         raise Exception("Invalid dataset %s" % dataset)    
     
@@ -224,6 +233,10 @@ def load_train_test_data(dataset):
     else:
         folds_regression = None
         
+    if folds_test is not None:
+        for fold in folds:
+            folds[fold]["test"] = folds_test[fold]["test"]
+
     return folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map
     
 def load_embeddings(word_index_to_embeddings_map):
@@ -234,15 +247,15 @@ def load_embeddings(word_index_to_embeddings_map):
     #embeddings = np.asarray([np.array(x, dtype=np.float32) for x in word_index_to_embeddings_map.values()])
     return embeddings
 
-def load_siamese_cbow_embeddings(word_to_indices_map):
-    print('Loading Siamese CBOW embeddings...')
-    filename = os.path.expanduser('~/data/embeddings/Siamese-CBOW/cosine_sharedWeights_adadelta_lr_1_noGradClip_epochs_2_batch_100_neg_2_voc_65536x300_noReg_lc_noPreInit_vocab_65535.end_of_epoch_2.pickle')
-    return siamese_cbow.wordEmbeddings(filename)
-     
-def load_skipthoughts_embeddings(word_to_indices_map):
-    print('Loading Skip-thoughts model...')
-    model = skipthoughts.load_model()
-    return model
+# def load_siamese_cbow_embeddings(word_to_indices_map):
+#     print('Loading Siamese CBOW embeddings...')
+#     filename = os.path.expanduser('~/data/embeddings/Siamese-CBOW/cosine_sharedWeights_adadelta_lr_1_noGradClip_epochs_2_batch_100_neg_2_voc_65536x300_noReg_lc_noPreInit_vocab_65535.end_of_epoch_2.pickle')
+#     return siamese_cbow.wordEmbeddings(filename)
+#      
+# def load_skipthoughts_embeddings(word_to_indices_map):
+#     print('Loading Skip-thoughts model...')
+#     model = skipthoughts.load_model()
+#     return model
      
 def load_ling_features(dataset):
     ling_dir = data_root_dir + 'lingdata/'
@@ -259,15 +272,65 @@ def load_ling_features(dataset):
     return ling_feat_spmatrix, docids
     
 def _dists_f(items_feat_sample, f):
-    if np.mod(f, 1000) == 0:
+    if np.mod(f, 100) == 0:
         print 'computed lengthscale for feature %i' % f                
-    dists = np.abs(items_feat_sample[:, np.newaxis, f] - items_feat_sample[np.newaxis, :, f])
+    dists = np.abs(items_feat_sample[:, np.newaxis] - items_feat_sample[np.newaxis, :])
     # we exclude the zero distances. With sparse features, these would likely downplay the lengthscale.                                
-    return np.median(dists[dists>0])    
+    med = np.median(dists[dists>0])
+    if np.isnan(med):
+        med = 1.0
+    return med     
+    
+# Lengthscale initialisation -------------------------------------------------------------------------------------------
+# use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.
+# First, grab a sample of points because N^2 could be too large.    
+def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, ling_feat_spmatrix):
+    # get the embedding values for the test data -- need to find embeddings of the whole piece of text
+    if feature_type == 'both' or feature_type == 'embeddings':
+        if embeddings_type == 'word_mean':
+            items_feat = embeddings
+        elif embeddings_type == 'skipthoughts':
+            logging.error("not implemented yet -- lengthscale heuristic with skip thoughts")
+        elif embeddings_type == 'siamese_cbow':
+            logging.error("not implemented yet -- lengthscale heuristic with siamese cbow")
+        else:
+            print "invalid embeddings type! %s" % embeddings_type
+        
+    if feature_type == 'both':
+        items_feat = np.concatenate((items_feat, ling_feat_spmatrix.toarray()), axis=1)
+        
+    if feature_type == 'ling':
+        items_feat = ling_feat_spmatrix.toarray()
+    
+    ndims = items_feat.shape[1]
+            
+    starttime = time.time()
+            
+    N_max = 3000
+    if items_feat.shape[0] > N_max:
+        items_feat_sample = items_feat[np.random.choice(items_feat.shape[0], N_max, replace=False)]
+    else:
+        items_feat_sample = items_feat
+                    
+    #for f in range(items_feat.shape[1]):  
+    num_jobs = multiprocessing.cpu_count()
+    default_ls_value = Parallel(n_jobs=num_jobs, backend="multiprocessing")(delayed(_dists_f)(items_feat_sample[:, f], f) for f in range(ndims))
+            
+    ls_initial_guess = np.ones(ndims) * default_ls_value 
+    print 'I am using a heuristic multiplier for the length-scale because median is too low to work in high-D spaces'
+    #ls_initial_guess *= 1000 # this worked reasonably well but was plucked out of thin air
+    ls_initial_guess *= items_feat.shape[1] # this is a heuristic, see e.g. "On the High-dimensional 
+    #Power of Linear-time Kernel Two-Sample Testing under Mean-difference Alternatives" by Ramdas et al. 2014. In that 
+    # paper they refer to root(no. dimensions) because they square the lengthscale in the kernel function.
+            
+    endtime = time.time()
+    print '@@@ Selected initial lengthscales in %f seconds' % (endtime - starttime)
+    
+    return ls_initial_guess     
     
 def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type=None, embeddings=None, 
              siamese_cbow_e=None, skipthoughts_model=None, ling_feat_spmatrix=None, docids=None, subsample_amount=0, 
-             default_ls_value=None):
+             ls_initial_guess=None):
         
     # Select output paths for CSV files and final results
     output_filename_template = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/habernal_%s_%s_%s_%s'
@@ -343,10 +406,10 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             print "Converting texts to mean embeddings (we could use a better sentence embedding?)..."
             if embeddings_type == 'word_mean':
                 items_feat = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X])
-            elif embeddings_type == 'skipthoughts':
-                items_feat = skipthoughts.encode(skipthoughts_model, X)
-            elif embeddings_type == 'siamese_cbow':
-                items_feat = np.array([siamese_cbow_e.getAggregate(Xi) for Xi in X])
+#             elif embeddings_type == 'skipthoughts':
+#                 items_feat = skipthoughts.encode(skipthoughts_model, X)
+#             elif embeddings_type == 'siamese_cbow':
+#                 items_feat = np.array([siamese_cbow_e.getAggregate(Xi) for Xi in X])
             else:
                 print "invalid embeddings type! %s" % embeddings_type
             print "...embeddings loaded."
@@ -355,51 +418,34 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                                                                                      axis=0)>0)
             items_feat = items_feat[:, valid_feats]
             
+            
         elif feature_type == 'ling':
             items_feat = np.zeros((X.shape[0], 0))
+            valid_feats = np.zeros(0)
             
         if feature_type == 'both' or feature_type == 'ling':
             print "Obtaining linguistic features for argument texts."
             # trim the features that are not used in training
-            valid_feats = ((np.sum(ling_feat_spmatrix[trainids_a1, :] != 0, axis=0)>0) & 
+            valid_feats_ling = ((np.sum(ling_feat_spmatrix[trainids_a1, :] != 0, axis=0)>0) & 
                            (np.sum(ling_feat_spmatrix[trainids_a2, :] != 0, axis=0)>0)).nonzero()[1]            
-            ling_feat_spmatrix = ling_feat_spmatrix[:, valid_feats]
+            ling_feat_spmatrix = ling_feat_spmatrix[:, valid_feats_ling]
             items_feat = np.concatenate((items_feat, ling_feat_spmatrix[uids, :].toarray()), axis=1)
             print "...loaded all linguistic features for training and test data."
+            
+            valid_feats = np.concatenate((valid_feats, valid_feats_ling)).astype(int)
+            
+        ls_initial_guess = ls_initial_guess[valid_feats]
+        if '_oneLS' in method:
+            ls_initial_guess = np.median(ls_initial_guess)
+            print "Selecting a single LS for all features: %f" % ls_initial_guess        
                 
         prefs_train = np.array(prefs_train) 
         prefs_test = np.array(prefs_test)     
         personIDs_train = np.array(personIDs_train)
         personIDs_test = np.array(personIDs_test) 
-        
-        # Lengthscale initialisation -----------------------------------------------------------------------------------
-        # use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.
-        # First, grab a sample of points because N^2 could be too large.
+          
         ndims = items_feat.shape[1]
-                
-        if default_ls_value is None:
-            N_max = 2000
-            starttime = time.time()
-            if items_feat.shape[0] > N_max:
-                items_feat_sample = items_feat[np.random.choice(items_feat.shape[0], N_max, replace=False)]
-            else:
-                items_feat_sample = items_feat
-            default_ls_value = np.zeros(items_feat.shape[1])
-                        
-            #for f in range(items_feat.shape[1]):  
-            num_jobs = multiprocessing.cpu_count()
-            default_ls_value = Parallel(n_jobs=num_jobs)(delayed(_dists_f)(items_feat_sample, f) for f in range(ndims))
-                
-            if method == 'SinglePrefGP_oneLS':
-                ls_initial_guess = np.median(default_ls_value)
-            else:
-                ls_initial_guess = np.ones(ndims) * default_ls_value
-            
-            ls_initial_guess *= 1000
-                
-            endtime = time.time()
-            print '@@@ Selected initial lengthscales in %f seconds' % (endtime - starttime)        
-        
+
         # subsample training data for debugging purposes only ----------------------------------------------------------
         if subsample_amount > 0:
             subsample = np.arange(subsample_amount)               
@@ -437,13 +483,13 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         personIDs_test = personIdxs[len(personIDs_train):]
         
         verbose = True
-        optimize_hyper = False#True
+        optimize_hyper = ('noOpt' not in method)
         nfactors = 10
         
         predicted_f = None
         
         # Run the selected method
-        if method == 'PersonalisedPrefsBayes':        
+        if 'PersonalisedPrefsBayes' in method:        
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
                                             rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, 
                                             max_update_size=200)
@@ -453,7 +499,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             if folds_regression is not None:
                 predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
                         
-        elif method == 'PersonalisedPrefsUncorrelatedNoise': 
+        elif 'PersonalisedPrefsUncorrelatedNoise' in method: 
             # Note that this also does not use a common mean to match the Houlsby model.
             # TODO: suspect that with small no. factors, this may be worse, but better with large number in comparison to PersonalisedPrefsBayes with Matern noise GPs.        
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
@@ -466,7 +512,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             if folds_regression is not None:
                 predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
                             
-        elif method == 'PersonalisedPrefsFA':
+        elif 'PersonalisedPrefsFA' in method:
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
                                             rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=True, 
                                             max_update_size=200)
@@ -476,7 +522,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             if folds_regression is not None:
                 predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
                 
-        elif method == 'PersonalisedPrefsNoFactors':
+        elif 'PersonalisedPrefsNoFactors' in method:
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
                             rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, no_factors=True, 
                             max_update_size=200)
@@ -486,7 +532,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             if folds_regression is not None:
                 predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
                 
-        elif method == 'PersonalisedPrefsNoCommonMean':        
+        elif 'PersonalisedPrefsNoCommonMean' in method:        
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, use_common_mean_t=False, 
                         max_update_size=200)
@@ -496,7 +542,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             if folds_regression is not None:
                 predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)         
                    
-        elif method == 'IndPrefGP':
+        elif 'IndPrefGP' in method:
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
                             rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, no_factors=True, 
                             use_common_mean_t=False, max_update_size=200)
@@ -506,12 +552,10 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             if folds_regression is not None:
                 predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)                    
 
-        elif method == 'SinglePrefGP' or method == 'SinglePrefGP_oneLS':
+        elif 'SinglePrefGP' in method:
             model = GPPrefLearning(ninput_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
                         shape_s0 = 2.0, rate_s0 = 200.0,  
                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200)
-            
-            #model.max_iter_VB = 10
             
             model.fit(trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, input_type='zero-centered')            
@@ -519,8 +563,28 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             proba, _ = model.predict(testids_a1, testids_a2, items_feat)
             if folds_regression is not None:
                 predicted_f, _ = model.predict_f(items_feat[item_idx_ranktest]) 
+
+        elif 'GP+SVM' in method:
+            model = GPPrefLearning(ninput_features=1, ls_initial=ls_initial_guess, verbose=verbose, 
+                        shape_s0 = 2.0, rate_s0 = 200.0,  
+                        rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200,
+                        kernel_func='diagonal')
             
-        elif method == 'SingleGPC' or method == 'SingleGPC_oneLS':
+            model.fit(trainids_a1, trainids_a2, np.arange(items_feat.shape[0])[:, np.newaxis], 
+                      np.array(prefs_train, dtype=float)-1, 
+                      optimize=optimize_hyper, input_type='zero-centered')            
+
+            svm = SVR()
+            svm.fit(model.obs_coords, model.obs_f)
+            test_f = svm.predict(items_feat)
+            
+            # apply the preference likelihood from GP method
+            proba = pref_likelihood(test_f, v=testids_a1, u=testids_a2, return_g_f=False)
+        
+            if folds_regression is not None:
+                predicted_f, _ = svm.predict(items_feat[item_idx_ranktest])  
+            
+        elif 'SingleGPC' in method:
             model = GPClassifierSVI(ninput_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
                         shape_s0 = 2.0, rate_s0 = 200.0,  
                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200)
@@ -533,14 +597,15 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         
             proba, _ = model.predict(np.concatenate((items_feat[testids_a1], items_feat[testids_a2]), axis=1))
             if folds_regression is not None:
-                predicted_f = np.zeros(len(item_idx_ranktest)) # can't easily rank with this method     
-        
+                predicted_f = np.zeros(len(item_idx_ranktest)) # can't easily rank with this method
             
         predictions = np.round(proba)
         
         endtime = time.time() 
         
         print "@@@ Completed running fold %i with method %s in %f seconds." % (foldidx, method, endtime-starttime)
+        print "Accuracy for fold = %f" % (np.sum(prefs_test[prefs_test != 1] == 2 * predictions.flatten()[prefs_test != 1]) 
+                                          / float(np.sum(prefs_test  != 1)))
         endtime-starttime
         # Save the data for later analysis ----------------------------------------------------------------------------
         # Outputs from the tested method
@@ -561,7 +626,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         # Save the time taken
         times[foldidx] = endtime-starttime
         
-        results = (all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, default_ls_value,
+        results = (all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, ls_initial_guess,
                    item_ids, times) 
         with open(resultsfile, 'w') as fh:
             pickle.dump(results, fh)
@@ -569,7 +634,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         with open(modelfile % foldidx, 'w') as fh:
             pickle.dump(model, fh)
             
-    return default_ls_value, model
+    return model
 
 '''        
 Where to run the tests:
@@ -593,16 +658,14 @@ Steps needed to run them:
 '''
         
 if __name__ == '__main__':
-    datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll']
+    datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
     
-    methods = ['SingleGPC']
-#    methods = ['SinglePrefGP']#, 'SinglePrefGP_oneLS', 'PersonalisedPrefsBayes', 'PersonalisedPrefsUncorrelatedNoise',
-    #           'IndPrefGP']
-#         methods = ['PersonalisedPrefsNoCommonMean',
-#                    'PersonalisedPrefsNoCommonMean', 'PersonalisedPrefsFA', 'PersonalisedPrefsNoFactors']
-    #methods = [] # IndPrefGP means separate preference GPs for each worker 
+    #methods = ['SinglePrefGP_noOpt', ] 
+    #methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
+    #methods = ['SinglePrefGP', 'SingleGPC', 'GP+SVM'] # Barney
+    methods = ['SingleGPC', 'GP+SVM'] # Barney -- debugging  
     
-    feature_types = ['ling']#'both', 'embeddings', 'ling'] # can be 'embeddings' or 'ling' or 'both'
+    feature_types = ['ling', 'embeddings', 'both'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
                       
     if 'folds' in globals() and 'dataset' in globals() and dataset == datasets[0]:
@@ -623,8 +686,11 @@ if __name__ == '__main__':
                 skipthoughts_model = None#load_skipthoughts_embeddings(word_to_indices_map)
                 ling_feat_spmatrix, docids = load_ling_features(dataset)
            
-            if (dataset == 'UKPConvArgMACE' or dataset == 'UKPConvArgStrict') and (method != 'SinglePrefGP' and
-                                            method != 'SinglePrefGP_oneLS' and method != 'SingleGPC'):
+                ling_feat_spmatrix = ling_feat_spmatrix[:, :100]
+           
+            if (dataset == 'UKPConvArgMACE' or dataset == 'UKPConvArgStrict' or dataset == 'UKPConvArgAll_evalMACE') \
+                and ('SinglePrefGP' not in method and 'SingleGPC' not in method and 'GP+SVM' not in method):
+                
                 logging.warning('Skipping method %s on dataset %s because there are no separate worker IDs.' 
                                 % (method, dataset))
                 continue
@@ -637,17 +703,24 @@ if __name__ == '__main__':
                 for embeddings_type in embeddings_to_use:
                     print "**** Running method %s with features %s, embeddings %s ****" % (method, feature_type, 
                                                                                            embeddings_type)
-                    if feature_type in default_ls_values:
-                        default_ls_value = default_ls_values[feature_type]
+                    if dataset in default_ls_values and feature_type in default_ls_values[dataset]:
+                        default_ls_value = default_ls_values[dataset][feature_type]
                     else:
-                        default_ls_value = None
-                    default_ls_values[feature_type], model = run_test(folds, folds_regression, dataset, method, 
+                        default_ls_value = compute_lengthscale_heuristic(feature_type, embeddings_type, word_embeddings,
+                                                                         ling_feat_spmatrix)
+                        if dataset not in default_ls_values:
+                            default_ls_values[dataset] = {}
+                        default_ls_values[dataset][feature_type] = default_ls_value
+                            
+                    model = run_test(folds, folds_regression, dataset, method, 
                         feature_type, embeddings_type, word_embeddings, siamese_cbow_embeddings, 
                         skipthoughts_model, ling_feat_spmatrix, docids, subsample_amount=0, 
-                        default_ls_value=default_ls_value)
+                        ls_initial_guess=default_ls_value)
                     
                     print "**** Completed: method %s with features %s, embeddings %s ****" % (method, feature_type, 
                                                                                            embeddings_type)
 
-# TODO: covariance seems to be too weak to predict from argument features. We need to shrink the distance between points.
-# Can do this by using larger lengthscales? Can we discard null features?
+# TODO: run the experiments with SinglePrefGP, GP Classifier, SinglePrefGP with no optimization. 
+# Run with strict and MACE datasets to compare to Habernal + to show handling of conflicts.
+# TODO: later run with All dataset to show learning from noisy data.
+# TODO: later run with GP + SVM to show whether the pref learning part is helpful, even if feature regression is poor
