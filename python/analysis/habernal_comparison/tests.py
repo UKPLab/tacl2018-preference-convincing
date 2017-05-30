@@ -284,11 +284,24 @@ def _dists_f(items_feat_sample, f):
 # Lengthscale initialisation -------------------------------------------------------------------------------------------
 # use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.
 # First, grab a sample of points because N^2 could be too large.    
-def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, ling_feat_spmatrix):
+def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, ling_feat_spmatrix, docids, folds):
     # get the embedding values for the test data -- need to find embeddings of the whole piece of text
     if feature_type == 'both' or feature_type == 'embeddings':
+        
+        docidxs = []
+        doc_tok_seqs = []
+        for f in folds:
+            doc_tok_seqs.append(folds.get(f)["test"][0])
+            doc_tok_seqs.append(folds.get(f)["test"][1])
+        
+            testids = np.array([ids_pair.split('_') for ids_pair in folds.get(f)["test"][3]])
+            docidxs.append(get_docidxs_from_ids(docids, testids[:, 0]))
+            docidxs.append(get_docidxs_from_ids(docids, testids[:, 1])) 
+        
+        X, _ = get_doc_token_seqs(docidxs, doc_tok_seqs)
+        
         if embeddings_type == 'word_mean':
-            items_feat = embeddings
+            items_feat = get_mean_embeddings(embeddings, X)
         elif embeddings_type == 'skipthoughts':
             logging.error("not implemented yet -- lengthscale heuristic with skip thoughts")
         elif embeddings_type == 'siamese_cbow':
@@ -328,6 +341,31 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
     
     return ls_initial_guess     
     
+def get_doc_token_seqs(ids, doclist):
+    # X_train_a1 and trainids_a1 both have one entry per observation. We want to replace them with a list of 
+    # unique arguments, and the indexes into that list. First, get the unique argument ids from trainids and testids:
+    allids = np.concatenate(ids)
+    uids, uidxs = np.unique(allids, return_index=True)
+    # get the word index vectors corresponding to the unique arguments
+    X = np.zeros(np.max(uids) + 1, dtype=object)
+    start = 0
+    fin = 0
+    X_list = doclist
+    for i in range(len(X_list)):
+        fin += len(X_list[i])
+        idxs = (uidxs>=start) & (uidxs<fin)
+        # keep the original IDs to try to make life easier. This means the IDs become indexes into X    
+        X[uids[idxs]] = np.array(X_list[i])[uidxs[idxs] - start]
+        start += len(X_list[i])
+        
+    return X, uids    
+    
+def get_mean_embeddings(word_embeddings, X):
+    return np.array([np.mean(word_embeddings[Xi, :], axis=0) for Xi in X])    
+
+def get_docidxs_from_ids(all_docids, ids_to_map):
+    return np.array([np.argwhere(docid==all_docids)[0][0] for docid in ids_to_map])
+    
 def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type=None, embeddings=None, 
              siamese_cbow_e=None, skipthoughts_model=None, ling_feat_spmatrix=None, docids=None, subsample_amount=0, 
              ls_initial_guess=None):
@@ -344,7 +382,6 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
     if not os.path.isdir(data_root_dir + 'outputdata/crowdsourcing_argumentation_expts'):
         os.mkdir(data_root_dir + 'outputdata/crowdsourcing_argumentation_expts')
                 
-    # Run test --------------------------------------------------------------------------------------------------------
     all_proba = {}
     all_predictions = {}
     all_f = {}
@@ -368,28 +405,15 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         trainids = np.array([ids_pair.split('_') for ids_pair in ids_train])
         if docids is None:
             docids = np.arange(np.unique(trainids).size)
-        trainids_a1 = np.array([np.argwhere(trainid==docids)[0][0] for trainid in trainids[:, 0]])
-        trainids_a2 = np.array([np.argwhere(trainid==docids)[0][0] for trainid in trainids[:, 1]])
+        trainids_a1 = get_docidxs_from_ids(docids, trainids[:, 0])
+        trainids_a2 = get_docidxs_from_ids(docids, trainids[:, 1])
         
         testids = np.array([ids_pair.split('_') for ids_pair in ids_test])
-        testids_a1 = np.array([np.argwhere(testid==docids)[0][0] for testid in testids[:, 0]])
-        testids_a2 = np.array([np.argwhere(testid==docids)[0][0] for testid in testids[:, 1]])
+        testids_a1 = get_docidxs_from_ids(docids, testids[:, 0])
+        testids_a2 = get_docidxs_from_ids(docids, testids[:, 1])
         
-        # X_train_a1 and trainids_a1 both have one entry per observation. We want to replace them with a list of 
-        # unique arguments, and the indexes into that list. First, get the unique argument ids from trainids and testids:
-        allids = np.concatenate((trainids_a1, trainids_a2, testids_a1, testids_a2))
-        uids, uidxs = np.unique(allids, return_index=True)
-        # get the word index vectors corresponding to the unique arguments
-        X = np.zeros(np.max(uids) + 1, dtype=object)
-        start = 0
-        fin = len(X_train_a1)
-        X_list = [X_train_a1, X_train_a2, X_test_a1, X_test_a2]
-        for i in range(len(X_list)):
-            idxs = (uidxs>=start) & (uidxs<fin)
-            # keep the original IDs to try to make life easier. This means the IDs become indexes into X    
-            X[uids[idxs]] = np.array(X_list[i])[uidxs[idxs] - start]
-            start += len(X_list[i])
-            fin += len(X_list[i])
+        X, uids = get_doc_token_seqs((trainids_a1, trainids_a2, testids_a1, testids_a2), 
+                               [X_train_a1, X_train_a2, X_test_a1, X_test_a2])
             
         print("Training instances ", len(X_train_a1), " training labels ", len(prefs_train))
         print("Test instances ", len(X_test_a1), " test labels ", len(prefs_test))
@@ -405,7 +429,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         if feature_type == 'both' or feature_type == 'embeddings':
             print "Converting texts to mean embeddings (we could use a better sentence embedding?)..."
             if embeddings_type == 'word_mean':
-                items_feat = np.array([np.mean(embeddings[Xi, :], axis=0) for Xi in X])
+                items_feat = get_mean_embeddings(embeddings, X)
 #             elif embeddings_type == 'skipthoughts':
 #                 items_feat = skipthoughts.encode(skipthoughts_model, X)
 #             elif embeddings_type == 'siamese_cbow':
@@ -573,8 +597,12 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                       np.array(prefs_train, dtype=float)-1, 
                       optimize=False, input_type='zero-centered') # never use optimize with diagonal kernel            
 
+            train_idxs = np.unique([trainids_a1, trainids_a2])
+            train_feats = items_feat[train_idxs]
+            f, _ = model.predict_f(train_idxs)
+
             svm = SVR()
-            svm.fit(items_feat[model.obs_coords.flatten(), :], model.obs_f.flatten())
+            svm.fit(train_feats, f)
             test_f = svm.predict(items_feat)
             
             # apply the preference likelihood from GP method
@@ -584,16 +612,22 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 predicted_f, _ = svm.predict(items_feat[item_idx_ranktest])  
             
         elif 'SingleGPC' in method:
-            model = GPClassifierSVI(ninput_features=ndims, ls_initial=np.concatenate((ls_initial_guess, ls_initial_guess)), 
-                        verbose=verbose, 
-                        shape_s0 = 2.0, rate_s0 = 200.0,  
-                        rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200)
+            # twice as many features means the lengthscale heuristic is * 2
+            model = GPClassifierSVI(ninput_features=ndims, ls_initial=np.concatenate((ls_initial_guess * 2.0, 
+                                                                                       ls_initial_guess * 2.0)), 
+                         verbose=verbose, shape_s0 = 2.0, rate_s0 = 200.0,  
+                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200)            
             
-            #model.max_iter_VB = 10
-            
+            # with the argument order swapped around and data replicated:
+
             gpc_feats = np.concatenate((np.concatenate((items_feat[trainids_a1], items_feat[trainids_a2]), axis=1),
-                                   np.concatenate((items_feat[trainids_a2], items_feat[trainids_a1]), axis=1)), axis=0)
-            gpc_labels = np.concatenate((np.array(prefs_train, dtype=float), np.array(prefs_train, dtype=float)))
+                                    np.concatenate((items_feat[trainids_a2], items_feat[trainids_a1]), axis=1)), axis=0)
+            gpc_labels = np.concatenate((np.array(prefs_train, dtype=float) * 0.5,
+                                          1 - np.array(prefs_train, dtype=float) * 0.5))
+ 
+            # this didn't work as well on a single fold, but has not been thoroughly tested.
+#             gpc_feats = np.concatenate((items_feat[trainids_a1], items_feat[trainids_a2]), axis=1)
+#             gpc_labels = np.array(prefs_train, dtype=float) * 0.5
             
             model.fit(np.arange(len(trainids_a1)), gpc_labels, optimize=optimize_hyper, features=gpc_feats)            
         
@@ -664,9 +698,9 @@ if __name__ == '__main__':
     
     methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
     #methods = ['SinglePrefGP', 'SingleGPC'] # Barney ('GP+SVM' is not possible with optimization on)
-    #methods = ['GP+SVM'] # debugging  
+    methods = ['GP+SVM_noOpt'] # debugging  
     
-    feature_types = ['ling', 'embeddings', 'both'] # can be 'embeddings' or 'ling' or 'both'
+    feature_types = ['embeddings'] #both']#'ling', 'embeddings', ] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
                       
     if 'folds' in globals() and 'dataset' in globals() and dataset == datasets[0]:
@@ -687,8 +721,6 @@ if __name__ == '__main__':
                 skipthoughts_model = None#load_skipthoughts_embeddings(word_to_indices_map)
                 ling_feat_spmatrix, docids = load_ling_features(dataset)
            
-                ling_feat_spmatrix = ling_feat_spmatrix[:, :100]
-           
             if (dataset == 'UKPConvArgMACE' or dataset == 'UKPConvArgStrict' or dataset == 'UKPConvArgAll_evalMACE') \
                 and ('SinglePrefGP' not in method and 'SingleGPC' not in method and 'GP+SVM' not in method):
                 
@@ -702,20 +734,20 @@ if __name__ == '__main__':
                 else:
                     embeddings_to_use = ['']
                 for embeddings_type in embeddings_to_use:
-                    print "**** Running method %s with features %s, embeddings %s ****" % (method, feature_type, 
-                                                                                           embeddings_type)
+                    print "**** Running method %s with features %s, embeddings %s, on dataset %s ****" % (method, 
+                                                    feature_type, embeddings_type, dataset)
                     if dataset in default_ls_values and feature_type in default_ls_values[dataset]:
                         default_ls_value = default_ls_values[dataset][feature_type]
                     else:
                         default_ls_value = compute_lengthscale_heuristic(feature_type, embeddings_type, word_embeddings,
-                                                                         ling_feat_spmatrix)
+                                                                         ling_feat_spmatrix, docids, folds)
                         if dataset not in default_ls_values:
                             default_ls_values[dataset] = {}
                         default_ls_values[dataset][feature_type] = default_ls_value
                             
                     model = run_test(folds, folds_regression, dataset, method, 
                         feature_type, embeddings_type, word_embeddings, siamese_cbow_embeddings, 
-                        skipthoughts_model, ling_feat_spmatrix, docids, subsample_amount=100, 
+                        skipthoughts_model, ling_feat_spmatrix, docids, subsample_amount=0, 
                         ls_initial_guess=default_ls_value)
                     
                     print "**** Completed: method %s with features %s, embeddings %s ****" % (method, feature_type, 
