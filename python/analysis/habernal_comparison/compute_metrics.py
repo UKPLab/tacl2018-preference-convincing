@@ -35,32 +35,34 @@ def get_fold_data(data, f):
     gold_prob = gold_disc / 2.0
     pred_prob = np.array(data[0][f])
     
-    gold_disc = gold_disc[np.abs(pred_prob - 0.5) > 0.3]
-    pred_disc = pred_disc[np.abs(pred_prob - 0.5) > 0.3] 
-    
-    gold_prob = gold_prob[np.abs(pred_prob - 0.5) > 0.3] 
-    pred_prob = pred_prob[np.abs(pred_prob - 0.5) > 0.3] 
+# Considering only the labels where a confident prediction has been made... In this case the metrics should be 
+# shown alongside coverage.
+#     gold_disc = gold_disc[np.abs(pred_prob.flatten() - 0.5) > 0.3]
+#     pred_disc = pred_disc[np.abs(pred_prob.flatten() - 0.5) > 0.3] 
+#     
+#     gold_prob = gold_prob[np.abs(pred_prob.flatten() - 0.5) > 0.3] 
+#     pred_prob = pred_prob[np.abs(pred_prob.flatten() - 0.5) > 0.3] 
     
     # scores used to rank
-    gold_rank = np.array(data[4][f])
-    pred_rank = np.array(data[2][f])
+    if len(data[4]) > 0:
+        gold_rank = np.array(data[4][f])
+        pred_rank = np.array(data[2][f])
     
-    if pred_rank.ndim == 3:
-        pred_rank = pred_rank[0]
-    pred_rank = pred_rank.flatten()
-
+        if pred_rank.ndim == 3:
+            pred_rank = pred_rank[0]
+        pred_rank = pred_rank.flatten()
+    else:
+        gold_rank = None
+        pred_rank = None
+        
     return gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank
 
 if __name__ == '__main__':
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
-    datasets = ['UKPConvArgAll', 'UKPConvArgMACE', 'UKPConvArgStrict']
-    
-    methods = ['SinglePrefGP', 'SinglePrefGP_oneLS']
-    #methods = ['PersonalisedPrefsBayes', 'PersonalisedPrefsFA']
-    #methods = ['IndPrefGP', 'PersonalisedPrefsNoFactors'] # IndPrefGP means separate preference GPs for each worker 
-    
-    feature_types = ['both', 'embeddings', 'ling'] # can be 'embeddings' or 'ling' or 'both'
+    datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE'] #  this has already been run
+    methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
+    feature_types = ['ling', 'embeddings', 'both'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_to_use = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
     
     folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map = load_train_test_data(datasets[0])
@@ -111,9 +113,10 @@ if __name__ == '__main__':
                             results_logloss[row, col, f] = log_loss(gold_prob[gold_disc!=1], pred_prob[gold_disc!=1])
                             results_auc[row, col, f]     = roc_auc_score(gold_prob[gold_disc!=1], pred_prob[gold_disc!=1]) # macro
     
-                            results_pearson[row, col, f]  = pearsonr(gold_rank, pred_rank)[0]
-                            results_spearman[row, col, f] = spearmanr(gold_rank, pred_rank)[0]
-                            results_kendall[row, col, f]  = kendalltau(gold_rank, pred_rank)[0]
+                            if gold_rank is not None and pred_rank is not None:
+                                results_pearson[row, col, f]  = pearsonr(gold_rank, pred_rank)[0]
+                                results_spearman[row, col, f] = spearmanr(gold_rank, pred_rank)[0]
+                                results_kendall[row, col, f]  = kendalltau(gold_rank, pred_rank)[0]
                           
                         results_f1[row, col, -1] = np.mean(results_f1[row, col, :-1])
                         results_acc[row, col, -1] = np.mean(results_acc[row, col, :-1])

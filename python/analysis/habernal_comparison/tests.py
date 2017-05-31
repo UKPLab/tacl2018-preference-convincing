@@ -599,8 +599,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
 
             train_idxs = np.unique([trainids_a1, trainids_a2])
             train_feats = items_feat[train_idxs]
-            f, _ = model.predict_f(train_idxs)
-
+            f, _ = model.predict_f(train_idxs[:, np.newaxis])
             svm = SVR()
             svm.fit(train_feats, f)
             test_f = svm.predict(items_feat)
@@ -628,13 +627,14 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             # this didn't work as well on a single fold, but has not been thoroughly tested.
 #             gpc_feats = np.concatenate((items_feat[trainids_a1], items_feat[trainids_a2]), axis=1)
 #             gpc_labels = np.array(prefs_train, dtype=float) * 0.5
-            
+            model.max_iter_VB = 500            
             model.fit(np.arange(len(trainids_a1)), gpc_labels, optimize=optimize_hyper, features=gpc_feats)            
         
             proba, _ = model.predict(np.concatenate((items_feat[testids_a1], items_feat[testids_a2]), axis=1))
             if folds_regression is not None:
                 predicted_f = np.zeros(len(item_idx_ranktest)) # can't easily rank with this method
-            
+        
+        final_ls = model.ls    
         predictions = np.round(proba)
         
         endtime = time.time() 
@@ -663,12 +663,12 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         times[foldidx] = endtime-starttime
         
         results = (all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, ls_initial_guess,
-                   item_ids, times) 
+                   item_ids, times, final_ls) 
         with open(resultsfile, 'w') as fh:
             pickle.dump(results, fh)
             
-        with open(modelfile % foldidx, 'w') as fh:
-            pickle.dump(model, fh)
+        #with open(modelfile % foldidx, 'w') as fh:
+        #    pickle.dump(model, fh)
             
     return model
 
@@ -694,13 +694,12 @@ Steps needed to run them:
 '''
         
 if __name__ == '__main__':
-    datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
+    datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE'] #  this has already been run
+    #methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
+    methods = ['SinglePrefGP', 'SingleGPC'] # Barney ('GP+SVM' is not possible with optimization on)
+    #methods = ['GP+SVM_noOpt'] # debugging  
     
-    methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
-    #methods = ['SinglePrefGP', 'SingleGPC'] # Barney ('GP+SVM' is not possible with optimization on)
-    methods = ['GP+SVM_noOpt'] # debugging  
-    
-    feature_types = ['embeddings'] #both']#'ling', 'embeddings', ] # can be 'embeddings' or 'ling' or 'both'
+    feature_types = ['both', 'ling', 'embeddings', ] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
                       
     if 'folds' in globals() and 'dataset' in globals() and dataset == datasets[0]:
