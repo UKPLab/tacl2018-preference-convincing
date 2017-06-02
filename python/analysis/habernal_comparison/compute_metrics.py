@@ -61,23 +61,24 @@ if __name__ == '__main__':
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
     datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE'] #  this has already been run
-    methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
+    #methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
+    methods = ['SinglePrefGP_noOpt','SinglePrefGP', 'SingleGPC'] # Barney
     feature_types = ['ling', 'embeddings', 'both'] # can be 'embeddings' or 'ling' or 'both'
-    embeddings_to_use = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
+    embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
     
     folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map = load_train_test_data(datasets[0])
     
-    results_f1      = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_to_use), len(folds)))
-    results_acc     = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_to_use), len(folds)))
-    results_logloss = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_to_use), len(folds)))
-    results_auc     = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_to_use), len(folds)))
+    results_f1      = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
+    results_acc     = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
+    results_logloss = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
+    results_auc     = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
 
-    results_pearson  = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_to_use), len(folds)))
-    results_spearman = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_to_use), len(folds)))
-    results_kendall  = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_to_use), len(folds)))
+    results_pearson  = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
+    results_spearman = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
+    results_kendall  = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
 
     row_index = np.zeros(len(methods) * len(datasets), dtype=str)
-    columns = np.zeros(len(feature_types) * len(embeddings_to_use), dtype=str)
+    columns = np.zeros(len(feature_types) * len(embeddings_types), dtype=str)
     
     row = 0
     
@@ -90,7 +91,11 @@ if __name__ == '__main__':
             col = 0
             
             for feature_type in feature_types:
-                for embeddings_type in embeddings_to_use:    
+                if feature_type == 'ling':
+                    embeddings_to_use = ['']
+                else:
+                    embeddings_to_use = embeddings_types
+                for embeddings_type in embeddings_to_use:
                     resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
                     'habernal_%s_%s_%s_%s_test.pkl' % (dataset, method, feature_type, embeddings_type)
                     

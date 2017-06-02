@@ -205,6 +205,7 @@ def load_train_test_data(dataset):
         dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'  
         ranking_csvdirname = None
         folds_test, folds_regression, _, _ = load_train_test_data('UKPConvArgMACE')
+        dataset = 'UKPConvArgAll'
     else:
         raise Exception("Invalid dataset %s" % dataset)    
     
@@ -366,6 +367,30 @@ def get_mean_embeddings(word_embeddings, X):
 def get_docidxs_from_ids(all_docids, ids_to_map):
     return np.array([np.argwhere(docid==all_docids)[0][0] for docid in ids_to_map])
     
+def get_fold_data(folds, fold, docids):
+    #X_train_a1, X_train_a2 are lists of lists of word indexes 
+    X_train_a1, X_train_a2, prefs_train, ids_train, personIDs_train = folds.get(fold)["training"]
+    X_test_a1, X_test_a2, prefs_test, ids_test, personIDs_test = folds.get(fold)["test"]
+    
+    #trainids_a1, trainids_a2 are lists of argument ids
+    trainids = np.array([ids_pair.split('_') for ids_pair in ids_train])
+    if docids is None:
+        docids = np.arange(np.unique(trainids).size)
+    trainids_a1 = get_docidxs_from_ids(docids, trainids[:, 0])
+    trainids_a2 = get_docidxs_from_ids(docids, trainids[:, 1])
+    
+    testids = np.array([ids_pair.split('_') for ids_pair in ids_test])
+    testids_a1 = get_docidxs_from_ids(docids, testids[:, 0])
+    testids_a2 = get_docidxs_from_ids(docids, testids[:, 1])
+    
+    X, uids = get_doc_token_seqs((trainids_a1, trainids_a2, testids_a1, testids_a2), 
+                           [X_train_a1, X_train_a2, X_test_a1, X_test_a2])
+        
+    print("Training instances ", len(X_train_a1), " training labels ", len(prefs_train))
+    print("Test instances ", len(X_test_a1), " test labels ", len(prefs_test))
+    
+    return trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test, X, uids
+    
 def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type=None, embeddings=None, 
              siamese_cbow_e=None, skipthoughts_model=None, ling_feat_spmatrix=None, docids=None, subsample_amount=0, 
              ls_initial_guess=None):
@@ -390,6 +415,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
     all_target_rankscores = {}
     all_argids_rankscores = {}
     all_turkids_rankscores = {}
+    final_ls = {}
     
     item_ids = {}
     times = {}
@@ -397,26 +423,8 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
     for foldidx, fold in enumerate(folds.keys()):
         # Get data for this fold --------------------------------------------------------------------------------------
         print("Fold name ", fold)
-        #X_train_a1, X_train_a2 are lists of lists of word indexes 
-        X_train_a1, X_train_a2, prefs_train, ids_train, personIDs_train = folds.get(fold)["training"]
-        X_test_a1, X_test_a2, prefs_test, ids_test, personIDs_test = folds.get(fold)["test"]
-        
-        #trainids_a1, trainids_a2 are lists of argument ids
-        trainids = np.array([ids_pair.split('_') for ids_pair in ids_train])
-        if docids is None:
-            docids = np.arange(np.unique(trainids).size)
-        trainids_a1 = get_docidxs_from_ids(docids, trainids[:, 0])
-        trainids_a2 = get_docidxs_from_ids(docids, trainids[:, 1])
-        
-        testids = np.array([ids_pair.split('_') for ids_pair in ids_test])
-        testids_a1 = get_docidxs_from_ids(docids, testids[:, 0])
-        testids_a2 = get_docidxs_from_ids(docids, testids[:, 1])
-        
-        X, uids = get_doc_token_seqs((trainids_a1, trainids_a2, testids_a1, testids_a2), 
-                               [X_train_a1, X_train_a2, X_test_a1, X_test_a2])
-            
-        print("Training instances ", len(X_train_a1), " training labels ", len(prefs_train))
-        print("Test instances ", len(X_test_a1), " test labels ", len(prefs_test))
+        trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test,\
+                                                                        X, uids = get_fold_data(folds, fold, docids)
         
         # ranking folds
         if folds_regression is not None:
@@ -634,7 +642,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             if folds_regression is not None:
                 predicted_f = np.zeros(len(item_idx_ranktest)) # can't easily rank with this method
         
-        final_ls = model.ls    
+        final_ls[foldidx] = model.ls    
         predictions = np.round(proba)
         
         endtime = time.time() 
@@ -649,9 +657,6 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         all_predictions[foldidx] = predictions
         all_f[foldidx] = predicted_f
         
-        ids_train_sep = [[item_id.split('_')[0], item_id.split('_')[1]] for item_id in ids_train]
-        item_ids[foldidx] = np.array(ids_train_sep).T.flatten()[model.obs_uidxs]
-                
         # Save the ground truth
         all_target_prefs[foldidx] = prefs_test
         if folds_regression is not None:
@@ -663,7 +668,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         times[foldidx] = endtime-starttime
         
         results = (all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, ls_initial_guess,
-                   item_ids, times, final_ls) 
+                   times, final_ls) 
         with open(resultsfile, 'w') as fh:
             pickle.dump(results, fh)
             
@@ -694,9 +699,9 @@ Steps needed to run them:
 '''
         
 if __name__ == '__main__':
-    datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE'] #  this has already been run
-    #methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
-    methods = ['SinglePrefGP', 'SingleGPC'] # Barney ('GP+SVM' is not possible with optimization on)
+    datasets = ['UKPConvArgAll_evalMACE']#['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE'] #  this has already been run
+    methods = ['SinglePrefGP_noOpt']#, 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
+    #methods = ['SinglePrefGP', 'SingleGPC'] # Barney ('GP+SVM' is not possible with optimization on)
     #methods = ['GP+SVM_noOpt'] # debugging  
     
     feature_types = ['both', 'ling', 'embeddings', ] # can be 'embeddings' or 'ling' or 'both'
