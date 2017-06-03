@@ -699,8 +699,8 @@ Steps needed to run them:
 '''
         
 if __name__ == '__main__':
-    datasets = ['UKPConvArgAll_evalMACE']#['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE'] #  this has already been run
-    methods = ['SinglePrefGP_noOpt']#, 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
+    datasets = ['UKPConvArgStrict']#, 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE'] #  this has already been run
+    methods = ['SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169 'SinglePrefGP_noOpt'
     #methods = ['SinglePrefGP', 'SingleGPC'] # Barney ('GP+SVM' is not possible with optimization on)
     #methods = ['GP+SVM_noOpt'] # debugging  
     
