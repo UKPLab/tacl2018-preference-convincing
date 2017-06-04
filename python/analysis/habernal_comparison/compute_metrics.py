@@ -25,7 +25,7 @@ import os
 import pickle
 from sklearn.metrics import f1_score, accuracy_score, roc_auc_score, log_loss
 from scipy.stats import pearsonr, spearmanr, kendalltau
-from tests import load_train_test_data
+from tests import load_train_test_data, load_ling_features
 
 def get_fold_data(data, f):
     # discrete labels are 0, 1 or 2
@@ -46,6 +46,10 @@ def get_fold_data(data, f):
     # scores used to rank
     if len(data[4]) > 0:
         gold_rank = np.array(data[4][f])
+    else:
+        gold_rank = None
+                
+    if len(data[2]) > 0:
         pred_rank = np.array(data[2][f])
     
         if pred_rank.ndim == 3:
@@ -60,33 +64,34 @@ def get_fold_data(data, f):
 if __name__ == '__main__':
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
-    datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE'] #  this has already been run
+    datasets = [ 'UKPConvArgAll_evalMACE'] # 'UKPConvArgStrict', 'UKPConvArgMACE', 
     #methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
-    methods = ['SinglePrefGP_noOpt','SinglePrefGP', 'SingleGPC'] # Barney
+    methods = ['SinglePrefGP_noOpt']#,'SinglePrefGP', 'SingleGPC'] # Barney
     feature_types = ['ling', 'embeddings', 'both'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
     
-    folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map = load_train_test_data(datasets[0])
-    
-    results_f1      = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-    results_acc     = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-    results_logloss = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-    results_auc     = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-
-    results_pearson  = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-    results_spearman = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-    results_kendall  = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-
-    row_index = np.zeros(len(methods) * len(datasets), dtype=str)
-    columns = np.zeros(len(feature_types) * len(embeddings_types), dtype=str)
+    row_index = np.zeros(len(methods) * len(datasets), dtype=object)
+    columns = np.zeros(len(feature_types) * len(embeddings_types), dtype=object)
     
     row = 0
-    
+        
     for method in methods:
-        for dataset in datasets:
+        for d, dataset in enumerate(datasets):
             
+            docids = None
+        
             folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map = load_train_test_data(dataset)
             
+            if d == 0:
+                results_f1      = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
+                results_acc     = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
+                results_logloss = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
+                results_auc     = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
+            
+                results_pearson  = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
+                results_spearman = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
+                results_kendall  = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
+                        
             row_index[row] = method + ', ' + dataset
             col = 0
             
@@ -118,6 +123,14 @@ if __name__ == '__main__':
                             results_logloss[row, col, f] = log_loss(gold_prob[gold_disc!=1], pred_prob[gold_disc!=1])
                             results_auc[row, col, f]     = roc_auc_score(gold_prob[gold_disc!=1], pred_prob[gold_disc!=1]) # macro
     
+                            if gold_rank is None and folds_regression is not None:
+                                fold = folds.keys()[f]
+                                if docids is None:
+                                    _, docids = load_ling_features(dataset)  
+                                # ranking data was not saved in original file. Get it from the folds_regression here
+                                _, rankscores_test, argids_rank_test, turkIDs_rank_test = folds_regression.get(fold)["test"]
+                                gold_rank = np.array(rankscores_test)
+                                
                             if gold_rank is not None and pred_rank is not None:
                                 results_pearson[row, col, f]  = pearsonr(gold_rank, pred_rank)[0]
                                 results_spearman[row, col, f] = spearmanr(gold_rank, pred_rank)[0]
@@ -136,7 +149,7 @@ if __name__ == '__main__':
                         print "Skipping results for %s, %s, %s, %s" % (method, dataset, feature_type, embeddings_type)
                         print "Skipped filename was: %s" % resultsfile
                     
-                    if row == 1: # set the column headers    
+                    if row == 0: # set the column headers    
                         columns[col] = feature_type + ', ' + embeddings_type
                     
                     col += 1
