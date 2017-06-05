@@ -319,7 +319,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
     # Select output paths for CSV files and final results
     output_filename_template = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/habernal_%s_%s_%s_%s'
 
-    resultsfile = (output_filename_template + '_test.pkl') % (dataset, method, feature_type, embeddings_type)
+    resultsfile = (output_filename_template + '_test-1.pkl') % (dataset, method, feature_type, embeddings_type)
     modelfile = (output_filename_template + '_model') %  (dataset, method, feature_type, embeddings_type) 
     modelfile += '_fold%i.pkl'
     
@@ -338,18 +338,15 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         final_ls = {}
         times = {}
 
-        startfold = 0
     else:
         with open(resultsfile, 'r') as fh:
-            all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, ls_initial_guess,\
-                   times, final_ls = pickle.load(fh)
-        startfold = len(all_proba.keys())
+            all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, _, times, final_ls = pickle.load(fh)
 
     all_argids_rankscores = {}
     all_turkids_rankscores = {}
 
     for foldidx, fold in enumerate(folds.keys()):
-        if foldidx < startfold:
+        if foldidx in all_proba:
             print("Skipping fold %i, %s" % (foldidx, fold))
             continue
 
@@ -514,7 +511,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             model = GPPrefLearning(ninput_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
                         shape_s0 = 2.0, rate_s0 = 200.0,  
                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200)
-            model.max_iter_VB = 500
+            model.max_iter_VB = 5#500
             model.fit(trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, input_type='zero-centered')            
         
@@ -623,12 +620,12 @@ Steps needed to run them:
 if __name__ == '__main__':
     datasets = ['UKPConvArgStrict']# Barney, desktop-169
     #datasets = ['UKPConvArgAll_evalMACE'] #  this has already been run # 'UKPConvArgMACE',
-    methods = ['SinglePrefGP'] # desktop-169
-    #methods = ['SingleGPC_noOpt', 'GP+SVM_noOpt'] # Barney 'SinglePrefGP_noOpt'
+    #methods = ['SinglePrefGP_noOpt'] # desktop-169
+    methods = ['SingleGPC_noOpt', 'GP+SVM_noOpt'] # Barney 'SinglePrefGP_noOpt'
     #methods = ['SinglePrefGP', 'SingleGPC'] # desktop-169 ('GP+SVM' is not possible with optimization on)
     #methods = ['SingleGPC_noOpt'] # debugging  
     
-    feature_types = ['both', 'ling', 'embeddings', ] # can be 'embeddings' or 'ling' or 'both'
+    feature_types = ['both']#, 'ling', 'embeddings', ] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
                       
     if 'folds' in globals() and 'dataset' in globals() and dataset == datasets[0]:
