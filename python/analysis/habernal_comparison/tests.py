@@ -177,7 +177,8 @@ def combine_lines_into_one_file(dataset, dirname=data_root_dir + '/lingdata/UKPC
 def load_train_test_data(dataset):
     # Set experiment options and ensure CSV data is ready -------------------------------------------------------------
     
-    folds_test = None # can load a separate set of data for testing into here, e.g. train on workers and test on gold standard
+    folds_regression = None # test data for regression (use the folds object for training)
+    folds_test = None # can load a separate set of data for testing classifications, e.g. train on workers and test on gold standard
     
     # Select the directory containing original XML files with argument data + crowdsourced annotations.
     # See the readme in the data folder from Habernal 2016 for further explanation of folder names.    
@@ -231,8 +232,6 @@ def load_train_test_data(dataset):
                                                                                           embeddings_dir=embeddings_dir)
     if ranking_csvdirname is not None:             
         folds_regression, _ = load_my_data_regression(ranking_csvdirname, load_embeddings=False)
-    else:
-        folds_regression = None
         
     if folds_test is not None:
         for fold in folds:
@@ -539,8 +538,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba, predicted_f = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
-            if folds_regression is not None:
-                predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
+            predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
                         
         elif 'PersonalisedPrefsUncorrelatedNoise' in method: 
             # Note that this also does not use a common mean to match the Houlsby model.
@@ -552,8 +550,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
-            if folds_regression is not None:
-                predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
+            predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
                             
         elif 'PersonalisedPrefsFA' in method:
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
@@ -562,8 +559,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
-            if folds_regression is not None:
-                predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
+            predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
                 
         elif 'PersonalisedPrefsNoFactors' in method:
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
@@ -572,8 +568,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
-            if folds_regression is not None:
-                predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
+            predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
                 
         elif 'PersonalisedPrefsNoCommonMean' in method:        
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
@@ -582,8 +577,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
-            if folds_regression is not None:
-                predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)         
+            predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)         
                    
         elif 'IndPrefGP' in method:
             model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
@@ -592,8 +586,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
             proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)            
-            if folds_regression is not None:
-                predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)                    
+            predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)                    
 
         elif 'SinglePrefGP' in method:
             model = GPPrefLearning(ninput_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
@@ -604,8 +597,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                       optimize=optimize_hyper, input_type='zero-centered')            
         
             proba, _ = model.predict(testids_a1, testids_a2, items_feat)
-            if folds_regression is not None:
-                predicted_f, _ = model.predict_f(items_feat[item_idx_ranktest]) 
+            predicted_f, _ = model.predict_f(items_feat[item_idx_ranktest]) 
 
         elif 'GP+SVM' in method:
             model = GPPrefLearning(ninput_features=1, ls_initial=ls_initial_guess, verbose=verbose, 
@@ -625,9 +617,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             
             # apply the preference likelihood from GP method
             proba = pref_likelihood(test_f, v=testids_a1, u=testids_a2, return_g_f=False)
-        
-            if folds_regression is not None:
-                predicted_f, _ = svm.predict(items_feat[item_idx_ranktest])  
+            predicted_f, _ = svm.predict(items_feat[item_idx_ranktest])  
             
         elif 'SingleGPC' in method:
             # twice as many features means the lengthscale heuristic is * 2
@@ -650,8 +640,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             model.fit(np.arange(len(trainids_a1)), gpc_labels, optimize=optimize_hyper, features=gpc_feats)            
         
             proba, _ = model.predict(np.concatenate((items_feat[testids_a1], items_feat[testids_a2]), axis=1))
-            if folds_regression is not None:
-                predicted_f = np.zeros(len(item_idx_ranktest)) # can't easily rank with this method
+            predicted_f = np.zeros(len(item_idx_ranktest)) # can't easily rank with this method
         
         final_ls[foldidx] = model.ls    
         predictions = np.round(proba)
@@ -710,10 +699,12 @@ Steps needed to run them:
 '''
         
 if __name__ == '__main__':
-    datasets = ['UKPConvArgStrict']#, 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE'] #  this has already been run
-    methods = ['SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169 'SinglePrefGP_noOpt'
-    #methods = ['SinglePrefGP', 'SingleGPC'] # Barney ('GP+SVM' is not possible with optimization on)
-    #methods = ['GP+SVM_noOpt'] # debugging  
+    #datasets = ['UKPConvArgStrict']# Barney, desktop-169
+    datasets = ['UKPConvArgAll_evalMACE'] #  this has already been run # 'UKPConvArgMACE',
+    #methods = ['SinglePrefGP_noOpt'] # desktop-169
+    #methods = ['SingleGPC_noOpt', 'GP+SVM_noOpt'] # Barney 'SinglePrefGP_noOpt'
+    #methods = ['SinglePrefGP', 'SingleGPC'] # desktop-169 ('GP+SVM' is not possible with optimization on)
+    methods = ['SingleGPC_noOpt'] # debugging  
     
     feature_types = ['both', 'ling', 'embeddings', ] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
