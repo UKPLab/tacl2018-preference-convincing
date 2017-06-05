@@ -319,7 +319,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
     # Select output paths for CSV files and final results
     output_filename_template = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/habernal_%s_%s_%s_%s'
 
-    resultsfile = (output_filename_template + '_test-1.pkl') % (dataset, method, feature_type, embeddings_type)
+    resultsfile = (output_filename_template + '_test.pkl') % (dataset, method, feature_type, embeddings_type)
     modelfile = (output_filename_template + '_model') %  (dataset, method, feature_type, embeddings_type) 
     modelfile += '_fold%i.pkl'
     
