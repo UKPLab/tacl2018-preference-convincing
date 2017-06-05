@@ -64,9 +64,9 @@ def get_fold_data(data, f):
 if __name__ == '__main__':
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
-    datasets = [ 'UKPConvArgAll_evalMACE'] # 'UKPConvArgStrict', 'UKPConvArgMACE', 
+    datasets = [ 'UKPConvArgStrict']#All_evalMACE'] # 'UKPConvArgStrict', 'UKPConvArgMACE', 
     #methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
-    methods = ['SinglePrefGP_noOpt']#,'SinglePrefGP', 'SingleGPC'] # Barney
+    methods = ['SingleGPC_noOpt']#, 'SingleGPC'] # Barney
     feature_types = ['ling', 'embeddings', 'both'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
     
