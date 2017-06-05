@@ -407,20 +407,31 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
     if not os.path.isdir(data_root_dir + 'outputdata/crowdsourcing_argumentation_expts'):
         os.mkdir(data_root_dir + 'outputdata/crowdsourcing_argumentation_expts')
                 
-    all_proba = {}
-    all_predictions = {}
-    all_f = {}
-    
-    all_target_prefs = {}
-    all_target_rankscores = {}
+    if not os.path.isfile(resultsfile):
+        all_proba = {}
+        all_predictions = {}
+        all_f = {}
+        
+        all_target_prefs = {}
+        all_target_rankscores = {}
+        final_ls = {}
+        times = {}
+
+        startfold = 0
+    else:
+        with open(resultsfile, 'r') as fh:
+            all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, ls_initial_guess,\
+                   times, final_ls = pickle.load(fh)
+        startfold = len(all_proba.keys())
+
     all_argids_rankscores = {}
     all_turkids_rankscores = {}
-    final_ls = {}
-    
-    item_ids = {}
-    times = {}
-    
+
     for foldidx, fold in enumerate(folds.keys()):
+        if foldidx < startfold:
+            print("Skipping fold %i, %s" % (foldidx, fold))
+            continue
+
         # Get data for this fold --------------------------------------------------------------------------------------
         print("Fold name ", fold)
         trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test,\
