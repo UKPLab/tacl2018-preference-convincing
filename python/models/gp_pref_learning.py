@@ -381,7 +381,10 @@ class GPPrefLearning(GPClassifierSVI):
                 logging.debug("GPClassifierVB predicting block %i of %i" % (block, nblocks))            
             self._predict_block(block, max_block_size, noutputs)
 
-        m_post, not_m_post, v_post = self._post_rough(self.f, self.v, out_pref_v, out_pref_u)
+        if return_var:
+            m_post, not_m_post, v_post = self._post_rough(self.f, self.v, out_pref_v, out_pref_u)
+        else:
+            m_post, not_m_post = self._post_rough(self.f, None, out_pref_v, out_pref_u)
         
         if expectedlog:
             m_post = np.log(m_post)
@@ -428,7 +431,9 @@ class GPPrefLearning(GPClassifierSVI):
         
         not_m_post = 1 - m_post
 
-        if f_var is not None:
+        if f_var is not None and f_var <= 0:
+            return m_post, not_m_post, np.zeros(m_post.shape)
+        elif f_var is not None:
             samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(f_mean.shape[0], 1000))
             samples = self.forward_model(samples, v=pref_v, u=pref_u, return_g_f=False)
             v_post = np.var(samples, axis=1)[:, np.newaxis]

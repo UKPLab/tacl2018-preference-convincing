@@ -379,7 +379,6 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                                                                                      axis=0)>0)
             items_feat = items_feat[:, valid_feats]
             
-            
         elif feature_type == 'ling':
             items_feat = np.zeros((X.shape[0], 0))
             valid_feats = np.zeros(0)
@@ -389,13 +388,13 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             # trim the features that are not used in training
             valid_feats_ling = ((np.sum(ling_feat_spmatrix[trainids_a1, :] != 0, axis=0)>0) & 
                            (np.sum(ling_feat_spmatrix[trainids_a2, :] != 0, axis=0)>0)).nonzero()[1]            
-            ling_feat_spmatrix = ling_feat_spmatrix[:, valid_feats_ling]
-            items_feat = np.concatenate((items_feat, ling_feat_spmatrix[uids, :].toarray()), axis=1)
+            items_feat = np.concatenate((items_feat, ling_feat_spmatrix[uids, :][:, valid_feats_ling].toarray()), axis=1)
             print "...loaded all linguistic features for training and test data."
-            
+            valid_feats_ling += items_feat.shape[1] # start counting from past the other feature sets
             valid_feats = np.concatenate((valid_feats, valid_feats_ling)).astype(int)
             
-        ls_initial_guess = ls_initial_guess[valid_feats]
+        if len(ls_initial_guess) > 1:
+            ls_initial_guess = ls_initial_guess[valid_feats]
         if '_oneLS' in method:
             ls_initial_guess = np.median(ls_initial_guess)
             print "Selecting a single LS for all features: %f" % ls_initial_guess        
@@ -517,7 +516,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             model = GPPrefLearning(ninput_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
                         shape_s0 = 2.0, rate_s0 = 200.0,  
                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200)
-            model.max_iter_VB = 5#500
+            model.max_iter_VB = 500
             model.fit(trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, input_type='zero-centered')            
         
@@ -603,8 +602,6 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         #with open(modelfile % foldidx, 'w') as fh:
         #    pickle.dump(model, fh)
             
-    return model
-
 '''        
 Where to run the tests:
 
@@ -628,13 +625,12 @@ Steps needed to run them:
         
 if __name__ == '__main__':
     datasets = ['UKPConvArgStrict']# Barney, desktop-169
-    #datasets = ['UKPConvArgAll_evalMACE'] #  this has already been run # 'UKPConvArgMACE',
-    #methods = ['SinglePrefGP_noOpt'] # desktop-169
-    methods = ['SingleGPC_noOpt', 'GP+SVM_noOpt'] # Barney 'SinglePrefGP_noOpt'
-    #methods = ['SinglePrefGP', 'SingleGPC'] # desktop-169 ('GP+SVM' is not possible with optimization on)
-    #methods = ['SingleGPC_noOpt'] # debugging  
+    #datasets = ['UKPConvArgAll_evalMACE'] #  desktop-169 as well # 'UKPConvArgMACE',
+    methods = ['SinglePrefGP_noOpt', 'SinglePrefGP'] # desktop-169 as well
+    #methods = ['SingleGPC_noOpt', 'GP+SVM_noOpt'] # Barney 'SinglePrefGP_noOpt'
+    #methods = ['SinglePrefGP']#, 'SingleGPC'] # desktop-169 ('GP+SVM' is not possible with optimization on)
     
-    feature_types = ['both', 'ling', 'embeddings', ] # can be 'embeddings' or 'ling' or 'both'
+    feature_types = ['both', 'ling', 'embeddings'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
                       
     if 'folds' in globals() and 'dataset' in globals() and dataset == datasets[0]:
@@ -679,7 +675,7 @@ if __name__ == '__main__':
                             default_ls_values[dataset] = {}
                         default_ls_values[dataset][feature_type] = default_ls_value
                             
-                    model = run_test(folds, folds_regression, dataset, method, 
+                    run_test(folds, folds_regression, dataset, method, 
                         feature_type, embeddings_type, word_embeddings, siamese_cbow_embeddings, 
                         skipthoughts_model, ling_feat_spmatrix, docids, subsample_amount=0, 
                         ls_initial_guess=default_ls_value)

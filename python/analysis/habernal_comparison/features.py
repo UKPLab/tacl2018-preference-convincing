@@ -46,7 +46,7 @@ if __name__ == '__main__':
         if foldidx >= nFolds:
             print "data incomplete -- foldidx %i has not been run" % foldidx
             continue
-          
+        
         trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test,\
                                                                         X, uids = get_fold_data(folds, fold, docids)
                                                                                   
@@ -57,8 +57,8 @@ if __name__ == '__main__':
                   
             nfeats = items_feat.shape[1]
             # trim away any features not in the training data because we can't learn from them
-            valid_feats = (np.sum(items_feat[trainids_a1] != 0, axis=0)>0) & (np.sum(items_feat[trainids_a2] != 0, 
-                                                                                     axis=0)>0)
+            valid_feats = np.argwhere((np.sum(items_feat[trainids_a1] != 0, axis=0)>0) 
+                                        & (np.sum(items_feat[trainids_a2] != 0, axis=0)>0)).T[0]
               
         elif feature_type == 'ling':
             items_feat = np.zeros((X.shape[0], 0))
@@ -70,9 +70,8 @@ if __name__ == '__main__':
             print "Obtaining linguistic features for argument texts."
             # trim the features that are not used in training
             valid_feats_ling = ((np.sum(ling_feat_spmatrix[trainids_a1, :] != 0, axis=0)>0) & 
-                           (np.sum(ling_feat_spmatrix[trainids_a2, :] != 0, axis=0)>0)).nonzero()[1]            
-            #ling_feat_spmatrix = ling_feat_spmatrix[:, valid_feats_ling]
-            #items_feat = np.concatenate((items_feat, ling_feat_spmatrix[uids, :].toarray()), axis=1)
+                           (np.sum(ling_feat_spmatrix[trainids_a2, :] != 0, axis=0)>0)).nonzero()[1]
+            valid_feats_ling += items_feat.shape[1]
             print "...loaded all linguistic features for training and test data."
               
             valid_feats = np.concatenate((valid_feats, valid_feats_ling)).astype(int)
@@ -82,10 +81,12 @@ if __name__ == '__main__':
             mean_ls = np.zeros(nfeats) 
             totals = np.zeros(nfeats, dtype=int)
               
+        #mean_ls = data[7][foldidx]
+        #print "Warning: not computing means."
         mean_ls[valid_feats] += data[7][foldidx]
         totals[valid_feats] += 1
          
-    mean_ls[totals != 0] = mean_ls[totals != 0] / totals[totals != 0]
+    #mean_ls[totals != 0] = mean_ls[totals != 0] / totals[totals != 0]
     
     # assign category labels to each feature
     feat_cats = np.empty(nfeats, dtype=object)
@@ -95,9 +96,9 @@ if __name__ == '__main__':
     catnames = np.array(['embeddings', '_pos_ngram', 'ProductionRule', #'AdjectiveRate', 'AdverbRate', 
          'Rate', 'Ratio', 'DependencyTreeDepth', 'Modal', 'flesch', 'coleman', 'ari', 'sentiment', 'spell_skill', 
          '_length', '_'])
-    marks = np.array(['D', 'p', ',', 'x', '8', '1', '2', '<', '>', 'v', '^', 'H', ',', 'o', '*'])
-    col = np.array(['r', 'lightgreen', 'b', 'y', 'purple', 'black', 'cyan', 'magenta', 'darkgreen', 'darkblue',
-                    'brown', 'darkgray', 'lightgray', 'darkgoldenrod', 'dodgerblue', 'orange'])
+    marks = np.array(['2', 'p', '^', 'H', 'x', ',', 'D', '<', '>', 'v', ',', '8', '1', 'o', '*'])
+    col = np.array(['r', 'lightgreen', 'b', 'y', 'purple', 'black', 'darkgoldenrod', 'magenta', 'darkgreen', 'darkblue',
+                    'brown', 'darkgray', 'orange', 'dodgerblue', 'lightgray', 'cyan', ])
        
     with open("/home/local/UKP/simpson/data/personalised_argumentation/tempdata/feature_names_all3.txt", 'r') as fh:
         lines = fh.readlines()
@@ -177,7 +178,7 @@ if __name__ == '__main__':
         clengthscales = sorted_vals[sorted_cats == cat]
         #plt.scatter(clengthscales, np.zeros(len(clengthscales)) + (1+c)*1000, marker=marks[c], color=col[c])
         ax = plt.subplot(len(labels)/rowsize + 1, rowsize, c+1)
-        plt.plot(clengthscales, color=col[c], label=cat, marker=marks[c])
+        plt.plot(clengthscales, color=col[c], label=cat, marker=marks[c], linewidth=0)
         plt.title(cat)
         plt.ylim(np.min(sorted_vals), np.max(sorted_vals))
         
