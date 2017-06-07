@@ -312,6 +312,43 @@ def get_fold_data(folds, fold, docids):
     
     return trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test, X, uids
     
+def get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1, trainids_a2, uids, embeddings=None, X=None):
+    '''
+    Load all the features specified by the type into an items_feat object. Remove any features where the values are all
+    zeroes.
+    '''
+    # get the embedding values for the test data -- need to find embeddings of the whole piece of text
+    if feature_type == 'both' or feature_type == 'embeddings':
+        print "Converting texts to mean embeddings (we could use a better sentence embedding?)..."
+        if embeddings_type == 'word_mean':
+            items_feat = get_mean_embeddings(embeddings, X)
+#             elif embeddings_type == 'skipthoughts':
+#                 items_feat = skipthoughts.encode(skipthoughts_model, X)
+#             elif embeddings_type == 'siamese_cbow':
+#                 items_feat = np.array([siamese_cbow_e.getAggregate(Xi) for Xi in X])
+        else:
+            print "invalid embeddings type! %s" % embeddings_type
+        print "...embeddings loaded."
+        # trim away any features not in the training data because we can't learn from them
+        valid_feats = np.sum((items_feat[trainids_a1] != 0) + (items_feat[trainids_a2] != 0), axis=0) > 0
+        items_feat = items_feat[:, valid_feats]
+        
+    elif feature_type == 'ling':
+        items_feat = np.zeros((X.shape[0], 0))
+        valid_feats = np.zeros(0)
+        
+    if feature_type == 'both' or feature_type == 'ling':
+        print "Obtaining linguistic features for argument texts."
+        # trim the features that are not used in training
+        valid_feats_ling = np.sum( (ling_feat_spmatrix[trainids_a1, :] != 0) + 
+                                   (ling_feat_spmatrix[trainids_a2, :] != 0), axis=0) > 0 
+        valid_feats_ling = np.array(valid_feats_ling).flatten()
+        items_feat = np.concatenate((items_feat, ling_feat_spmatrix[uids, :][:, valid_feats_ling].toarray()), axis=1)
+        print "...loaded all linguistic features for training and test data."
+        valid_feats = np.concatenate((valid_feats, valid_feats_ling))
+        
+    return items_feat, valid_feats
+    
 def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type=None, embeddings=None, 
              siamese_cbow_e=None, skipthoughts_model=None, ling_feat_spmatrix=None, docids=None, subsample_amount=0, 
              ls_initial_guess=None):
@@ -362,36 +399,8 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             rankscores_test = np.array(rankscores_test)
             argids_rank_test = np.array(argids_rank_test)
         
-        # get the embedding values for the test data -- need to find embeddings of the whole piece of text
-        if feature_type == 'both' or feature_type == 'embeddings':
-            print "Converting texts to mean embeddings (we could use a better sentence embedding?)..."
-            if embeddings_type == 'word_mean':
-                items_feat = get_mean_embeddings(embeddings, X)
-#             elif embeddings_type == 'skipthoughts':
-#                 items_feat = skipthoughts.encode(skipthoughts_model, X)
-#             elif embeddings_type == 'siamese_cbow':
-#                 items_feat = np.array([siamese_cbow_e.getAggregate(Xi) for Xi in X])
-            else:
-                print "invalid embeddings type! %s" % embeddings_type
-            print "...embeddings loaded."
-            # trim away any features not in the training data because we can't learn from them
-            valid_feats = (np.sum(items_feat[trainids_a1] != 0, axis=0)>0) & (np.sum(items_feat[trainids_a2] != 0, 
-                                                                                     axis=0)>0)
-            items_feat = items_feat[:, valid_feats]
-            
-        elif feature_type == 'ling':
-            items_feat = np.zeros((X.shape[0], 0))
-            valid_feats = np.zeros(0)
-            
-        if feature_type == 'both' or feature_type == 'ling':
-            print "Obtaining linguistic features for argument texts."
-            # trim the features that are not used in training
-            valid_feats_ling = ((np.sum(ling_feat_spmatrix[trainids_a1, :] != 0, axis=0)>0) & 
-                           (np.sum(ling_feat_spmatrix[trainids_a2, :] != 0, axis=0)>0)).nonzero()[1]            
-            items_feat = np.concatenate((items_feat, ling_feat_spmatrix[uids, :][:, valid_feats_ling].toarray()), axis=1)
-            print "...loaded all linguistic features for training and test data."
-            valid_feats_ling += items_feat.shape[1] # start counting from past the other feature sets
-            valid_feats = np.concatenate((valid_feats, valid_feats_ling)).astype(int)
+        items_feat, valid_feats = get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1, trainids_a2, uids, 
+                                                embeddings, X)
             
         if len(ls_initial_guess) > 1:
             ls_initial_guess = ls_initial_guess[valid_feats]

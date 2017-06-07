@@ -15,7 +15,7 @@ Provide a zoomed-in variant for the best 25 features.
 import os, pickle
 import numpy as np
 import matplotlib.pyplot as plt
-from tests import load_train_test_data, load_embeddings, load_ling_features, get_fold_data, get_mean_embeddings
+from tests import load_train_test_data, load_embeddings, load_ling_features, get_fold_data, get_features
 from matplotlib.ticker import MaxNLocator
 
 if __name__ == '__main__':
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     embeddings_type = 'word_mean'
       
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
-    resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
+    resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts_2/' + \
                     'habernal_%s_%s_%s_%s_test.pkl' % (dataset, method, feature_type, embeddings_type)
   
     with open(resultsfile, 'r') as fh:
@@ -51,31 +51,10 @@ if __name__ == '__main__':
                                                                         X, uids = get_fold_data(folds, fold, docids)
                                                                                   
         # get the embedding values for the test data -- need to find embeddings of the whole piece of text
-        if feature_type == 'both' or feature_type == 'embeddings':
-            if embeddings_type == 'word_mean':
-                items_feat = get_mean_embeddings(word_embeddings, X)
-                  
-            nfeats = items_feat.shape[1]
-            # trim away any features not in the training data because we can't learn from them
-            valid_feats = np.argwhere((np.sum(items_feat[trainids_a1] != 0, axis=0)>0) 
-                                        & (np.sum(items_feat[trainids_a2] != 0, axis=0)>0)).T[0]
+        items_feat, valid_feats = get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1, trainids_a2, uids, 
+                                                word_embeddings, X)
               
-        elif feature_type == 'ling':
-            items_feat = np.zeros((X.shape[0], 0))
-            valid_feats = np.zeros(0)
-            nfeats = 0
-              
-        if feature_type == 'both' or feature_type == 'ling':
-            nfeats += ling_feat_spmatrix.shape[1]
-            print "Obtaining linguistic features for argument texts."
-            # trim the features that are not used in training
-            valid_feats_ling = ((np.sum(ling_feat_spmatrix[trainids_a1, :] != 0, axis=0)>0) & 
-                           (np.sum(ling_feat_spmatrix[trainids_a2, :] != 0, axis=0)>0)).nonzero()[1]
-            valid_feats_ling += items_feat.shape[1]
-            print "...loaded all linguistic features for training and test data."
-              
-            valid_feats = np.concatenate((valid_feats, valid_feats_ling)).astype(int)
-              
+        nfeats = len(valid_feats)
         # take the mean ls for each feature across the folds
         if foldidx == 0:
             mean_ls = np.zeros(nfeats) 
@@ -90,7 +69,7 @@ if __name__ == '__main__':
     
     # assign category labels to each feature
     feat_cats = np.empty(nfeats, dtype=object)
-    nembeddings = items_feat.shape[1]
+    nembeddings = word_embeddings.shape[1]
     feat_cats[:nembeddings] = "embeddings"
     
     catnames = np.array(['embeddings', '_pos_ngram', 'ProductionRule', #'AdjectiveRate', 'AdverbRate', 
@@ -100,7 +79,7 @@ if __name__ == '__main__':
     col = np.array(['r', 'lightgreen', 'b', 'y', 'purple', 'black', 'darkgoldenrod', 'magenta', 'darkgreen', 'darkblue',
                     'brown', 'darkgray', 'orange', 'dodgerblue', 'lightgray', 'cyan', ])
        
-    with open("/home/local/UKP/simpson/data/personalised_argumentation/tempdata/feature_names_all3.txt", 'r') as fh:
+    with open(data_root_dir + "/tempdata/feature_names_all3.txt", 'r') as fh:
         lines = fh.readlines()
     
     featnames = lines[0].strip()
