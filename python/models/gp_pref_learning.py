@@ -431,7 +431,7 @@ class GPPrefLearning(GPClassifierSVI):
         
         not_m_post = 1 - m_post
 
-        if f_var is not None and f_var <= 0:
+        if f_var is not None and np.any(f_var <= 0):
             return m_post, not_m_post, np.zeros(m_post.shape)
         elif f_var is not None:
             samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(f_mean.shape[0], 1000))

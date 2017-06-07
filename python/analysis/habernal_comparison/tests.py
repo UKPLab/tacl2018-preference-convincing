@@ -310,7 +310,30 @@ def get_fold_data(folds, fold, docids):
     print("Training instances ", len(X_train_a1), " training labels ", len(prefs_train))
     print("Test instances ", len(X_test_a1), " test labels ", len(prefs_test))
     
+    prefs_train = np.array(prefs_train) 
+    prefs_test = np.array(prefs_test)     
+    personIDs_train = np.array(personIDs_train)
+    personIDs_test = np.array(personIDs_test)  
+    
+    personIDs = np.concatenate((personIDs_train, personIDs_test))
+    _, personIdxs = np.unique(personIDs, return_inverse=True)
+    personIDs_train = personIdxs[:len(personIDs_train)]
+    personIDs_test = personIdxs[len(personIDs_train):]
+    
     return trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test, X, uids
+    
+def get_fold_regression_data(folds_regression, fold, docids):
+    if folds_regression is not None:
+        _, rankscores_test, argids_rank_test, turkIDs_rank_test = folds_regression.get(fold)["test"]
+        item_idx_ranktest = np.array([np.argwhere(testid==docids)[0][0] for testid in argids_rank_test])
+        rankscores_test = np.array(rankscores_test)
+        argids_rank_test = np.array(argids_rank_test)
+    else:
+        item_idx_ranktest = None
+        rankscores_test = None
+        argids_rank_test = None    
+
+    return item_idx_ranktest, rankscores_test, argids_rank_test
     
 def get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1, trainids_a2, uids, embeddings=None, X=None):
     '''
@@ -349,9 +372,41 @@ def get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1,
         
     return items_feat, valid_feats
     
+def subsample_data(subsample_amount, items_feat, trainids_a1, trainids_a2, prefs_train, personIDs_train,
+                   testids_a1, testids_a2, prefs_test, personIDs_test, 
+                   argids_rank_test=None, rankscores_test=None, item_idx_ranktest=None):
+    subsample = np.arange(subsample_amount)               
+            
+    #personIDs_train = np.zeros(len(Xe_train1), dtype=int)[subsample, :] #
+    items_feat = items_feat[subsample, :]
+    
+    pair_subsample_idxs = (trainids_a1<subsample_amount) & (trainids_a2<subsample_amount)
+    
+    trainids_a1 = trainids_a1[pair_subsample_idxs]
+    trainids_a2 = trainids_a2[pair_subsample_idxs]
+    prefs_train = prefs_train[pair_subsample_idxs]
+    personIDs_train = personIDs_train[pair_subsample_idxs]
+            
+    # subsampled test data for debugging purposes only
+    #personIDs_test = np.zeros(len(items_1_test), dtype=int)[subsample, :]
+    pair_subsample_idxs = (testids_a1<subsample_amount) & (testids_a2<subsample_amount)
+    testids_a1 = testids_a1[pair_subsample_idxs]
+    testids_a2 = testids_a2[pair_subsample_idxs]
+    prefs_test = prefs_test[pair_subsample_idxs]
+    personIDs_test = personIDs_test[pair_subsample_idxs]
+    
+    if item_idx_ranktest is not None:
+        argids_rank_test = argids_rank_test[item_idx_ranktest < subsample_amount]
+        rankscores_test = rankscores_test[item_idx_ranktest < subsample_amount]
+        item_idx_ranktest = item_idx_ranktest[item_idx_ranktest < subsample_amount]
+        
+    return (items_feat, trainids_a1, trainids_a2, prefs_train, personIDs_train,
+                   testids_a1, testids_a2, prefs_test, personIDs_test, 
+                   argids_rank_test, rankscores_test, item_idx_ranktest)
+    
 def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type=None, embeddings=None, 
              siamese_cbow_e=None, skipthoughts_model=None, ling_feat_spmatrix=None, docids=None, subsample_amount=0, 
-             ls_initial_guess=None):
+             ls_initial_guess=None, get_fold_data=get_fold_data):
         
     # Select output paths for CSV files and final results
     output_filename_template = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/habernal_%s_%s_%s_%s'
@@ -380,7 +435,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, _, times, final_ls = pickle.load(fh)
 
     all_argids_rankscores = {}
-    all_turkids_rankscores = {}
+    #all_turkids_rankscores = {}
 
     for foldidx, fold in enumerate(folds.keys()):
         if foldidx in all_proba:
@@ -393,69 +448,35 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                                                                         X, uids = get_fold_data(folds, fold, docids)
         
         # ranking folds
-        if folds_regression is not None:
-            _, rankscores_test, argids_rank_test, turkIDs_rank_test = folds_regression.get(fold)["test"]
-            item_idx_ranktest = np.array([np.argwhere(testid==docids)[0][0] for testid in argids_rank_test])
-            rankscores_test = np.array(rankscores_test)
-            argids_rank_test = np.array(argids_rank_test)
+        item_idx_ranktest, rankscores_test, argids_rank_test = get_fold_regression_data(folds_regression, fold, docids)
         
-        items_feat, valid_feats = get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1, trainids_a2, uids, 
-                                                embeddings, X)
-            
-        if len(ls_initial_guess) > 1:
-            ls_initial_guess = ls_initial_guess[valid_feats]
-        if '_oneLS' in method:
-            ls_initial_guess = np.median(ls_initial_guess)
-            print "Selecting a single LS for all features: %f" % ls_initial_guess        
-                
-        prefs_train = np.array(prefs_train) 
-        prefs_test = np.array(prefs_test)     
-        personIDs_train = np.array(personIDs_train)
-        personIDs_test = np.array(personIDs_test) 
-          
+        items_feat, valid_feats = get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1, 
+                                               trainids_a2, uids, embeddings, X)
+                  
         ndims = items_feat.shape[1]
 
         # subsample training data for debugging purposes only ----------------------------------------------------------
         if subsample_amount > 0:
-            subsample = np.arange(subsample_amount)               
-                    
-            #personIDs_train = np.zeros(len(Xe_train1), dtype=int)[subsample, :] #
-            items_feat = items_feat[subsample, :]
-            
-            pair_subsample_idxs = (trainids_a1<subsample_amount) & (trainids_a2<subsample_amount)
-            
-            trainids_a1 = trainids_a1[pair_subsample_idxs]
-            trainids_a2 = trainids_a2[pair_subsample_idxs]
-            prefs_train = prefs_train[pair_subsample_idxs]
-            personIDs_train = personIDs_train[pair_subsample_idxs]
-                    
-            # subsampled test data for debugging purposes only
-            #personIDs_test = np.zeros(len(items_1_test), dtype=int)[subsample, :]
-            pair_subsample_idxs = (testids_a1<subsample_amount) & (testids_a2<subsample_amount)
-            testids_a1 = testids_a1[pair_subsample_idxs]
-            testids_a2 = testids_a2[pair_subsample_idxs]
-            prefs_test = prefs_test[pair_subsample_idxs]
-            personIDs_test = personIDs_test[pair_subsample_idxs]
-            
-            if folds_regression is not None:
-                argids_rank_test = argids_rank_test[item_idx_ranktest < subsample_amount]
-                rankscores_test = rankscores_test[item_idx_ranktest < subsample_amount]
-                item_idx_ranktest = item_idx_ranktest[item_idx_ranktest < subsample_amount]
+            subsample_amount, items_feat, trainids_a1, trainids_a2, prefs_train, personIDs_train,\
+               testids_a1, testids_a2, prefs_test, personIDs_test, argids_rank_test, rankscores_test, item_idx_ranktest\
+               = subsample_data(subsample_amount, items_feat, trainids_a1, trainids_a2, prefs_train, personIDs_train,
+               testids_a1, testids_a2, prefs_test, personIDs_test, argids_rank_test, rankscores_test, item_idx_ranktest)
                 
         # Run the chosen method ---------------------------------------------------------------------------------------
         print "Starting test with method %s..." % (method)
         starttime = time.time()
-                    
-        personIDs = np.concatenate((personIDs_train, personIDs_test))
-        _, personIdxs = np.unique(personIDs, return_inverse=True)
-        personIDs_train = personIdxs[:len(personIDs_train)]
-        personIDs_test = personIdxs[len(personIDs_train):]
         
         verbose = True
         optimize_hyper = ('noOpt' not in method)
         nfactors = 10
         
         predicted_f = None
+        
+        if len(ls_initial_guess) > 1:
+            ls_initial_guess = ls_initial_guess[valid_feats]
+        if '_oneLS' in method:
+            ls_initial_guess = np.median(ls_initial_guess)
+            print "Selecting a single LS for all features: %f" % ls_initial_guess          
         
         # Run the selected method
         if 'PersonalisedPrefsBayes' in method:        
@@ -598,7 +619,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         if folds_regression is not None:
             all_target_rankscores[foldidx] = rankscores_test
             all_argids_rankscores[foldidx] = argids_rank_test
-            all_turkids_rankscores[foldidx] = turkIDs_rank_test
+            #all_turkids_rankscores[foldidx] = turkIDs_rank_test
         
         # Save the time taken
         times[foldidx] = endtime-starttime
