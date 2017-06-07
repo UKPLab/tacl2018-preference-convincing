@@ -23,8 +23,17 @@ def get_noisy_fold_data(folds, fold, docids, acc, tr_pair_subset):
     = get_fold_data(folds, fold, docids)
     
     # now subsample the training data
+    N = len(trainids_a1)
+    Nsub = N * tr_pair_subset
+    subidxs = np.random.choice(N, Nsub, replace=False)
+    trainids_a1 = trainids_a1[subidxs]
+    trainids_a2 = trainids_a2[subidxs]
+    prefs_train = prefs_train[subidxs]
+    personIDs_train = personIDs_train[subidxs]
     
     # now we add noise to the training data
+    flip_labels = np.random.rand(Nsub) > acc
+    prefs_train[flip_labels] = 2 - prefs_train[flip_labels] # labels are 0, 1 or 2
     
     return trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test, X, uids
     
@@ -43,7 +52,7 @@ def run_noise_sparsity_test(folds, folds_regression, dataset, method,
             run_test(folds, folds_regression, dataset, method, 
                         feature_type, embeddings_type, word_embeddings, siamese_cbow_embeddings, 
                         skipthoughts_model, ling_feat_spmatrix, docids, subsample_amount, 
-                        ls_initial_guess, get_fold_data=get_fold_data)
+                        ls_initial_guess, get_fold_data=get_fold_data, expt_tag='noise%f_sparse%f' % (acc, pair_subset))
 
 if __name__ == '__main__':
     

@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
     datasets = ['UKPConvArgStrict'] # 'UKPConvArgAll_evalMACE', 'UKPConvArgMACE', 
     #methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
-    methods = ['SinglePrefGP', 'SinglePrefGP_noOpt']#, 'SingleGPC_noOpt']#, 'SingleGPC'] # Barney
+    methods = ['SinglePrefGP_noOpt_additive']#, 'SingleGPC_noOpt']#, 'SingleGPC'] # Barney
     feature_types = ['both']#, 'embeddings', 'ling'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
     

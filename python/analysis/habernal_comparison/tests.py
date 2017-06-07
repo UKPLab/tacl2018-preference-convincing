@@ -406,10 +406,11 @@ def subsample_data(subsample_amount, items_feat, trainids_a1, trainids_a2, prefs
     
 def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type=None, embeddings=None, 
              siamese_cbow_e=None, skipthoughts_model=None, ling_feat_spmatrix=None, docids=None, subsample_amount=0, 
-             ls_initial_guess=None, get_fold_data=get_fold_data):
+             default_ls=None, get_fold_data=get_fold_data, expt_tag='habernal'):
         
     # Select output paths for CSV files and final results
-    output_filename_template = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/habernal_%s_%s_%s_%s'
+    output_filename_template = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/%s' % expt_tag
+    output_filename_template += '_%s_%s_%s_%s' 
 
     resultsfile = (output_filename_template + '_test.pkl') % (dataset, method, feature_type, embeddings_type)
     modelfile = (output_filename_template + '_model') %  (dataset, method, feature_type, embeddings_type) 
@@ -472,11 +473,13 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         
         predicted_f = None
         
-        if len(ls_initial_guess) > 1:
-            ls_initial_guess = ls_initial_guess[valid_feats]
-        if '_oneLS' in method:
-            ls_initial_guess = np.median(ls_initial_guess)
-            print "Selecting a single LS for all features: %f" % ls_initial_guess          
+        if len(default_ls) > 1:
+            ls_initial_guess = default_ls[valid_feats]
+        elif '_oneLS' in method:
+            ls_initial_guess = np.median(default_ls)
+            print "Selecting a single LS for all features: %f" % ls_initial_guess
+        else:
+            ls_initial_guess = default_ls          
         
         # Run the selected method
         if 'PersonalisedPrefsBayes' in method:        
@@ -543,9 +546,24 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)                    
 
         elif 'SinglePrefGP' in method:
+            
+            if 'weaksprior' in method:
+                shape_s0 = 2.0
+                rate_s0 = 200.0
+                kernel_combination = '*'
+            elif 'additive' in method:
+                shape_s0 = 1.0
+                rate_s0 = 1.0
+                kernel_combination = '+'
+            else:
+                shape_s0 = 200.0
+                rate_s0 = 20000.0
+                kernel_combination = '*'
+            
             model = GPPrefLearning(ninput_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
-                        shape_s0 = 2.0, rate_s0 = 200.0,  
-                        rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200)
+                        shape_s0=shape_s0, rate_s0=rate_s0,  
+                        rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200,
+                        kernel_combination=kernel_combination)
             model.max_iter_VB = 500
             model.fit(trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
                       optimize=optimize_hyper, input_type='zero-centered')            
@@ -656,7 +674,8 @@ Steps needed to run them:
 if __name__ == '__main__':
     datasets = ['UKPConvArgStrict']# Barney, desktop-169
     #datasets = ['UKPConvArgAll_evalMACE'] #  desktop-169 as well # 'UKPConvArgMACE',
-    methods = ['SinglePrefGP_noOpt', 'SinglePrefGP'] # desktop-169 as well
+    methods = ['SinglePrefGP_noOpt_additive', 'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_additive', 
+               'SinglePrefGP_weaksprior'] # desktop-169 as well
     #methods = ['SingleGPC_noOpt', 'GP+SVM_noOpt'] # Barney 'SinglePrefGP_noOpt'
     #methods = ['SinglePrefGP']#, 'SingleGPC'] # desktop-169 ('GP+SVM' is not possible with optimization on)
     
@@ -708,7 +727,7 @@ if __name__ == '__main__':
                     run_test(folds, folds_regression, dataset, method, 
                         feature_type, embeddings_type, word_embeddings, siamese_cbow_embeddings, 
                         skipthoughts_model, ling_feat_spmatrix, docids, subsample_amount=0, 
-                        ls_initial_guess=default_ls_value)
+                        default_ls=default_ls_value)
                     
                     print "**** Completed: method %s with features %s, embeddings %s ****" % (method, feature_type, 
                                                                                            embeddings_type)

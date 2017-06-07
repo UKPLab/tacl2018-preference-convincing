@@ -111,8 +111,8 @@ class GPPrefLearning(GPClassifierSVI):
     pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
     
     def __init__(self, ninput_features, mu0=0, shape_s0=2, rate_s0=2, shape_ls=10, rate_ls=0.1, ls_initial=None, 
-         force_update_all_points=False, kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True,
-         delay=1, forgetting_rate=0.9, verbose=False):
+         force_update_all_points=False, kernel_func='matern_3_2', kernel_combination='*',
+          max_update_size=10000, ninducing=500, use_svi=True, delay=1, forgetting_rate=0.9, verbose=False):
         
         # We set the function scale and noise scale to the same value so that we assume apriori that the differences
         # in preferences can be explained by noise in the preference pairs or the latent function. Ordering patterns 
@@ -131,7 +131,8 @@ class GPPrefLearning(GPClassifierSVI):
             rate_s0 = 0.5
         
         super(GPPrefLearning, self).__init__(ninput_features, mu0, shape_s0, rate_s0, shape_ls, rate_ls, ls_initial, 
-         force_update_all_points, kernel_func, max_update_size, ninducing, use_svi, delay, forgetting_rate, verbose=verbose)
+         force_update_all_points, kernel_func, kernel_combination,
+         max_update_size, ninducing, use_svi, delay, forgetting_rate, verbose=verbose)
     
     # Initialisation --------------------------------------------------------------------------------------------------
         
