@@ -546,7 +546,6 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)                    
 
         elif 'SinglePrefGP' in method:
-            
             if 'weaksprior' in method:
                 shape_s0 = 2.0
                 rate_s0 = 200.0
@@ -555,6 +554,10 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 shape_s0 = 1.0
                 rate_s0 = 1.0
                 kernel_combination = '+'
+            elif 'lowsprior':
+                shape_s0 = 1.0
+                rate_s0 = 1.0
+                kernel_combination = '*'
             else:
                 shape_s0 = 200.0
                 rate_s0 = 20000.0
@@ -602,10 +605,14 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 shape_s0 = 1.0
                 rate_s0 = 1.0
                 kernel_combination = '+'
+            elif 'lowsprior':
+                shape_s0 = 1.0
+                rate_s0 = 1.0
+                kernel_combination = '*'
             else:
                 shape_s0 = 200.0
                 rate_s0 = 20000.0
-                kernel_combination = '*'
+                kernel_combination = '*'              
                             
             # twice as many features means the lengthscale heuristic is * 2
             model = GPClassifierSVI(ninput_features=ndims, ls_initial=np.concatenate((ls_initial_guess * 2.0, 
@@ -686,7 +693,7 @@ if __name__ == '__main__':
     #datasets = ['UKPConvArgAll_evalMACE'] #  desktop-169 as well # 'UKPConvArgMACE',
     methods = ['SinglePrefGP_noOpt_additive', 'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_additive', 
                'SinglePrefGP_weaksprior'] # desktop-169 
-    #methods = ['SingleGPC_noOpt_additive', 'SingleGPC_noOpt_weaksprior', 'GP+SVM_noOpt'] # Barney
+    #methods = ['SingleGPC_noOpt_additive', 'SingleGPC_noOpt_lowsprior', 'GP+SVM_noOpt'] # Barney
     
     feature_types = ['both', 'ling', 'embeddings'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
