@@ -574,7 +574,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
 
         elif 'GP+SVM' in method:
             model = GPPrefLearning(ninput_features=1, ls_initial=ls_initial_guess, verbose=verbose, 
-                        shape_s0 = 2.0, rate_s0 = 200.0,  
+                        shape_s0 = 1.0, rate_s0 = 1.0,  
                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=False, kernel_func='diagonal')
             model.max_iter_VB = 2
             model.fit(trainids_a1, trainids_a2, np.arange(items_feat.shape[0])[:, np.newaxis], 
@@ -594,11 +594,24 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 predicted_f, _ = svm.predict(items_feat[item_idx_ranktest])  
             
         elif 'SingleGPC' in method:
+            if 'weaksprior' in method:
+                shape_s0 = 2.0
+                rate_s0 = 200.0
+                kernel_combination = '*'
+            elif 'additive' in method:
+                shape_s0 = 1.0
+                rate_s0 = 1.0
+                kernel_combination = '+'
+            else:
+                shape_s0 = 200.0
+                rate_s0 = 20000.0
+                kernel_combination = '*'
+                            
             # twice as many features means the lengthscale heuristic is * 2
             model = GPClassifierSVI(ninput_features=ndims, ls_initial=np.concatenate((ls_initial_guess * 2.0, 
                                                                                        ls_initial_guess * 2.0)), 
-                         verbose=verbose, shape_s0 = 2.0, rate_s0 = 200.0,  
-                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200)            
+                         verbose=verbose, shape_s0=shape_s0, rate_s0=rate_s0, rate_ls = 1.0 / np.mean(ls_initial_guess),
+                         use_svi=True, ninducing=500, max_update_size=200)            
             
             # with the argument order swapped around and data replicated:
 
@@ -607,9 +620,6 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             gpc_labels = np.concatenate((np.array(prefs_train, dtype=float) * 0.5,
                                           1 - np.array(prefs_train, dtype=float) * 0.5))
  
-            # this didn't work as well on a single fold, but has not been thoroughly tested.
-#             gpc_feats = np.concatenate((items_feat[trainids_a1], items_feat[trainids_a2]), axis=1)
-#             gpc_labels = np.array(prefs_train, dtype=float) * 0.5
             model.max_iter_VB = 500            
             model.fit(np.arange(len(trainids_a1)), gpc_labels, optimize=optimize_hyper, features=gpc_feats)            
         
@@ -675,9 +685,8 @@ if __name__ == '__main__':
     datasets = ['UKPConvArgStrict']# Barney, desktop-169
     #datasets = ['UKPConvArgAll_evalMACE'] #  desktop-169 as well # 'UKPConvArgMACE',
     methods = ['SinglePrefGP_noOpt_additive', 'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_additive', 
-               'SinglePrefGP_weaksprior'] # desktop-169 as well
-    #methods = ['SingleGPC_noOpt', 'GP+SVM_noOpt'] # Barney 'SinglePrefGP_noOpt'
-    #methods = ['SinglePrefGP']#, 'SingleGPC'] # desktop-169 ('GP+SVM' is not possible with optimization on)
+               'SinglePrefGP_weaksprior'] # desktop-169 
+    #methods = ['SingleGPC_noOpt_additive', 'SingleGPC_noOpt_weaksprior', 'GP+SVM_noOpt'] # Barney
     
     feature_types = ['both', 'ling', 'embeddings'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
