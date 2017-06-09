@@ -66,8 +66,8 @@ if __name__ == '__main__':
 
     datasets = ['UKPConvArgStrict'] # 'UKPConvArgAll_evalMACE', 'UKPConvArgMACE', 
     #methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
-    methods = ['SinglePrefGP_noOpt_additive']#, 'SingleGPC_noOpt']#, 'SingleGPC'] # Barney
-    feature_types = ['both']#, 'embeddings', 'ling'] # can be 'embeddings' or 'ling' or 'both'
+    methods = ['SinglePrefGP_noOpt_additive', 'SinglePrefGP_noOpt']#, 'SingleGPC_noOpt']#, 'SingleGPC'] # Barney
+    feature_types = ['ling', 'embeddings', 'both'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
     
     row_index = np.zeros(len(methods) * len(datasets), dtype=object)
@@ -75,14 +75,16 @@ if __name__ == '__main__':
     
     row = 0
         
-    for method in methods:
-        for d, dataset in enumerate(datasets):
+    
+    for d, dataset in enumerate(datasets):
             
-            docids = None
+        docids = None
         
-            folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map = load_train_test_data(dataset)
-            
-            if d == 0:
+        folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map = load_train_test_data(dataset)
+
+        for m, method in enumerate(methods):
+        
+            if d == 0 and m == 0:
                 results_f1      = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
                 results_acc     = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
                 results_logloss = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
@@ -101,7 +103,7 @@ if __name__ == '__main__':
                 else:
                     embeddings_to_use = embeddings_types
                 for embeddings_type in embeddings_to_use:
-                    resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
+                    resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts_6/' + \
                     'habernal_%s_%s_%s_%s_test.pkl' % (dataset, method, feature_type, embeddings_type)
                     
                     if os.path.isfile(resultsfile): 
