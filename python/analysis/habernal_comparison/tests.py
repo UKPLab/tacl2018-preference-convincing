@@ -60,6 +60,7 @@ from gp_pref_learning import GPPrefLearning, pref_likelihood
 from gp_classifier_svi import GPClassifierSVI
 from sklearn.svm import SVR 
 from preproc_raw_data import generate_turker_CSV, generate_gold_CSV
+from compute_metrics import compute_metrics
 #import skipthoughts
 #import wordEmbeddings as siamese_cbow
 from joblib import Parallel, delayed
@@ -776,14 +777,16 @@ def run_test_set(run_test_fun=run_test):
 
         
 if __name__ == '__main__':
-# Issue #33 Running on Friday already.
-#     datasets = ['UKPConvArgStrict']
-#     methods = ['SinglePrefGP_noOpt_weaksprior'] 
-#     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
-#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
-# 
-#     run_test_set()
+# Issue #33: rerun * kernel combination with both features and weak s prior.
+    datasets = ['UKPConvArgStrict']
+    methods = ['SinglePrefGP_noOpt_weaksprior'] 
+    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
+    embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
  
+#     run_test_set() # Run on Friday already.
+        
+    compute_metrics(methods, datasets, feature_types, embeddings_types, tag='33')    
+
 # Issue #34 Compare kernel operators
 # Issue #35 Best setup with other datasets
     datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
@@ -793,6 +796,8 @@ if __name__ == '__main__':
  
     run_test_set()
     
+    compute_metrics(methods, datasets, feature_types, embeddings_types, tag='34_35')
+    
 # Issue #36 Optimize best setup
     datasets = ['UKPConvArgStrict']
     methods = ['SinglePrefGP_additive_weaksprior'] 
@@ -801,6 +806,8 @@ if __name__ == '__main__':
  
     run_test_set() 
     
+    compute_metrics(methods, datasets, feature_types, embeddings_types, tag='36')
+    
 # Issue #37 GP+SVR. The GPC method should be run on Barney as it needs more memory.
     datasets = ['UKPConvArgStrict']
     methods = ['GP+SVM']
@@ -808,6 +815,8 @@ if __name__ == '__main__':
     embeddings_type = ['word_mean']
     
     run_test_set()
+    
+    compute_metrics(methods, datasets, feature_types, embeddings_types, tag='37')
 
 # Issue #40 Noise/sparsity tests with best setup.
     acc_levels = [0.6, 0.7, 0.8, 0.9, 1.0] # the accuracy of the pairwise labels used to train the methods -- this is how we introduce noise
@@ -821,4 +830,6 @@ if __name__ == '__main__':
     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
  
-    run_test_set(run_noise_sparsity_test) 
+    run_test_set(run_noise_sparsity_test)
+    
+    #TODO: the plotting and metrics for the noise/sparsity tests.

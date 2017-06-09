@@ -26,6 +26,7 @@ import pickle
 from sklearn.metrics import f1_score, accuracy_score, roc_auc_score, log_loss
 from scipy.stats import pearsonr, spearmanr, kendalltau
 from tests import load_train_test_data, load_ling_features
+import datetime, time
 
 def get_fold_data(data, f):
     # discrete labels are 0, 1 or 2
@@ -61,26 +62,21 @@ def get_fold_data(data, f):
         
     return gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank
 
-if __name__ == '__main__':
-    data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
-
-    datasets = ['UKPConvArgStrict'] # 'UKPConvArgAll_evalMACE', 'UKPConvArgMACE', 
-    #methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
-    methods = ['SinglePrefGP_noOpt_additive', 'SinglePrefGP_noOpt']#, 'SingleGPC_noOpt']#, 'SingleGPC'] # Barney
-    feature_types = ['ling', 'embeddings', 'both'] # can be 'embeddings' or 'ling' or 'both'
-    embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
-    
+def compute_metrics(methods, datasets, feature_types, embeddings_types, tag=''):
     row_index = np.zeros(len(methods) * len(datasets), dtype=object)
     columns = np.zeros(len(feature_types) * len(embeddings_types), dtype=object)
     
     row = 0
-        
+    
+    if tag == '':
+        ts = time.time()
+        tag = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d-%H-%M-%S') 
     
     for d, dataset in enumerate(datasets):
             
         docids = None
         
-        folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map = load_train_test_data(dataset)
+        folds, folds_regression, _, _ = load_train_test_data(dataset)
 
         for m, method in enumerate(methods):
         
@@ -103,7 +99,7 @@ if __name__ == '__main__':
                 else:
                     embeddings_to_use = embeddings_types
                 for embeddings_type in embeddings_to_use:
-                    resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts_6/' + \
+                    resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
                     'habernal_%s_%s_%s_%s_test.pkl' % (dataset, method, feature_type, embeddings_type)
                     
                     if os.path.isfile(resultsfile): 
@@ -130,7 +126,7 @@ if __name__ == '__main__':
                                 if docids is None:
                                     _, docids = load_ling_features(dataset)  
                                 # ranking data was not saved in original file. Get it from the folds_regression here
-                                _, rankscores_test, argids_rank_test, turkIDs_rank_test = folds_regression.get(fold)["test"]
+                                _, rankscores_test, _, _ = folds_regression.get(fold)["test"]
                                 gold_rank = np.array(rankscores_test)
                                 
                             if gold_rank is not None and pred_rank is not None:
@@ -188,11 +184,27 @@ if __name__ == '__main__':
     print "Kendall's tau:"
     print mean_results_kendall
     
+    metricsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
+                    'metrics_%s.pkl' % (tag)    
+    with open(metricsfile, 'w') as fh:
+        pickle.dump((results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, 
+                     results_kendall), fh)
+    
     # TODO: Show how the method resolves cycles
     
     # TODO: Show the features that were chosen
     
     # TODO: Correlations between reasons and features?
     
-    # TODO: Correlations between reasons and latent argument features found using preference components?
-                    
+    # TODO: Correlations between reasons and latent argument features found using preference components?    
+
+if __name__ == '__main__':
+    data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
+
+    datasets = ['UKPConvArgStrict'] # 'UKPConvArgAll_evalMACE', 'UKPConvArgMACE', 
+    #methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
+    methods = ['SinglePrefGP_noOpt_additive', 'SinglePrefGP_noOpt']#, 'SingleGPC_noOpt']#, 'SingleGPC'] # Barney
+    feature_types = ['ling', 'embeddings', 'both'] # can be 'embeddings' or 'ling' or 'both'
+    embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
+     
+    compute_metrics(methods, datasets, feature_types, embeddings_types)             
