@@ -663,26 +663,16 @@ if __name__ == '__main__':
 #     
 #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='34')
    
-# # Issue #35 Best setup with other datasets
-#     datasets = ['UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
-#     methods = ['SinglePrefGP_noOpt_lowsprior', 'SinglePrefGP_noOpt_additive_lowsprior'] 
-#     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
-#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
-#  
-#     default_ls_values = run_test_set()
-#     
-#     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='35')
-# 
-# # Issue #36 Optimize best setup
-#     datasets = ['UKPConvArgStrict']
-#     methods = ['SinglePrefGP_lowsprior', 'SinglePrefGP_additive_lowsprior'] 
-#     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
-#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
-#  
-#     default_ls_values = run_test_set() 
-#     
-#     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='36')
-#     
+# Issue #35 Best setup with other datasets
+    datasets = ['UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
+    methods = ['SinglePrefGP_noOpt_lowsprior', 'SinglePrefGP_noOpt_additive_lowsprior'] 
+    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
+    embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
+  
+    default_ls_values = run_test_set()
+     
+    compute_metrics(methods, datasets, feature_types, embeddings_types, tag='35')
+ 
 # Issue #37 GP+SVR. The GPC method should be run on Barney as it needs more memory.
     datasets = ['UKPConvArgStrict']
     methods = ['GP+SVM']
@@ -692,6 +682,16 @@ if __name__ == '__main__':
     default_ls_values = run_test_set()
     
     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='37')
+ 
+# Issue #36 Optimize best setup
+    datasets = ['UKPConvArgStrict']
+    methods = ['SinglePrefGP_lowsprior', 'SinglePrefGP_additive_lowsprior'] 
+    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
+    embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
+  
+    default_ls_values = run_test_set() 
+     
+    compute_metrics(methods, datasets, feature_types, embeddings_types, tag='36')
 
 # # Issue #40 Noise/sparsity tests with best setup.
 #     acc_levels = [0.6, 0.7, 0.8, 0.9, 1.0] # the accuracy of the pairwise labels used to train the methods -- this is how we introduce noise
