@@ -438,10 +438,10 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 predicted_f, _ = model.predict_f(items_feat[item_idx_ranktest]) 
 
         elif 'GP+SVM' in method:
-            model = GPPrefLearning(ninput_features=1, ls_initial=ls_initial_guess, verbose=verbose, 
+            model = GPPrefLearning(ninput_features=1, ls_initial=[1000], verbose=verbose, 
                         shape_s0 = 1.0, rate_s0 = 1.0,  
                         rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=False, kernel_func='diagonal')
-            model.max_iter_VB = 2
+            model.max_iter_VB = 10
             model.fit(trainids_a1, trainids_a2, np.arange(items_feat.shape[0])[:, np.newaxis], 
                       np.array(prefs_train, dtype=float)-1, 
                       optimize=False, input_type='zero-centered') # never use optimize with diagonal kernel            
@@ -621,14 +621,16 @@ def run_test_set(run_test_fun=run_test):
                 for embeddings_type in embeddings_to_use:
                     print "**** Running method %s with features %s, embeddings %s, on dataset %s ****" % (method, 
                                                     feature_type, embeddings_type, dataset)
-                    if dataset in default_ls_values and feature_type in default_ls_values[dataset]:
-                        default_ls_value = default_ls_values[dataset][feature_type]
-                    else:
-                        default_ls_value = compute_lengthscale_heuristic(feature_type, embeddings_type, word_embeddings,
-                                                                         ling_feat_spmatrix, docids, folds)
-                        if dataset not in default_ls_values:
-                            default_ls_values[dataset] = {}
-                        default_ls_values[dataset][feature_type] = default_ls_value
+#                     if dataset in default_ls_values and feature_type in default_ls_values[dataset]:
+#                         default_ls_value = default_ls_values[dataset][feature_type]
+#                     else:
+#                         default_ls_value = compute_lengthscale_heuristic(feature_type, embeddings_type, word_embeddings,
+#                                                                          ling_feat_spmatrix, docids, folds)
+#                         if dataset not in default_ls_values:
+#                             default_ls_values[dataset] = {}
+#                         default_ls_values[dataset][feature_type] = default_ls_value
+                            
+                    default_ls_value = [1000]
                             
                     run_test_fun(folds, folds_regression, dataset, method, 
                         feature_type, embeddings_type, word_embeddings, siamese_cbow_embeddings, 
@@ -637,62 +639,72 @@ def run_test_set(run_test_fun=run_test):
                     
                     print "**** Completed: method %s with features %s, embeddings %s ****" % (method, feature_type, 
                                                                                            embeddings_type)
-
+    return default_ls_values
         
 if __name__ == '__main__':
-# Issue #33: rerun * kernel combination with both features and weak s prior.
-    datasets = ['UKPConvArgStrict']
-    methods = ['SinglePrefGP_noOpt_weaksprior'] 
-    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
+# # Issue #33: rerun * kernel combination with both features and weak s prior.
+#     datasets = ['UKPConvArgStrict']
+#     methods = ['SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_noOpt', 'SinglePrefGP_noOpt_lowsprior', 
+#                'SinglePrefGP_noOpt_additive_lowsprior'] 
+#     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
- 
-#     run_test_set() # Run on Friday already.
-        
-    compute_metrics(methods, datasets, feature_types, embeddings_types, tag='33')    
+#  
+#      default_ls_values = run_test_set() # Run on Friday already.
+#         
+#     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='33')    
 
-# Issue #34 Compare kernel operators
-# Issue #35 Best setup with other datasets
-    datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
-    methods = ['SinglePrefGP_noOpt_additive_weaksprior'] 
-    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
-    embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
- 
-    run_test_set()
-    
-    compute_metrics(methods, datasets, feature_types, embeddings_types, tag='34_35')
-    
-# Issue #36 Optimize best setup
-    datasets = ['UKPConvArgStrict']
-    methods = ['SinglePrefGP_additive_weaksprior'] 
-    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
-    embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
- 
-    run_test_set() 
-    
-    compute_metrics(methods, datasets, feature_types, embeddings_types, tag='36')
-    
+# # Issue #34 Compare kernel operators
+#     datasets = ['UKPConvArgStrict']
+#     methods = ['SinglePrefGP_noOpt_additive_weaksprior'] 
+#     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
+#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
+#  
+#     default_ls_values = run_test_set()
+#     
+#     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='34')
+   
+# # Issue #35 Best setup with other datasets
+#     datasets = ['UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
+#     methods = ['SinglePrefGP_noOpt_lowsprior', 'SinglePrefGP_noOpt_additive_lowsprior'] 
+#     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
+#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
+#  
+#     default_ls_values = run_test_set()
+#     
+#     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='35')
+# 
+# # Issue #36 Optimize best setup
+#     datasets = ['UKPConvArgStrict']
+#     methods = ['SinglePrefGP_lowsprior', 'SinglePrefGP_additive_lowsprior'] 
+#     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
+#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
+#  
+#     default_ls_values = run_test_set() 
+#     
+#     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='36')
+#     
 # Issue #37 GP+SVR. The GPC method should be run on Barney as it needs more memory.
     datasets = ['UKPConvArgStrict']
     methods = ['GP+SVM']
     feature_types = ['both', 'ling'] # we run with ling as well because this is how SVM was originally run by IH.
     embeddings_type = ['word_mean']
     
-    run_test_set()
+    default_ls_values = run_test_set()
     
     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='37')
 
-# Issue #40 Noise/sparsity tests with best setup.
-    acc_levels = [0.6, 0.7, 0.8, 0.9, 1.0] # the accuracy of the pairwise labels used to train the methods -- this is how we introduce noise
-    tr_pair_subsets = [0.25, 0.5, 0.75, 1.0] # fraction of the dataset we will use to train the methods
-    #tr_item_subset = [0.25, 0.5, 0.75, 1.0] # to be implemented later. Fix the total number of labels but vary the 
-    #number of items they cover -- does a densely labelled subset help? Fix no. labels by: selecting pairs randomly
-    # until smallest item subset size is reached; select any other pairs involving that subset; count the no. items. 
-    
-    datasets = ['UKPConvArgStrict']
-    methods = ['SinglePrefGP_additive_weaksprior'] 
-    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
-    embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
- 
-    run_test_set(run_noise_sparsity_test)
-    
-    #TODO: the plotting and metrics for the noise/sparsity tests.
+# # Issue #40 Noise/sparsity tests with best setup.
+#     acc_levels = [0.6, 0.7, 0.8, 0.9, 1.0] # the accuracy of the pairwise labels used to train the methods -- this is how we introduce noise
+#     tr_pair_subsets = [0.25, 0.5, 0.75, 1.0] # fraction of the dataset we will use to train the methods
+#     #tr_item_subset = [0.25, 0.5, 0.75, 1.0] # to be implemented later. Fix the total number of labels but vary the 
+#     #number of items they cover -- does a densely labelled subset help? Fix no. labels by: selecting pairs randomly
+#     # until smallest item subset size is reached; select any other pairs involving that subset; count the no. items. 
+#     
+#     datasets = ['UKPConvArgStrict']
+#     methods = ['SinglePrefGP_additive_weaksprior'] 
+#     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
+#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
+#  
+#     default_ls_values = run_test_set(run_noise_sparsity_test)
+#     
+#     #TODO: the plotting and metrics for the noise/sparsity tests.
