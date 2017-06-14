@@ -47,11 +47,11 @@ import numpy as np
 import time
 import logging
 logging.basicConfig(level=logging.DEBUG)
-from preference_features import PreferenceComponents
-from gp_pref_learning import GPPrefLearning, pref_likelihood
-from gp_classifier_svi import GPClassifierSVI
-from sklearn.svm import SVR 
-from compute_metrics import compute_metrics
+#from preference_features import PreferenceComponents
+#from gp_pref_learning import GPPrefLearning, pref_likelihood
+#from gp_classifier_svi import GPClassifierSVI
+#from sklearn.svm import SVR 
+#from compute_metrics import compute_metrics
 from data_loading import load_train_test_data, load_embeddings, load_ling_features, data_root_dir, combine_into_libsvm_files
 #import skipthoughts
 #import wordEmbeddings as siamese_cbow
