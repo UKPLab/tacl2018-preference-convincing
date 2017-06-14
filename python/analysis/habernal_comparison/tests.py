@@ -561,8 +561,10 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             nb_epoch = 5  # 5 epochs are meaningful to prevent over-fitting...
 
             print len(folds.get(fold)["training"])
-            X_train, y_train, _, _, _ = folds.get(fold)["training"]
-            X_test, _, _, _, _ = folds.get(fold)["test"]
+            X_train1, X_train2, y_train, _, _ = folds.get(fold)["training"]
+            X_train = np.concatenate((X_train1, X_train2), axis=1)
+            X_test1, X_test2, _, _, _ = folds.get(fold)["test"]
+            X_test = np.concatenate((X_test1, X_test2), axis=1)
         
             print("Pad sequences (samples x time)")
             X_train = sequence.pad_sequences(X_train, maxlen=max_len)
@@ -828,33 +830,34 @@ if __name__ == '__main__':
 #         
 #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='35')
 #    
+#running on desktop-169 now
 # # Issue #37 GP+SVR. The GPC method should be run on Barney as it needs more memory.
 #     datasets = ['UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
 #     methods = ['GP+SVM']
 #     feature_types = ['both', 'ling'] # we run with ling as well because this is how SVM was originally run by IH.
 #     embeddings_types = ['word_mean']
-#       
+#         
 #     default_ls_values = run_test_set()
-#       
+#         
 #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='37')
-#    
+#      
 # # Issue #36 Optimize best setup
 #     datasets = ['UKPConvArgStrict', 'UKPConvArgMACE']#, 'UKPConvArgAll_evalMACE']
 #     methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_additive_weaksprior'] 
 #     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
 #     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
-#     
+#       
 #     default_ls_values = run_test_set() 
-#        
+#          
 #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='36')
-# 
+#   
 # # Issue #38, Run SVM on other datasets and compute missing metrics
 #     datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
 #     methods = ['SVM']
 #     feature_types = ['both', 'ling']
 #     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
 #     default_ls_values = run_test_set() 
-#        
+#          
 #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='38')
 
 # Issue #39, Run BILSTM on other datasets and compute missing metrics
@@ -863,7 +866,7 @@ if __name__ == '__main__':
     feature_types = ['embeddings']
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
     default_ls_values = run_test_set() 
-       
+        
     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='38')
 
 
