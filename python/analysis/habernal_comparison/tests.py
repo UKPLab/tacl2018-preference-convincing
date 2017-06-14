@@ -562,10 +562,17 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
 
             print len(folds.get(fold)["training"])
             X_train1, X_train2, y_train, _, _ = folds.get(fold)["training"]
-            X_train = np.concatenate((X_train1, X_train2), axis=1)
+            X_train = []
+            for i, row1 in enumerate(X_train1):
+                row1 = np.array(row1)
+                np.append(row1, X_train2[i])
+                X_train.append(row1)
             X_test1, X_test2, _, _, _ = folds.get(fold)["test"]
-            X_test = np.concatenate((X_test1, X_test2), axis=1)
-        
+            X_test = []
+            for i, row1 in enumerate(X_test1):
+                row1 = np.array(row1)
+                np.append(row1, X_test2[i])
+                X_test.append(row1)        
             print("Pad sequences (samples x time)")
             X_train = sequence.pad_sequences(X_train, maxlen=max_len)
             X_test = sequence.pad_sequences(X_test, maxlen=max_len)
