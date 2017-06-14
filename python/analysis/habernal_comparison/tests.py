@@ -578,7 +578,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             X_test = sequence.pad_sequences(X_test, maxlen=max_len)
             print('X_train shape:', X_train.shape)
             print('X_test shape:', X_test.shape)
-            y_train = np.array(y_train)
+            y_train = np.array(y_train) / 2.0
             
             print('Build model...')
             model = Graph()
