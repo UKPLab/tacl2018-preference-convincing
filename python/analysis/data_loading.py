@@ -19,6 +19,49 @@ from data_loader_regression import load_my_data as load_my_data_regression
 from sklearn.datasets import load_svmlight_file
 from preproc_raw_data import generate_turker_CSV, generate_gold_CSV
 
+def combine_into_libsvm_files(dataset, ids1, ids2, labels, type, fold, 
+        dirname=data_root_dir + '/lingdata/UKPConvArg1-Full-libsvm', 
+        outputfile=data_root_dir + '/libsvmdata/%s-%s-%s-libsvm.txt', reverse_pairs=False): 
+    outputfile = outputfile % (dataset, type, fold)
+    
+    outputstr = ""
+    dataids = [] # contains the argument document IDs in the same order as in the ouputfile and outputstr
+    
+    if os.path.isfile(outputfile):
+        os.remove(outputfile)
+    
+    with open(outputfile, 'a') as ofh:    
+        for row in range(len(ids1)):
+            # each file should contain only one line
+            fname1 = '%s.libsvm.txt' % ids1[row]
+            with open(dirname + "/" + fname1) as fh:
+                lines = fh.readlines()
+
+            comment_split_line = lines[0][1:].split('#')                
+            outputline = str(int(labels[row])) + comment_split_line[0] 
+                  
+            if ids2 is not None:
+                fname2 = ids2[row] + '.libsvm.txt'
+                with open(dirname + "/" + fname2) as fh:
+                    lines2 = fh.readlines()
+
+                # move comments at end of first line to end of complete joint line
+                comment_split_line2 = lines2[0][1:].split('#')
+                outputline += comment_split_line2[0]
+                # we could re-add the comments back in, but this seems to be problematic for libsvm, not sure why?
+                #if len(comment_split_line) > 1:
+                #    outputline += '\t#' + comment_split_line[1] + '_' + comment_split_line_complete[1]  
+        
+            outputline += '\n'
+        
+            ofh.write(outputline)
+                
+            if reverse_pairs and ids2 is not None:
+                outputline = str(int(1 - labels[row])) + comment_split_line2[0] + comment_split_line[0] + '\n'
+                ofh.write(outputline)
+                
+    return outputfile, outputstr, dataids
+
 def combine_lines_into_one_file(dataset, dirname=data_root_dir + '/lingdata/UKPConvArg1-Full-libsvm', 
         outputfile=data_root_dir + '/lingdata/%s-libsvm.txt'): 
     output_argid_file = outputfile % ("argids_%s" % dataset)
@@ -33,7 +76,7 @@ def combine_lines_into_one_file(dataset, dirname=data_root_dir + '/lingdata/UKPC
     with open(outputfile, 'a') as ofh: 
         for filename in os.listdir(dirname):
             fid = filename.split('.')[0]
-            print "writing from file %s with row ID %s" % (filename, fid)
+            print("writing from file %s with row ID %s" % (filename, fid))
             with open(dirname + "/" + filename) as fh:
                 lines = fh.readlines()
             for line in lines:
@@ -86,7 +129,7 @@ def load_train_test_data(dataset):
     else:
         raise Exception("Invalid dataset %s" % dataset)    
     
-    print "Data directory = %s, dataset=%s" % (dirname, dataset)    
+    print("Data directory = %s, dataset=%s" % (dirname, dataset))
     csvdirname = data_root_dir + 'argument_data/%s-CSV/' % dataset
     # Generate the CSV files from the XML files. These are easier to work with! The CSV files from Habernal do not 
     # contain all turker info that we need, so we generate them afresh here.
@@ -99,7 +142,7 @@ def load_train_test_data(dataset):
             generate_gold_CSV(dirname, csvdirname) # select only the gold labels
                 
     embeddings_dir = data_root_dir + '/embeddings/'
-    print "Embeddings directory: %s" % embeddings_dir
+    print("Embeddings directory: %s" % embeddings_dir)
     
     # Load the train/test data into a folds object. -------------------------------------------------------------------
     # Here we keep each the features of each argument in a pair separate, rather than concatenating them.
@@ -135,7 +178,7 @@ def load_embeddings(word_index_to_embeddings_map):
      
 def load_ling_features(dataset):
     ling_dir = data_root_dir + 'lingdata/'
-    print "Looking for linguistic features in directory %s" % ling_dir    
+    print("Looking for linguistic features in directory %s" % ling_dir) 
     print('Loading linguistic features')
     ling_file = ling_dir + "/%s-libsvm.txt" % dataset
     argids_file = ling_dir + "/%s-libsvm.txt" % ("argids_%s" % dataset)

@@ -18,10 +18,14 @@ Created on 18 May 2017
 
 @author: edwin
 '''
+import sys
+import os
+
+sys.path.append("./python")
+sys.path.append("./python/analysis")
 
 import numpy as np
 import pandas as pd
-import os 
 import pickle
 from sklearn.metrics import f1_score, accuracy_score, roc_auc_score, log_loss
 from scipy.stats import pearsonr, spearmanr, kendalltau
@@ -196,15 +200,18 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, tag=''):
     
     # TODO: Correlations between reasons and features?
     
-    # TODO: Correlations between reasons and latent argument features found using preference components?    
+    # TODO: Correlations between reasons and latent argument features found using preference components?
+    
+    return results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall
 
 if __name__ == '__main__':
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
-    datasets = ['UKPConvArgStrict'] # 'UKPConvArgAll_evalMACE', 'UKPConvArgMACE', 
-    #methods = ['SinglePrefGP_noOpt', 'SingleGPC_noOpt', 'GP+SVM_noOpt'] # Desktop-169
-    methods = ['SinglePrefGP_noOpt_additive', 'SinglePrefGP_noOpt']#, 'SingleGPC_noOpt']#, 'SingleGPC'] # Barney
-    feature_types = ['ling', 'embeddings', 'both'] # can be 'embeddings' or 'ling' or 'both'
+    # Issue #35 Best setup with other datasets
+    datasets = ['UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
+    methods = ['SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_noOpt_additive_weaksprior'] 
+    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
-     
-    compute_metrics(methods, datasets, feature_types, embeddings_types)             
+    
+    results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall = \
+                                                    compute_metrics(methods, datasets, feature_types, embeddings_types)             
