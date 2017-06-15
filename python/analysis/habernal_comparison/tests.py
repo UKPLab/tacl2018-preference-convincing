@@ -564,14 +564,16 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             X_train1, X_train2, y_train, _, _ = folds.get(fold)["training"]
             X_train = []
             for i, row1 in enumerate(X_train1):
-                row1 = np.array(row1)
-                np.append(row1, X_train2[i])
+                #row1 = np.array(row1)
+                #np.append(row1, X_train2[i])
+                row1 = row1 + X_train2[i]
                 X_train.append(row1)
             X_test1, X_test2, _, _, _ = folds.get(fold)["test"]
             X_test = []
             for i, row1 in enumerate(X_test1):
-                row1 = np.array(row1)
-                np.append(row1, X_test2[i])
+                #row1 = np.array(row1)
+                #np.append(row1, X_test2[i])
+                row1 = row1 + X_test2[i]
                 X_test.append(row1)        
             print("Pad sequences (samples x time)")
             X_train = sequence.pad_sequences(X_train, maxlen=max_len)
@@ -579,7 +581,8 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             print('X_train shape:', X_train.shape)
             print('X_test shape:', X_test.shape)
             y_train = np.array(y_train) / 2.0
-            
+            print('y_train values: ', np.unique(y_train))
+
             print('Build model...')
             model = Graph()
             model.add_input(name='input', input_shape=(max_len,), dtype=int)
