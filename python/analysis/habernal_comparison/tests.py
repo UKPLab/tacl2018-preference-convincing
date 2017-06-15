@@ -603,8 +603,8 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             proba = np.array(model_predict['output'])
             
             if folds_regression is not None:
-                X_train, y_train, _ = folds_regression.get(fold)["training"]
-                X_test, _, _ = folds_regression.get(fold)["test"]
+                X_train, y_train, _, _ = folds_regression.get(fold)["training"]
+                X_test, _, _, _ = folds_regression.get(fold)["test"]
             
                 # converting embeddings to numpy 2d array: shape = (vocabulary_size, 300)
                 embeddings = np.asarray([np.array(x, dtype=float) for x in word_index_to_embeddings_map.values()])
