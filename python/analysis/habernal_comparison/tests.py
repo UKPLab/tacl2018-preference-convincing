@@ -543,8 +543,8 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             '''
             proba = 0
             if folds_regression is not None:
-                X_train = items_feat[:, item_idx_ranktrain]
-                X_test = items_feat[:, item_idx_ranktest]
+                X_train = X[item_idx_ranktrain]
+                X_test = X[item_idx_ranktest]
             
                 print(len(X_train), 'train sequences')
                 print(len(X_test), 'test sequences')
