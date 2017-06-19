@@ -47,18 +47,10 @@ import numpy as np
 import time
 import logging
 logging.basicConfig(level=logging.DEBUG)
-<<<<<<< HEAD
-#from preference_features import PreferenceComponents
-#from gp_pref_learning import GPPrefLearning, pref_likelihood
-#from gp_classifier_svi import GPClassifierSVI
-#from sklearn.svm import SVR 
-#from compute_metrics import compute_metrics
-=======
 from gp_pref_learning import GPPrefLearning, pref_likelihood
 from gp_classifier_svi import GPClassifierSVI
 from sklearn.svm import SVR 
 from compute_metrics import compute_metrics
->>>>>>> d231ef3f7098c5c95c8e9c7cb48a8e240a0f3922
 from data_loading import load_train_test_data, load_embeddings, load_ling_features, data_root_dir, combine_into_libsvm_files
 #import skipthoughts
 #import wordEmbeddings as siamese_cbow
@@ -503,6 +495,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             batch_size = 32
             nb_epoch = 5  # 5 epochs are meaningful to prevent over-fitting...
 
+            '''
             print len(folds.get(fold)["training"])
             X_train1, X_train2, y_train, _, _ = folds.get(fold)["training"]
             X_train = []
@@ -547,7 +540,8 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             print('Prediction')
             model_predict = model.predict({'input': X_test}, batch_size=batch_size)
             proba = np.array(model_predict['output'])
-            
+            '''
+            proba = 0
             if folds_regression is not None:
                 X_train = items_feat[:, item_idx_ranktrain]
                 X_test = items_feat[:, item_idx_ranktest]
