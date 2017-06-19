@@ -47,7 +47,6 @@ import numpy as np
 import time
 import logging
 logging.basicConfig(level=logging.DEBUG)
-from preference_features import PreferenceComponents
 from gp_pref_learning import GPPrefLearning, pref_likelihood
 from gp_classifier_svi import GPClassifierSVI
 from sklearn.svm import SVR 
@@ -59,7 +58,7 @@ from joblib import Parallel, delayed
 import multiprocessing
     
 def _dists_f(items_feat_sample, f):
-    if np.mod(f, 100) == 0:
+    if np.mod(f, 1000) == 0:
         logging.info('computed lengthscale for feature %i' % f)
     dists = np.abs(items_feat_sample[:, np.newaxis] - items_feat_sample[np.newaxis, :])
     # we exclude the zero distances. With sparse features, these would likely downplay the lengthscale.                                
@@ -343,7 +342,6 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         
         verbose = True
         optimize_hyper = ('noOpt' not in method)
-        nfactors = 10
         
         predicted_f = None
         
@@ -356,70 +354,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             ls_initial_guess = default_ls          
         
         # Run the selected method
-        if 'PersonalisedPrefsBayes' in method:        
-            model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
-                                            rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, 
-                                            max_update_size=200)
-            model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
-                      optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
-            proba, predicted_f = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
-            if folds_regression is not None:
-                predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
-                        
-        elif 'PersonalisedPrefsUncorrelatedNoise' in method: 
-            # Note that this also does not use a common mean to match the Houlsby model.
-            # TODO: suspect that with small no. factors, this may be worse, but better with large number in comparison to PersonalisedPrefsBayes with Matern noise GPs.        
-            model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
-                                        rate_ls = 1.0 / np.mean(ls_initial_guess), 
-                                        use_svi=True, use_fa=False, uncorrelated_noise=True, use_common_mean=False, 
-                                        max_update_size=200)
-            model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
-                      optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
-            proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
-            if folds_regression is not None:
-                predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
-                            
-        elif 'PersonalisedPrefsFA' in method:
-            model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
-                                            rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=True, 
-                                            max_update_size=200)
-            model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
-                      optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
-            proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
-            if folds_regression is not None:
-                predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
-                
-        elif 'PersonalisedPrefsNoFactors' in method:
-            model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
-                            rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, no_factors=True, 
-                            max_update_size=200)
-            model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
-                      optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
-            proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
-            if folds_regression is not None:
-                predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)
-                
-        elif 'PersonalisedPrefsNoCommonMean' in method:        
-            model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
-                        rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, use_common_mean_t=False, 
-                        max_update_size=200)
-            model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
-                      optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
-            proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat)
-            if folds_regression is not None:
-                predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)         
-                   
-        elif 'IndPrefGP' in method:
-            model = PreferenceComponents(nitem_features=ndims, ls=ls_initial_guess, verbose=verbose, nfactors=nfactors, 
-                            rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, use_fa=False, no_factors=True, 
-                            use_common_mean_t=False, max_update_size=200)
-            model.fit(personIDs_train, trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
-                      optimize=optimize_hyper, nrestarts=1, input_type='zero-centered')
-            proba = model.predict(personIDs_test, testids_a1, testids_a2, items_feat) 
-            if folds_regression is not None:
-                predicted_f = model.predict_f(personIDs_test, item_idx_ranktest, items_feat)                    
-
-        elif 'SinglePrefGP' in method:
+        if 'SinglePrefGP' in method:
             if 'additive' in method:
                 kernel_combination = '+'
             else:
@@ -591,23 +526,20 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             model.add_node(Dropout(0.5), name='dropout', inputs=['forward', 'backward'])
             model.add_node(Dense(1, activation='sigmoid'), name='sigmoid', input='dropout')
             model.add_output(name='output', input='sigmoid')
-        
+         
             # try using different optimizers and different optimizer configs
             model.compile('adam', {'output': 'binary_crossentropy'})
-        
+         
             print('Train...')
             model.fit({'input': X_train, 'output': y_train}, batch_size=batch_size, nb_epoch=nb_epoch)
-        
+         
             print('Prediction')
             model_predict = model.predict({'input': X_test}, batch_size=batch_size)
             proba = np.array(model_predict['output'])
             
             if folds_regression is not None:
-                X_train, y_train, _, _ = folds_regression.get(fold)["training"]
-                X_test, _, _, _ = folds_regression.get(fold)["test"]
-            
-                # converting embeddings to numpy 2d array: shape = (vocabulary_size, 300)
-                embeddings = np.asarray([np.array(x, dtype=float) for x in word_index_to_embeddings_map.values()])
+                X_train = items_feat[:, item_idx_ranktrain]
+                X_test = items_feat[:, item_idx_ranktest]
             
                 print(len(X_train), 'train sequences')
                 print(len(X_test), 'test sequences')
@@ -617,7 +549,6 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 X_test = sequence.pad_sequences(X_test, maxlen=max_len)
                 print('X_train shape:', X_train.shape)
                 print('X_test shape:', X_test.shape)
-                y_train = np.array(y_train)
             
                 print('Build model...')
                 model = Graph()
@@ -637,12 +568,14 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 model.compile('adam', {'output': 'mean_absolute_error'})
             
                 print('Train...')
-                model.fit({'input': X_train, 'output': y_train}, batch_size=batch_size, nb_epoch=nb_epoch)
+                model.fit({'input': X_train, 'output': rankscores_train}, batch_size=batch_size, nb_epoch=nb_epoch)
             
                 print('Prediction')
                 model_predict = model.predict({'input': X_test}, batch_size=batch_size)
                 # print(model_predict)
                 predicted_f = np.asarray(model_predict['output']).flatten()                
+
+                print('Unique regression predictions: ', np.unique(predicted_f))
         
         if hasattr(model, 'ls'):
             final_ls[foldidx] = model.ls
@@ -848,32 +781,35 @@ if __name__ == '__main__':
 #         
 #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='37')
 #      
-# # Issue #36 Optimize best setup
-#     datasets = ['UKPConvArgStrict', 'UKPConvArgMACE']#, 'UKPConvArgAll_evalMACE']
-#     methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_additive_weaksprior'] 
-#     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
-#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
-#       
-#     default_ls_values = run_test_set() 
-#          
-#     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='36')
-#   
+
+# currently running --------------
 # # Issue #38, Run SVM on other datasets and compute missing metrics
 #     datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
 #     methods = ['SVM']
 #     feature_types = ['both', 'ling']
 #     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
 #     default_ls_values = run_test_set() 
-#          
+#           
 #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='38')
+# 
+# # Issue #36 Optimize best setup
+#     datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
+#     methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_additive_weaksprior'] 
+#     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
+#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
+#        
+#     default_ls_values = run_test_set() 
+#           
+#     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='36')
+# ------------------------------
 
 # Issue #39, Run BILSTM on other datasets and compute missing metrics
-    datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
+    datasets = ['UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
     methods = ['BI-LSTM']
     feature_types = ['embeddings']
     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
     default_ls_values = run_test_set() 
-        
+         
     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='38')
 
 
