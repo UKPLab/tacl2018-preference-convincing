@@ -1,3 +1,5 @@
+# -- coding: utf-8 --
+
 '''
 Helper functions for loading the data to run tests using the dataset from Ivan Habernal, 2016, ACL.
 
@@ -10,19 +12,20 @@ import os, sys
 data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
 sys.path.append('../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python')
-sys.path.append(data_root_dir + '/embeddings/Siamese-CBOW/siamese-cbow')
-sys.path.append(data_root_dir + '/embeddings/skip-thoughts')
-
-import numpy as np
+sys.path.append(os.path.expanduser('~/data/personalised_argumentation/embeddings/Siamese-CBOW/siamese-cbow'))
+sys.path.append(os.path.expanduser("~/data/personalised_argumentation/embeddings/skip-thoughts"))
+import skipthoughts
+import wordEmbeddings as siamese_cbow
 from data_loader import load_my_data_separate_args
 from data_loader_regression import load_my_data as load_my_data_regression
 from sklearn.datasets import load_svmlight_file
 from preproc_raw_data import generate_turker_CSV, generate_gold_CSV
+import numpy as np
 
-def combine_into_libsvm_files(dataset, ids1, ids2, labels, type, fold, 
+def combine_into_libsvm_files(dataset, ids1, ids2, labels, dataset_type, fold, nfeats,
         dirname=data_root_dir + '/lingdata/UKPConvArg1-Full-libsvm', 
         outputfile=data_root_dir + '/libsvmdata/%s-%s-%s-libsvm.txt', reverse_pairs=False): 
-    outputfile = outputfile % (dataset, type, fold)
+    outputfile = outputfile % (dataset, dataset_type, fold)
     
     outputstr = ""
     dataids = [] # contains the argument document IDs in the same order as in the ouputfile and outputstr
@@ -47,7 +50,11 @@ def combine_into_libsvm_files(dataset, ids1, ids2, labels, type, fold,
 
                 # move comments at end of first line to end of complete joint line
                 comment_split_line2 = lines2[0][1:].split('#')
-                outputline += comment_split_line2[0]
+                for feat in comment_split_line2[0].split('\t'):
+                    if not len(feat):
+                        continue
+                    outputline += str(int(feat.split(':')[0]) + nfeats)
+                    outputline += ':' + feat.split(':')[1] + '\t'
                 # we could re-add the comments back in, but this seems to be problematic for libsvm, not sure why?
                 #if len(comment_split_line) > 1:
                 #    outputline += '\t#' + comment_split_line[1] + '_' + comment_split_line_complete[1]  
@@ -57,7 +64,19 @@ def combine_into_libsvm_files(dataset, ids1, ids2, labels, type, fold,
             ofh.write(outputline)
                 
             if reverse_pairs and ids2 is not None:
-                outputline = str(int(1 - labels[row])) + comment_split_line2[0] + comment_split_line[0] + '\n'
+                outputline = str(int(1 - labels[row])) + comment_split_line2[0] 
+                
+                largestsofar = nfeats
+                
+                for feat in comment_split_line[0].split('\t'):
+                    if not len(feat):
+                        continue
+                    outputline += str(int(feat.split(':')[0]) + nfeats)
+                    outputline += ':' + feat.split(':')[1] + '\t'
+                    if int(feat.split(':')[0]) + nfeats < largestsofar:
+                        print 'Parsing error...'
+                    largestsofar = int(feat.split(':')[0]) + nfeats
+                outputline += '\n'
                 ofh.write(outputline)
                 
     return outputfile, outputstr, dataids
@@ -147,7 +166,7 @@ def load_train_test_data(dataset):
     # Load the train/test data into a folds object. -------------------------------------------------------------------
     # Here we keep each the features of each argument in a pair separate, rather than concatenating them.
     print('Loading train/test data from %s...' % csvdirname)
-    folds, word_index_to_embeddings_map, word_to_indices_map = load_my_data_separate_args(csvdirname, 
+    folds, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = load_my_data_separate_args(csvdirname, 
                                                                                           embeddings_dir=embeddings_dir)
     if ranking_csvdirname is not None:             
         folds_regression, _ = load_my_data_regression(ranking_csvdirname, load_embeddings=False)
@@ -156,7 +175,7 @@ def load_train_test_data(dataset):
         for fold in folds:
             folds[fold]["test"] = folds_test[fold]["test"]
 
-    return folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map
+    return folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map
     
 def load_embeddings(word_index_to_embeddings_map):
     print('Loading embeddings')
@@ -166,15 +185,15 @@ def load_embeddings(word_index_to_embeddings_map):
     #embeddings = np.asarray([np.array(x, dtype=np.float32) for x in word_index_to_embeddings_map.values()])
     return embeddings
 
-# def load_siamese_cbow_embeddings(word_to_indices_map):
-#     print('Loading Siamese CBOW embeddings...')
-#     filename = os.path.expanduser('~/data/embeddings/Siamese-CBOW/cosine_sharedWeights_adadelta_lr_1_noGradClip_epochs_2_batch_100_neg_2_voc_65536x300_noReg_lc_noPreInit_vocab_65535.end_of_epoch_2.pickle')
-#     return siamese_cbow.wordEmbeddings(filename)
-#      
-# def load_skipthoughts_embeddings(word_to_indices_map):
-#     print('Loading Skip-thoughts model...')
-#     model = skipthoughts.load_model()
-#     return model
+def load_skipthoughts_embeddings(word_to_indices_map):
+    print('Loading Skip-thoughts model...')
+    model = skipthoughts.load_model()
+    return model
+
+def load_siamese_cbow_embeddings(word_to_indices_map):
+    print('Loading Siamese CBOW embeddings...')
+    filename = os.path.expanduser('~/data/personalised_argumentation/embeddings/Siamese-CBOW/cosine_sharedWeights_adadelta_lr_1_noGradClip_epochs_2_batch_100_neg_2_voc_65536x300_noReg_lc_noPreInit_vocab_65535.end_of_epoch_2.pickle')
+    return siamese_cbow.wordEmbeddings(filename)
      
 def load_ling_features(dataset):
     ling_dir = data_root_dir + 'lingdata/'

@@ -36,9 +36,13 @@ def get_fold_data(data, f):
     # discrete labels are 0, 1 or 2
     gold_disc = np.array(data[3][f])
     pred_disc = np.array(data[1][f]) * 2
+    if pred_disc.ndim == 2 and pred_disc.shape[1] > 1:
+        pred_disc = pred_disc[:, 1]
     # probabilities
     gold_prob = gold_disc / 2.0
     pred_prob = np.array(data[0][f])
+    if pred_prob.ndim == 2 and pred_prob.shape[1] > 1:
+        pred_prob = pred_prob[:, 1]
     
 # Considering only the labels where a confident prediction has been made... In this case the metrics should be 
 # shown alongside coverage.
@@ -80,7 +84,7 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, tag=''):
             
         docids = None
         
-        folds, folds_regression, _, _ = load_train_test_data(dataset)
+        folds, folds_regression, _, _, _ = load_train_test_data(dataset)
 
         for m, method in enumerate(methods):
         
@@ -208,10 +212,14 @@ if __name__ == '__main__':
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
     # Issue #35 Best setup with other datasets
-    datasets = ['UKPConvArgMACE', 'UKPConvArgAll_evalMACE']
-    methods = ['SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_noOpt_additive_weaksprior'] 
-    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
-    embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
+    datasets = ['UKPConvArgStrict']#'UKPConvArgMACE', 'UKPConvArgAll_evalMACE']#, ]
+#     methods = ['SVM']#, 'GP+SVM', 'SingleGPC_noOpt_weaksprior', 'SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_additive_weaksprior'] 
+#     feature_types = ['both']#, 'ling']#,  can be 'embeddings' or 'ling' or 'both'
+#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
+
+    methods = ['SinglePrefGP_noOpt_weaksprior']
+    feature_types = ['embeddings', 'both', 'ling']
+    embeddings_types = ['skipthoughts', 'word_mean']#, 'skipthoughts']
     
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall = \
                                                     compute_metrics(methods, datasets, feature_types, embeddings_types)             
