@@ -41,7 +41,7 @@ def combine_into_libsvm_files(dataset, ids1, ids2, labels, dataset_type, fold, n
                 lines = fh.readlines()
 
             comment_split_line = lines[0][1:].split('#')                
-            outputline = str(int(labels[row])) + comment_split_line[0] 
+            outputline = str(float(labels[row])) + comment_split_line[0] 
                   
             if ids2 is not None:
                 fname2 = ids2[row] + '.libsvm.txt'
@@ -64,7 +64,7 @@ def combine_into_libsvm_files(dataset, ids1, ids2, labels, dataset_type, fold, n
             ofh.write(outputline)
                 
             if reverse_pairs and ids2 is not None:
-                outputline = str(int(1 - labels[row])) + comment_split_line2[0] 
+                outputline = str(float(1 - labels[row])) + comment_split_line2[0] 
                 
                 largestsofar = nfeats
                 
@@ -120,31 +120,23 @@ def load_train_test_data(dataset):
     
     # Select the directory containing original XML files with argument data + crowdsourced annotations.
     # See the readme in the data folder from Habernal 2016 for further explanation of folder names.    
-    if dataset == 'UKPConvArgAll':
+    if dataset == 'UKPConvArgCrowd':
         # basic dataset for UKPConvArgAll, which requires additional steps to produce the other datasets        
         dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'  
         ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArgAllRank-CSV/'
-    elif dataset == 'UKPConvArgMACE':        
+    elif dataset == 'UKPConvArgMACE' or dataset == 'UKPConvArgAll':   
         dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'
         ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-Ranking-CSV/'          
     elif dataset == 'UKPConvArgStrict':
         dirname = data_root_dir + 'argument_data/UKPConvArg1Strict-XML/'
         ranking_csvdirname = None        
     # these are not valid labels because ranking data is produced as part of other experiments        
-    elif dataset == 'UKPConvArgAllR':
-        dirname = None # don't need to create a new CSV file
-        raise Exception('This dataset cannot be used to select an experiment. To test ranking, run with \
-        dataset=UKPConvArgAll')        
-    elif dataset == 'UKPConvArgRank':
-        dirname = None # don't need to create a new CSV file
-        raise Exception('This dataset cannot be used to select an experiment. To test ranking, run with \
-        dataset=UKPConvArgMACE')
-    elif dataset == 'UKPConvArgAll_evalMACE': # train on the All datasets and evaluate on the MACE dataset -- the pref
+    elif dataset == 'UKPConvArgCrowd_evalMACE': # train on the All datasets and evaluate on the MACE dataset -- the pref
         # learning method does the combination so we can see how that compares to MACE -- can we skip those steps?
         dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'  
         ranking_csvdirname = None
-        folds_test, folds_regression, _, _ = load_train_test_data('UKPConvArgMACE')
-        dataset = 'UKPConvArgAll'
+        folds_test, folds_regression, _, _, _ = load_train_test_data('UKPConvArgAll')
+        dataset = 'UKPConvArgCrowd'
     else:
         raise Exception("Invalid dataset %s" % dataset)    
     
@@ -155,9 +147,9 @@ def load_train_test_data(dataset):
     if not os.path.isdir(csvdirname):
         print("Writing CSV files...")
         os.mkdir(csvdirname)
-        if dataset == 'UKPConvArgAll':
+        if dataset == 'UKPConvArgCrowd':
             generate_turker_CSV(dirname, csvdirname) # select all labels provided by turkers
-        elif dataset == 'UKPConvArgStrict' or dataset == 'UKPConvArgMACE':
+        elif dataset == 'UKPConvArgStrict' or dataset == 'UKPConvArgAll':
             generate_gold_CSV(dirname, csvdirname) # select only the gold labels
                 
     embeddings_dir = data_root_dir + '/embeddings/'

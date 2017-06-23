@@ -2,8 +2,7 @@
 
 The first dataset contains a number of pairwise convincingness preference labels for a set of arguments from a crowd of workers. Each label is associated with two arguments and expresses whether a worker in the crowd found the first argument most convincing, the second argument, or had no preference.  
 
-The task is to train the models then predict the preference labels for held-out data. Each method can be assessed in terms of classification accuracy, since the labels have three possible values. In the first set of experiments we evaluate the baselines and the different methods for modelling correlations between workers' preferences. In the second set of experiments, we assess the value of different language features. Finally, the third experiment evaluates approaches that integrate both argument features and models of preference correlations.
-
+The task is to train the models then predict the preference labels for held-out data. Each method can be assessed in terms of classification accuracy, since the labels have three possible values. 
 \subsection{Hypotheses -- needs to be reconciled with the above paragraph} 
 
 Prior work on convincingness:
@@ -15,14 +14,9 @@ Prior work on convincingness:
 
 We build on this to show...
 \begin{itemize}
- \item How we can predict convincingness for a specific user given only previous preferences and 
- preferences of others (collaborative filtering)
  \item How we can rank arguments in terms of convincingness using preference learning, and resolve
  conflicts.
- \item How a combination of text and personality features improves predictions of convincingness
- \item Which input features/side information features are informative and how we can learn this using a Bayesian approach
- \item That we can extract human-interpretable latent features in people and items,
- which improve performance over just using the input features.
+ \item Which input features are informative and how we can learn this using a Bayesian approach
  \item Uncertainty is modelled correctly in the Bayesian approach so that (a) we can filter
  out the uncertain decisions to improve accuracy; (b) the brier score/cross entropy error is lower;
  \item Uncertainty also means that simple active learning works better
@@ -32,22 +26,17 @@ We build on this to show...
 This is all useful because we can use the approach to determine which features are worth 
 obtaining, make predictions when data is sparse, and obtain data from users efficiently.
 
-The steps to show this are:
+Experiment story:
 \begin{enumerate}
-  \item Show a table comparing the baselines, alternative collaborative filtering methods, 
-  results from \cite{habernal2016argument}, and unsupervised method
-  \item Add in results when using the input information with out method
-  \item Show a table comparing the baselines, alternative collaborative filtering methods, 
-  results from \cite{lukin2017argument}, and unsupervised method
-  \item Add in results using item information, person information and both
-  \item Visualise latent features?
-  \item Table showing importance of input features
-  \item Add results with lower confidence items excluded to the tables in 1-4. We can also plot the
-  effect of confidence threshold on our results and on the rival methods.
-  \item Add in Bier/cross entropy -- may need to rerun the original code from the previous papers?
-  \item Run \cite{habernal2016argument} and my complete method with reduced data -- check accuracy as it increases. Use confidence cut-off from previous results.
-  \item Simple active learning approach selecting the most uncertain data point (this will be due to 
-  uncertainty about a person, an item with too little data, or disagreement/stochasticity in the likelihood). The plot can be added to the previous results and should be run with rival methods.
+  \item Compare GP preference learning (GPPL) to SVM using linguistic features. Result: better performance on ranking tasks.
+  \item Compare GPPL to Bi-LSTM. Result: GPPL is not as effective when using mean embeddings, but GPPL with linguistic features still outperforms Bi-LSTM on all metrics.
+  \item Do the embeddings and linguistic features provide complementary information? Run GPPL with both sets of features. Result: a small improvement on classification tasks, and larger improvement on ranking suggests that the feature sets contain complementary information. The computational cost (of kernel computation, which dominates the overall cost in these experiments) grows linearly with number of features. 
+  \item How much does performance drop when we allow conflicts in the preference graph? Compare GPPL, SVM, Bi-LSTM. Result: all methods have a small drop in performance, but GPPL is affected least.
+  \item How much does performance drop if we use noisy crowdsourced labels, rather than the gold standard produced by MACE? Compare GPPL, SVM, Bi-LSTM. Result: as in previous experiment, GPPL copes best with the added noise. 
+  \item Does GPPL improve ranking performance because of the way it resolves conflicting preferences, or the way it makes predictions? Compare against feature-free preference learning used to train an SVM regression model (PL+SVR). Result: GPPL improves classification slightly on noise-free dataset, and improves more over PL+SVR on ranking and noisy classification tasks. GPPL resolves conflicts at the same time as predicting scores using similarities between arguments in feature space, so therefore has more information to resolve erroneous labels than the feature-free PL.
+  \item GP methods are heavily affected by choice of kernel. The standard approach (using a product of kernels for each feature) is equivalent to taking the euclidean distance between points in feature space. These distances become very large when we have a large number of features. Each point needs to be close in all dimensions in order to be close overall. An alternative to this product kernel is to use a sum kernel, which will result in points having strong covariance if some (rather than all) features are similar. This may be suitable for high-dimensional settings where some features may have missing values. Compare the GPPL approach with product and sum kernels. Result: *needs rerunning due to bug in sum kernel*
+  \item Besides the choice of kernel itself, another important set of hyperparameters of the GPPL are the hyperparameters for the prior over the output scale of the kernel. The output scale controls the noise of the preferences, and needs to be large enough to allow the posterior to deviate substantially from the prior mean given only a small number of observations at each point. We test three different plausible settings of this hyperparameter to determine how sensitive the results are. Result: heavily informative values do not work well; very noninformative values are effective, although we observe a small boost when using an intermediate setting. This may be due to the data sparsity; the intermediate setting puts more weight onto each individual observation.
+  
 \end{enumerate}
 
 \begin{table*}
@@ -60,7 +49,7 @@ The steps to show this are:
   Discard conflicting preferences. & 
   Bayesian method is competitive with previous methods at predicting clean preference pairs from a clean dataset. &
   GP Preference learning + linguistic features + embeddings. \\\hline\\
-  2. UKPConvArgMACE & 
+  2. UKPConvArgAll & 
   MACE output with confidence $\ge 95\%$;\newline
   No further filtering. & 
   Bayesian method is competitive with previous methods if filtering step is removed. &
@@ -73,12 +62,12 @@ The steps to show this are:
    can perform ranking given pairs rather than rank scores. &
   GP regression with preference learning output + linguistic features + embeddings (trained on rank scores); \newline
   GP Preference learning + linguistic features + embeddings (trained on pairs). \\\hline\\  
-  4. UKPConvArgAll & 
+  4. UKPConvArgCrowd & 
   No filtering, all pairs from original workers are provided. & 
   Bayesian method can predict argument pairs for individual annotators with competitive performance to rival methods on clean, combined data; \newline
   There are patterns of common agreement/disagreement among workers. &
   Bayesian Preference Components + linguistic features + embeddings (pair prediction). \\\hline\\
-  5. UKPConvArgAllR & 
+  5. UKPConvArgCrowdR & 
   No filtering, all pairs from original workers are provided; \newline 
   PageRank used to produce gold-standard ranking. & 
   Bayesian model can predict individual argument rankings;\newline

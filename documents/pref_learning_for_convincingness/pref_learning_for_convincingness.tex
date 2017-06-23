@@ -54,6 +54,24 @@ Email: anonymous}
 \maketitle
 
 \begin{abstract}
+
+\begin{itemize}
+  \item Motivation: finding well-written and convincing arguments to enable better decision-making, analyse public opinion
+  \item Need tools that can learn to identify convincing arguments in new topics and domains from small amounts of data
+  \item Pairwise preferences provide a way for multiple people to communicate the relative convincingness of arguments 
+  \item Implicit preferences can be elicited from user actions, such as selecting a document from a list given its summary to read in more detail
+  \item We propose a scalable approach to preference learning using stochastic variational inference to learn a Gaussian process model
+  \item We show how Bayesian approach to preference learning can be applied to high-dimensional text problems
+  \item The approach outperforms SVMs and neural networks when data is sparse or noisy  
+  \item ...and achieves state-of-the art performance for predicting argument convincingness given sufficient data
+  \item We show how our Bayesian approach enables more effective active learning, thereby reducing the amount of data required to model argument convincingness in new domains
+  \item We develop a gradient-based approach to automatic relevance determination that enables us to identify the most informative features for predicting arguments when the input space contains tens of thousands of dimensions
+  \item Our analysis shows that word embeddings and linguistic features contain complementary information that boost performance when both types of features are used.
+\end{itemize}
+
+
+
+
 \end{abstract}
 
 % For peer review papers, you can put extra information on the cover
@@ -81,6 +99,6 @@ Email: anonymous}
 % \addcontentsline{toc}{chapter}{Bibliography}
 %\bibliographystyle{apalike}
 \bibliographystyle{IEEEtran}
-\bibliography{simpson_convincingness_analysis}
+\bibliography{simpson_pref_learning_for_convincingness}
 
 \end{document}

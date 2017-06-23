@@ -212,14 +212,14 @@ if __name__ == '__main__':
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
     # Issue #35 Best setup with other datasets
-    datasets = ['UKPConvArgStrict']#'UKPConvArgMACE', 'UKPConvArgAll_evalMACE']#, ]
+    datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE']#, ]
 #     methods = ['SVM']#, 'GP+SVM', 'SingleGPC_noOpt_weaksprior', 'SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_additive_weaksprior'] 
 #     feature_types = ['both']#, 'ling']#,  can be 'embeddings' or 'ling' or 'both'
 #     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
 
-    methods = ['SinglePrefGP_noOpt_weaksprior']
+    methods = ['SingleGPC_noOpt_weaksprior', 'SVM']
     feature_types = ['embeddings', 'both', 'ling']
-    embeddings_types = ['skipthoughts', 'word_mean']#, 'skipthoughts']
+    embeddings_types = ['word_mean']#, 'skipthoughts']
     
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall = \
                                                     compute_metrics(methods, datasets, feature_types, embeddings_types)             

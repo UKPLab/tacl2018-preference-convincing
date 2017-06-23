@@ -1,0 +1,69 @@
+\section{Introduction}\label{sec:intro}
+
+We hypothesise that different people find different types of argument more convincing 
+than others and therefore, 
+textual features have varying levels of importance in determining convincingness, 
+depending on the audience. 
+We investigate whether certain combinations of textual features are indicative of an argument's convincingness to a particular person.
+We hypothesise that predictions of convincingness will be more accurate if we adapt the model to the individual reader based on their previously observed preferences. 
+However, preference data for a single individual for any given task can be very sparse, 
+so it will be necessary to consider the similarities between different users' preferences.
+Furthermore, the  computational cost of learning independent models for each person and each task may be
+impractically high, suggesting a need for more efficient approaches that combine information from multiple users.
+
+Our approach is therefore to identify correlations between different people's preferences
+so that we can learn shared models of convincingness that can then be adapted to individuals to improve predictions of argument convincingness. 
+We aim to establish whether such a model can be learned by observing pairwise convincingness preferences, 
+%and whether language features extracted from arguments can further improve performance when which argument a person will find most convincing. 
+
+The experiments evaluate a number of techniques for modelling worker preferences, different types of language features, and the correlations between workers and features. 
+We investigate whether workers with similar preferences according to each model give similar justifications for their decisions, thereby lending additional support for models based on correlations between preferences.
+
+We provide a new preference learning model to handle large numbers of potentially very sparse features and large numbers of people. Our Bayesian approach enables us to 
+perform automatic feature selection, learn in semi-supervised or unsupervised modes, 
+and fully account for model and parameter uncertainty, while scaling to large numbers of input features. 
+
+\section{Related Work}\label{sec:related}
+
+The Gaussian process (GP) preference learning approach of \cite{chu2005preference} resolves such inconsistencies and provides a way to predict rankings or preferences for 
+items for which we have not observed any pairwise comparisons based on the item's features. 
+An extension to multiple users was proposed by \cite{houlsby2012collaborative}, 
+but this method suffered from poor scalability.
+
+Matrix factorisation techniques are commonly used in recommender systems to discover latent
+user and item features but can fail if the
+data is very sparse unless suitably regularised or given a Bayesian treatment.
+Matrix factorisation techniques are also unsuitable for pairwise comparisons as they 
+must be learned using explicit numerical ratings.
+A more scalable approach that incorporates probabilistic matrix factorisation
+(specifically, probabilistic PCA) was proposed by \cite{khan2014scalable}.
+Their method is applicable to both pairwise comparisons and ratings data
+and as such could be used to learn the model from implicit feedback such as clicks on an item. However, it may be more suitable to use a model for such feedback that explicitly considers the different bias and noise of each type or source of feedback. For such
+a purpose, the model of \cite{dawid_maximum_1979} may be appropriate but has to date
+been used for classifier combination and categorical labelling tasks in crowdsourcing and has not been applied to preference learning from different types of feedback. 
+Bayesian approaches are suited to handling these problems of data sparsity, noise and bias, 
+particularly as the modular nature of inference algorithms such as Gibb's sampling and variational approximation is suited to extending the model to handle different types of feedback that give indications of some underlying preferences. 
+
+The GP methods require $\mathcal{O}(P_n)$ steps, where $P_n$ is the number of pairs for 
+user $n$. 
+The method proposed by \cite{khan2014scalable} reduces this scaling issue by using a random sample of pairs at each iteration of their EM algorithm.
+We use SVI to address scalability in a variational Bayesian framework. 
+The modular nature of VB allows us to take advantage of models for feedback of different types
+where the input values for each type of feedback do not directly correspond (e.g. explicit user ratings and number of clicks may have different values).
+By using SVI, we provide a formal way to deal with scalability that comes with guarantees\cite{hoffman2013stochastic}.
+We also estimate the output scale of the GPs, the latent factors, and item bias as part of the 
+variational approximation. %not clear what the true advantage of this is?
+
+We compare our work on Sushi-A dataset or against the method of \cite{khan2014scalable} to see if 
+our modifications are actually useful. 
+
+Factor analysis differs from PPCA in allowing only diagonal noise covariance matrices, making 
+the observed variables conditionally independent given the latent variables. It also provides
+a probabilistic treatment for inferring the latent features. %are we still using FA?
+
+We also investigate whether argumentation preferences can be reduced to a simpler
+clustering structure, which may be easier to learn with very sparse user data.
+
+% possible extension: state variable to describe what was previously seen? This could relate to time 
+% since argument seen, and can be converted to an input feature for the GP model: exp(-t). I think
+% that learning length scale and output scale for this feature would work.

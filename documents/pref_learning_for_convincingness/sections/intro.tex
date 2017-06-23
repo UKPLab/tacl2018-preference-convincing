@@ -1,23 +1,61 @@
 \section{Introduction}\label{sec:intro}
 
-We investigate whether certain combinations of textual features are indicative of an argument's convincingness.
-We hypothesise that different people find different types of argument more convincing than others and therefore, textual features have varying levels of importance in determining convincingness, depending on the audience. 
-We propose to model the relationships between convincingness and textual features to predict which arguments a person will prefer.
-We hypothesise that these predictions will be more accurate if we adapt the model to the individual reader based on their previously observed preferences. 
-However, individual preference data is likely to be very sparse, 
-and the computational cost of modelling very high, 
-meaning that it is impractical to learn independent models for each person.
-Our approach is therefore to identify correlations between different people's preferences
-so that we can learn shared models of convincingness that can then be adapted to individuals to improve predictions of argument convincingness. 
-We aim to establish whether such a model can be learned by observing pairwise convincingness preferences, 
-%and whether language features extracted from arguments can further improve performance when which argument a person will find most convincing. 
+Motivations for modelling argument convincingness:
+\begin{itemize}
+  \item Learning about a controversial topic often requires reading large amounts of text, often with much duplicate information, in order to understand different points of view
+  \item Points of view on controversial topics are often presented as arguments for or against a particular position
+  \item Finding well-written arguments could allow better understanding of why people hold particular opinions
+  \item Identifying arguments that are considered convincing to a particular group of people helps understand who holds which point of view
+  \item Tools that identify convincing arguments could therefore assist in making better decisions and analysing public opinion
+\end{itemize}
 
-The experiments evaluate a number of techniques for modelling worker preferences, different types of language features, and the correlations between workers and features. 
-We investigate whether workers with similar preferences according to each model give similar justifications for their decisions, thereby lending additional support for models based on correlations between preferences.
+Pairwise preferences provide a way for multiple people to communicate the relative convincingness of arguments:
+\begin{itemize}
+  \item Implicit preferences can be elicited from user actions, such as selecting a document from a list given its summary to read in more detail
+  \item Explicit preferences can be easier to provide than ratings or classifications
+  \item Since preferences are relative, they avoid calibration issues caused by multiple people using ratings (e.g. Mary rarely awards 5 stars to movies she likes, John frequently awards 5 stars)
+\end{itemize}
+  
+Previous work on predicting convincingness:
+\begin{itemize}
+  \item \cite{habernal2016argument} shows that it is possible to predict convincingness given linguistic features or word embeddings
+  \item They show that models can be transferred reasonably well between topics in online debates (78\% accuracy)
+  \item New types of text, new domains, and new users with different preferences means we may face situations in practice where models trained on existing corpora are less effective, but data for the new task is limited (sparse)
+  \item Use two different pipelines consisting of multiple steps: combining crowdsourced data, removing inconsistencies, classification; combining crowdsourced data, ranking using PageRank, regression
+  \item In low-data situations, these approaches may underperform, since model uncertainty is not accounted for between each stage, nor in the final predictions, and errors propagate along the pipeline
+  \item Training data may also contain errors, which would be propagated through the pipeline (this was avoided in previous work by combining labels from multiple crowdworkers; we should be able to handle the case where this is not possible).
+  \item Feature space becomes very large when working with textual features -- can we narrow it down automatically to improve scalability and improve performance?
+\end{itemize}
 
-We provide a new preference learning model to handle large numbers of potentially very sparse features and large numbers of people. Our Bayesian approach enables us to 
-perform automatic feature selection, learn in semi-supervised or unsupervised modes, 
-and fully account for model and parameter uncertainty, while scaling to large numbers of input features. 
+In contrast to previous work, we propose to directly model the relationship between preferences for convincing arguments and textual features (incl. word embeddings) to predict which arguments a person will prefer:
+\begin{itemize}
+  \item Bayesian approaches have been shown to successfully handle situations with small amounts of data, allow transfer of background knowledge through priors, and provide a good basis for actively selecting data
+  \item Confidence estimates from Bayesian models account for sparsity and noise in data, as well as uncertainty in the model. This means they do not make overly-confident predictions when training data is small (they know when they don't know).
+  \item Bayesian preference learning methods have been proposed but scalable implementations were not developed and models have not been applied to text with large numbers of features
+  \item We address the limitations above by adapting Bayesian preference learning approach to argumentation
+  \item Introduce stochastic variational inference (SVI) to train the model on large numbers of preferences and documents
+  \item Develop gradient-based ARD to identify relevant text features
+\end{itemize}
+
+We demonstrate how our preference learning approach can be used to model convincingness of arguments:
+\begin{itemize}
+  \item Evaluate the performance of our approach against state-of-the art deep learning and SVM methods
+  \item Show that Bayesian Gaussian process (GP) models are applicable to performing preference learning over text (existing evaluation of GPs for text is very limited, although they have been used extensively with great success in domains such as Physics, finance, Biology. This is possibly because GPs were seen as more difficult to implement and could not be scaled up until recent advances such as SVI)
+  \item Evaluate the ability of each method to handle noisy and sparse data, showing improved performance using our method in the presence of noise and data sparsity
+  \item Analyse the features that are most informative when determining convincingness, providing insight into what makes a convincing argument
+\end{itemize}
+
+Structure:
+\begin{itemize}
+  \item Review related work in more detail: on argumentation and persuasion; examples of Bayesian methods for NLP
+  \item Method background: preference learning with GPs; scalability of GPs; related work on SVI
+  \item Method part 1: proposed approach to scalable Bayesian preference learning
+  \item Method part 2: automatic relevance determination: background; our proposed gradient-based method
+  \item Experiments 1: comparison with state-of-the art on predicting preference in online debates; error analysis focussing on differences between each method
+  \item Experiments 2: study of performance with noisy and sparse data; error analysis highlighting differences in each method
+  \item Experiments 3: analysis of informative features for argumentation
+  \item Conclusions and future work
+\end{itemize}
 
 \section{Related Work}\label{sec:related}
 
@@ -26,28 +64,14 @@ Related work on argumentation and persuasion. Related work on finding reasons fo
 Preference learning from pairwise preferences is effective because it removes the need for humans to provide scores or classifications and allows them to make relevance judgements,
 which have been shown to be easier for human annotators in many cases\cite{brochu_active_2007}. Pairwise comparisons also occur in implicit feedback, for example, when a user chooses to click on link from a list of several. They are therefore a useful tool for practical learning from end users. 
 However, the pairwise comparisons we observe may not be a perfect representation of their preferences as they may contain noise, leading to inconsistencies where items cannot be ranked in such a way that the ranking agrees with all the observed comparisons. 
-The Gaussian process (GP) preference learning approach of \cite{chu2005preference} resolves such inconsistencies and provides a way to predict rankings or preferences for 
-items for which we have not observed any pairwise comparisons based on the item's features. 
-An extension to multiple users was proposed by \cite{houlsby2012collaborative}, 
-but this method suffered from poor scalability.
-
-Matrix factorisation techniques are commonly used in recommender systems to discover latent
-user and item features but can fail if the
-data is very sparse unless suitably regularised or given a Bayesian treatment.
-Matrix factorisation techniques are also unsuitable for pairwise comparisons as they 
-must be learned using explicit numerical ratings.
-A more scalable approach that incorporates probabilistic matrix factorisation
-(specifically, probabilistic PCA) was proposed by \cite{khan2014scalable}.
-Their method is applicable to both pairwise comparisons and ratings data
-and as such could be used to learn the model from implicit feedback such as clicks on an item. However, it may be more suitable to use a model for such feedback that explicitly considers the different bias and noise of each type or source of feedback. For such
-a purpose, the model of \cite{dawid_maximum_1979} may be appropriate but has to date
-been used for classifier combination and categorical labelling tasks in crowdsourcing and has not been applied to preference learning from different types of feedback. 
 Bayesian approaches are suited to handling these problems of data sparsity, noise and bias, 
+The Gaussian process (GP) preference learning approach of \cite{chu2005preference} resolves inconsistencies between preferences and provides a way to predict rankings or preferences for 
+items for which we have not observed any pairwise comparisons based on the item's features. 
+This model assumes that preferences are noisy, i.e. contain some erroneous labels.
 particularly as the modular nature of inference algorithms such as Gibb's sampling and variational approximation is suited to extending the model to handle different types of feedback that give indications of some underlying preferences. 
 
 The GP methods require $\mathcal{O}(P_n)$ steps, where $P_n$ is the number of pairs for 
 user $n$. 
-The method proposed by \cite{khan2014scalable} reduces this scaling issue by using a random sample of pairs at each iteration of their EM algorithm.
 We use SVI to address scalability in a variational Bayesian framework. 
 The modular nature of VB allows us to take advantage of models for feedback of different types
 where the input values for each type of feedback do not directly correspond (e.g. explicit user ratings and number of clicks may have different values).
@@ -136,17 +160,3 @@ This individual noise model allows us to differentiate preference patterns that 
 one user, when the input features may not otherwise be sufficient to distinguish these users. 
 
 %%%%% End March 2017 additions
-
-We compare our work on Sushi-A dataset or against the method of \cite{khan2014scalable} to see if 
-our modifications are actually useful. 
-
-Factor analysis differs from PPCA in allowing only diagonal noise covariance matrices, making 
-the observed variables conditionally independent given the latent variables. It also provides
-a probabilistic treatment for inferring the latent features. %are we still using FA?
-
-We also investigate whether argumentation preferences can be reduced to a simpler
-clustering structure, which may be easier to learn with very sparse user data.
-
-% possible extension: state variable to describe what was previously seen? This could relate to time 
-% since argument seen, and can be converted to an input feature for the GP model: exp(-t). I think
-% that learning length scale and output scale for this feature would work.
