@@ -153,9 +153,9 @@ def load_train_test_data(dataset):
     if not os.path.isdir(csvdirname):
         print("Writing CSV files...")
         os.mkdir(csvdirname)
-        if 'UKPConvArgCrowd' in dataset:
+        if dataset == 'UKPConvArgCrowd': # not for CrowdSample
             generate_turker_CSV(dirname, csvdirname) # select all labels provided by turkers
-        elif 'UKPConvArgStrict' in dataset or 'UKPConvArgAll' in dataset:
+        elif 'UKPConvArgStrict' in dataset or 'UKPConvArgAll' in dataset or dataset == 'UKPConvArgCrowdSample':
             generate_gold_CSV(dirname, csvdirname) # select only the gold labels
                 
     embeddings_dir = data_root_dir + '/embeddings/'
