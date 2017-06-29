@@ -14,8 +14,7 @@ data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 sys.path.append('../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python')
 sys.path.append(os.path.expanduser('~/data/personalised_argumentation/embeddings/Siamese-CBOW/siamese-cbow'))
 sys.path.append(os.path.expanduser("~/data/personalised_argumentation/embeddings/skip-thoughts"))
-import skipthoughts
-import wordEmbeddings as siamese_cbow
+
 from data_loader import load_my_data_separate_args
 from data_loader_regression import load_my_data as load_my_data_regression
 from sklearn.datasets import load_svmlight_file
@@ -140,7 +139,7 @@ def load_train_test_data(dataset):
         folds_test, folds_regression_test, _, _, _ = load_train_test_data('UKPConvArgAll')
         dataset = 'UKPConvArgCrowd'
     elif dataset == 'UKPConvArgCrowdSample_evalMACE':
-        dirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-XML'  
+        dirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-XML/'  
         ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/'
         folds_test, folds_regression, _, _, _ = load_train_test_data('UKPConvArgAll')
         dataset = 'UKPConvArgCrowd'
@@ -189,12 +188,14 @@ def load_embeddings(word_index_to_embeddings_map):
 
 def load_skipthoughts_embeddings(word_to_indices_map):
     print('Loading Skip-thoughts model...')
+    import skipthoughts
     model = skipthoughts.load_model()
     return model
 
 def load_siamese_cbow_embeddings(word_to_indices_map):
     print('Loading Siamese CBOW embeddings...')
     filename = os.path.expanduser('~/data/personalised_argumentation/embeddings/Siamese-CBOW/cosine_sharedWeights_adadelta_lr_1_noGradClip_epochs_2_batch_100_neg_2_voc_65536x300_noReg_lc_noPreInit_vocab_65535.end_of_epoch_2.pickle')
+    import wordEmbeddings as siamese_cbow
     return siamese_cbow.wordEmbeddings(filename)
      
 def load_ling_features(dataset):

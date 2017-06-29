@@ -58,7 +58,6 @@ from gp_classifier_svi import GPClassifierSVI
 from sklearn.svm import SVR 
 from data_loading import load_train_test_data, load_embeddings, load_ling_features, data_root_dir, \
     combine_into_libsvm_files, load_siamese_cbow_embeddings, load_skipthoughts_embeddings
-import skipthoughts
 from joblib import Parallel, delayed
 import multiprocessing
 import numpy as np
@@ -100,6 +99,7 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
         if embeddings_type == 'word_mean':
             items_feat = get_mean_embeddings(embeddings, X)
         elif embeddings_type == 'skipthoughts':
+            import skipthoughts
             items_feat = skipthoughts.encode(embeddings, utexts)
         elif embeddings_type == 'siamese-cbow':
             items_feat = np.array([embeddings.getAggregate(index_to_word_map[Xi]) for Xi in X])
