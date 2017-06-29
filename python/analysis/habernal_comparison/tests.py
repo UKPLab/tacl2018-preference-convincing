@@ -962,9 +962,19 @@ if __name__ == '__main__':
     acc = 1.0
     dataset_increment = 1.0
 
-    datasets = ['UKPConvArgAll']
-    methods = ['SingleGPC_noOpt_weaksprior']
+    datasets = ['UKPConvArgCrowdSample_evalMACE']
+    methods = ['BI-LSTM']
+    feature_types = ['embeddings']
+    embeddings_types = ['word_mean']
+    default_ls_values = run_test_set()
+
+    methods = ['SinglePrefGP_noOpt_weaksprior_additive','GP+SVM']
     feature_types = ['both']
+    embeddings_types = ['word_mean']
+    default_ls_values = run_test_set()
+
+    methods = ['SVM']
+    feature_types = ['ling']
     embeddings_types = ['word_mean']
     default_ls_values = run_test_set()
 
