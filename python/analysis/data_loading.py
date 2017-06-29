@@ -139,7 +139,7 @@ def load_train_test_data(dataset):
         folds_test, folds_regression_test, _, _, _ = load_train_test_data('UKPConvArgAll')
         dataset = 'UKPConvArgCrowd'
     elif dataset == 'UKPConvArgCrowdSample_evalMACE':
-        dirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-XML'  
+        dirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-XML/'  
         ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/'
         folds_test, folds_regression, _, _, _ = load_train_test_data('UKPConvArgAll')
         dataset = 'UKPConvArgCrowd'
