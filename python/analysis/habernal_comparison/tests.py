@@ -544,7 +544,7 @@ def run_bilstm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items
         #np.append(row1, X_train2[i])
         row1 = row1 + X_train2[i]
         X_train.append(row1)
-    X_test1, X_test2, _, _, _ = folds.get(fold)["test"]
+    X_test1, X_test2, _, _, _, _, _ = folds.get(fold)["test"]
     X_test = []
     for i, row1 in enumerate(X_test1):
         #row1 = np.array(row1)
@@ -962,7 +962,7 @@ if __name__ == '__main__':
     acc = 1.0
     dataset_increment = 1.0
 
-    datasets = ['UKPConvArgAll']
+    datasets = ['UKPConvArgCrowdSample_evalMACE']
     methods = ['SingleGPC_noOpt_weaksprior']
     feature_types = ['both']
     embeddings_types = ['word_mean']
