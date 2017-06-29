@@ -155,6 +155,8 @@ def translate_to_local(all_labels):
 def generate_gold_CSV(datadir, outputdir):
     datafiles = os.listdir(datadir)
     for i, f in enumerate(datafiles):
+        if f.split('.')[-1] != 'xml':
+            continue        
         print "Processing file %i of %i, filename=%s" % (i, len(datafiles), f)
         with open(datadir + f) as ffile:
             doc = xmltodict.parse(ffile.read())
@@ -166,6 +168,8 @@ def generate_gold_CSV(datadir, outputdir):
 def generate_turker_CSV(datadir, outputdir):
     datafiles = os.listdir(datadir)
     for i, f in enumerate(datafiles):
+        if f.split('.')[-1] != 'xml':
+            continue        
         print "Processing file %i of %i, filename=%s" % (i, len(datafiles), f)
         with open(datadir + f) as ffile:
             doc = xmltodict.parse(ffile.read())

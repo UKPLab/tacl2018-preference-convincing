@@ -117,39 +117,46 @@ def load_train_test_data(dataset):
     
     folds_regression = None # test data for regression (use the folds object for training)
     folds_test = None # can load a separate set of data for testing classifications, e.g. train on workers and test on gold standard
+    folds_regression_test = None # for when the test for the ranking is different to the training data
     
     # Select the directory containing original XML files with argument data + crowdsourced annotations.
     # See the readme in the data folder from Habernal 2016 for further explanation of folder names.    
     if dataset == 'UKPConvArgCrowd':
-        # basic dataset for UKPConvArgAll, which requires additional steps to produce the other datasets        
+        # basic dataset, requires additional steps to produce the other datasets        
         dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'  
         ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArgAllRank-CSV/'
+    elif dataset == 'UKPConvArgCrowdSample':
+        dirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-XML/'  
+        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/'
     elif dataset == 'UKPConvArgMACE' or dataset == 'UKPConvArgAll':   
         dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'
         ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-Ranking-CSV/'          
     elif dataset == 'UKPConvArgStrict':
         dirname = data_root_dir + 'argument_data/UKPConvArg1Strict-XML/'
         ranking_csvdirname = None        
-    # these are not valid labels because ranking data is produced as part of other experiments        
-    elif dataset == 'UKPConvArgCrowd_evalMACE': # train on the All datasets and evaluate on the MACE dataset -- the pref
-        # learning method does the combination so we can see how that compares to MACE -- can we skip those steps?
+    elif dataset == 'UKPConvArgCrowd_evalMACE': # train on the crowd dataset and evaluate on the MACE dataset
         dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'  
-        ranking_csvdirname = None
+        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArgAllRank-CSV/'
+        folds_test, folds_regression_test, _, _, _ = load_train_test_data('UKPConvArgAll')
+        dataset = 'UKPConvArgCrowd'
+    elif dataset == 'UKPConvArgCrowdSample_evalMACE':
+        dirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-XML'  
+        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/'
         folds_test, folds_regression, _, _, _ = load_train_test_data('UKPConvArgAll')
         dataset = 'UKPConvArgCrowd'
     else:
         raise Exception("Invalid dataset %s" % dataset)    
     
     print("Data directory = %s, dataset=%s" % (dirname, dataset))
-    csvdirname = data_root_dir + 'argument_data/%s-CSV/' % dataset
+    csvdirname = data_root_dir + 'argument_data/%s-new-CSV/' % dataset
     # Generate the CSV files from the XML files. These are easier to work with! The CSV files from Habernal do not 
     # contain all turker info that we need, so we generate them afresh here.
     if not os.path.isdir(csvdirname):
         print("Writing CSV files...")
         os.mkdir(csvdirname)
-        if dataset == 'UKPConvArgCrowd':
+        if 'UKPConvArgCrowd' in dataset:
             generate_turker_CSV(dirname, csvdirname) # select all labels provided by turkers
-        elif dataset == 'UKPConvArgStrict' or dataset == 'UKPConvArgAll':
+        elif 'UKPConvArgStrict' in dataset or 'UKPConvArgAll' in dataset:
             generate_gold_CSV(dirname, csvdirname) # select only the gold labels
                 
     embeddings_dir = data_root_dir + '/embeddings/'
@@ -166,6 +173,9 @@ def load_train_test_data(dataset):
     if folds_test is not None:
         for fold in folds:
             folds[fold]["test"] = folds_test[fold]["test"]
+    if folds_regression_test is not None:
+        for fold in folds_regression:
+            folds_regression[fold]["test"] = folds_regression_test[fold]["test"] 
 
     return folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map
     

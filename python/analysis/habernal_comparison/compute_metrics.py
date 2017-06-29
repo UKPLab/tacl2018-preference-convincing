@@ -38,11 +38,14 @@ def get_fold_data(data, f):
     pred_disc = np.array(data[1][f]) * 2
     if pred_disc.ndim == 2 and pred_disc.shape[1] > 1:
         pred_disc = pred_disc[:, 1]
+    #pred_disc = 2 - pred_disc
+    
     # probabilities
     gold_prob = gold_disc / 2.0
     pred_prob = np.array(data[0][f])
     if pred_prob.ndim == 2 and pred_prob.shape[1] > 1:
         pred_prob = pred_prob[:, 1]
+    #pred_prob = 1 - pred_prob
     
 # Considering only the labels where a confident prediction has been made... In this case the metrics should be 
 # shown alongside coverage.
@@ -70,7 +73,7 @@ def get_fold_data(data, f):
         
     return gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank
 
-def compute_metrics(methods, datasets, feature_types, embeddings_types, tag=''):
+def compute_metrics(methods, datasets, feature_types, embeddings_types, acc=1.0, dataset_increment=1.0, tag=''):
     row_index = np.zeros(len(methods) * len(datasets), dtype=object)
     columns = np.zeros(len(feature_types) * len(embeddings_types), dtype=object)
     
@@ -108,7 +111,8 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, tag=''):
                     embeddings_to_use = embeddings_types
                 for embeddings_type in embeddings_to_use:
                     resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
-                    'habernal_%s_%s_%s_%s_test.pkl' % (dataset, method, feature_type, embeddings_type)
+                    'habernal_%s_%s_%s_%s_acc%.2f_di%.2f_test.pkl' % (dataset, method, feature_type, embeddings_type, 
+                                                                      acc, dataset_increment)
                     
                     if os.path.isfile(resultsfile): 
                         
@@ -212,14 +216,14 @@ if __name__ == '__main__':
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
     # Issue #35 Best setup with other datasets
-    datasets = ['UKPConvArgStrict', 'UKPConvArgMACE', 'UKPConvArgAll_evalMACE']#, ]
+    datasets = ['UKPConvArgStrict']#, 'UKPConvArgAll']#'UKPConvArgStrict', , 'UKPConvArgCrowd_evalMACE']#, ]
 #     methods = ['SVM']#, 'GP+SVM', 'SingleGPC_noOpt_weaksprior', 'SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_additive_weaksprior'] 
 #     feature_types = ['both']#, 'ling']#,  can be 'embeddings' or 'ling' or 'both'
 #     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
 
-    methods = ['SingleGPC_noOpt_weaksprior', 'SVM']
-    feature_types = ['embeddings', 'both', 'ling']
-    embeddings_types = ['word_mean']#, 'skipthoughts']
+    methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_noOpt_weaksprior']
+    feature_types = ['both']#, 'both', 'ling']
+    embeddings_types = ['word_mean']
     
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall = \
                                                     compute_metrics(methods, datasets, feature_types, embeddings_types)             
