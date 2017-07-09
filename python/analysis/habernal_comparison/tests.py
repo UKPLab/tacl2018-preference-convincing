@@ -629,13 +629,14 @@ def run_bilstm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items
         predicted_f = None
 
     if unseenids_a1 is not None and len(unseenids_a1):
+        X_test = []
         X_test1 = X[unseenids_a1]
         X_test2 = X[unseenids_a2]
         for i, row1 in enumerate(X_test1):
             #row1 = np.array(row1)
             #np.append(row1, X_test2[i])
             row1 = row1 + X_test2[i]
-            X_test = np.append(X_test, row1)   
+            X_test.append(row1)   
         X_test = sequence.pad_sequences(X_test, maxlen=max_len)
         print('Prediction')
         model_predict = model.predict({'input': X_test}, batch_size=batch_size)
