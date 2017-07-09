@@ -544,7 +544,7 @@ def run_bilstm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items
         #np.append(row1, X_train2[i])
         row1 = row1 + X_train2[i]
         X_train.append(row1)
-    X_test1, X_test2, _, _, _ = folds.get(fold)["test"]
+    X_test1, X_test2, _, _, _, _, _ = folds.get(fold)["test"]
     X_test = []
     for i, row1 in enumerate(X_test1):
         #row1 = np.array(row1)
@@ -963,20 +963,22 @@ if __name__ == '__main__':
     dataset_increment = 1.0
 
     datasets = ['UKPConvArgCrowdSample_evalMACE']
-    methods = ['BI-LSTM']
-    feature_types = ['embeddings']
-    embeddings_types = ['word_mean']
-    default_ls_values = run_test_set()
 
-    methods = ['SinglePrefGP_noOpt_weaksprior_additive','GP+SVM']
+    # DONE
+    #methods = ['BI-LSTM']
+    #feature_types = ['embeddings']
+    #embeddings_types = ['word_mean']
+    #default_ls_values = run_test_set()
+
+    methods = ['SinglePrefGP_noOpt_weaksprior']#,'GP+SVM']
     feature_types = ['both']
     embeddings_types = ['word_mean']
     default_ls_values = run_test_set()
 
-    methods = ['SVM']
-    feature_types = ['ling']
-    embeddings_types = ['word_mean']
-    default_ls_values = run_test_set()
+#    methods = ['SVM']
+#    feature_types = ['ling']
+#    embeddings_types = ['word_mean']
+#    default_ls_values = run_test_set()
 
 # # Running all competitive methods on a new subset
 #     datasets = ['UKPConvArgCrowdSample_evalMACE']
