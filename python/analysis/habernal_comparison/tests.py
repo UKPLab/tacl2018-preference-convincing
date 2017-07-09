@@ -1011,8 +1011,8 @@ if __name__ == '__main__':
     dataset_increment = 2#0#11265#2000
      
     datasets = ['UKPConvArgCrowdSample_evalMACE']
-    methods = ['SVM']#,'SinglePrefGP_noOpt_weaksprior']#, 'SingleGPC_noOpt_weaksprior_additive']#
-    feature_types = ['both']
+    methods = ['BI-LSTM']#'SVM']#,'SinglePrefGP_noOpt_weaksprior']#, 'SingleGPC_noOpt_weaksprior_additive']#
+    feature_types = ['embeddings']
     embeddings_types = ['word_mean']
     default_ls_values = run_test_set(max_no_folds=32, npairs=200)
 
@@ -1056,6 +1056,11 @@ if __name__ == '__main__':
 #     methods = ['GP+SVM', 'SingleGPC_noOpt_weaksprior_additive']
 #     feature_types = ['both']
 #     default_ls_values = run_test_set(max_no_folds=10, npairs=100)
+
+#    methods = ['SVM']
+#    feature_types = ['ling']
+#    embeddings_types = ['word_mean']
+#    default_ls_values = run_test_set()
 
 # # Running all competitive methods on a new subset
 #     datasets = ['UKPConvArgCrowdSample_evalMACE']
