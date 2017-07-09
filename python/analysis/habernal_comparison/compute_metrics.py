@@ -36,15 +36,15 @@ def get_fold_data(data, f):
     # discrete labels are 0, 1 or 2
     gold_disc = np.array(data[3][f])
     pred_disc = np.array(data[1][f]) * 2
-    if pred_disc.ndim == 2 and pred_disc.shape[1] > 1:
-        pred_disc = pred_disc[:, 1]
+    if pred_disc.ndim == 1:
+        pred_disc = pred_disc[:, np.newaxis]
     #pred_disc = 2 - pred_disc
     
     # probabilities
     gold_prob = gold_disc / 2.0
     pred_prob = np.array(data[0][f])
-    if pred_prob.ndim == 2 and pred_prob.shape[1] > 1:
-        pred_prob = pred_prob[:, 1]
+    if pred_prob.ndim == 1:
+        pred_prob = pred_prob[:, np.newaxis]
     #pred_prob = 1 - pred_prob
     
 # Considering only the labels where a confident prediction has been made... In this case the metrics should be 
@@ -64,20 +64,33 @@ def get_fold_data(data, f):
     if len(data[2]) > 0:
         pred_rank = np.array(data[2][f])
     
-        if pred_rank.ndim == 3:
-            pred_rank = pred_rank[0]
-        pred_rank = pred_rank.flatten()
+        if pred_rank.ndim == 1:
+            pred_rank = pred_rank[:, np.newaxis]
     else:
         gold_rank = None
         pred_rank = None
         
-    return gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank
+    if len(data) > 8 and data[8] is not None and f in data[8] and data[8][f] is not None:
+        pred_tr_disc = np.round(np.array(data[8][f])) * 2
+        pred_tr_prob = np.round(np.array(data[8][f]))
+    else:
+        pred_tr_disc = None
+        pred_tr_prob = None
+           
+    return gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, pred_tr_prob
 
-def compute_metrics(methods, datasets, feature_types, embeddings_types, acc=1.0, dataset_increment=1.0, tag=''):
+def compute_metrics(methods, datasets, feature_types, embeddings_types, acc=1.0, dataset_increment=0, npairs=0, tag='', 
+                    remove_seen_from_mean=False, max_no_folds=-1):
+    
     row_index = np.zeros(len(methods) * len(datasets), dtype=object)
     columns = np.zeros(len(feature_types) * len(embeddings_types), dtype=object)
     
     row = 0
+    
+    if dataset_increment == 0 or np.ceil(np.float(npairs) / np.float(dataset_increment)) == 0:
+        AL_rounds = np.array([0]).astype(int)
+    else:
+        AL_rounds = np.arange( np.ceil(np.float(npairs) / np.float(dataset_increment)), dtype=int)    
     
     if tag == '':
         ts = time.time()
@@ -92,15 +105,32 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, acc=1.0,
         for m, method in enumerate(methods):
         
             if d == 0 and m == 0:
-                results_f1      = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-                results_acc     = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-                results_logloss = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-                results_auc     = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
+                
+                if dataset_increment == 0:
+                    results_shape = (len(methods) * len(datasets), 
+                                 len(feature_types) * len(embeddings_types), 
+                                 len(folds),
+                                 1)
+                else:
+                    results_shape = (len(methods) * len(datasets), 
+                                 len(feature_types) * len(embeddings_types), 
+                                 len(folds), 
+                                 int(npairs / dataset_increment) + 1)
+                
+                results_f1      = np.zeros(results_shape)
+                results_acc     = np.zeros(results_shape)
+                results_logloss = np.zeros(results_shape)
+                results_auc     = np.zeros(results_shape)
             
-                results_pearson  = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-                results_spearman = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-                results_kendall  = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-                        
+                results_pearson  = np.zeros(results_shape)
+                results_spearman = np.zeros(results_shape)
+                results_kendall  = np.zeros(results_shape)
+
+                tr_results_f1      = np.zeros(results_shape)
+                tr_results_acc     = np.zeros(results_shape)
+                tr_results_logloss = np.zeros(results_shape)
+                tr_results_auc     = np.zeros(results_shape)
+            
             row_index[row] = method + ', ' + dataset
             col = 0
             
@@ -122,39 +152,93 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, acc=1.0,
                         nFolds = len(data[0])
 
                         for f in range(nFolds):
-                            gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank = get_fold_data(data, f)
-                        
-                            results_f1[row, col, f]      = f1_score(gold_disc[gold_disc!=1], pred_disc[gold_disc!=1], 
-                                                                    average='macro')
-                            #skip the don't knows
-                            results_acc[row, col, f]     = accuracy_score(gold_disc[gold_disc!=1], 
-                                                                          pred_disc[gold_disc!=1]) 
-                            
-                            results_logloss[row, col, f] = log_loss(gold_prob[gold_disc!=1], pred_prob[gold_disc!=1])
-                            results_auc[row, col, f]     = roc_auc_score(gold_prob[gold_disc!=1], pred_prob[gold_disc!=1]) # macro
-    
-                            if gold_rank is None and folds_regression is not None:
-                                fold = folds.keys()[f]
-                                if docids is None:
-                                    _, docids = load_ling_features(dataset)  
-                                # ranking data was not saved in original file. Get it from the folds_regression here
-                                _, rankscores_test, _, _ = folds_regression.get(fold)["test"]
-                                gold_rank = np.array(rankscores_test)
+                            gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, \
+                                                                                pred_tr_prob = get_fold_data(data, f)
+                                                            
+                            for AL_round in AL_rounds:
+                                print "fold %i " % f
+                                print AL_round
+                                if AL_round >= pred_disc.shape[1]:
+                                    continue
+                                results_f1[row, col, f, AL_round] = f1_score(gold_disc[gold_disc!=1], 
+                                                                             pred_disc[gold_disc!=1, AL_round], 
+                                                                             average='macro')
+                                #skip the don't knows
+                                results_acc[row, col, f, AL_round] = accuracy_score(gold_disc[gold_disc!=1], 
+                                                                                    pred_disc[gold_disc!=1, AL_round]) 
                                 
-                            if gold_rank is not None and pred_rank is not None:
-                                results_pearson[row, col, f]  = pearsonr(gold_rank, pred_rank)[0]
-                                results_spearman[row, col, f] = spearmanr(gold_rank, pred_rank)[0]
-                                results_kendall[row, col, f]  = kendalltau(gold_rank, pred_rank)[0]
+                                results_logloss[row, col, f, AL_round] = log_loss(gold_prob[gold_disc!=1], 
+                                                                                  pred_prob[gold_disc!=1, AL_round])
+                                
+                                results_auc[row, col, f, AL_round] = roc_auc_score(gold_prob[gold_disc!=1], 
+                                                                                   pred_prob[gold_disc!=1, AL_round]) # macro
+
+                                fold = folds.keys()[f]        
+                                if gold_rank is None and folds_regression is not None:
+                                    if docids is None:
+                                        _, docids = load_ling_features(dataset)  
+                                    # ranking data was not saved in original file. Get it from the folds_regression here
+                                    _, rankscores_test, _, _ = folds_regression.get(fold)["test"]
+                                    gold_rank = np.array(rankscores_test)
+                                    
+#                                 if gold_rank is not None and pred_rank is not None:
+#                                     results_pearson[row, col, f, AL_round]  = pearsonr(gold_rank, 
+#                                                                                        pred_rank[:, AL_round])[0]
+#                                     results_spearman[row, col, f, AL_round] = spearmanr(gold_rank, 
+#                                                                                         pred_rank[:, AL_round])[0]
+#                                     results_kendall[row, col, f, AL_round]  = kendalltau(gold_rank, 
+#                                                                                          pred_rank[:, AL_round])[0]
+
+                                def mean_unseen(result, remove_seen_from_mean):
+                                    
+                                    if not remove_seen_from_mean:
+                                        return result
+                                    
+                                    N = len(gold_tr)
+                                    Nseen = (AL_round +1) * dataset_increment
+                                    Nunseen = (N - Nseen)
+                                    return (result * N - Nseen) / Nunseen
+                                
+                                if pred_tr_prob is not None and AL_round < pred_tr_disc.shape[1]:                                                      
+                                    _, _, gold_tr, _, _, _, _ = folds.get(fold)["training"]
+                                    gold_tr = np.array(gold_tr)
+                                    gold_tr_prob = gold_tr / 2.0
+
+                                    tr_results_f1[row, col, f, AL_round] = mean_unseen(f1_score(gold_tr[gold_tr!=1], 
+                                                                                 pred_tr_disc[gold_tr!=1, AL_round], 
+                                                                                 average='macro'), remove_seen_from_mean)
+                                    #skip the don't knows
+                                    tr_results_acc[row, col, f, AL_round] = mean_unseen(accuracy_score(gold_tr[gold_tr!=1], 
+                                                                                    pred_tr_disc[gold_tr!=1, AL_round]),
+                                                                                    remove_seen_from_mean) 
+                                    
+                                    tr_results_logloss[row, col, f, AL_round] = mean_unseen(log_loss(gold_tr_prob[gold_tr!=1], 
+                                                                                pred_tr_prob[gold_tr!=1, AL_round]),
+                                                                                remove_seen_from_mean)
+                                    
+                                    tr_results_auc[row, col, f, AL_round] = mean_unseen(roc_auc_score(gold_tr_prob[gold_tr!=1], 
+                                                                                    pred_tr_prob[gold_tr!=1, AL_round]),
+                                                                                    remove_seen_from_mean)   
+                                elif pred_tr_prob is not None and AL_round >= pred_tr_disc.shape[1]:
+                                    tr_results_f1[row, col, f, AL_round] = 1
+                                    tr_results_acc[row, col, f, AL_round] = 1
+                                    tr_results_auc[row, col, f, AL_round] = 1
+                                    tr_results_logloss[row, col, f, AL_round] = 0                                                             
                           
-                        results_f1[row, col, -1] = np.mean(results_f1[row, col, :-1])
-                        results_acc[row, col, -1] = np.mean(results_acc[row, col, :-1])
-                        results_logloss[row, col, -1] = np.mean(results_logloss[row, col, :-1])
-                        results_auc[row, col, -1] = np.mean(results_auc[row, col, :-1])
+                        results_f1[row, col, -1, :] = np.mean(results_f1[row, col, :max_no_folds, :], axis=0)
+                        results_acc[row, col, -1, :] = np.mean(results_acc[row, col, :max_no_folds, :], axis=0)
+                        results_logloss[row, col, -1, :] = np.mean(results_logloss[row, col, :max_no_folds, :], axis=0)
+                        results_auc[row, col, -1, :] = np.mean(results_auc[row, col, :max_no_folds, :], axis=0)
                         
-                        results_pearson[row, col, -1] = np.mean(results_pearson[row, col, :-1])
-                        results_spearman[row, col, -1] = np.mean(results_spearman[row, col, :-1])
-                        results_kendall[row, col, -1] = np.mean(results_kendall[row, col, :-1])
-                            
+                        results_pearson[row, col, -1] = np.mean(results_pearson[row, col, :max_no_folds, :], axis=0)
+                        results_spearman[row, col, -1] = np.mean(results_spearman[row, col, :max_no_folds, :], axis=0)
+                        results_kendall[row, col, -1] = np.mean(results_kendall[row, col, :max_no_folds, :], axis=0)
+                        
+                        tr_results_f1[row, col, -1, :] = np.mean(tr_results_f1[row, col, :max_no_folds, :], axis=0)
+                        tr_results_acc[row, col, -1, :] = np.mean(tr_results_acc[row, col, :max_no_folds, :], axis=0)
+                        tr_results_logloss[row, col, -1, :] = np.mean(tr_results_logloss[row, col, :max_no_folds, :], axis=0)
+                        tr_results_auc[row, col, -1, :] = np.mean(tr_results_auc[row, col, :max_no_folds, :], axis=0)
+                        
                     else:
                         print "Skipping results for %s, %s, %s, %s" % (method, dataset, feature_type, embeddings_type)
                         print "Skipped filename was: %s" % resultsfile
@@ -166,35 +250,65 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, acc=1.0,
                     
             row += 1
 
-    mean_results_f1 = pd.DataFrame(results_f1[:, :, -1], columns=columns, index=row_index)
-    print "Macro-F1 scores: "
-    print mean_results_f1
+    for AL_round in AL_rounds:
+        mean_results_f1 = pd.DataFrame(results_f1[:, :, -1, AL_round], columns=columns, index=row_index)
+        print "Macro-F1 scores for round %i: " % AL_round
+        print mean_results_f1
+
+    for AL_round in AL_rounds:
+        mean_results_acc = pd.DataFrame(results_acc[:, :, -1, AL_round], columns=columns, index=row_index)
+        print "Accuracy (for UKPConvArgAll and UKPConvArgMACE we now exclude don't knows; for UKPConvArgStrict they are\
+        already ommitted) for round %i: " % AL_round
+        print mean_results_acc
+
+    for AL_round in AL_rounds:        
+        mean_results_auc = pd.DataFrame(results_auc[:, :, -1, AL_round], columns=columns, index=row_index)
+        print "AUC ROC (if AUC is higher than accuracy and F1 score, it suggests that decision boundary is not calibrated\
+        or that accuracy may improve if we exclude data points close to the decision boundary) for round %i: " % AL_round
+        print mean_results_auc
         
-    mean_results_acc = pd.DataFrame(results_acc[:, :, -1], columns=columns, index=row_index)
-    print "Accuracy (for UKPConvArgAll and UKPConvArgMACE we now exclude don't knows; for UKPConvArgStrict they are\
-    already ommitted):"
-    print mean_results_acc
+    for AL_round in AL_rounds:        
+        mean_results_logloss = pd.DataFrame(results_logloss[:, :, -1, AL_round], columns=columns, index=row_index)
+        print "Cross Entropy classification error (quality of the probability labels is taken into account) for round %i: " % AL_round
+        print mean_results_logloss
+        
+    for AL_round in AL_rounds:        
+        mean_results_pearson = pd.DataFrame(results_pearson[:, :, -1, AL_round], columns=columns, index=row_index)
+        print "Pearson's r for round %i: " % AL_round
+        print mean_results_pearson
+        
+    for AL_round in AL_rounds:        
+        mean_results_spearman = pd.DataFrame(results_spearman[:, :, -1, AL_round], columns=columns, index=row_index)
+        print "Spearman's rho for round %i: " % AL_round
+        print mean_results_spearman
+        
+    for AL_round in AL_rounds:        
+        mean_results_kendall = pd.DataFrame(results_kendall[:, :, -1, AL_round], columns=columns, index=row_index)
+        print "Kendall's tau for round %i: " % AL_round
+        print mean_results_kendall
+        
+    if np.any(tr_results_acc):
+        for AL_round in AL_rounds:
+            tr_mean_results_f1 = pd.DataFrame(tr_results_f1[:, :, -1, AL_round], columns=columns, index=row_index)
+            print "(TR) Macro-F1 scores for round %i: " % AL_round
+            print tr_mean_results_f1
     
-    mean_results_auc = pd.DataFrame(results_auc[:, :, -1], columns=columns, index=row_index)
-    print "AUC ROC (if AUC is higher than accuracy and F1 score, it suggests that decision boundary is not calibrated\
-    or that accuracy may improve if we exclude data points close to the decision boundary): "
-    print mean_results_auc
+        for AL_round in AL_rounds:
+            tr_mean_results_acc = pd.DataFrame(tr_results_acc[:, :, -1, AL_round], columns=columns, index=row_index)
+            print "(TR) Accuracy (for UKPConvArgAll and UKPConvArgMACE we now exclude don't knows; for UKPConvArgStrict they are\
+            already ommitted) for round %i: " % AL_round
+            print tr_mean_results_acc
     
-    mean_results_logloss = pd.DataFrame(results_logloss[:, :, -1], columns=columns, index=row_index)
-    print "Cross Entropy classification error (quality of the probability labels is taken into account)"
-    print mean_results_logloss
-    
-    mean_results_pearson = pd.DataFrame(results_pearson[:, :, -1], columns=columns, index=row_index)
-    print "Pearson's r:"
-    print mean_results_pearson
-    
-    mean_results_spearman = pd.DataFrame(results_spearman[:, :, -1], columns=columns, index=row_index)
-    print "Spearman's rho:"
-    print mean_results_spearman
-    
-    mean_results_kendall = pd.DataFrame(results_kendall[:, :, -1], columns=columns, index=row_index)
-    print "Kendall's tau:"
-    print mean_results_kendall
+        for AL_round in AL_rounds:        
+            tr_mean_results_auc = pd.DataFrame(tr_results_auc[:, :, -1, AL_round], columns=columns, index=row_index)
+            print "(TR) AUC ROC (if AUC is higher than accuracy and F1 score, it suggests that decision boundary is not calibrated\
+            or that accuracy may improve if we exclude data points close to the decision boundary) for round %i: " % AL_round
+            print tr_mean_results_auc
+            
+        for AL_round in AL_rounds:        
+            tr_mean_results_logloss = pd.DataFrame(tr_results_logloss[:, :, -1, AL_round], columns=columns, index=row_index)
+            print "(TR) Cross Entropy classification error (quality of the probability labels is taken into account) for round %i: " % AL_round
+            print tr_mean_results_logloss        
     
     metricsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
                     'metrics_%s.pkl' % (tag)    
@@ -210,20 +324,50 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, acc=1.0,
     
     # TODO: Correlations between reasons and latent argument features found using preference components?
     
-    return results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall
+    return results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall,\
+            tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss
 
 if __name__ == '__main__':
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
-    # Issue #35 Best setup with other datasets
-    datasets = ['UKPConvArgStrict']#, 'UKPConvArgAll']#'UKPConvArgStrict', , 'UKPConvArgCrowd_evalMACE']#, ]
-#     methods = ['SVM']#, 'GP+SVM', 'SingleGPC_noOpt_weaksprior', 'SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_additive_weaksprior'] 
-#     feature_types = ['both']#, 'ling']#,  can be 'embeddings' or 'ling' or 'both'
-#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
+#     # Issue #35 Best setup with other datasets
+#     datasets = ['UKPConvArgStrict']#, 'UKPConvArgAll']#'UKPConvArgStrict', , 'UKPConvArgCrowd_evalMACE']#, ]
+# #     methods = ['SVM']#, 'GP+SVM', 'SingleGPC_noOpt_weaksprior', 'SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_additive_weaksprior'] 
+# #     feature_types = ['both']#, 'ling']#,  can be 'embeddings' or 'ling' or 'both'
+# #     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
+# 
+#     methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_noOpt_weaksprior']
+#     feature_types = ['both']#, 'both', 'ling']
+#     embeddings_types = ['word_mean']
 
-    methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_noOpt_weaksprior']
-    feature_types = ['both']#, 'both', 'ling']
-    embeddings_types = ['word_mean']
+#     datasets = ['UKPConvArgAll']
+#     methods = ['SinglePrefGP_noOpt_weaksprior', 'SingleGPC_noOpt_weaksprior']
+#     feature_types = ['both']
+#     embeddings_types = ['word_mean']
+ 
+#     datasets = ['UKPConvArgStrict']
+#     methods = ['SinglePrefGP_additive_weaksprior', 'SinglePrefGP_weaksprior']
+#     feature_types = ['both']
+#     embeddings_types = ['word_mean']
     
-    results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall = \
-                                                    compute_metrics(methods, datasets, feature_types, embeddings_types)             
+#     datasets = ['UKPConvArgAll']
+#     methods = ['SingleGPC_noOpt_weaksprior']
+#     feature_types = ['both']    
+
+    npairs = 0
+    di = 0
+    max_no_folds = -1 # means we ignore this and use all folds
+
+#     # Active Learning experiments
+    datasets = ['UKPConvArgCrowdSample_evalMACE']
+#     methods = ['SinglePrefGP_noOpt_weaksprior_additive']#['SinglePrefGP_weaksprior']
+    methods = ['SinglePrefGP_noOpt_weaksprior']
+    feature_types = ['both']
+    embeddings_types = ['word_mean']
+    npairs = 11126
+    di = 1000
+    max_no_folds = 10
+    
+    results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
+    tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss = compute_metrics(methods, datasets, 
+                    feature_types, embeddings_types, dataset_increment=di, npairs=npairs, max_no_folds=max_no_folds)
