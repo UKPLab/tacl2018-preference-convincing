@@ -629,6 +629,7 @@ def run_bilstm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items
         predicted_f = None
 
     if unseenids_a1 is not None and len(unseenids_a1):
+        X_test = []
         X_test1 = X[unseenids_a1]
         X_test2 = X[unseenids_a2]
         for i, row1 in enumerate(X_test1):
@@ -657,12 +658,10 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
     output_filename_template = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/%s' % expt_tag
     output_filename_template += '_%s_%s_%s_%s_acc%.2f_di%.2f' 
 
-    resultsfile = (output_filename_template + '_test.pkl') % (dataset, method, feature_type, embeddings_type, acc, 
-                                                              dataset_increment)
-    modelfile = (output_filename_template + '_model') %  (dataset, method, feature_type, embeddings_type, acc,
-#                                                           1000.0) 
-                                                        dataset_increment)
-    modelfile += '_fold%i.pkl'
+    results_stem = output_filename_template % (dataset, method, feature_type, embeddings_type, acc, 
+                                                              dataset_increment) 
+    resultsfile = results_stem + '_test.pkl'
+#     modelfile = results_stem + '_model_fold%i.pkl'
     
     if not os.path.isdir(data_root_dir + 'outputdata'):
         os.mkdir(data_root_dir + 'outputdata')
@@ -682,6 +681,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         final_ls = {}
         times = {}
 
+        os.mkdir(results_stem)
     else:
         with open(resultsfile, 'r') as fh:
             all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, _, times, final_ls, \
@@ -696,9 +696,19 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
 
     fold_keys = folds.keys()
     for foldidx, fold in enumerate(fold_keys):
-        if foldidx in all_proba or foldidx >= max_no_folds:
+        if (foldidx in all_proba and dataset_increment==0) or foldidx >= max_no_folds:
             print("Skipping fold %i, %s" % (foldidx, fold))
             continue
+        foldresultsfile = results_stem + '/fold%i.pkl' % foldidx
+        if not len(all_proba.keys()) and os.path.isfile(foldresultsfile): 
+            if dataset_increment == 0:
+                print("Skipping fold %i, %s" % (foldidx, fold))
+                continue
+            
+            with open(foldresultsfile, 'r') as fh:
+                all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],\
+                all_target_rankscores[foldidx], _, times[foldidx], final_ls[foldidx], \
+                                                                                    all_tr_proba = pickle.load(fh)
 
         # Get data for this fold --------------------------------------------------------------------------------------
         print("Fold name ", fold)
@@ -721,6 +731,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                = subsample_tr_data(dataset, fold, subsample_amount, items_feat, trainids_a1, trainids_a2, prefs_train, personIDs_train,
                testids_a1, testids_a2, prefs_test, personIDs_test, argids_rank_test, rankscores_test, item_idx_ranktest,
                )
+
         if npairs == 0:
             npairs_f = len(trainids_a1)
         else:
@@ -728,6 +739,10 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         nseen_so_far = 0     
                           
         if dataset_increment != 0:
+            if foldidx in all_proba and all_proba[foldidx].shape[1] >= float(npairs_f) / dataset_increment:
+                print("Skipping fold %i, %s" % (foldidx, fold))
+                continue
+                        
             nnew_pairs = dataset_increment#int(np.floor(dataset_increment * npairs_f))
             # select the initial subsample of training pairs
             pair_subset = np.random.choice(npairs_f, nnew_pairs, replace=False)
@@ -871,9 +886,11 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             # Save the time taken
             times[foldidx] = endtime-starttime                
             
-            results = (all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, ls_initial_guess,
-                       times, final_ls, all_tr_proba)
-            with open(resultsfile, 'w') as fh:
+
+            results = (all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],\
+                       all_target_rankscores[foldidx], ls_initial_guess[foldidx],
+                       times[foldidx], final_ls[foldidx], all_tr_proba[foldidx])
+            with open(foldresultsfile, 'w') as fh:
                 pickle.dump(results, fh)
             
             #with open(modelfile % foldidx, 'w') as fh:

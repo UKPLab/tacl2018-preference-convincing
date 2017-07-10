@@ -359,14 +359,13 @@ if __name__ == '__main__':
     max_no_folds = -1 # means we ignore this and use all folds
 
 #     # Active Learning experiments
-    datasets = ['UKPConvArgStrict']#CrowdSample_evalMACE']
-#     methods = ['SinglePrefGP_noOpt_weaksprior_additive']#['SinglePrefGP_weaksprior']
     methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
+    datasets = ['UKPConvArgCrowdSample_evalMACE']
     feature_types = ['both']
     embeddings_types = ['word_mean']
-    #npairs = 11126
-    #di = 1000
-    #max_no_folds = 10
+    npairs = 11126
+    di = 1000
+    max_no_folds = 10
     
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss = compute_metrics(methods, datasets, 
