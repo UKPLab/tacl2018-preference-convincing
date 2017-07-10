@@ -62,7 +62,7 @@ from data_loading import load_train_test_data, load_embeddings, load_ling_featur
 from joblib import Parallel, delayed
 import multiprocessing
 import numpy as np
-import skipthoughts
+#import skipthoughts
     
 def _dists_f(items_feat_sample, f):
     if np.mod(f, 1000) == 0:
@@ -100,8 +100,8 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
         
         if embeddings_type == 'word_mean':
             items_feat = get_mean_embeddings(embeddings, X)
-        elif embeddings_type == 'skipthoughts':
-            items_feat = skipthoughts.encode(embeddings, utexts)
+#         elif embeddings_type == 'skipthoughts':
+#             items_feat = skipthoughts.encode(embeddings, utexts)
         elif embeddings_type == 'siamese-cbow':
             items_feat = np.array([embeddings.getAggregate(index_to_word_map[Xi]) for Xi in X])
         else:
@@ -267,8 +267,8 @@ def get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1,
         logging.info("Converting texts to mean embeddings (we could use a better sentence embedding?)...")
         if embeddings_type == 'word_mean':
             items_feat = get_mean_embeddings(embeddings, X)
-        elif embeddings_type == 'skipthoughts':
-            items_feat = skipthoughts.encode(embeddings, utexts)
+#         elif embeddings_type == 'skipthoughts':
+#             items_feat = skipthoughts.encode(embeddings, utexts)
         elif embeddings_type == 'siamese-cbow':
             items_feat = np.array([embeddings.getAggregate(index_to_word_map[Xi]) for Xi in X])
         else:
