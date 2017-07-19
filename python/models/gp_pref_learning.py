@@ -317,11 +317,8 @@ class GPPrefLearning(GPClassifierSVI):
         elif process_obs and input_type != 'binary':
             raise ValueError('input_type for preference labels must be either "binary" or "zero-centered"') 
             
-        if item_features is not None:
+        if item_features is not None: # keep the old item features if we pass in none
             self.item_features = item_features
-            self.process_item_features = True
-        else:
-            self.process_item_features = False
             
         super(GPPrefLearning, self).fit((items1_coords, items2_coords), preferences, totals, process_obs, 
                                         mu0=mu0, optimize=optimize)  
@@ -434,12 +431,12 @@ class GPPrefLearning(GPClassifierSVI):
         if items_features is None and use_training_items:
             if items_coords is None:
                 items_coords = np.arange(self.obs_coords.shape[0])
-            if 0 not in self.K_out:   
+            if 0 not in self.K_out or items_coords is not None:   
                 if self.use_svi:
                     self.K_out[0] = self.K_nm[items_coords, :]
                 else:
                     self.K_out[0] = self.K[items_coords, :][:, items_coords]
-                    
+            self.output_coords = self.item_features[items_coords]        
             reuse_output_kernel = True
         elif items_features is not None:
             if items_coords is None:
