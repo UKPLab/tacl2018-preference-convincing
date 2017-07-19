@@ -153,7 +153,7 @@ def collate_AL_results(AL_rounds, results, combined_labels, label):
     return mean_results
 
 def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy=1.0, di=0, npairs=0, tag='', 
-                    remove_seen_from_mean=False, max_no_folds=-1):
+                    remove_seen_from_mean=False, max_no_folds=32):
     
     # define some things globally to make debugging easier
     global method
@@ -253,8 +253,9 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy
                         if nFolds < 1:
                             nFolds = len(data[0])
                     else:
-                        nFolds = 0
                         data = None                        
+
+                    min_folds = 0
 
                     for f in range(nFolds):
                         print "Processing fold %i" % f
@@ -274,6 +275,13 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy
                             with open(foldfile, 'r') as fh:
                                 data_f = pickle.load(fh)
                         else: # convert the old stuff to new stuff
+                            if data is None:
+                                min_folds = f+1
+                                print 'Skipping fold with no data %i' % f
+                                print "Skipping results for %s, %s, %s, %s" % (method, dataset, feature_type, embeddings_type)
+                                print "Skipped filename was: %s" % foldfile
+                                continue
+                            
                             if not os.path.isdir(resultsdir):
                                 os.mkdir(resultsdir)
                             data_f = []
@@ -341,7 +349,7 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy
                                 gold_tr = np.array(gold_tr)
 
                                 if (gold_tr!=1).shape[0] != pred_tr_disc.shape[0]:
-                                    print "help!"
+                                    print "Mismatch in fold %s! %i, %i" % (fold, (gold_tr!=1).shape[0], pred_tr_disc.shape[0])
                                 
                                 gold_tr_prob = gold_tr / 2.0
 
@@ -366,24 +374,20 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy
                                 tr_results_auc[row, col, f, AL_round] = 1
                                 tr_results_logloss[row, col, f, AL_round] = 0                                                             
                           
-                        results_f1[row, col, -1, :] = np.mean(results_f1[row, col, :max_no_folds, :], axis=0)
-                        results_acc[row, col, -1, :] = np.mean(results_acc[row, col, :max_no_folds, :], axis=0)
-                        results_logloss[row, col, -1, :] = np.mean(results_logloss[row, col, :max_no_folds, :], axis=0)
-                        results_auc[row, col, -1, :] = np.mean(results_auc[row, col, :max_no_folds, :], axis=0)
+                        results_f1[row, col, -1, :] = np.mean(results_f1[row, col, min_folds:max_no_folds, :], axis=0)
+                        results_acc[row, col, -1, :] = np.mean(results_acc[row, col, min_folds:max_no_folds, :], axis=0)
+                        results_logloss[row, col, -1, :] = np.mean(results_logloss[row, col, min_folds:max_no_folds, :], axis=0)
+                        results_auc[row, col, -1, :] = np.mean(results_auc[row, col, min_folds:max_no_folds, :], axis=0)
                         
-                        results_pearson[row, col, -1] = np.mean(results_pearson[row, col, :max_no_folds, :], axis=0)
-                        results_spearman[row, col, -1] = np.mean(results_spearman[row, col, :max_no_folds, :], axis=0)
-                        results_kendall[row, col, -1] = np.mean(results_kendall[row, col, :max_no_folds, :], axis=0)
+                        results_pearson[row, col, -1] = np.mean(results_pearson[row, col, min_folds:max_no_folds, :], axis=0)
+                        results_spearman[row, col, -1] = np.mean(results_spearman[row, col, min_folds:max_no_folds, :], axis=0)
+                        results_kendall[row, col, -1] = np.mean(results_kendall[row, col, min_folds:max_no_folds, :], axis=0)
                         
-                        tr_results_f1[row, col, -1, :] = np.mean(tr_results_f1[row, col, :max_no_folds, :], axis=0)
-                        tr_results_acc[row, col, -1, :] = np.mean(tr_results_acc[row, col, :max_no_folds, :], axis=0)
-                        tr_results_logloss[row, col, -1, :] = np.mean(tr_results_logloss[row, col, :max_no_folds, :], axis=0)
-                        tr_results_auc[row, col, -1, :] = np.mean(tr_results_auc[row, col, :max_no_folds, :], axis=0)
+                        tr_results_f1[row, col, -1, :] = np.mean(tr_results_f1[row, col, min_folds:max_no_folds, :], axis=0)
+                        tr_results_acc[row, col, -1, :] = np.mean(tr_results_acc[row, col, min_folds:max_no_folds, :], axis=0)
+                        tr_results_logloss[row, col, -1, :] = np.mean(tr_results_logloss[row, col, min_folds:max_no_folds, :], axis=0)
+                        tr_results_auc[row, col, -1, :] = np.mean(tr_results_auc[row, col, min_folds:max_no_folds, :], axis=0)
                         
-                    else:
-                        print "Skipping results for %s, %s, %s, %s" % (method, dataset, feature_type, embeddings_type)
-                        print "Skipped filename was: %s" % resultsfile
-                    
                     if row == 0: # set the column headers    
                         columns[col] = feature_type + ', ' + embeddings_type
                     
@@ -451,52 +455,69 @@ if __name__ == '__main__':
         dataset = None
     if 'folds' not in globals():
         folds = None
+        
+    ax1 = None
+    ax2 = None
+    ax3 = None
+    ax4 = None
+    ax5 = None
+    ax6 = None
     
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
     resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
-
-    foldorderfile = "~/Dropbox/titanx_foldorder.txt" # change this depending on where we ran the tests... None if no file available.
     
     npairs = 0
     di = 0
-    max_no_folds = -1 # means we ignore this and use all folds
 
-# #     # Active Learning experiments
-#     methods = ['BI-LSTM']#['SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
-#     datasets = ['UKPConvArgCrowdSample_evalMACE']#['UKPConvArgStrict']
-#     feature_types = ['embeddings']
-#     embeddings_types = ['word_mean']#'skipthoughts']
-#     npairs = 200#11126
-#     di = 2#1000
-#     max_no_folds = 32
-#     
-#     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
-#     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-#     = compute_metrics(methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
-#                       max_no_folds=max_no_folds)
-#     
-#     ax1 = plot_active_learning_results(mean_results[0], 'F1 score', 'Mean over test topics')
-#     ax2 = plot_active_learning_results(mean_results[7], 'F1 score', 'Mean over training topics')
-# 
-#     foldorderfile = None
-#     fold_order = None
-# 
-#     methods = ['SinglePrefGP_noOpt_weaksprior']#['SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
-#     datasets = ['UKPConvArgCrowdSample_evalMACE']#['UKPConvArgStrict']
-#     feature_types = ['both']
-#     embeddings_types = ['word_mean']#'skipthoughts']
-#     npairs = 200#11126
-#     di = 2#1000
-#     max_no_folds = 32
-#     
-#     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
-#     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-#     = compute_metrics(methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
-#                       max_no_folds=max_no_folds)
-#     
-#     ax1 = plot_active_learning_results(mean_results[0], 'F1 score', 'Mean over test topics', ax1)
-#     ax2 = plot_active_learning_results(mean_results[7], 'F1 score', 'Mean over training topics', ax2)
+#     # Active Learning experiments
+    methods = ['BI-LSTM']#['SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
+    foldorderfile = "~/Dropbox/titanx_foldorder.txt" # change this depending on where we ran the tests... None if no file available.
+    datasets = ['UKPConvArgCrowdSample_evalMACE']#['UKPConvArgStrict']
+    feature_types = ['embeddings']
+    embeddings_types = ['word_mean']#'skipthoughts']
+    npairs = 200#11126
+    di = 2#1000
+    max_no_folds = 32
+     
+    results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
+    tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
+    = compute_metrics(methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
+                      max_no_folds=max_no_folds)
+     
+    ax1 = plot_active_learning_results(mean_results[0], 'F1 score', 'Mean over test topics')
+    ax2 = plot_active_learning_results(mean_results[7], 'F1 score', 'Mean over training topics')
+
+    ax3 = plot_active_learning_results(mean_results[2], 'AUC', 'Mean over test topics')
+    ax4 = plot_active_learning_results(mean_results[9], 'AUC', 'Mean over training topics')
+
+    ax5 = plot_active_learning_results(mean_results[4], 'Pearson correlation', 'Mean over test topics')
+    ax6 = plot_active_learning_results(mean_results[5], 'Spearman correlation', 'Mean over training topics')
+ 
+    foldorderfile = None
+    fold_order = None
+ 
+    methods = ['SinglePrefGP_noOpt_weaksprior']#['SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
+    datasets = ['UKPConvArgCrowdSample_evalMACE']#['UKPConvArgStrict']
+    feature_types = ['both']
+    embeddings_types = ['word_mean']#'skipthoughts']
+    npairs = 200#11126
+    di = 2#1000
+    max_no_folds = 32
+     
+    results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
+    tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
+    = compute_metrics(methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
+                      max_no_folds=max_no_folds)
+     
+    ax1 = plot_active_learning_results(mean_results[0], 'F1 score', 'Mean over test topics', ax1)
+    ax2 = plot_active_learning_results(mean_results[7], 'F1 score', 'Mean over training topics', ax2)
+    
+    ax3 = plot_active_learning_results(mean_results[2], 'AUC', 'Mean over test topics', ax3)
+    ax4 = plot_active_learning_results(mean_results[9], 'AUC', 'Mean over training topics', ax4)
+    
+    ax5 = plot_active_learning_results(mean_results[4], 'Pearson correlation', 'Mean over test topics', ax5)
+    ax6 = plot_active_learning_results(mean_results[5], 'Spearman correlation', 'Mean over training topics', ax6)
     
     methods = ['SVM']#['SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
     datasets = ['UKPConvArgCrowdSample_evalMACE']#['UKPConvArgStrict']
@@ -513,3 +534,27 @@ if __name__ == '__main__':
     
     ax1 = plot_active_learning_results(mean_results[0], 'F1 score', 'Mean over test topics', ax1)
     ax2 = plot_active_learning_results(mean_results[7], 'F1 score', 'Mean over training topics', ax2)    
+    
+    ax3 = plot_active_learning_results(mean_results[2], 'AUC', 'Mean over test topics', ax3)
+    ax4 = plot_active_learning_results(mean_results[9], 'AUC', 'Mean over training topics', ax4)    
+    
+    ax5 = plot_active_learning_results(mean_results[4], 'Pearson correlation', 'Mean over test topics', ax5)
+    ax6 = plot_active_learning_results(mean_results[5], 'Spearman correlation', 'Mean over training topics', ax6)
+    
+    plt.figure(ax1.figure.number)
+    plt.grid()
+
+    plt.figure(ax2.figure.number)
+    plt.grid()
+    
+    plt.figure(ax3.figure.number)
+    plt.grid()
+
+    plt.figure(ax4.figure.number)
+    plt.grid()
+    
+    plt.figure(ax5.figure.number)
+    plt.grid()
+    
+    plt.figure(ax6.figure.number)
+    plt.grid()

@@ -1032,7 +1032,7 @@ if __name__ == '__main__':
     methods = ['SVM']#, 'SingleGPC_noOpt_weaksprior_additive']#
     feature_types = ['embeddings']
     embeddings_types = ['word_mean']
-    default_ls_values = run_test_set(max_no_folds=26, npairs=200)
+    default_ls_values = run_test_set(min_no_folds=21, max_no_folds=26, npairs=200)
 
 #     dataset_increment = 0 
 #     
