@@ -31,9 +31,8 @@ from sklearn.metrics import f1_score, accuracy_score, roc_auc_score, log_loss
 from scipy.stats import pearsonr, spearmanr, kendalltau
 from data_loading import load_train_test_data, load_ling_features, data_root_dir
 import datetime, time
-import matplotlib.pyplot as plt
 
-def get_fold_data(data, f):
+def get_fold_data(data, f, expt_settings):
     # discrete labels are 0, 1 or 2
     try:
         if len(data[3][f]):
@@ -91,12 +90,12 @@ def get_fold_data(data, f):
         #pred_prob = 1 - pred_prob
         
         # scores used to rank
-        if len(data[4]) > 0:
+        if data[4] is not None and len(data[4]) > 0:
             gold_rank = np.array(data[4])
         else:
             gold_rank = None
                     
-        if len(data[2]) > 0:
+        if data[2] is not None and len(data[2]) > 0:
             pred_rank = np.array(data[2])
         
             if pred_rank.ndim == 1:
@@ -115,15 +114,15 @@ def get_fold_data(data, f):
         #any postprocessing e.g. to remove errors when saving data
         postprocced = False
         
-        if pred_rank.shape[0] == 1052 and gold_rank.shape[0] != 1052:
+        if pred_rank is not None and gold_rank is not None and pred_rank.shape[0] == 1052 and gold_rank.shape[0] != 1052:
             # we predicted whole dataeset instead of the subset
             from tests import get_fold_regression_data
-            if fold_order is not None:
-                fold = fold_order[f]
+            if expt_settings['fold_order'] is not None:
+                fold = expt_settings['fold_order'][f]
             else:
-                fold = folds.keys()[f]
-            _, docids = load_ling_features(dataset)
-            _, _, _, item_idx_ranktest, _, _ = get_fold_regression_data(folds_regression, fold, docids)
+                fold = expt_settings['folds'].keys()[f]
+            _, docids = load_ling_features(expt_settings['dataset'])
+            _, _, _, item_idx_ranktest, _, _ = get_fold_regression_data(expt_settings['folds_regression'], fold, docids)
             pred_rank = pred_rank[item_idx_ranktest, :]
             postprocced = True
             print "Postprocessed: %i, %i" % (pred_rank.shape[0], gold_rank.shape[0])
@@ -140,7 +139,7 @@ def get_fold_data(data, f):
 
 def collate_AL_results(AL_rounds, results, combined_labels, label):
     for r, AL_round in enumerate(AL_rounds):
-        mean_results_round = pd.DataFrame(results[:, :, -1, r].reshape(results.shape[0]*results.shape[1], 1), 
+        mean_results_round = pd.DataFrame(results[:, :, -1, r].reshape(1, results.shape[0]*results.shape[1]), 
                                           columns=combined_labels, index=[AL_round])
         if r == 0:
             mean_results = mean_results_round
@@ -152,33 +151,32 @@ def collate_AL_results(AL_rounds, results, combined_labels, label):
         
     return mean_results
 
-def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy=1.0, di=0, npairs=0, tag='', 
+#     method = expt_settings.method
+#     global dataset
+#     global feature_type
+#     global embeddings_type
+#     global acc
+#     global dataset_increment
+#     global folds
+#     global expt_settings['folds_regression']
+#     global fold_order
+
+def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, accuracy=1.0, di=0, npairs=0, tag='', 
                     remove_seen_from_mean=False, max_no_folds=32):
-    
-    # define some things globally to make debugging easier
-    global method
-    global dataset
-    global feature_type
-    global embeddings_type
-    global acc
-    global dataset_increment
-    global folds
-    global folds_regression
-    global fold_order
-    
-    acc = accuracy
-    dataset_increment = di
+        
+    expt_settings['acc'] = accuracy
+    expt_settings['di'] = di
     
     row_index = np.zeros(len(methods) * len(datasets), dtype=object)
     columns = np.zeros(len(feature_types) * len(embeddings_types), dtype=object)
     
     row = 0
     
-    if dataset_increment == 0 or np.ceil(np.float(npairs) / np.float(dataset_increment)) == 0:
+    if expt_settings['di'] == 0 or np.ceil(np.float(npairs) / np.float(expt_settings['di'])) == 0:
         AL_rounds = np.array([0]).astype(int)
     else:
-        AL_rounds = np.arange(dataset_increment, npairs+dataset_increment, dataset_increment, dtype=int)
-        #np.arange( np.ceil(np.float(npairs) / np.float(dataset_increment)), dtype=int)    
+        AL_rounds = np.arange(expt_settings['di'], npairs+expt_settings['di'], expt_settings['di'], dtype=int)
+        #np.arange( np.ceil(np.float(npairs) / np.float(expt_settings['di'])), dtype=int)    
     
     if tag == '':
         ts = time.time()
@@ -188,29 +186,24 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy
             
         docids = None
         
-        if dataset != dataset_next or folds is None:
-            dataset = dataset_next            
-            folds, folds_regression, _, _, _ = load_train_test_data(dataset)
+        if expt_settings['dataset'] != dataset_next or expt_settings['folds'] is None:
+            expt_settings['dataset'] = dataset_next            
+            expt_settings['folds'], expt_settings['folds_regression'], _, _, _ = load_train_test_data(expt_settings['dataset'])
             
-        if foldorderfile is not None:
-            fold_order = np.genfromtxt(os.path.expanduser(foldorderfile), dtype=str)
-        else:
-            fold_order = None
-
-        for m, method in enumerate(methods):
+        for m, expt_settings['method'] in enumerate(methods):
         
             if d == 0 and m == 0:
                 
-                if dataset_increment == 0:
+                if expt_settings['di'] == 0:
                     results_shape = (len(methods) * len(datasets), 
                                  len(feature_types) * len(embeddings_types), 
-                                 len(folds) + 1,
+                                 len(expt_settings['folds']) + 1,
                                  1)
                 else:
                     results_shape = (len(methods) * len(datasets), 
                                  len(feature_types) * len(embeddings_types), 
-                                 len(folds) + 1, 
-                                 int(npairs / dataset_increment))
+                                 len(expt_settings['folds']) + 1, 
+                                 int(npairs / expt_settings['di']))
                 
                 results_f1      = np.zeros(results_shape)
                 results_acc     = np.zeros(results_shape)
@@ -226,23 +219,34 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy
                 tr_results_logloss = np.zeros(results_shape)
                 tr_results_auc     = np.zeros(results_shape)
             
-            row_index[row] = method + ', ' + dataset
+            row_index[row] = expt_settings['method'] + ', ' + expt_settings['dataset']
             col = 0
             
-            for feature_type in feature_types:
-                if feature_type == 'ling':
+            for expt_settings['feature_type'] in feature_types:
+                if expt_settings['feature_type'] == 'ling':
                     embeddings_to_use = ['']
                 else:
                     embeddings_to_use = embeddings_types
-                for embeddings_type in embeddings_to_use:
+                for expt_settings['embeddings_type'] in embeddings_to_use:
                     # start by loading the old-style data
                     resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
-                            resultsfile_template % (dataset, method, feature_type, embeddings_type, acc, 
-                                                    dataset_increment) + '_test.pkl'
+                            resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
+                                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
+                                expt_settings['di']) + '_test.pkl'
                     
                     resultsdir = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
-                            resultsfile_template % (dataset, method, feature_type, embeddings_type, acc, 
-                                                    dataset_increment)
+                            resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
+                                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
+                                expt_settings['di'])
+                    
+                    if expt_settings['foldorderfile'] is not None:
+                        expt_settings['fold_order'] = np.genfromtxt(os.path.expanduser(expt_settings['foldorderfile']), 
+                                                                    dtype=str)
+                    elif os.path.isfile(resultsdir + '/foldorder.txt'):
+                        expt_settings['fold_order'] = np.genfromtxt(os.path.expanduser(resultsdir + '/foldorder.txt'), 
+                                                                    dtype=str)
+                    else:
+                        expt_settings['fold_order'] = None                    
                     
                     nFolds = max_no_folds
                     if os.path.isfile(resultsfile): 
@@ -259,15 +263,15 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy
 
                     for f in range(nFolds):
                         print "Processing fold %i" % f
-                        if fold_order is None: # fall back to the order on the current machine
-                            fold = folds.keys()[f]
+                        if expt_settings['fold_order'] is None: # fall back to the order on the current machine
+                            fold = expt_settings['folds'].keys()[f]
                         else:
-                            fold = fold_order[f] 
+                            fold = expt_settings['fold_order'][f] 
                             if fold[-2] == "'" and fold[0] == "'":
                                 fold = fold[1:-2]
                             elif fold[-1] == "'" and fold[0] == "'":
                                 fold = fold[1:-1]  
-                            fold_order[f] = fold
+                            expt_settings['fold_order'][f] = fold
                                                       
                         # look for new-style data in separate files for each fold. Prefer new-style if both are found.
                         foldfile = resultsdir + '/fold%i.pkl' % f
@@ -278,8 +282,12 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy
                             if data is None:
                                 min_folds = f+1
                                 print 'Skipping fold with no data %i' % f
-                                print "Skipping results for %s, %s, %s, %s" % (method, dataset, feature_type, embeddings_type)
-                                print "Skipped filename was: %s" % foldfile
+                                print "Skipping results for %s, %s, %s, %s" % (expt_settings['method'], 
+                                                                               expt_settings['dataset'], 
+                                                                               expt_settings['feature_type'], 
+                                                                               expt_settings['embeddings_type'])
+                                print "Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
+                                                                                                        resultsfile)
                                 continue
                             
                             if not os.path.isdir(resultsdir):
@@ -294,12 +302,13 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy
                                 pickle.dump(data_f, fh)
                         
                         gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, \
-                                                                pred_tr_prob, postprocced = get_fold_data(data_f, f)
+                                                    pred_tr_prob, postprocced = get_fold_data(data_f, f, expt_settings)
                         if postprocced: # data was postprocessed and needs saving
                             with open(foldfile, 'w') as fh:
-                                pickle.dump(data_f, fh)                                                                            
-                        print str(pred_tr_disc.shape) + ', ' + str(pred_prob.shape) + ', ' + str(
-                            pred_tr_disc.shape[0]+pred_prob.shape[0])                 
+                                pickle.dump(data_f, fh)
+                        if pred_tr_disc is not None:                                                                         
+                            print str(pred_tr_disc.shape) + ', ' + str(pred_prob.shape) + ', ' + str(
+                                                                    pred_tr_disc.shape[0]+pred_prob.shape[0])                 
                             
                         for AL_round, _ in enumerate(AL_rounds):
                             #print "fold %i " % f
@@ -319,11 +328,11 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy
                             results_auc[row, col, f, AL_round] = roc_auc_score(gold_prob[gold_disc!=1], 
                                                                                pred_prob[gold_disc!=1, AL_round]) # macro
                                                 
-                            if gold_rank is None and folds_regression is not None:
+                            if gold_rank is None and expt_settings['folds_regression'] is not None:
                                 if docids is None:
-                                    _, docids = load_ling_features(dataset)  
-                                # ranking data was not saved in original file. Get it from the folds_regression here
-                                _, rankscores_test, _, _ = folds_regression.get(fold)["test"]
+                                    _, docids = load_ling_features(expt_settings['dataset'])  
+                                # ranking data was not saved in original file. Get it from the expt_settings['folds_regression'] here
+                                _, rankscores_test, _, _ = expt_settings['folds_regression'].get(fold)["test"]
                                 gold_rank = np.array(rankscores_test)
                                 
                             if gold_rank is not None and pred_rank is not None:
@@ -340,12 +349,12 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy
                                     return result       
                                 
                                 N = len(gold_tr)
-                                Nseen = (AL_round +1) * dataset_increment
+                                Nseen = (AL_round +1) * expt_settings['di']
                                 Nunseen = (N - Nseen)
                                 return (result * N - Nseen) / Nunseen
                             
                             if pred_tr_prob is not None and AL_round < pred_tr_disc.shape[1]:
-                                _, _, gold_tr, _, _, _, _ = folds.get(fold)["training"]
+                                _, _, gold_tr, _, _, _, _ = expt_settings['folds'].get(fold)["training"]
                                 gold_tr = np.array(gold_tr)
 
                                 if (gold_tr!=1).shape[0] != pred_tr_disc.shape[0]:
@@ -389,7 +398,7 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy
                         tr_results_auc[row, col, -1, :] = np.mean(tr_results_auc[row, col, min_folds:max_no_folds, :], axis=0)
                         
                     if row == 0: # set the column headers    
-                        columns[col] = feature_type + ', ' + embeddings_type
+                        columns[col] = expt_settings['feature_type'] + ', ' + expt_settings['embeddings_type']
                     
                     col += 1
                     
@@ -444,117 +453,28 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, accuracy
     return results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall,\
             tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels
 
-def plot_active_learning_results(results, ylabel, title=None, ax=None):
-    ax = results.plot(kind='line', ax=ax, title=title, legend=True)
-    plt.ylabel(ylabel)
-    plt.xlabel('No. labels')
-    return ax
-
 if __name__ == '__main__':
-    if 'dataset' not in globals():
-        dataset = None
-    if 'folds' not in globals():
-        folds = None
-        
-    ax1 = None
-    ax2 = None
-    ax3 = None
-    ax4 = None
-    ax5 = None
-    ax6 = None
     
+    if 'expt_settings' not in globals():
+        expt_settings = {}
+        expt_settings['dataset'] = None
+        expt_settings['folds'] = None 
+
+    expt_settings['foldorderfile'] = None
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
     resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
     
     npairs = 0
     di = 0
+    max_no_folds = 23
 
-#     # Active Learning experiments
-    methods = ['BI-LSTM']#['SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
-    foldorderfile = "~/Dropbox/titanx_foldorder.txt" # change this depending on where we ran the tests... None if no file available.
-    datasets = ['UKPConvArgCrowdSample_evalMACE']#['UKPConvArgStrict']
-    feature_types = ['embeddings']
-    embeddings_types = ['word_mean']#'skipthoughts']
-    npairs = 200#11126
-    di = 2#1000
-    max_no_folds = 32
-     
-    results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
-    tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-    = compute_metrics(methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
-                      max_no_folds=max_no_folds)
-     
-    ax1 = plot_active_learning_results(mean_results[0], 'F1 score', 'Mean over test topics')
-    ax2 = plot_active_learning_results(mean_results[7], 'F1 score', 'Mean over training topics')
-
-    ax3 = plot_active_learning_results(mean_results[2], 'AUC', 'Mean over test topics')
-    ax4 = plot_active_learning_results(mean_results[9], 'AUC', 'Mean over training topics')
-
-    ax5 = plot_active_learning_results(mean_results[4], 'Pearson correlation', 'Mean over test topics')
-    ax6 = plot_active_learning_results(mean_results[5], 'Spearman correlation', 'Mean over training topics')
- 
-    foldorderfile = None
-    fold_order = None
- 
-    methods = ['SinglePrefGP_noOpt_weaksprior']#['SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
-    datasets = ['UKPConvArgCrowdSample_evalMACE']#['UKPConvArgStrict']
+    methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
+    datasets = ['UKPConvArgStrict']#['UKPConvArgCrowdSample_evalMACE']
     feature_types = ['both']
     embeddings_types = ['word_mean']#'skipthoughts']
-    npairs = 200#11126
-    di = 2#1000
-    max_no_folds = 32
      
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-    = compute_metrics(methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
+    = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
                       max_no_folds=max_no_folds)
-     
-    ax1 = plot_active_learning_results(mean_results[0], 'F1 score', 'Mean over test topics', ax1)
-    ax2 = plot_active_learning_results(mean_results[7], 'F1 score', 'Mean over training topics', ax2)
-    
-    ax3 = plot_active_learning_results(mean_results[2], 'AUC', 'Mean over test topics', ax3)
-    ax4 = plot_active_learning_results(mean_results[9], 'AUC', 'Mean over training topics', ax4)
-    
-    ax5 = plot_active_learning_results(mean_results[4], 'Pearson correlation', 'Mean over test topics', ax5)
-    ax6 = plot_active_learning_results(mean_results[5], 'Spearman correlation', 'Mean over training topics', ax6)
-    
-    methods = ['SVM']#['SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
-    datasets = ['UKPConvArgCrowdSample_evalMACE']#['UKPConvArgStrict']
-    feature_types = ['both']
-    embeddings_types = ['word_mean']#'skipthoughts']
-    npairs = 200#11126
-    di = 2#1000
-    max_no_folds = 32
-    
-    results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
-    tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-    = compute_metrics(methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
-                      max_no_folds=max_no_folds)
-    
-    ax1 = plot_active_learning_results(mean_results[0], 'F1 score', 'Mean over test topics', ax1)
-    ax2 = plot_active_learning_results(mean_results[7], 'F1 score', 'Mean over training topics', ax2)    
-    
-    ax3 = plot_active_learning_results(mean_results[2], 'AUC', 'Mean over test topics', ax3)
-    ax4 = plot_active_learning_results(mean_results[9], 'AUC', 'Mean over training topics', ax4)    
-    
-    ax5 = plot_active_learning_results(mean_results[4], 'Pearson correlation', 'Mean over test topics', ax5)
-    ax6 = plot_active_learning_results(mean_results[5], 'Spearman correlation', 'Mean over training topics', ax6)
-    
-    plt.figure(ax1.figure.number)
-    plt.grid()
-
-    plt.figure(ax2.figure.number)
-    plt.grid()
-    
-    plt.figure(ax3.figure.number)
-    plt.grid()
-
-    plt.figure(ax4.figure.number)
-    plt.grid()
-    
-    plt.figure(ax5.figure.number)
-    plt.grid()
-    
-    plt.figure(ax6.figure.number)
-    plt.grid()

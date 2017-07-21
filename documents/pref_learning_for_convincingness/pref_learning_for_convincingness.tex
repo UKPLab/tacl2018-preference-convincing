@@ -1,18 +1,34 @@
-\documentclass[11pt]{article}
-\usepackage{acl2016}
+\documentclass[11pt,letterpaper]{article}
+\usepackage[letterpaper]{geometry}
+\usepackage{acl2012}
 \usepackage{times}
-\usepackage{url}
 \usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{multirow}
+\usepackage{url}
+\makeatletter
+\newcommand{\@BIBLABEL}{\@emptybiblabel}
+\newcommand{\@emptybiblabel}[1]{}
+\makeatother
+\usepackage[hidelinks]{hyperref}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\setlength\titlebox{6.5cm}    % Expanding the titlebox
+
+% \documentclass[11pt]{article}
+% \usepackage{acl2016}
+% \usepackage{times}
+% \usepackage{url}
+% \usepackage{latexsym}
+% 
+% \usepackage[fleqn]{amsmath}
+% \usepackage{amssymb}
+% \usepackage{amstext}
+% \usepackage{amsthm}
+% 
+% \usepackage{cite}
 
 \usepackage{graphicx}
-
-\usepackage[fleqn]{amsmath}
-\usepackage{amssymb}
-\usepackage{amstext}
 \usepackage{amsfonts}
-\usepackage{amsthm}
-
-\usepackage{cite}
 \usepackage{algorithm2e}
 \usepackage{array}
 \usepackage[caption=false,font=footnotesize]{subfig}
@@ -25,30 +41,24 @@
 \makeatletter
 \makeatother %some sort of hack related to the symbol @
 
-\DeclareMathOperator*{\argmax}{\arg\!\max\!} %argmax operator
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \title{ 
-Personalised Models of Argument Convincingness
+Modelling Argument Convincingness using Bayesian Preference Learning
 }
 
-\author{\IEEEauthorblockN{Anonymous}
-\IEEEauthorblockA{Anonymous, \\
-Anonymous \\
-Email: anonymous}
-\and
-\IEEEauthorblockN{Anonymous}
-\IEEEauthorblockA{Anonymous, \\
-Anonymous \\
-Email: anonymous}
-\and
-\IEEEauthorblockN{Anonymous}
-\IEEEauthorblockA{Anonymous, \\
-Anonymous \\
-Email: anonymous}
-}
+\author{First Author \\
+  Affiliation / Address line 1 \\
+  Affiliation / Address line 2 \\
+  Affiliation / Address line 3 \\
+  {\tt email@domain} \\\And
+  Second Author \\
+  Affiliation / Address line 1 \\
+  Affiliation / Address line 2 \\
+  Affiliation / Address line 3 \\
+  {\tt email@domain} \\}
 
+\date{}
 \begin{document}
 
 \maketitle
@@ -94,11 +104,11 @@ Email: anonymous}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % use section* for acknowledgment
-%\section*{Acknowledgments}
+\section*{Acknowledgments}
 
 % \addcontentsline{toc}{chapter}{Bibliography}
 %\bibliographystyle{apalike}
-\bibliographystyle{IEEEtran}
+\bibliographystyle{acl2012}
 \bibliography{simpson_pref_learning_for_convincingness}
 
 \end{document}
