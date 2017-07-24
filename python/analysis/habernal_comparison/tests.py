@@ -1025,29 +1025,27 @@ def run_test_set(run_test_fun=run_test, subsample_tr=0, min_no_folds=0, max_no_f
     return default_ls_values
         
 if __name__ == '__main__':
-    acc = 1.0
-    dataset_increment = 2#0#11265#2000
-     
-    datasets = ['UKPConvArgCrowdSample_evalMACE']
-    methods = ['SVM']#, 'SingleGPC_noOpt_weaksprior_additive']#
-    feature_types = ['embeddings']
-    embeddings_types = ['word_mean']
-    default_ls_values = run_test_set(min_no_folds=21, max_no_folds=26, npairs=200)
-
-#     dataset_increment = 0 
-#     
-#     # need to check that test-on-train works !!!!
-# 
-#     datasets = ['UKPConvArgStrict']
-#     methods = ['SinglePrefGP_weaksprior'] 
-#     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
-#     embeddings_types = ['word_mean', 'siamese-cbow', 'skipthoughts']
-#               
-#     default_ls_values = run_test_set(test_on_train=True)     
-# 
-#     methods = ['SinglePrefGP_weaksprior_additive']
+#     acc = 1.0
+#     dataset_increment = 2#0#11265#2000
+#      
+#     datasets = ['UKPConvArgCrowdSample_evalMACE']
+#     methods = ['SVM']#, 'SingleGPC_noOpt_weaksprior_additive']#
+#     feature_types = ['embeddings']
 #     embeddings_types = ['word_mean']
-#     default_ls_values = run_test_set(test_on_train=True)
+#     default_ls_values = run_test_set(min_no_folds=21, max_no_folds=26, npairs=200)
+ 
+    dataset_increment = 0 
+     
+    datasets = ['UKPConvArgStrict']
+    methods = ['SinglePrefGP_weaksprior'] 
+    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
+    embeddings_types = ['siamese-cbow', 'skipthoughts']
+               
+    default_ls_values = run_test_set(test_on_train=True)     
+ 
+    methods = ['SinglePrefGP_weaksprior_additive']
+    embeddings_types = ['word_mean']
+    default_ls_values = run_test_set(test_on_train=True)
 #  
 # #     # Issue #34 Compare kernel operators
 # #     datasets = ['UKPConvArgStrict', 'UKPConvArgAll']
