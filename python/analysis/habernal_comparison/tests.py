@@ -34,6 +34,7 @@ Created on 20 Mar 2017
 
 import sys
 import os
+from sklearn.metrics.ranking import roc_auc_score
 
 sys.path.append("./python")
 sys.path.append("./python/analysis")
@@ -61,6 +62,7 @@ from data_loading import load_train_test_data, load_embeddings, load_ling_featur
 from joblib import Parallel, delayed
 import multiprocessing
 import numpy as np
+#import skipthoughts
     
 def _dists_f(items_feat_sample, f):
     if np.mod(f, 1000) == 0:
@@ -98,9 +100,8 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
         
         if embeddings_type == 'word_mean':
             items_feat = get_mean_embeddings(embeddings, X)
-        elif embeddings_type == 'skipthoughts':
-            import skipthoughts
-            items_feat = skipthoughts.encode(embeddings, utexts)
+#         elif embeddings_type == 'skipthoughts':
+#             items_feat = skipthoughts.encode(embeddings, utexts)
         elif embeddings_type == 'siamese-cbow':
             items_feat = np.array([embeddings.getAggregate(index_to_word_map[Xi]) for Xi in X])
         else:
@@ -266,8 +267,8 @@ def get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1,
         logging.info("Converting texts to mean embeddings (we could use a better sentence embedding?)...")
         if embeddings_type == 'word_mean':
             items_feat = get_mean_embeddings(embeddings, X)
-        elif embeddings_type == 'skipthoughts':
-            items_feat = skipthoughts.encode(embeddings, utexts)
+#         elif embeddings_type == 'skipthoughts':
+#             items_feat = skipthoughts.encode(embeddings, utexts)
         elif embeddings_type == 'siamese-cbow':
             items_feat = np.array([embeddings.getAggregate(index_to_word_map[Xi]) for Xi in X])
         else:
@@ -297,15 +298,15 @@ def subsample_tr_data(dataset, fold, subsample_amount, items_feat, trainids_a1, 
                    testids_a1, testids_a2, prefs_test, personIDs_test, 
                    argids_rank_test=None, rankscores_test=None, item_idx_ranktest=None):
             
-    filename = data_root_dir + '/outputdata/subsample_%s_%s' % (dataset, fold)
-    if os.path.isfile(filename):
-        logging.debug('Loading subsample idxs from %s' % filename)
-        pair_subsample_idxs = np.genfromtxt(filename, dtype=int)
-    else:
-        logging.debug('Saving new subsample idxs to %s' % filename)
-        pair_subsample_idxs = np.random.choice(len(trainids_a1), subsample_amount, replace=False)
-        #pair_subsample_idxs = (trainids_a1<subsample_amount) & (trainids_a2<subsample_amount)
-        np.savetxt(filename, pair_subsample_idxs)
+    #filename = data_root_dir + '/outputdata/subsample_%s_%s' % (dataset, fold)
+    #if os.path.isfile(filename):
+    #    logging.debug('Loading subsample idxs from %s' % filename)
+    #    pair_subsample_idxs = np.genfromtxt(filename).astype(int)
+    #else:
+    #    logging.debug('Saving new subsample idxs to %s' % filename)
+    pair_subsample_idxs = np.random.choice(len(trainids_a1), subsample_amount, replace=False)
+    #    #pair_subsample_idxs = (trainids_a1<subsample_amount) & (trainids_a2<subsample_amount)
+    #    np.savetxt(filename, pair_subsample_idxs)
     
     trainids_a1 = trainids_a1[pair_subsample_idxs]
     trainids_a2 = trainids_a2[pair_subsample_idxs]
@@ -334,8 +335,8 @@ def subsample_tr_data(dataset, fold, subsample_amount, items_feat, trainids_a1, 
     
 # Methods for running the prediction methods --------------------------------------------------------------------------
 def run_gppl(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_feat, embeddings, X, ndims, 
-             optimize_hyper, testids_a1, testids_a2, unseenids_a1, unseenids_a2, ls_initial_guess, verbose, item_idx_ranktrain=None, 
-             rankscores_train=None, item_idx_ranktest=None):
+             optimize_hyper, testids_a1, testids_a2, unseenids_a1, unseenids_a2, ls_initial_guess, verbose, 
+             item_idx_ranktrain=None, rankscores_train=None, item_idx_ranktest=None):
     if 'additive' in method:
         kernel_combination = '+'
     else:
@@ -358,24 +359,27 @@ def run_gppl(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_f
         model = GPPrefLearning(ninput_features=ndims, ls_initial=ls_initial_guess, verbose=verbose, 
                 shape_s0=shape_s0, rate_s0=rate_s0,  
                 rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200,
-                kernel_combination=kernel_combination)
-        model.max_iter_VB = 500
+                kernel_combination=kernel_combination, forgetting_rate=0.7)
+        model.max_iter_VB = 5#00
+        new_items_feat = items_feat # pass only when initialising
+    else:
+        new_items_feat = None
     
-    model.fit(trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1, 
+    model.fit(trainids_a1, trainids_a2, new_items_feat, np.array(prefs_train, dtype=float)-1, 
               optimize=optimize_hyper, input_type='zero-centered')            
 
-    proba, _ = model.predict(testids_a1, testids_a2, items_feat)
+    proba, _ = model.predict(testids_a1, testids_a2, use_training_items=True, reuse_output_kernel=True)
+
+    if unseenids_a1 is not None and len(unseenids_a1):
+        tr_proba, _ = model.predict(unseenids_a1, unseenids_a2, use_training_items=True, reuse_output_kernel=True)
+    else:
+        tr_proba = None
     
     if item_idx_ranktest is not None:
-        predicted_f, _ = model.predict_f(items_feat[item_idx_ranktest])
+        predicted_f, _ = model.predict_f(item_idx_ranktest, use_training_items=True)
     else:
         predicted_f = None
 
-    if unseenids_a1 is not None and len(unseenids_a1):
-        tr_proba, _ = model.predict(unseenids_a1, unseenids_a2, items_feat)
-    else:
-        tr_proba = None
-        
     return proba, predicted_f, tr_proba, model
 
 def run_gpsvm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_feat, embeddings, X, ndims, 
@@ -461,7 +465,7 @@ def run_gpc(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_fe
         predicted_f = None
 
     if unseenids_a1 is not None and len(unseenids_a1):
-        tr_proba = model.predict(np.concatenate((items_feat[unseenids_a1], items_feat[unseenids_a2]), axis=1))
+        tr_proba, _ = model.predict(np.concatenate((items_feat[unseenids_a1], items_feat[unseenids_a2]), axis=1))
     else:
         tr_proba = None
 
@@ -515,7 +519,6 @@ def run_svm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_fe
         
         problem = svm_read_problem(testfile)
         _, _, tr_proba = svm_predict(problem[0], problem[1], model, '-b 1')
-        tr_proba = tr_proba[:, 1]
     else:
         tr_proba = None
 
@@ -544,7 +547,7 @@ def run_bilstm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items
         #np.append(row1, X_train2[i])
         row1 = row1 + X_train2[i]
         X_train.append(row1)
-    X_test1, X_test2, _, _, _ = folds.get(fold)["test"]
+    X_test1, X_test2, _, _, _, _, _ = folds.get(fold)["test"]
     X_test = []
     for i, row1 in enumerate(X_test1):
         #row1 = np.array(row1)
@@ -626,6 +629,7 @@ def run_bilstm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items
         predicted_f = None
 
     if unseenids_a1 is not None and len(unseenids_a1):
+        X_test = []
         X_test1 = X[unseenids_a1]
         X_test2 = X[unseenids_a2]
         for i, row1 in enumerate(X_test1):
@@ -644,7 +648,8 @@ def run_bilstm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items
         
 def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type=None, embeddings=None, 
              ling_feat_spmatrix=None, docids=None, index_to_word_map=None, subsample_amount=0, default_ls=None, 
-             expt_tag='habernal', dataset_increment=1.0, acc=1.0, initial_pair_subset=None):
+             expt_tag='habernal', dataset_increment=0, acc=1.0, initial_pair_subset=None, min_no_folds=0, 
+             max_no_folds=32, npairs=0, test_on_train=False):
     # To run the active learning tests, call this function with dataset_increment << 1.0. 
     # To add artificial noise to the data, run with acc < 1.0.
         
@@ -653,11 +658,10 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
     output_filename_template = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/%s' % expt_tag
     output_filename_template += '_%s_%s_%s_%s_acc%.2f_di%.2f' 
 
-    resultsfile = (output_filename_template + '_test.pkl') % (dataset, method, feature_type, embeddings_type, acc, 
-                                                              dataset_increment)
-    modelfile = (output_filename_template + '_model') %  (dataset, method, feature_type, embeddings_type, acc, 
-                                                          dataset_increment)
-    modelfile += '_fold%i.pkl'
+    results_stem = output_filename_template % (dataset, method, feature_type, embeddings_type, acc, 
+                                                              dataset_increment) 
+    resultsfile = results_stem + '_test.pkl' # the old results format with everything in one file
+#     modelfile = results_stem + '_model_fold%i.pkl'
     
     if not os.path.isdir(data_root_dir + 'outputdata'):
         os.mkdir(data_root_dir + 'outputdata')
@@ -665,28 +669,47 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         os.mkdir(data_root_dir + 'outputdata/crowdsourcing_argumentation_expts')
                 
     logging.info('The output file for the results will be: %s' % resultsfile)    
+      
+    if not os.path.isdir(results_stem):
+        os.mkdir(results_stem)      
             
     if not os.path.isfile(resultsfile):
         all_proba = {}
         all_predictions = {}
         all_f = {}
+        all_tr_proba = {}
         
         all_target_prefs = {}
         all_target_rankscores = {}
         final_ls = {}
         times = {}
-
     else:
         with open(resultsfile, 'r') as fh:
-            all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, _, times, final_ls = pickle.load(fh)
+            all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, _, times, final_ls, \
+                                                                                    all_tr_proba = pickle.load(fh)
+        if all_tr_proba is None:
+            all_tr_proba = {}
+            
+    np.random.seed(111) # allows us to get the same initialisation for all methods/feature types/embeddings
 
-    all_argids_rankscores = {}
-    #all_turkids_rankscores = {}
-
-    for foldidx, fold in enumerate(folds.keys()):
-        if foldidx in all_proba:
+    fold_keys = folds.keys()
+    for foldidx, fold in enumerate(fold_keys):
+        if foldidx in all_proba and dataset_increment==0:
             print("Skipping fold %i, %s" % (foldidx, fold))
             continue
+        if foldidx >= max_no_folds or foldidx < min_no_folds:
+            print("Already completed maximum no. folds. Skipping fold %i, %s" % (foldidx, fold))
+            continue
+        foldresultsfile = results_stem + '/fold%i.pkl' % foldidx
+        if not len(all_proba.keys()) and os.path.isfile(foldresultsfile): 
+            if dataset_increment == 0:
+                print("Skipping fold %i, %s" % (foldidx, fold))
+                continue
+            
+            with open(foldresultsfile, 'r') as fh:
+                all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],\
+                all_target_rankscores[foldidx], _, times[foldidx], final_ls[foldidx], \
+                                                                                    all_tr_proba = pickle.load(fh)
 
         # Get data for this fold --------------------------------------------------------------------------------------
         print("Fold name ", fold)
@@ -699,7 +722,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         
         items_feat, valid_feats = get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1, 
                                                trainids_a2, uids, embeddings, X, index_to_word_map, utexts)
-                  
+        #items_feat = items_feat[:, :10]     
         ndims = items_feat.shape[1]
 
         # Subsample training data --------------------------------------------------------------------------------------
@@ -709,23 +732,33 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                = subsample_tr_data(dataset, fold, subsample_amount, items_feat, trainids_a1, trainids_a2, prefs_train, personIDs_train,
                testids_a1, testids_a2, prefs_test, personIDs_test, argids_rank_test, rankscores_test, item_idx_ranktest,
                )
-               
-        npairs = len(trainids_a1)
-        nseen_so_far = 0               
-        if dataset_increment != 1.0:
-            nnew_pairs = np.floor(dataset_increment * npairs)
-            # select the initial subsample of training pairs
-            if initial_pair_subset is None:
-                initial_pair_subset = np.random.choice(npairs, nseen_so_far, replace=False)
-                pair_subset = initial_pair_subset
+
+        if npairs == 0:
+            npairs_f = len(trainids_a1)
         else:
-            nnew_pairs = npairs
-            pair_subset = np.arange(npairs)                
+            npairs_f = npairs
+        nseen_so_far = 0     
+                          
+        if dataset_increment != 0:
+            if foldidx in all_proba and all_proba[foldidx].shape[1] >= float(npairs_f) / dataset_increment:
+                print("Skipping fold %i, %s" % (foldidx, fold))
+                continue
+                        
+            nnew_pairs = dataset_increment#int(np.floor(dataset_increment * npairs_f))
+            # select the initial subsample of training pairs
+            pair_subset = np.random.choice(npairs_f, nnew_pairs, replace=False)
+        else:
+            nnew_pairs = npairs_f
+            pair_subset = np.arange(npairs_f)                
         
         verbose = True
         optimize_hyper = ('noOpt' not in method)
         
+#         with open(modelfile % foldidx, 'r') as fh:
+#             model = pickle.load(fh)
+#             items_feat_test = None
         model = None # initial value
+        items_feat_test = items_feat
         
         if len(default_ls) > 1:
             ls_initial_guess = default_ls[valid_feats]
@@ -738,12 +771,15 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
         logging.info("Starting test with method %s..." % (method))
         starttime = time.time()        
         
-        unseen_subset = np.ones(npairs, dtype=bool)
+        unseen_subset = np.ones(len(trainids_a1), dtype=bool)
 
         # Run the chosen method with active learning simulation if required---------------------------------------------
-        while nseen_so_far < npairs:
-            # get the indexes of data points that are not yet seen
-            unseen_subset[pair_subset] = False
+        while nseen_so_far < npairs_f:
+            logging.info('****** Fitting model with %i pairs in fold %i ******' % (len(pair_subset), foldidx))
+            
+            # get the indexes of data points that are not yet seen        
+            if not test_on_train:
+                unseen_subset[pair_subset] = False
 
             # run the method with the current data subset
             if 'SinglePrefGP' in method:
@@ -760,23 +796,9 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 method_runner_fun = run_bilstm
                 
             proba, predicted_f, tr_proba, model = method_runner_fun(fold, model, method, trainids_a1[pair_subset], 
-                trainids_a2[pair_subset],  prefs_train[pair_subset], items_feat, embeddings, X, ndims, optimize_hyper, 
-                testids_a1, testids_a2, trainids_a1[unseen_subset], trainids_a2[unseen_subset], ls_initial_guess, verbose, item_idx_ranktrain, rankscores_train, item_idx_ranktest)
-                
-            # get more data
-            nseen_so_far += nnew_pairs
-            nnew_pairs = np.floor(dataset_increment * npairs)
-            if nseen_so_far >= npairs:
-                # the last iteration possible
-                nnew_pairs = npairs - nseen_so_far
-                nseen_so_far = npairs    
-            else:
-                # don't do this if we have already seen all the data
-                # use predictions at available training points
-                uncertainty = tr_proba * np.log(tr_proba) + (1-tr_proba) * np.log(1-tr_proba) # shannon entropy
-                ranked_pair_idxs = np.argsort(uncertainty)
-                new_pair_subset = ranked_pair_idxs[:nnew_pairs] # active learning (uncertainty sampling) step
-                pair_subset = np.concatenate((pair_subset, new_pair_subset))
+                trainids_a2[pair_subset], prefs_train[pair_subset], items_feat_test, embeddings, X, ndims, optimize_hyper, 
+                testids_a1, testids_a2, trainids_a1[unseen_subset], trainids_a2[unseen_subset], ls_initial_guess, 
+                verbose, item_idx_ranktrain, rankscores_train, item_idx_ranktest)
         
             endtime = time.time() 
             
@@ -788,51 +810,94 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 proba = proba[:, None]
             predictions = np.round(proba)
             
-            predicted_f = np.array(predicted_f)
-            if predicted_f.ndim == 3:
-                predicted_f = predicted_f[0]
-            if predicted_f.ndim == 1:
-                predicted_f = predicted_f[:, None]
+            if predicted_f is not None:
+                predicted_f = np.array(predicted_f)
+                if predicted_f.ndim == 3:
+                    predicted_f = predicted_f[0]
+                if predicted_f.ndim == 1:
+                    predicted_f = predicted_f[:, None]
+                
+            if tr_proba is not None:
+                tr_proba = np.array(tr_proba)
+                if tr_proba.ndim == 2 and tr_proba.shape[1] > 1:
+                    tr_proba = tr_proba[:, 1:2]
+                elif tr_proba.ndim == 1:
+                    tr_proba = tr_proba[:, None]
+                    
+            # get more data
+            nseen_so_far += nnew_pairs
+            nnew_pairs = dataset_increment#int(np.floor(dataset_increment * npairs_f))
+            if nseen_so_far >= npairs_f:
+                # the last iteration possible
+                nnew_pairs = npairs_f - nseen_so_far
+                nseen_so_far = npairs_f    
+            else:
+                # don't do this if we have already seen all the data
+                # use predictions at available training points
+                tr_proba = np.array(tr_proba)
+                uncertainty = tr_proba * np.log(tr_proba) + (1-tr_proba) * np.log(1-tr_proba) # negative shannon entropy
+                ranked_pair_idxs = np.argsort(uncertainty.flatten())
+                new_pair_subset = ranked_pair_idxs[:nnew_pairs] # active learning (uncertainty sampling) step
+                new_pair_subset = np.argwhere(unseen_subset)[new_pair_subset].flatten()
+                pair_subset = np.concatenate((pair_subset, new_pair_subset))
+                
+            if tr_proba is not None:
+                tr_proba_complete = prefs_train.flatten()[:, np.newaxis] / 2.0
+                tr_proba_complete[unseen_subset] = tr_proba
+                tr_proba = tr_proba_complete
                 
             logging.info("@@@ Completed running fold %i with method %s, features %s, %i data so far, in %f seconds." % (
                 foldidx, method, feature_type, nseen_so_far, endtime-starttime) )
             logging.info("Accuracy for fold = %f" % (np.sum(prefs_test[prefs_test != 1] == 2 * predictions.flatten()[prefs_test != 1]) 
-                                              / float(np.sum(prefs_test  != 1))) )            
-               
+                                              / float(np.sum(prefs_test  != 1))) )      
+            if tr_proba is not None:
+                prefs_unseen = prefs_train[unseen_subset]
+                tr_proba_unseen = tr_proba[unseen_subset]
+                logging.info("Unseen data in the training fold, accuracy for fold = %f" % (np.sum(prefs_unseen[prefs_unseen != 1] == 2 * 
+                    np.round(tr_proba_unseen).flatten()[prefs_unseen != 1]) / float(np.sum(prefs_unseen != 1))) )   
+                                   
+            logging.info("AUC = %f" % roc_auc_score(prefs_test[prefs_test!=1] / 2.0, proba[prefs_test!=1]) )
             # Save the data for later analysis ----------------------------------------------------------------------------
             if hasattr(model, 'ls'):
                 final_ls[foldidx] = model.ls
             else:
                 final_ls[foldidx] = [0]
-            del model # release the memory before we try to do another iteration 
             
             # Outputs from the tested method
             if foldidx not in all_proba:
                 all_proba[foldidx] = proba
                 all_predictions[foldidx] = predictions
                 all_f[foldidx] = predicted_f
+                all_tr_proba[foldidx] = tr_proba
             else:
                 all_proba[foldidx] = np.concatenate((all_proba[foldidx], proba), axis=1)
                 all_predictions[foldidx] = np.concatenate((all_predictions[foldidx], predictions), axis=1)
-                all_f[foldidx] = np.concatenate((all_f[foldidx], predicted_f), axis=1)
+                if predicted_f is not None:                
+                    all_f[foldidx] = np.concatenate((all_f[foldidx], predicted_f), axis=1)
+                if tr_proba is not None:
+                    all_tr_proba[foldidx] = np.concatenate((all_tr_proba[foldidx], tr_proba), axis=1)
             
             # Save the ground truth
             all_target_prefs[foldidx] = prefs_test
             if folds_regression is not None:
                 all_target_rankscores[foldidx] = rankscores_test
-                all_argids_rankscores[foldidx] = argids_rank_test
-                #all_turkids_rankscores[foldidx] = turkIDs_rank_test
+            else:
+                all_target_rankscores[foldidx] = None
             
             # Save the time taken
             times[foldidx] = endtime-starttime                
             
-            results = (all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, ls_initial_guess,
-                       times, final_ls) 
-            with open(resultsfile, 'w') as fh:
+
+            results = (all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],\
+               all_target_rankscores[foldidx], ls_initial_guess, times[foldidx], final_ls[foldidx], all_tr_proba[foldidx])
+            with open(foldresultsfile, 'w') as fh:
                 pickle.dump(results, fh)
             
             #with open(modelfile % foldidx, 'w') as fh:
-                #    pickle.dump(model, fh)
+            #        pickle.dump(model, fh)
+
+        del model # release the memory before we try to do another iteration 
+
                 
     return initial_pair_subset
             
@@ -856,7 +921,7 @@ Steps needed to run them:
 4. Run!
 
 '''
-def run_test_set(run_test_fun=run_test, subsample_tr=0):
+def run_test_set(run_test_fun=run_test, subsample_tr=0, min_no_folds=0, max_no_folds=32, npairs=0, test_on_train=False):
     # keep these variables around in case we are restarting the script with different method settings and same data.
     global dataset
     global folds
@@ -952,133 +1017,138 @@ def run_test_set(run_test_fun=run_test, subsample_tr=0):
                     pair_subset = run_test_fun(folds, folds_regression, dataset, method, feature_type, embeddings_type, 
                         embeddings, ling_feat_spmatrix, docids, index_to_word_map, subsample_amount=subsample_tr, 
                         default_ls=default_ls_value, dataset_increment=dataset_increment, acc=acc, 
-                        initial_pair_subset=pair_subset)
+                        min_no_folds=min_no_folds, max_no_folds=max_no_folds,
+                        initial_pair_subset=pair_subset, npairs=npairs, test_on_train=test_on_train)
                     
                     logging.info("**** Completed: method %s with features %s, embeddings %s ****" % (method, feature_type, 
                                                                                            embeddings_type) )
     return default_ls_values
         
 if __name__ == '__main__':
-    acc = 1.0
-    dataset_increment = 1.0
-
-    datasets = ['UKPConvArgStrict', 'UKPConvArgCrowdSample_evalMACE', 'UKPConvArgAll']
-    methods = ['SingleGPC_noOpt_weaksprior_additive']
-    feature_types = ['both']
-    embeddings_types = ['word_mean']
-    default_ls_values = run_test_set()
-
-# # Running all competitive methods on a new subset
-#     datasets = ['UKPConvArgCrowdSample_evalMACE']
-#     methods = ['SVM', 'SinglePrefGP_weaksprior_noOpt']
-#     feature_types = ['ling']
-#     embeddings_types = ['']
-#     default_ls_values = run_test_set()
-#     
-#     methods = ['BI-LSTM', 'SinglePrefGP_weaksprior_noOpt']    
-#     feature_types = ['embeddings']
-#     embeddings_types = ['word_mean']
-#     default_ls_values = run_test_set()
-#     
-#     methods = ['SingleGPC_weaksprior_noOpt', 'SinglePrefGP_weaksprior_noOpt']
-#     feature_types = ['both']
-#     embeddings_types = ['siamese-cbow']
-#     default_ls_values = run_test_set()       
-
-# # Issue #38, Run SVM on other datasets and compute missing metrics
-#     datasets = ['UKPConvArgCrowd_evalMACE']# This needs subsampling, currently it is too large: 'UKPConvArgCrowd_evalAll']
-#     methods = ['SVM']
-#     feature_types = ['ling'] # it says both, but it actually only uses linguistic features
-#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese-cbow']
-#     default_ls_values = run_test_set() 
-             
-# # Issue #41: compare alternative embeddings
-#     datasets = ['UKPConvArgStrict', 'UKPConvArgAll']
-#     methods = ['SinglePrefGP_noOpt_weaksprior']
-#     feature_types = ['embeddings']
-#     embeddings_types = ['skipthoughts']
-#     default_ls_values = run_test_set()
-#     
-#     embeddings_types = ['siamese-cbow']
-#     default_ls_values = run_test_set()    
+    dataset_increment = 0 
+     
+    datasets = ['UKPConvArgStrict']
+    methods = ['SinglePrefGP_weaksprior'] 
+    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
+    embeddings_types = ['siamese-cbow']
+               
+    default_ls_values = run_test_set(test_on_train=True)     
+ 
+#    methods = ['SinglePrefGP_weaksprior_additive']
+#    embeddings_types = ['word_mean']
+#    default_ls_values = run_test_set(test_on_train=True)
+#  
+# #     # Issue #34 Compare kernel operators
+# #     datasets = ['UKPConvArgStrict', 'UKPConvArgAll']
+# #     methods = ['SinglePrefGP_noOpt_additive_weaksprior', 'SinglePrefGP_noOpt_additiveshrunk_weaksprior']
+# #     feature_types = ['both']
+# #     embeddings_types = ['word_mean']
+# #     default_ls_values = run_test_set()
+# #     # Issue #36 Optimize best setup
 # 
-#     feature_types = ['both']
-#     embeddings_types = ['skipthoughts']
-#     default_ls_values = run_test_set()
-#     
-#     embeddings_types = ['siamese-cbow']
-#     default_ls_values = run_test_set()
-#     
-# # # Issue #34 Compare kernel operators
-#     datasets = ['UKPConvArgStrict', 'UKPConvArgAll']
-#     methods = ['SinglePrefGP_noOpt_additive_weaksprior', 'SinglePrefGP_noOpt_additiveshrunk_weaksprior']
-#     feature_types = ['both']
-#     embeddings_types = ['word_mean']
-#     default_ls_values = run_test_set()
-#    
-# # # # Issue #35 Best setup with other datasets
-# #     datasets = ['UKPConvArgCrowd_evalAll'] #'UKPConvArgAll', 
-# #     methods = ['SinglePrefGP_noOpt_weaksprior']#, 'SinglePrefGP_noOpt_additive_weaksprior'] 
+# #      
+# #     datasets = ['UKPConvArgStrict']
+# #     methods = ['SinglePrefGP_noOpt_weaksprior'] 
 # #     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
 # #     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese-cbow']
-# #      
-# #     default_ls_values = run_test_set()
-# #         
-# #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='35')
-# #    
-# #running on desktop-169 now
-# # # Issue #37 GP+SVR. The GPC method should be run on Barney as it needs more memory.
-# #     datasets = ['UKPConvArgAll', 'UKPConvArgCrowd_evalAll']
-# #     methods = ['GP+SVM']
-# #     feature_types = ['both', 'ling'] # we run with ling as well because this is how SVM was originally run by IH.
-# #     embeddings_types = ['word_mean']
-# #         
-# #     default_ls_values = run_test_set()
-# #         
-# #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='37')
-# #      
+# #              
+# #     default_ls_values = run_test_set(test_on_train=True)
+# #  
+# #     methods = ['BI-LSTM']
+# #     feature_types = ['embeddings']
+# #     default_ls_values = run_test_set(max_no_folds=10, npairs=100)
+# #     
+# #     methods = ['SVM']
+# #     feature_types = ['ling']
+# #     default_ls_values = run_test_set(max_no_folds=10, npairs=100)
 # # 
-# # #  GPC. The GPC method should be run on Barney as it needs more memory.
-# #     datasets = ['UKPConvArgStrict']
-# #     methods = ['SingleGPC']
-# #     feature_types = ['embeddings'] # we run with ling as well because this is how SVM was originally run by IH.
-# #     embeddings_types = ['word_mean']
-# #           
-# #     default_ls_values = run_test_set()
-# #           
-# #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='37')
+# #     methods = ['GP+SVM', 'SingleGPC_noOpt_weaksprior_additive']
+# #     feature_types = ['both']
+# #     default_ls_values = run_test_set(max_no_folds=10, npairs=100)
 # 
-# # Issue #36 Optimize best setup
-#     datasets = ['UKPConvArgStrict']
-#     methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_additive_weaksprior'] 
-#     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
-#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese-cbow']
-#           
-#     default_ls_values = run_test_set() 
-             
-# ------------------------------
-
-# # Issue #39, Run BILSTM on other datasets and compute missing metrics
-#     datasets = ['UKPConvArgAll', 'UKPConvArgCrowd_evalAll']
-#     methods = ['BI-LSTM']
-#     feature_types = ['embeddings']
-#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese-cbow']
-#     default_ls_values = run_test_set() 
-#          
-#     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='38')
-
-# # Issue #40 Active learning tests. Settings below are not valid.
-#     acc_levels = [0.6, 0.7, 0.8, 0.9, 1.0] # the accuracy of the pairwise labels used to train the methods -- this is how we introduce noise
-#     tr_pair_subsets = [0.25, 0.5, 0.75, 1.0] # fraction of the dataset we will use to train the methods
-#     #tr_item_subset = [0.25, 0.5, 0.75, 1.0] # to be implemented later. Fix the total number of labels but vary the 
-#     #number of items they cover -- does a densely labelled subset help? Fix no. labels by: selecting pairs randomly
-#     # until smallest item subset size is reached; select any other pairs involving that subset; count the no. items. 
+# # # Running all competitive methods on a new subset
+# #     datasets = ['UKPConvArgCrowdSample_evalMACE']
+# #     methods = ['SinglePrefGP_weaksprior']
+# #     feature_types = ['ling']
+# #     embeddings_types = ['']
+# #     default_ls_values = run_test_set()
+# #     
+# #     methods = ['BI-LSTM', 'SinglePrefGP_weaksprior_noOpt']    
+# #     feature_types = ['embeddings']
+# #     embeddings_types = ['word_mean']
+# #     default_ls_values = run_test_set()
+# #     
+# #     methods = ['SingleGPC_weaksprior_noOpt', 'SinglePrefGP_weaksprior_noOpt']
+# #     feature_types = ['both']
+# #     embeddings_types = ['siamese-cbow']
+# #     default_ls_values = run_test_set()       
+# 
+# # # Issue #38, Run SVM on other datasets and compute missing metrics
+# #     datasets = ['UKPConvArgCrowd_evalMACE']# This needs subsampling, currently it is too large: 'UKPConvArgCrowd_evalAll']
+# #     methods = ['SVM']
+# #     feature_types = ['ling'] # it says both, but it actually only uses linguistic features
+# #     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese-cbow']
+# #     default_ls_values = run_test_set() 
+#              
+# # # Issue #41: compare alternative embeddings
+# #     datasets = ['UKPConvArgStrict', 'UKPConvArgAll']
+# #     methods = ['SinglePrefGP_noOpt_weaksprior']
+# #     feature_types = ['embeddings']
+# #     embeddings_types = ['skipthoughts']
+# #     default_ls_values = run_test_set()
+# #     
+# #     embeddings_types = ['siamese-cbow']
+# #     default_ls_values = run_test_set()    
+# # 
+# #     feature_types = ['both']
+# #     embeddings_types = ['skipthoughts']
+# #     default_ls_values = run_test_set()
+# #     
+# #     embeddings_types = ['siamese-cbow']
+# #     default_ls_values = run_test_set()
+# #   
 #     
-#     datasets = ['UKPConvArgStrict']
-#     methods = ['SinglePrefGP_additive_weaksprior'] 
-#     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
-#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese-cbow']
-#  
-#     default_ls_values = run_test_set(run_noise_sparsity_test)
-#     
-#     #TODO: the plotting and metrics for the noise/sparsity tests.
+# # # # # Issue #35 Best setup with other datasets
+# # #     datasets = ['UKPConvArgCrowd_evalAll'] #'UKPConvArgAll', 
+# # #     methods = ['SinglePrefGP_noOpt_weaksprior']#, 'SinglePrefGP_noOpt_additive_weaksprior'] 
+# # #     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
+# # #     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese-cbow']
+# # #      
+# # #     default_ls_values = run_test_set()
+# # #         
+# # #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='35')
+# # #    
+# # #running on desktop-169 now
+# # # # Issue #37 GP+SVR. The GPC method should be run on Barney as it needs more memory.
+# # #     datasets = ['UKPConvArgAll', 'UKPConvArgCrowd_evalAll']
+# # #     methods = ['GP+SVM']
+# # #     feature_types = ['both', 'ling'] # we run with ling as well because this is how SVM was originally run by IH.
+# # #     embeddings_types = ['word_mean']
+# # #         
+# # #     default_ls_values = run_test_set()
+# # #         
+# # #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='37')
+# # #      
+# # # 
+# # # #  GPC. The GPC method should be run on Barney as it needs more memory.
+# # #     datasets = ['UKPConvArgStrict']
+# # #     methods = ['SingleGPC']
+# # #     feature_types = ['embeddings'] # we run with ling as well because this is how SVM was originally run by IH.
+# # #     embeddings_types = ['word_mean']
+# # #           
+# # #     default_ls_values = run_test_set()
+# # #           
+# # #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='37')
+# # 
+#              
+# # ------------------------------
+# 
+# # # Issue #39, Run BILSTM on other datasets and compute missing metrics
+# #     datasets = ['UKPConvArgAll', 'UKPConvArgCrowd_evalAll']
+# #     methods = ['BI-LSTM']
+# #     feature_types = ['embeddings']
+# #     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese-cbow']
+# #     default_ls_values = run_test_set() 
+# #          
+# #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='38')
+

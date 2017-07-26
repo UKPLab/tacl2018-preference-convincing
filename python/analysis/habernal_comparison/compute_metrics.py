@@ -32,175 +32,415 @@ from scipy.stats import pearsonr, spearmanr, kendalltau
 from data_loading import load_train_test_data, load_ling_features, data_root_dir
 import datetime, time
 
-def get_fold_data(data, f):
+def get_fold_data(data, f, expt_settings):
     # discrete labels are 0, 1 or 2
-    gold_disc = np.array(data[3][f])
-    pred_disc = np.array(data[1][f]) * 2
-    if pred_disc.ndim == 2 and pred_disc.shape[1] > 1:
-        pred_disc = pred_disc[:, 1]
-    #pred_disc = 2 - pred_disc
-    
-    # probabilities
-    gold_prob = gold_disc / 2.0
-    pred_prob = np.array(data[0][f])
-    if pred_prob.ndim == 2 and pred_prob.shape[1] > 1:
-        pred_prob = pred_prob[:, 1]
-    #pred_prob = 1 - pred_prob
-    
-# Considering only the labels where a confident prediction has been made... In this case the metrics should be 
-# shown alongside coverage.
-#     gold_disc = gold_disc[np.abs(pred_prob.flatten() - 0.5) > 0.3]
-#     pred_disc = pred_disc[np.abs(pred_prob.flatten() - 0.5) > 0.3] 
-#     
-#     gold_prob = gold_prob[np.abs(pred_prob.flatten() - 0.5) > 0.3] 
-#     pred_prob = pred_prob[np.abs(pred_prob.flatten() - 0.5) > 0.3] 
-    
-    # scores used to rank
-    if len(data[4]) > 0:
-        gold_rank = np.array(data[4][f])
-    else:
-        gold_rank = None
-                
-    if len(data[2]) > 0:
-        pred_rank = np.array(data[2][f])
-    
-        if pred_rank.ndim == 3:
-            pred_rank = pred_rank[0]
-        pred_rank = pred_rank.flatten()
-    else:
-        gold_rank = None
-        pred_rank = None
-        
-    return gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank
+    try:
+        if len(data[3][f]):
+            gold_disc = np.array(data[3][f])
 
-def compute_metrics(methods, datasets, feature_types, embeddings_types, acc=1.0, dataset_increment=1.0, tag=''):
+            pred_disc = np.array(data[1][f]) * 2
+            if pred_disc.ndim == 1:
+                pred_disc = pred_disc[:, np.newaxis]
+            #pred_disc = 2 - pred_disc
+            
+            # probabilities
+            gold_prob = gold_disc / 2.0
+            pred_prob = np.array(data[0][f])
+            if pred_prob.ndim == 1:
+                pred_prob = pred_prob[:, np.newaxis]
+            #pred_prob = 1 - pred_prob    
+            
+            # scores used to rank
+            if len(data[4]) > 0:
+                gold_rank = np.array(data[4][f])
+            else:
+                gold_rank = None
+                        
+            if len(data[2]) > 0:
+                pred_rank = np.array(data[2][f])
+            
+                if pred_rank.ndim == 1:
+                    pred_rank = pred_rank[:, np.newaxis]
+            else:
+                gold_rank = None
+                pred_rank = None
+                
+            if len(data) > 8 and data[8] is not None and f in data[8] and data[8][f] is not None:
+                pred_tr_disc = np.round(np.array(data[8][f])) * 2
+                pred_tr_prob = np.round(np.array(data[8][f]))
+            else:
+                pred_tr_disc = None
+                pred_tr_prob = None            
+                
+        else:
+            raise 
+    except:        
+        gold_disc = np.array(data[3])
+        pred_disc = np.array(data[1]) * 2
+        if pred_disc.ndim == 1:
+            pred_disc = pred_disc[:, np.newaxis]
+        #pred_disc = 2 - pred_disc
+        
+        # probabilities
+        gold_prob = gold_disc / 2.0
+        pred_prob = np.array(data[0])
+        if pred_prob.ndim == 1:
+            pred_prob = pred_prob[:, np.newaxis]
+            
+        #pred_prob = 1 - pred_prob
+        
+        # scores used to rank
+        if data[4] is not None and len(data[4]) > 0:
+            gold_rank = np.array(data[4])
+        else:
+            gold_rank = None
+                    
+        if data[2] is not None and len(data[2]) > 0:
+            pred_rank = np.array(data[2])
+        
+            if pred_rank.ndim == 1:
+                pred_rank = pred_rank[:, np.newaxis]
+        else:
+            gold_rank = None
+            pred_rank = None
+            
+        if len(data) > 8 and data[8] is not None:
+            pred_tr_disc = np.round(np.array(data[8])) * 2
+            pred_tr_prob = np.round(np.array(data[8]))
+        else:
+            pred_tr_disc = None
+            pred_tr_prob = None        
+
+        #any postprocessing e.g. to remove errors when saving data
+        postprocced = False
+        
+        if pred_rank is not None and gold_rank is not None and pred_rank.shape[0] == 1052 and gold_rank.shape[0] != 1052:
+            # we predicted whole dataeset instead of the subset
+            from tests import get_fold_regression_data
+            if expt_settings['fold_order'] is not None:
+                fold = expt_settings['fold_order'][f]
+            else:
+                fold = expt_settings['folds'].keys()[f]
+            _, docids = load_ling_features(expt_settings['dataset'])
+            _, _, _, item_idx_ranktest, _, _ = get_fold_regression_data(expt_settings['folds_regression'], fold, docids)
+            pred_rank = pred_rank[item_idx_ranktest, :]
+            postprocced = True
+            print "Postprocessed: %i, %i" % (pred_rank.shape[0], gold_rank.shape[0])
+        
+    # Considering only the labels where a confident prediction has been made... In this case the metrics should be 
+    # shown alongside coverage.
+    #     gold_disc = gold_disc[np.abs(pred_prob.flatten() - 0.5) > 0.3]
+    #     pred_disc = pred_disc[np.abs(pred_prob.flatten() - 0.5) > 0.3] 
+    #     
+    #     gold_prob = gold_prob[np.abs(pred_prob.flatten() - 0.5) > 0.3] 
+    #     pred_prob = pred_prob[np.abs(pred_prob.flatten() - 0.5) > 0.3] 
+           
+    return gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, pred_tr_prob, postprocced
+
+def collate_AL_results(AL_rounds, results, combined_labels, label):
+    for r, AL_round in enumerate(AL_rounds):
+        mean_results_round = pd.DataFrame(results[:, :, -1, r].reshape(1, results.shape[0]*results.shape[1]), 
+                                          columns=combined_labels, index=[AL_round])
+        if r == 0:
+            mean_results = mean_results_round
+        else:
+            mean_results = mean_results.append(mean_results_round)
+            
+    print label
+    print mean_results 
+        
+    return mean_results
+
+#     method = expt_settings.method
+#     global dataset
+#     global feature_type
+#     global embeddings_type
+#     global acc
+#     global dataset_increment
+#     global folds
+#     global expt_settings['folds_regression']
+#     global fold_order
+
+def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, accuracy=1.0, di=0, npairs=0, tag='', 
+                    remove_seen_from_mean=False, max_no_folds=32):
+        
+    expt_settings['acc'] = accuracy
+    expt_settings['di'] = di
+    
     row_index = np.zeros(len(methods) * len(datasets), dtype=object)
     columns = np.zeros(len(feature_types) * len(embeddings_types), dtype=object)
     
     row = 0
     
+    if expt_settings['di'] == 0 or np.ceil(np.float(npairs) / np.float(expt_settings['di'])) == 0:
+        AL_rounds = np.array([0]).astype(int)
+    else:
+        AL_rounds = np.arange(expt_settings['di'], npairs+expt_settings['di'], expt_settings['di'], dtype=int)
+        #np.arange( np.ceil(np.float(npairs) / np.float(expt_settings['di'])), dtype=int)    
+    
     if tag == '':
         ts = time.time()
         tag = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d-%H-%M-%S') 
     
-    for d, dataset in enumerate(datasets):
+    for d, dataset_next in enumerate(datasets):
             
         docids = None
         
-        folds, folds_regression, _, _, _ = load_train_test_data(dataset)
-
-        for m, method in enumerate(methods):
+        if expt_settings['dataset'] != dataset_next or expt_settings['folds'] is None:
+            expt_settings['dataset'] = dataset_next            
+            expt_settings['folds'], expt_settings['folds_regression'], _, _, _ = load_train_test_data(expt_settings['dataset'])
+            
+        for m, expt_settings['method'] in enumerate(methods):
         
             if d == 0 and m == 0:
-                results_f1      = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-                results_acc     = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-                results_logloss = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-                results_auc     = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
+                
+                if expt_settings['di'] == 0:
+                    results_shape = (len(methods) * len(datasets), 
+                                 len(feature_types) * len(embeddings_types), 
+                                 len(expt_settings['folds']) + 1,
+                                 1)
+                else:
+                    results_shape = (len(methods) * len(datasets), 
+                                 len(feature_types) * len(embeddings_types), 
+                                 len(expt_settings['folds']) + 1, 
+                                 int(npairs / expt_settings['di']))
+                
+                results_f1      = np.zeros(results_shape)
+                results_acc     = np.zeros(results_shape)
+                results_logloss = np.zeros(results_shape)
+                results_auc     = np.zeros(results_shape)
             
-                results_pearson  = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-                results_spearman = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-                results_kendall  = np.zeros((len(methods) * len(datasets), len(feature_types) * len(embeddings_types), len(folds)))
-                        
-            row_index[row] = method + ', ' + dataset
+                results_pearson  = np.zeros(results_shape)
+                results_spearman = np.zeros(results_shape)
+                results_kendall  = np.zeros(results_shape)
+
+                tr_results_f1      = np.zeros(results_shape)
+                tr_results_acc     = np.zeros(results_shape)
+                tr_results_logloss = np.zeros(results_shape)
+                tr_results_auc     = np.zeros(results_shape)
+            
+            row_index[row] = expt_settings['method'] + ', ' + expt_settings['dataset']
             col = 0
             
-            for feature_type in feature_types:
-                if feature_type == 'ling':
+            for expt_settings['feature_type'] in feature_types:
+                if expt_settings['feature_type'] == 'ling':
                     embeddings_to_use = ['']
                 else:
                     embeddings_to_use = embeddings_types
-                for embeddings_type in embeddings_to_use:
+                for expt_settings['embeddings_type'] in embeddings_to_use:
+                    # start by loading the old-style data
                     resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
-                    'habernal_%s_%s_%s_%s_acc%.2f_di%.2f_test.pkl' % (dataset, method, feature_type, embeddings_type, 
-                                                                      acc, dataset_increment)
+                            resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
+                                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
+                                expt_settings['di']) + '_test.pkl'
                     
+                    resultsdir = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
+                            resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
+                                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
+                                expt_settings['di'])
+                    
+                    if expt_settings['foldorderfile'] is not None:
+                        expt_settings['fold_order'] = np.genfromtxt(os.path.expanduser(expt_settings['foldorderfile']), 
+                                                                    dtype=str)
+                    elif os.path.isfile(resultsdir + '/foldorder.txt'):
+                        expt_settings['fold_order'] = np.genfromtxt(os.path.expanduser(resultsdir + '/foldorder.txt'), 
+                                                                    dtype=str)
+                    else:
+                        expt_settings['fold_order'] = None                    
+                    
+                    nFolds = max_no_folds
                     if os.path.isfile(resultsfile): 
                         
                         with open(resultsfile, 'r') as fh:
                             data = pickle.load(fh)
                                 
-                        nFolds = len(data[0])
+                        if nFolds < 1:
+                            nFolds = len(data[0])
+                    else:
+                        data = None                        
 
-                        for f in range(nFolds):
-                            gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank = get_fold_data(data, f)
-                        
-                            results_f1[row, col, f]      = f1_score(gold_disc[gold_disc!=1], pred_disc[gold_disc!=1], 
-                                                                    average='macro')
-                            #skip the don't knows
-                            results_acc[row, col, f]     = accuracy_score(gold_disc[gold_disc!=1], 
-                                                                          pred_disc[gold_disc!=1]) 
+                    min_folds = 0
+
+                    for f in range(nFolds):
+                        print "Processing fold %i" % f
+                        if expt_settings['fold_order'] is None: # fall back to the order on the current machine
+                            fold = expt_settings['folds'].keys()[f]
+                        else:
+                            fold = expt_settings['fold_order'][f] 
+                            if fold[-2] == "'" and fold[0] == "'":
+                                fold = fold[1:-2]
+                            elif fold[-1] == "'" and fold[0] == "'":
+                                fold = fold[1:-1]  
+                            expt_settings['fold_order'][f] = fold
+                                                      
+                        # look for new-style data in separate files for each fold. Prefer new-style if both are found.
+                        foldfile = resultsdir + '/fold%i.pkl' % f
+                        if os.path.isfile(foldfile):
+                            with open(foldfile, 'r') as fh:
+                                data_f = pickle.load(fh)
+                        else: # convert the old stuff to new stuff
+                            if data is None:
+                                min_folds = f+1
+                                print 'Skipping fold with no data %i' % f
+                                print "Skipping results for %s, %s, %s, %s" % (expt_settings['method'], 
+                                                                               expt_settings['dataset'], 
+                                                                               expt_settings['feature_type'], 
+                                                                               expt_settings['embeddings_type'])
+                                print "Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
+                                                                                                        resultsfile)
+                                continue
                             
-                            results_logloss[row, col, f] = log_loss(gold_prob[gold_disc!=1], pred_prob[gold_disc!=1])
-                            results_auc[row, col, f]     = roc_auc_score(gold_prob[gold_disc!=1], pred_prob[gold_disc!=1]) # macro
-    
-                            if gold_rank is None and folds_regression is not None:
-                                fold = folds.keys()[f]
+                            if not os.path.isdir(resultsdir):
+                                os.mkdir(resultsdir)
+                            data_f = []
+                            for thing in data:
+                                if f in thing:
+                                    data_f.append(thing[f])
+                                else:
+                                    data_f.append(thing)
+                            with open(foldfile, 'w') as fh:
+                                pickle.dump(data_f, fh)
+                        
+                        gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, \
+                                                    pred_tr_prob, postprocced = get_fold_data(data_f, f, expt_settings)
+                        if postprocced: # data was postprocessed and needs saving
+                            with open(foldfile, 'w') as fh:
+                                pickle.dump(data_f, fh)
+                        if pred_tr_disc is not None:                                                                         
+                            print str(pred_tr_disc.shape) + ', ' + str(pred_prob.shape) + ', ' + str(
+                                                                    pred_tr_disc.shape[0]+pred_prob.shape[0])                 
+                            
+                        for AL_round, _ in enumerate(AL_rounds):
+                            #print "fold %i " % f
+                            #print AL_round
+                            if AL_round >= pred_disc.shape[1]:
+                                continue
+                            results_f1[row, col, f, AL_round] = f1_score(gold_disc[gold_disc!=1], 
+                                                                         pred_disc[gold_disc!=1, AL_round], 
+                                                                         average='macro')
+                            #skip the don't knows
+                            results_acc[row, col, f, AL_round] = accuracy_score(gold_disc[gold_disc!=1], 
+                                                                                pred_disc[gold_disc!=1, AL_round]) 
+                            
+                            results_logloss[row, col, f, AL_round] = log_loss(gold_prob[gold_disc!=1], 
+                                                                              pred_prob[gold_disc!=1, AL_round])
+                            
+                            results_auc[row, col, f, AL_round] = roc_auc_score(gold_prob[gold_disc!=1], 
+                                                                               pred_prob[gold_disc!=1, AL_round]) # macro
+                                                
+                            if gold_rank is None and expt_settings['folds_regression'] is not None:
                                 if docids is None:
-                                    _, docids = load_ling_features(dataset)  
-                                # ranking data was not saved in original file. Get it from the folds_regression here
-                                _, rankscores_test, _, _ = folds_regression.get(fold)["test"]
+                                    _, docids = load_ling_features(expt_settings['dataset'])  
+                                # ranking data was not saved in original file. Get it from the expt_settings['folds_regression'] here
+                                _, rankscores_test, _, _ = expt_settings['folds_regression'].get(fold)["test"]
                                 gold_rank = np.array(rankscores_test)
                                 
                             if gold_rank is not None and pred_rank is not None:
-                                results_pearson[row, col, f]  = pearsonr(gold_rank, pred_rank)[0]
-                                results_spearman[row, col, f] = spearmanr(gold_rank, pred_rank)[0]
-                                results_kendall[row, col, f]  = kendalltau(gold_rank, pred_rank)[0]
-                          
-                        results_f1[row, col, -1] = np.mean(results_f1[row, col, :-1])
-                        results_acc[row, col, -1] = np.mean(results_acc[row, col, :-1])
-                        results_logloss[row, col, -1] = np.mean(results_logloss[row, col, :-1])
-                        results_auc[row, col, -1] = np.mean(results_auc[row, col, :-1])
-                        
-                        results_pearson[row, col, -1] = np.mean(results_pearson[row, col, :-1])
-                        results_spearman[row, col, -1] = np.mean(results_spearman[row, col, :-1])
-                        results_kendall[row, col, -1] = np.mean(results_kendall[row, col, :-1])
+                                results_pearson[row, col, f, AL_round]  = pearsonr(gold_rank, 
+                                                                                   pred_rank[:, AL_round])[0]
+                                results_spearman[row, col, f, AL_round] = spearmanr(gold_rank, 
+                                                                                    pred_rank[:, AL_round])[0]
+                                results_kendall[row, col, f, AL_round]  = kendalltau(gold_rank, 
+                                                                                     pred_rank[:, AL_round])[0]
+
+                            def mean_unseen(result, remove_seen_from_mean):
+                                
+                                if not remove_seen_from_mean:
+                                    return result       
+                                
+                                N = len(gold_tr)
+                                Nseen = (AL_round +1) * expt_settings['di']
+                                Nunseen = (N - Nseen)
+                                return (result * N - Nseen) / Nunseen
                             
-                    else:
-                        print "Skipping results for %s, %s, %s, %s" % (method, dataset, feature_type, embeddings_type)
-                        print "Skipped filename was: %s" % resultsfile
-                    
+                            if pred_tr_prob is not None and AL_round < pred_tr_disc.shape[1]:
+                                _, _, gold_tr, _, _, _, _ = expt_settings['folds'].get(fold)["training"]
+                                gold_tr = np.array(gold_tr)
+
+                                if (gold_tr!=1).shape[0] != pred_tr_disc.shape[0]:
+                                    print "Mismatch in fold %s! %i, %i" % (fold, (gold_tr!=1).shape[0], pred_tr_disc.shape[0])
+                                
+                                gold_tr_prob = gold_tr / 2.0
+
+                                tr_results_f1[row, col, f, AL_round] = mean_unseen(f1_score(gold_tr[gold_tr!=1], 
+                                                                             pred_tr_disc[gold_tr!=1, AL_round], 
+                                                                             average='macro'), remove_seen_from_mean)
+                                #skip the don't knows
+                                tr_results_acc[row, col, f, AL_round] = mean_unseen(accuracy_score(gold_tr[gold_tr!=1], 
+                                                                                pred_tr_disc[gold_tr!=1, AL_round]),
+                                                                                remove_seen_from_mean) 
+                                
+                                tr_results_logloss[row, col, f, AL_round] = mean_unseen(log_loss(gold_tr_prob[gold_tr!=1], 
+                                                                            pred_tr_prob[gold_tr!=1, AL_round]),
+                                                                            remove_seen_from_mean)
+                                
+                                tr_results_auc[row, col, f, AL_round] = mean_unseen(roc_auc_score(gold_tr_prob[gold_tr!=1], 
+                                                                                pred_tr_prob[gold_tr!=1, AL_round]),
+                                                                                remove_seen_from_mean)   
+                            elif pred_tr_prob is not None and AL_round >= pred_tr_disc.shape[1]:
+                                tr_results_f1[row, col, f, AL_round] = 1
+                                tr_results_acc[row, col, f, AL_round] = 1
+                                tr_results_auc[row, col, f, AL_round] = 1
+                                tr_results_logloss[row, col, f, AL_round] = 0                                                             
+                          
+                        results_f1[row, col, -1, :] = np.mean(results_f1[row, col, min_folds:max_no_folds, :], axis=0)
+                        results_acc[row, col, -1, :] = np.mean(results_acc[row, col, min_folds:max_no_folds, :], axis=0)
+                        results_logloss[row, col, -1, :] = np.mean(results_logloss[row, col, min_folds:max_no_folds, :], axis=0)
+                        results_auc[row, col, -1, :] = np.mean(results_auc[row, col, min_folds:max_no_folds, :], axis=0)
+                        
+                        results_pearson[row, col, -1] = np.mean(results_pearson[row, col, min_folds:max_no_folds, :], axis=0)
+                        results_spearman[row, col, -1] = np.mean(results_spearman[row, col, min_folds:max_no_folds, :], axis=0)
+                        results_kendall[row, col, -1] = np.mean(results_kendall[row, col, min_folds:max_no_folds, :], axis=0)
+                        
+                        tr_results_f1[row, col, -1, :] = np.mean(tr_results_f1[row, col, min_folds:max_no_folds, :], axis=0)
+                        tr_results_acc[row, col, -1, :] = np.mean(tr_results_acc[row, col, min_folds:max_no_folds, :], axis=0)
+                        tr_results_logloss[row, col, -1, :] = np.mean(tr_results_logloss[row, col, min_folds:max_no_folds, :], axis=0)
+                        tr_results_auc[row, col, -1, :] = np.mean(tr_results_auc[row, col, min_folds:max_no_folds, :], axis=0)
+                        
                     if row == 0: # set the column headers    
-                        columns[col] = feature_type + ', ' + embeddings_type
+                        columns[col] = expt_settings['feature_type'] + ', ' + expt_settings['embeddings_type']
                     
                     col += 1
                     
             row += 1
 
-    mean_results_f1 = pd.DataFrame(results_f1[:, :, -1], columns=columns, index=row_index)
-    print "Macro-F1 scores: "
-    print mean_results_f1
+    combined_labels = []
+    for row in row_index:
+        for col in columns:
+            combined_labels.append(row + '_' + col)
+
+    mean_results = []
+    mean_results.append(collate_AL_results(AL_rounds, results_f1, combined_labels, "Macro-F1 scores for round %i: "))
+    mean_results.append(collate_AL_results(AL_rounds, results_acc, combined_labels, 
+           "Accuracy (excl. don't knows), round %i:")) # for UKPConvArgStrict don't knows are already ommitted)
+    mean_results.append(collate_AL_results(AL_rounds, results_auc, combined_labels, "AUC ROC, round %i:"))
+    #if AUC is higher than accuracy and F1 score, it suggests that decision boundary is not calibrated or that 
+    #accuracy may improve if we exclude data points close to the decision boundary
+    mean_results.append(collate_AL_results(AL_rounds, results_logloss, combined_labels, 
+      "Cross Entropy classification error, round %i: "))
+    #(quality of the probability labels is taken into account)
+    mean_results.append(collate_AL_results(AL_rounds, results_pearson, combined_labels, 
+                                              "Pearson's r for round %i: "))
+    mean_results.append(collate_AL_results(AL_rounds, results_spearman, combined_labels, 
+                                               "Spearman's rho for round %i: "))
+    mean_results.append(collate_AL_results(AL_rounds, results_kendall, combined_labels, 
+                                              "Kendall's tau for round %i: "))
         
-    mean_results_acc = pd.DataFrame(results_acc[:, :, -1], columns=columns, index=row_index)
-    print "Accuracy (for UKPConvArgAll and UKPConvArgMACE we now exclude don't knows; for UKPConvArgStrict they are\
-    already ommitted):"
-    print mean_results_acc
+    if np.any(tr_results_acc):
+        mean_results.append(collate_AL_results(AL_rounds, tr_results_f1, combined_labels,
+                                                 "(TR) Macro-F1 scores for round %i: "))
+        mean_results.append(collate_AL_results(AL_rounds, tr_results_acc, combined_labels, 
+            "(TR) Accuracy for round %i: "))
+        mean_results.append(collate_AL_results(AL_rounds, tr_results_auc, combined_labels, 
+            "(TR) AUC ROC for round %i: "))
+        mean_results.append(collate_AL_results(AL_rounds, tr_results_logloss, combined_labels, 
+            "(TR) Cross Entropy Error for round %i: "))
     
-    mean_results_auc = pd.DataFrame(results_auc[:, :, -1], columns=columns, index=row_index)
-    print "AUC ROC (if AUC is higher than accuracy and F1 score, it suggests that decision boundary is not calibrated\
-    or that accuracy may improve if we exclude data points close to the decision boundary): "
-    print mean_results_auc
-    
-    mean_results_logloss = pd.DataFrame(results_logloss[:, :, -1], columns=columns, index=row_index)
-    print "Cross Entropy classification error (quality of the probability labels is taken into account)"
-    print mean_results_logloss
-    
-    mean_results_pearson = pd.DataFrame(results_pearson[:, :, -1], columns=columns, index=row_index)
-    print "Pearson's r:"
-    print mean_results_pearson
-    
-    mean_results_spearman = pd.DataFrame(results_spearman[:, :, -1], columns=columns, index=row_index)
-    print "Spearman's rho:"
-    print mean_results_spearman
-    
-    mean_results_kendall = pd.DataFrame(results_kendall[:, :, -1], columns=columns, index=row_index)
-    print "Kendall's tau:"
-    print mean_results_kendall
-    
-    metricsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
-                    'metrics_%s.pkl' % (tag)    
-    with open(metricsfile, 'w') as fh:
-        pickle.dump((results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, 
-                     results_kendall), fh)
+#     metricsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
+#                     'metrics_%s.pkl' % (tag)    
+#     with open(metricsfile, 'w') as fh:
+#         pickle.dump((results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, 
+#                      results_kendall), fh)
     
     # TODO: Show how the method resolves cycles
     
@@ -210,20 +450,31 @@ def compute_metrics(methods, datasets, feature_types, embeddings_types, acc=1.0,
     
     # TODO: Correlations between reasons and latent argument features found using preference components?
     
-    return results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall
+    return results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall,\
+            tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels
 
 if __name__ == '__main__':
+    
+    if 'expt_settings' not in globals():
+        expt_settings = {}
+        expt_settings['dataset'] = None
+        expt_settings['folds'] = None 
+
+    expt_settings['foldorderfile'] = None
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
-    # Issue #35 Best setup with other datasets
-    datasets = ['UKPConvArgStrict']#, 'UKPConvArgAll']#'UKPConvArgStrict', , 'UKPConvArgCrowd_evalMACE']#, ]
-#     methods = ['SVM']#, 'GP+SVM', 'SingleGPC_noOpt_weaksprior', 'SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_additive_weaksprior'] 
-#     feature_types = ['both']#, 'ling']#,  can be 'embeddings' or 'ling' or 'both'
-#     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese_cbow']
-
-    methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_noOpt_weaksprior']
-    feature_types = ['both']#, 'both', 'ling']
-    embeddings_types = ['word_mean']
+    resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
     
-    results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall = \
-                                                    compute_metrics(methods, datasets, feature_types, embeddings_types)             
+    npairs = 0
+    di = 0
+    max_no_folds = 23
+
+    methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
+    datasets = ['UKPConvArgStrict']#['UKPConvArgCrowdSample_evalMACE']
+    feature_types = ['both']
+    embeddings_types = ['word_mean']#'skipthoughts']
+     
+    results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
+    tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
+    = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
+                      max_no_folds=max_no_folds)
