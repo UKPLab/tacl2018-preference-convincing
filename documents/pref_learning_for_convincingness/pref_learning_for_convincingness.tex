@@ -3,7 +3,7 @@
 \usepackage{acl2012}
 \usepackage{times}
 \usepackage{latexsym}
-\usepackage{amsmath}
+\usepackage[fleqn]{amsmath}
 \usepackage{multirow}
 \usepackage{url}
 \makeatletter
@@ -34,6 +34,8 @@
 \usepackage[caption=false,font=footnotesize]{subfig}
 \usepackage{url}
 \usepackage{tabularx}
+\usepackage{numprint}
+\usepackage{multirow}
 
 \newcommand{\bs}{\boldsymbol}  
 \newcommand{\wrtd}{\mathrm{d}}
@@ -44,7 +46,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \title{ 
-Modelling Argument Convincingness using Bayesian Preference Learning
+Finding Convincing Arguments using Scalable Bayesian Preference Learning
 }
 
 \author{First Author \\
@@ -64,23 +66,36 @@ Modelling Argument Convincingness using Bayesian Preference Learning
 \maketitle
 
 \begin{abstract}
-
-\begin{itemize}
-  \item Motivation: finding well-written and convincing arguments to enable better decision-making, analyse public opinion
-  \item Need tools that can learn to identify convincing arguments in new topics and domains from small amounts of data
-  \item Pairwise preferences provide a way for multiple people to communicate the relative convincingness of arguments 
-  \item Implicit preferences can be elicited from user actions, such as selecting a document from a list given its summary to read in more detail
-  \item We propose a scalable approach to preference learning using stochastic variational inference to learn a Gaussian process model
-  \item We show how Bayesian approach to preference learning can be applied to high-dimensional text problems
-  \item The approach outperforms SVMs and neural networks when data is sparse or noisy  
-  \item ...and achieves state-of-the art performance for predicting argument convincingness given sufficient data
-  \item We show how our Bayesian approach enables more effective active learning, thereby reducing the amount of data required to model argument convincingness in new domains
-  \item We develop a gradient-based approach to automatic relevance determination that enables us to identify the most informative features for predicting arguments when the input space contains tens of thousands of dimensions
-  \item Our analysis shows that word embeddings and linguistic features contain complementary information that boost performance when both types of features are used.
-\end{itemize}
+%To do: move bits to intro that we have to cut 
+% Convincingness: decision-making by extracting the best arguments; analysing opinions & influence by seeing who says what; personalised argumentation, where an agent selects the most persuasive arguments for a target person.
+% First three sentences need re-writing completely.
+% This is hard because the motivation is still unclear/too complex! Multiple points:
+% - modelling argument convincingness is useful (motivation part i)
+% - existing methods don't work with small data in new domains (motivating problem part ii)
+% - Bayesian approach solves this but needs to be more scalable (can reword this to state our contribution)
+% - preference learning allows us to learn from pairwise comparisons including implicit feedback (advantages of our contribution)
+% - scalability overcomes previous limitations of Bayesian methods
+% A good motivation states an opportunity in 1/2 sentences. Can state limitation of existing solutions.
+% Follow immediately with clear statement of contribution.
+% Argumentation is a key part of human decision making ...
 
 
-
+% However, the challenge is to handle the noise in such preference labels and their limited number. 
+%    \item We develop a gradient-based approach to automatic relevance determination that enables us to identify the most informative features for predicting arguments when the input space contains tens of thousands of dimensions % this is too detailed for here -- part of our scalable approach. 
+Argumentative texts vary greatly in quality, 
+meaning that identifying the most convincing arguments 
+on each side of a controversial topic could be highly beneficial for decision making.
+To address this problem, we present a scalable Gaussian process approach for preference learning 
+and apply the method to predicting argument convincingness. 
+While Bayesian methods have been shown to be effective when dealing with small and noisy datasets,
+methods such as Gaussian processes (GP) have not previously been applied to argument quality.
+A perceived drawback is a lack of scalability, which we address through a new
+inference method for GP preference learning using recent advances in stochastic variational inference.
+We show how our method can be applied to predict argument convincingness from crowdsourced data, 
+outperforming state-of-the-art methods, particularly when the data is sparse or noisy.  
+We demonstrate more effective active learning using our Bayesian approach, 
+thereby reducing the amount of data required to identify convincing arguments for new users and domains.
+Our results also illustrate the value of combining linguistic features with word embeddings to improve performance. 
 
 \end{abstract}
 
@@ -106,9 +121,17 @@ Modelling Argument Convincingness using Bayesian Preference Learning
 % use section* for acknowledgment
 \section*{Acknowledgments}
 
+\cleardoublepage
+
 % \addcontentsline{toc}{chapter}{Bibliography}
 %\bibliographystyle{apalike}
 \bibliographystyle{acl2012}
 \bibliography{simpson_pref_learning_for_convincingness}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\cleardoublepage
+\appendix
+\input{sections/appendix}
 
 \end{document}

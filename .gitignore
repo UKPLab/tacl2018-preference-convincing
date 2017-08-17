@@ -129,3 +129,4 @@ results/old_stuff/*
 results/*
 outputdata/*.pkl
 /.DS_Store
+/hardcopy.1

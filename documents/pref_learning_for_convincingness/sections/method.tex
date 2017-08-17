@@ -1,39 +1,223 @@
-\section{Identifying Common Patterns of Convincingness}\label{sec:model}
+\section{Scalable Bayesian Preference Learning}\label{sec:model}
 
-\section{Bayesian Preference Learning Model}
+%%%% Notes
 
-The model introduced in \cite{houlsby2012collaborative} combines preference learning with matrix factorisation 
-to identify latent features of items and users that affect their preferences. This allows for a collaborative filtering effect, whereby users with similar preferences on a set of observed items are assumed to have similar 
-preferences for other items with similar features. This allows us to make better predictions about the unobserved preferences of a given user when we have seen preferences of a similar user.
+% TO ADD: Why does the variance in f cancel out when predicting the probability of a pairwise label?
+% TO ADD: Why does \sigma disappear if we learn the output scale.
 
-The method presented in \cite{houlsby2012collaborative} uses a combination of expectation propagation (EP) and variational Bayes (VB). Since the inference steps require inverting a covariance matrix, this method scales with 
-$\mathcal{O}(N^3)$ and is therefore impractical for large datasets. For our modified version of this method, we improve scalability by using stochastic variational inference to infer the complete model. 
-The variational approximation to the posterior is given by...
+% We also estimate the output scale of the GPs, the latent factors, and item bias as part of the 
+% variational approximation allowing us to estimate these parameters in a Bayesian manner without 
+% resorting to maximum likelihood approaches.
 
-The variational inference algorithm maximises a lower bound on the log marginal likelihood:
-\begin{eqnarray}
-  \mathcal{L} = \sum_{i=1}^N \mathbb{E}[ \log p(t_i | x_{i,1}, x_{i,2}, \bs f) ] + \nonumber\\
-  \sum_{u=1}^U  \mathbb{E}\left[ \log \frac{p(\bs f_u | \bs w \bs y_u, \bs K_{f,u} / s_{f,u} )}{q(\bs f_u)}\right] + \nonumber\\
-  \sum_{c=1}^C \mathbb{E}\left[\log\frac{p(\bs w_c | \bs 0, \bs K_w / s_{w,c} ) }{q(\bs w_c) } \right] + \nonumber\\
-  \sum_{c=1}^C \mathbb{E}\left[\log\frac{p(\bs y_c | \bs 0, \bs K_y / s_{y,c} ) }{q(\bs y_c) } \right] + \nonumber\\
-  \mathbb{E}\left[\log\frac{p(\bs t | \bs \mu, \bs K_{t} / s_t ) }{q(\bs t)} \right] + \nonumber\\
-  \sum_{u=1}^U \mathbb{E}\left[\log\frac{p(s_{f,u} | a_{f,u}, b_{f,u})}{q(s_{f,u})}\right] + \nonumber\\
-  \sum_{d=1}^D \mathbb{E}\left[\log\frac{p(s_{w,d} | a_{w,d}, b_{w,d})}{q(s_{w,d})}\right] +\nonumber\\
-  \sum_{d=1}^D \mathbb{E}\left[\log\frac{p(s_{y,d} | a_{y,d}, b_{y,d})}{q(s_{y,d})}\right] 
-\end{eqnarray}
-where $t_i$ is the preference label for the $i$th pair, 
+% mention how the noise model deals with inconsistencies in preferences
 
-To perform feature selection with large numbers of features, we introduce 
-an automatic relevance determination
-(ARD) approach that uses the gradient of the lower bound on the log marginal likelihood to optimise the kernel length-scales using the L-BFGS-B method\cite{??}. The gradient is given by:
-\begin{eqnarray}
-\nabla\mathcal{L} = \left[ \frac{\partial \mathcal{L}}{\partial l_{w,1}}, ...,  \frac{\partial \mathcal{L}}{\partial l_{w,D_w}},  \frac{\partial \mathcal{L}}{\partial l_{y,1}}, ...,  \frac{\partial \mathcal{L}}{\partial l_{y,D_y}} \right], &&\\
-\frac{\partial \mathcal{L}}{\partial l_{w,d}} = \frac{\partial}{\partial l_{w,d}} 
-\sum_{u=1}^U  \mathbb{E}\left[\log\frac{p(\bs f_u | \bs w \bs y_u, \bs K_{f,u} / s_{f,u} )}{q(\bs f_u)}\right] + \nonumber && \\
-\sum_{c=1}^C \mathbb{E}\left[\log\frac{p(\bs w_c | \bs 0, \bs K_w / s_{w,c} ) }{q(\bs w_c) } \right] - \nonumber&&\\
-\sum_{u=1}^U \mathbb{E}\left[\log q(s_{f,u})\right] - \sum_{d=1}^D \mathbb{E}\left[\log q(s_{w,d})\right] +\nonumber&&\\
-= 0.5 (\hat{f}_u - wy_u)^T \bs K_{f,u}^{-1} \frac{\partial \bs K}{\partial \log l_{w,d}} \hat{s}_{f,u} \bs K_{f,u}^{-1} (\hat{f}_u - wy_u) \nonumber\\
-- 0.5\mathrm{tr}\left( (\bs K_{f,u}^{-1} - \frac{\bs C^{-1}}{\hat{s}_{f,u}} ) \frac{\partial \bs K_{f,u}}{\partial \log l_{w,d}} \right)\nonumber&&\\
-\frac{\partial \mathcal{L}}{\partial l_{y,d}} = &&\\
-\end{eqnarray}
-where $l_{w,d}$ is a length-scale used for all the GPs over item features. The implicit terms are zero when the VB algorithm has converged.
+% \begin{enumerate}
+% \item What are the benefits of Bayesian methods and Gaussian processes in particular?
+% \item The proposal by \cite{chu2005preference} shows how the advantages of a Bayesian
+% approach can be exploited for preference learning by modifying the observation model
+
+%%%% The preference likelihood model
+
+Following \cite{chu2005preference}, we model the relationship between a latent preference function, $f$,
+and each observed pairwise label, $[v_k \succ u_k]$, where $k$ is an index into a list of 
+$P$ pairs, as follows:
+\begin{flalign}
+& p( v_k \succ u_k | f(v_k), f(u_k), \delta_{v_k}, \delta_{u_k} ) & \nonumber\\
+& = \begin{cases}
+ 1 & \text{if }f(v_k) + \delta_{v_k} \geq f(u_k) + \delta_{u_k} \\
+ 0 & \text{otherwise,}
+ \end{cases} &
+\end{flalign}
+where $\delta_i \sim \mathcal{N}(0, 1)$ is Gaussian-distributed noise. 
+The noise term allows for variations in the observed preferences, which may occur if multiple people
+are asked to provide a label, if the annotator is uncertain and changes her mind, or if
+the preferences are derived from noisy implicit data such as clicks streams.
+The unobserved noise terms are integrated out to obtain:
+\begin{flalign}
+& p( v_k \succ u_k | f(v_k), f(u_k) ) = \Phi\left( \frac{f(v_k) - f(u_k)}{\sqrt 2} \right), & \label{eq:pl}
+\end{flalign}
+where $\Phi$ is the cumulative distribution function of a standard Gaussian distribution.
+We deviate from the definition in \cite{chu2005preference} because we assume that $\delta_i$
+has a variance $\sigma=1$, and instead learn the scale of the function $f$. This formulation
+is equivalent since the relative scales of the noise $\delta_i$ and the preference function 
+$f$ are maintained. 
+
+%%%% Inference problem intro
+
+The goal of inference is to learn the posterior distribution over the function values $f_i$ for each item $i$.
+We assume a Gaussian process prior: $f \sim \mathcal{GP}(0, k_{\theta}/s)$, where the terms are explained as follows: $k_{\theta}$ is a kernel function with hyper-parameters $\theta$, which effectively controls the correlation between values of $f$ at different points in the feature space; $s \sim \mathcal{G}(a_0, b_0)$ is an inverse scale parameter that controls the level of noise in the function and has a gamma prior with shape $a_0$ and scale $b_0$.
+
+Inference in \cite{chu2005preference} was performed using gradient descent to optimise a Laplace approximation. However, this approach produced a maximum a-posteriori (MAP) approximation, which takes the most probable point values of parameters rather than integrating over their distributions, and thus does not give a fully Bayesian treatment of parameter uncertainty and has been shown to perform poorly for tasks such as classification \cite{nickisch2008approximations}. Furthermore, the presented approach is not scalable as it requires
+$\mathcal{O}(n^3)$ computation and $\mathcal{O}(n^2)$ memory, 
+where $n$ is the number of observations. 
+We address this problem by first adapting the variational inference method 
+based on the extended Kalman filter (EKF) \cite{reece2011determining,steinberg2014extended} 
+to the preference likelihood given by Equation \ref{eq:pl}.
+We refer to a particular pair of items by the index $k$, and all pairwise labels for that specific pair as $\bs y_k$.
+To permit inference using the variational method, our model approximates
+a Beta distribtion over the observation likelihood using a Gaussian distribution:
+$p( v_k \succ u_k | \bs y_k ) \approx \mathcal{N}( v_k \succ u_k | \Phi(\hat{f}_{v_k} - \hat{f}_{u_k}/\sqrt 2), \nu_{k})$. 
+The variances $v_k$ for all pairs form a diagonal matrix $\bs Q$ and are estimated by moment matching with 
+the variance of a beta distribution $\mathbb{V}[\nu_k] \sim \mathcal{B}(1 + \sum_{i=1}^{P_k} y_{k,i}, 1 + \sum_{i=1}^{P_k} 1 - y_{k,i})$, where $P_k$ is the number of pairwise labels for the items $v_k$ and $u_k$ in pair $k$.
+Further details are given in \cite{reece2011determining}. % cite the heatmaps paper
+%shouldn't we also explain G? Is this an innovative bit for preference learning?
+This approximation means that the posterior distribution over $f$ for items in the training set
+is also Gaussian: $p(f(\bs x) | \bs y) \approx \mathcal{N}(f(\bs x) | \hat{\bs f}, \bs C )$
+where $\bs x$ is a matrix of input features for the training items. 
+
+We now use variational inference to iteratively optimise
+the approximate posterior parameters $\hat{\bs f}$ and $\bs C$ and the 
+posterior distribution over the inverse scale $s$.
+The algorithm we use maximises a lower bound, $\mathcal{L}$, 
+on the log marginal likelihood, $p(\bs y | \theta, a_0, b_0)$:
+%We derive this bound using Equations \ref{eq:vblb} 
+%to \ref{eq:vblb_terms} in Appendix \ref{sec:vb_eqns}, giving the following:
+\begin{flalign}
+\label{eq:lowerbound}
+& \mathcal{L}(q) \approx - \frac{1}{2} \left\{ L \log 2\pi + \log |\bs Q| - \log|\bs C| + \log|\bs K| \right. \nonumber&&\\
+& \left. + (\hat{\bs f} - \bs\mu)\bs K^{-1}(\hat{\bs f} - \bs\mu) \right. \nonumber&&\\
+& \left. + (\bs y - \Phi(\hat{\bs z}))^T \bs Q^{-1} (\bs y - \Phi(\hat{\bs z}))\right\} \nonumber&&\\
+& + \Gamma(a) - \Gamma(a_0) + a_0(\log b_0) + (a_0-a)\hat{\ln s} \nonumber&&\\
+& + (b-b_0) \hat{s} - a \log b, &&
+\end{flalign}
+% should G appear in here as it is also optimised in a variational manner?
+where $L$ is the number of observed preference labels, 
+$\bs y = \left[[v_1 \succ u_1], ..., [v_L \succ u_L]\right]$ is a vector of binary labels indicating whether $v_i$ was preferred to $u_i$,
+$\hat{\ln s} = \mathbb{E}[\log s]$ and $\hat s$ are expected values given the approximate posterior distribution over $s$,
+and we compute $\hat{\bs z}$ using:
+\begin{equation}
+\hat{\bs z} = \left\{ \frac{\hat{f}_{v_k} - \hat{f}_{u_k}}{\sqrt 2} \forall k=1,...,P\right\}
+\label{eq:zhat}.
+\end{equation}
+%$\mathbb{E}_q$ is an expectation with respect to the
+%variational posterior distribution, $q(\bs f, s)$.
+%We apply a variational inference algorithm learn optimal values for the variational parameters 
+%$\bs f$, $\bs C$ and $\bs s$ and obtain an approximate posterior over the latent function values $\bs f$.
+
+To provide a scalable algorithm, we adapt stochastic variational inference (SVI) 
+\cite{hensman2013gaussian,hensman_scalable_2015} from classification tasks to preference learning.
+For SVI we assume $M$ \emph{inducing points} with features $\bs x_m$. 
+By choosing a value of $M << N$ that is much smaller than our dataset, we can limit the computational
+and memory requirements for performing approximate inference. 
+The inducing points act as a substitute for the real feature vectors of the observed arguments. 
+Therefore, to choose representative inducing points, we use a cheap clustering algorithm to identify
+cluster centres that can be used as inducing points. In our experiments we used K-means.
+
+Given the inducing points, SVI further limits computational costs by using an iterative update
+algorithm that performs calculations involving only $P_m << P$ pairs at each iteration. As with $M$,
+the value of $P_m$ can be chosen by the developer to fit their hardware requirements. Smaller values
+will consider less data at each iteration and therefore may require a larger number of iterations to converge.
+However, convergence is hard to predict and depends on the properties of the dataset used.
+The algorithm begins by randomly initialising estimates of the mean at the 
+inducing points, $\hat{\bs f}_{m}$, the covariance of the inducing points, $\bs S$, 
+ the inverse function scale expectations $\hat{s}$ and $\hat{\ln s}$,
+ and the Jacobian of the pairwise label probabilities, $\bs G$. 
+ The latter is required to enable a first order Taylor series approximation, which makes 
+ the iterative updates tractable.
+Then, at each iteration $n$ of the SVI algorithm, these values are updated 
+using the following equations, which are adapted from the derivations by \cite{hensman2013gaussian,hensman_scalable_2015}:
+\begin{flalign}
+%self.invKs_mm.dot(Ks_nm_i.T).dot(self.G.T)
+%        Lambda_i = (Lambda_factor1 / Q).dot(Lambda_factor1.T)
+& \bs S^{-1}_n  = (1 - \rho_n) \bs S^{-1}_{n-1} + \rho_n \nonumber & \\ 
+&  \left(w_n  \bs K_{mm}^{-1}\bs K_{nm}^T \bs G^T \bs Q^{-1} \bs G \bs K_{nm} \bs K_{mm}^{-T}  + \hat{s} \bs K_{mm}^{-1}\right)& 
+\label{eq:S} \\
+& \hat{\bs f}_{m,n}  = \bs S_n \left( 
+(1 - \rho_n) \bs S^{-1}_{n-1} \hat{\bs f_{m,n-1}}  + w_n \rho_n
+\bs K_{mm}^{-1} \right. \nonumber & \\
+& \left.\bs K_{nm}^T \bs G^T Q^-1 \left( \frac{1+\sum_{l=1}^{P_k} y_{k,l}}{P_k}  - \Phi(\hat{\bs z}_n) - \bs G \hat{\bs f} \right) \right) & \\
+%\hat{\bs f}_n & = \bs K_{nm} \bs K_{mm}^{-1} \bs S &\\
+%\bs C_n & = \bs K + (\bs K_{*m}\bs K_{mm}^{-1} \bs S - 
+%\bs K_{nm}\bs K_{mm}^{-1}) \bs K_{mm}^{-T}\bs K_{nm}^T&\\
+&\hat{s} = a/b, \hspace{1cm} \hat{\ln s} = \Psi(a) - \log(b) & \\
+& \bs G = \frac{1}{ 2\pi}  \exp\left(-\frac{1}{2} \hat{\bs z}_n ^2\right) \label{eq:G}
+\end{flalign}
+where $\bs K_{nm}$ is the covariance between the subsample of observations at 
+iteration $n$ and the inducing points; 
+$\hat{\bs z}_n$ is the preference label likelihood for $n$th subsample of observations given by Equation \ref{eq:zhat};
+ $s$ has a gamma distribution with shape $a=a_0 + \frac{N}{2}$ 
+and inverse scale $b = b_0 + \frac{1}{2} \mathrm{Tr}\left(\bs K_j^{-1}
+\left( \bs\Sigma_j + \hat{\bs f}_j \hat{\bs f}_j^T - 2 \bs\mu_{j,i}\hat{\bs f}_j^T - \bs\mu_{j,i}\bs\mu_{j,i}^T \right)\right)$, 
+ $\Psi$ is the digamma function;
+ the term $\rho_i=(n + \mathrm{delay})^{-\mathrm{forgetting_rate}}$ 
+ controls the combination of estimates between iterations; finally, the
+ weight $w_n = \frac{N}{N_{\mathrm{subsample}}}$ weights the update
+ according to the size of the subsample of observations.
+ Equations \ref{eq:S} to \ref{eq:G} are repeated until convergence. 
+Given the converged estimates, we can make predictions for test arguments with feature vectors $\bs x_*$
+according to:
+% (3) predictions for new data points hat f
+% (4) predictions C
+\begin{flalign}
+\hat{\bs f_*} & =  \bs K_{*m} \bs K_{mm}^{-1} \hat{\bs f}_{m} \\
+%         covpair_uS = Ks_nm.dot(self.invKs_mm_uS)
+%        fhat = covpair_uS.dot(self.u_invSm) 
+%\bs W^*\left(\Phi(\bs \hat{z}) - \sigma(\hat{\bs f}_j) + \bs G(\hat{\bs f}_j - \bs\mu_j )\right) &\\
+%             covpair =  Ks_nm.dot(self.invKs_mm)
+%            C = Ks_nn + (covpair_uS - covpair.dot(self.Ks_mm)).dot(covpair.T)
+\mathbb{V}[\bs f_*] & = \bs K_{**}/\hat{s} & \nonumber\\
+& + (\bs K_{*m}\bs K_{mm}^{-1} \bs S - 
+\bs K_{*m}\bs K_{mm}^{-1}) \bs K_{mm}^{-T}\bs K_{*m}^T, &
+%\bs\Sigma_j^{*} &= \hat{\bs K}^{**}_j -\bs W_j^* \bs G_j \hat{\bs K}^*_j, \label{eq:f_cov}
+\end{flalign}
+where $\bs K_{*m}$ is the covariance between the test feature vectors and the inducing
+points, $\bs K_{mm}$ is the covariance between test feature vectors, 
+and $\hat{\bs f}_*$ and $\mathbb{V}[\bs f_*]$ are the posterior mean and variance of preference function values for the test arguments.
+
+% We propose a different inference scheme using , which approximates the full parameter distributions
+% and allows the developer to reduce the memory requirements to their required level.
+% To develop our SVI approach, we adapt a variational inference method  We further adapt this approach to preference learning
+%and show how it can be practically applied to NLP problems with large numbers of input features
+%by optimising a bound on the marginal likelihood using gradient ascent.
+
+%%%% ARD intro
+
+\subsection{Kernel Length-scale Optimsation}
+
+Typically, the kernel hyper-parameters $\theta$ contains a length-scale for each feature, $l$, 
+which controls the smoothness of the function across the feature space. The kernel is a function
+of distance between two feature vectors and the length-scale, e.g. $k_{\theta}(\bs x, \bs x') = 
+k(|\bs x - \bs x'| / l)$. 
+This is therefore an important hyper-parameter and determines whether the model performs well or not. 
+The median heuristic is one choice that has been shown to work well in practice \cite{gretton2012optimal}: 
+$ l_{MH} = \frac{1}{D} \mathrm{median}( \{ |\bs x_i - \bs x_j'| \forall i=1,..,N \forall j=1,...,N\} ) $.
+The length-scales can also be optimised by choosing the values that maximise the lower bound on the 
+log marginal likelihood, $\mathcal{L}$, defined in Equation \ref{eq:lowerbound}. 
+This process is known as maximum likelihood II \cite{rasmussen_gaussian_2006}.
+Features that have very large length-scales can be considered irrelevant, since the value of $k_{\theta}$ is 
+almost independent of that feature.
+The process of optimising length-scales is therefore referred to as 
+automatic relevance determination (ARD).
+ Removing irrelevant features could improve performance, 
+ since it reduces the dimensionality of the space of the preference function.
+A problem when using text data is that large vocabulary sizes and additional linguistic features 
+lead to a large number of dimensions, $D$. The standard maximum likelihood II optimisation requires 
+$\mathcal{O}(D)$ operations to tune each length-scale.
+This cost can be reduced by simultaneously optimising all length-scales 
+using a gradient-based method such as L-BFGS-B \cite{zhu1997algorithm}.
+To enable such an approach, we compute the gradients of $\mathcal{L}(q)$
+with respect to the length-scale of each feature dimension, $l_d$. 
+%Following the derivations in Appendix \ref{sec:vb_eqns}, Equation \ref{eq:gradient_ls},
+These gradients are given by:
+\begin{flalign}
+& \nabla_{l_d}\mathcal{L}(q) =  
+ \frac{1}{2}\hat{s} \hat{\bs f}_{m}^T \bs K_{mm}^{-T} \frac{\partial \bs K_{mm}}{\partial l_d} \bs K_{mm}^{-1} \hat{\bs f}_{m} 
+  \nonumber &&\\
+& -\frac{1}{2} \mathrm{tr}\left(\left(\hat{s}\bs K_{mm}^{-1}\bs S\right)^{T} 
+\left(\bs S^{-1} - \bs K_{mm}^{-1}/\hat{s}\right) \frac{\partial \bs K_{mm}}{\partial l_d}
+\right) 
+&&.
+\end{flalign}
+For the Mat\`ern $\frac{3}{2}$ kernel,
+which we use in our experiments due to its general properties of smoothness\cite{rasmussen_gaussian_2006},
+we compute:
+\begin{flalign}
+\frac{\partial \bs K}{\partial l_d} & = \prod_{d'=1,d'\neq d}^D K_{d} \frac{\partial K_{l_d}}{\partial l_d} \\
+\frac{\partial K_{l_d}}{\partial l_d} & = \frac{3\bs |\bs x_d - \bs x_d'|^2}{l_d^3} \exp\left( - \frac{\sqrt{3} \bs |\bs x_d - \bs x_d'|}{l_d} \right),
+\label{eq:kernel_der}
+\end{flalign}
+where $|\bs x_d - \bs x_d'|$ is the distance between input points.
+% is defined by Equation \ref{eq:kernel_der}.
+% Since we cannot compute $\bs K$ in high dimensions, in practice we substitute $\bs K_{mm}$ for $\bs K$,
+% $\bs S$ for $\bs C$, $\hat{\bs f}_{m}$ for $\hat{\bs f}$ and $\bs\mu_{m}$ for $\bs\mu$ so that 
+Here, for reasons of scalability, we continue to work in terms of inducing points. 
