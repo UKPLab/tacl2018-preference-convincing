@@ -62,7 +62,14 @@ from data_loading import load_train_test_data, load_embeddings, load_ling_featur
 from joblib import Parallel, delayed
 import multiprocessing
 import numpy as np
-#import skipthoughts
+    
+def save_fold_order(resultsdir, folds=None, dataset=None):
+    if folds is None and dataset is not None:
+        folds, _, _, _, _ = load_train_test_data(dataset)        
+    elif folds is None:
+        print "Need to provide a dataset label or a set of fold data..."
+        return 
+    np.savetxt(resultsdir + "/foldorder.txt", np.array(folds.keys())[:, None], fmt="%s")
     
 def _dists_f(items_feat_sample, f):
     if np.mod(f, 1000) == 0:
@@ -80,7 +87,7 @@ def _dists_f(items_feat_sample, f):
 def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, ling_feat_spmatrix, docids, folds, 
                                   index_to_word_map):
     # get the embedding values for the test data -- need to find embeddings of the whole piece of text
-    if feature_type == 'both' or feature_type == 'embeddings':
+    if feature_type == 'both' or feature_type == 'embeddings' or feature_type == 'debug':
         
         docidxs = []
         doc_tok_seqs = []
@@ -100,8 +107,8 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
         
         if embeddings_type == 'word_mean':
             items_feat = get_mean_embeddings(embeddings, X)
-#         elif embeddings_type == 'skipthoughts':
-#             items_feat = skipthoughts.encode(embeddings, utexts)
+        elif embeddings_type == 'skipthoughts':
+            items_feat = skipthoughts.encode(embeddings, utexts)
         elif embeddings_type == 'siamese-cbow':
             items_feat = np.array([embeddings.getAggregate(index_to_word_map[Xi]) for Xi in X])
         else:
@@ -112,6 +119,9 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
         
     if feature_type == 'ling':
         items_feat = ling_feat_spmatrix.toarray()
+    
+    if feature_type == 'debug':
+        items_feat = items_feat[:, :3]
     
     ndims = items_feat.shape[1]
             
@@ -125,6 +135,8 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
                     
     #for f in range(items_feat.shape[1]):  
     num_jobs = multiprocessing.cpu_count()
+    if num_jobs > 8:
+        num_jobs = 8
     default_ls_value = Parallel(n_jobs=num_jobs, backend="multiprocessing")(delayed(_dists_f)(items_feat_sample[:, f], f) for f in range(ndims))
             
     ls_initial_guess = np.ones(ndims) * default_ls_value 
@@ -263,12 +275,12 @@ def get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1,
     zeroes.
     '''
     # get the embedding values for the test data -- need to find embeddings of the whole piece of text
-    if feature_type == 'both' or feature_type == 'embeddings':
+    if feature_type == 'both' or feature_type == 'embeddings' or feature_type=='debug':
         logging.info("Converting texts to mean embeddings (we could use a better sentence embedding?)...")
         if embeddings_type == 'word_mean':
             items_feat = get_mean_embeddings(embeddings, X)
-#         elif embeddings_type == 'skipthoughts':
-#             items_feat = skipthoughts.encode(embeddings, utexts)
+        elif embeddings_type == 'skipthoughts':
+            items_feat = skipthoughts.encode(embeddings, utexts)
         elif embeddings_type == 'siamese-cbow':
             items_feat = np.array([embeddings.getAggregate(index_to_word_map[Xi]) for Xi in X])
         else:
@@ -291,6 +303,10 @@ def get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1,
         items_feat = np.concatenate((items_feat, ling_feat_spmatrix[uids, :][:, valid_feats_ling].toarray()), axis=1)
         logging.info("...loaded all linguistic features for training and test data.")
         valid_feats = np.concatenate((valid_feats, valid_feats_ling))
+        
+    if feature_type=='debug':
+        items_feat = items_feat[:, :3] #use only three features for faster debugging
+        valid_feats = valid_feats[:3]
         
     return items_feat, valid_feats.astype(bool)
     
@@ -360,7 +376,7 @@ def run_gppl(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_f
                 shape_s0=shape_s0, rate_s0=rate_s0,  
                 rate_ls = 1.0 / np.mean(ls_initial_guess), use_svi=True, ninducing=500, max_update_size=200,
                 kernel_combination=kernel_combination, forgetting_rate=0.7)
-        model.max_iter_VB = 5#00
+        model.max_iter_VB = 200
         new_items_feat = items_feat # pass only when initialising
     else:
         new_items_feat = None
@@ -848,13 +864,15 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 
             logging.info("@@@ Completed running fold %i with method %s, features %s, %i data so far, in %f seconds." % (
                 foldidx, method, feature_type, nseen_so_far, endtime-starttime) )
-            logging.info("Accuracy for fold = %f" % (np.sum(prefs_test[prefs_test != 1] == 2 * predictions.flatten()[prefs_test != 1]) 
-                                              / float(np.sum(prefs_test  != 1))) )      
+            logging.info("Accuracy for fold = %f" % (
+                    np.sum(prefs_test[prefs_test != 1] == 2 * predictions.flatten()[prefs_test != 1]
+                        ) / float(np.sum(prefs_test != 1))) )      
             if tr_proba is not None:
                 prefs_unseen = prefs_train[unseen_subset]
                 tr_proba_unseen = tr_proba[unseen_subset]
-                logging.info("Unseen data in the training fold, accuracy for fold = %f" % (np.sum(prefs_unseen[prefs_unseen != 1] == 2 * 
-                    np.round(tr_proba_unseen).flatten()[prefs_unseen != 1]) / float(np.sum(prefs_unseen != 1))) )   
+                logging.info("Unseen data in the training fold, accuracy for fold = %f" % (
+                    np.sum(prefs_unseen[prefs_unseen != 1] == 2 * np.round(tr_proba_unseen).flatten()[prefs_unseen != 1]
+                        ) / float(np.sum(prefs_unseen != 1))) )   
                                    
             logging.info("AUC = %f" % roc_auc_score(prefs_test[prefs_test!=1] / 2.0, proba[prefs_test!=1]) )
             # Save the data for later analysis ----------------------------------------------------------------------------
@@ -886,13 +904,15 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
             
             # Save the time taken
             times[foldidx] = endtime-starttime                
-            
 
             results = (all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],\
                all_target_rankscores[foldidx], ls_initial_guess, times[foldidx], final_ls[foldidx], all_tr_proba[foldidx])
             with open(foldresultsfile, 'w') as fh:
                 pickle.dump(results, fh)
-            
+
+            if not os.path.isfile(results_stem + "/foldorder.txt"):
+                save_fold_order(results_stem, folds)
+                
             #with open(modelfile % foldidx, 'w') as fh:
             #        pickle.dump(model, fh)
 
@@ -933,6 +953,7 @@ def run_test_set(run_test_fun=run_test, subsample_tr=0, min_no_folds=0, max_no_f
     global ling_feat_spmatrix
     global docids
     global siamese_cbow_embeddings
+    global skipthoughts
     global skipthoughts_model
     global pair_subset
     global default_ls_values
@@ -964,6 +985,7 @@ def run_test_set(run_test_fun=run_test, subsample_tr=0, min_no_folds=0, max_no_f
                     word_embeddings = None
                     
                 if 'skipthoughts' in embeddings_types:
+                    import skipthoughts
                     skipthoughts_model = load_skipthoughts_embeddings(word_to_indices_map)
                 else:
                     skipthoughts_model = None
@@ -983,7 +1005,7 @@ def run_test_set(run_test_fun=run_test, subsample_tr=0, min_no_folds=0, max_no_f
                 continue
             
             for feature_type in feature_types:
-                if feature_type == 'embeddings' or feature_type == 'both':
+                if feature_type == 'embeddings' or feature_type == 'both' or feature_type=='debug':
                     embeddings_to_use = embeddings_types
                 else:
                     embeddings_to_use = ['']
@@ -1016,7 +1038,7 @@ def run_test_set(run_test_fun=run_test, subsample_tr=0, min_no_folds=0, max_no_f
                      
                     pair_subset = run_test_fun(folds, folds_regression, dataset, method, feature_type, embeddings_type, 
                         embeddings, ling_feat_spmatrix, docids, index_to_word_map, subsample_amount=subsample_tr, 
-                        default_ls=default_ls_value, dataset_increment=dataset_increment, acc=acc, 
+                        default_ls=default_ls_value, dataset_increment=dataset_increment, acc=1.0, 
                         min_no_folds=min_no_folds, max_no_folds=max_no_folds,
                         initial_pair_subset=pair_subset, npairs=npairs, test_on_train=test_on_train)
                     
@@ -1026,27 +1048,37 @@ def run_test_set(run_test_fun=run_test, subsample_tr=0, min_no_folds=0, max_no_f
         
 if __name__ == '__main__':
 #     acc = 1.0
-#     dataset_increment = 2#0#11265#2000
-#      
+#     dataset_increment = 2
+#       
 #     datasets = ['UKPConvArgCrowdSample_evalMACE']
 #     methods = ['SVM']#, 'SingleGPC_noOpt_weaksprior_additive']#
 #     feature_types = ['embeddings']
 #     embeddings_types = ['word_mean']
-#     default_ls_values = run_test_set(min_no_folds=21, max_no_folds=26, npairs=200)
+#     default_ls_values = run_test_set(min_no_folds=0, max_no_folds=1, npairs=2)
  
     dataset_increment = 0 
-     
-    datasets = ['UKPConvArgStrict']
-    methods = ['SinglePrefGP_weaksprior'] 
+      
+    datasets = ['UKPConvArgAll']
     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
-    embeddings_types = ['siamese-cbow', 'skipthoughts']
-               
+    methods = ['SinglePrefGP_weaksprior']#, 'SinglePrefGP_weaksprior_additive'] 
+    embeddings_types = ['skipthoughts'] # 'siamese-cbow'] 
+                 
     default_ls_values = run_test_set(test_on_train=True)     
- 
-    methods = ['SinglePrefGP_weaksprior_additive']
-    embeddings_types = ['word_mean']
-    default_ls_values = run_test_set(test_on_train=True)
-#  
+  
+# #     methods = ['SinglePrefGP_weaksprior_additive']
+# #     embeddings_types = ['word_mean']
+# #     default_ls_values = run_test_set(test_on_train=True)
+#     
+#     datasets = ['UKPConvArgAll']
+#     methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_weaksprior_additive']
+#     embeddings_types = ['word_mean']
+#     default_ls_values = run_test_set(test_on_train=True)
+#     
+#     datasets = ['UKPConvArgAll']
+#     methods = ['SinglePrefGP_weaksprior']
+#     embeddings_types = ['skipthoughts']
+#     default_ls_values = run_test_set(test_on_train=True)
+# # #  
 # #     # Issue #34 Compare kernel operators
 # #     datasets = ['UKPConvArgStrict', 'UKPConvArgAll']
 # #     methods = ['SinglePrefGP_noOpt_additive_weaksprior', 'SinglePrefGP_noOpt_additiveshrunk_weaksprior']

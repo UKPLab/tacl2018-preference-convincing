@@ -162,7 +162,7 @@ def collate_AL_results(AL_rounds, results, combined_labels, label):
 #     global fold_order
 
 def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, accuracy=1.0, di=0, npairs=0, tag='', 
-                    remove_seen_from_mean=False, max_no_folds=32):
+                    remove_seen_from_mean=False, max_no_folds=32, min_folds=0):
         
     expt_settings['acc'] = accuracy
     expt_settings['di'] = di
@@ -259,7 +259,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                     else:
                         data = None                        
 
-                    min_folds = 0
+                    #min_folds = 0
 
                     for f in range(nFolds):
                         print "Processing fold %i" % f
@@ -383,19 +383,23 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                 tr_results_auc[row, col, f, AL_round] = 1
                                 tr_results_logloss[row, col, f, AL_round] = 0                                                             
                           
-                        results_f1[row, col, -1, :] = np.mean(results_f1[row, col, min_folds:max_no_folds, :], axis=0)
-                        results_acc[row, col, -1, :] = np.mean(results_acc[row, col, min_folds:max_no_folds, :], axis=0)
-                        results_logloss[row, col, -1, :] = np.mean(results_logloss[row, col, min_folds:max_no_folds, :], axis=0)
-                        results_auc[row, col, -1, :] = np.mean(results_auc[row, col, min_folds:max_no_folds, :], axis=0)
-                        
-                        results_pearson[row, col, -1] = np.mean(results_pearson[row, col, min_folds:max_no_folds, :], axis=0)
-                        results_spearman[row, col, -1] = np.mean(results_spearman[row, col, min_folds:max_no_folds, :], axis=0)
-                        results_kendall[row, col, -1] = np.mean(results_kendall[row, col, min_folds:max_no_folds, :], axis=0)
-                        
-                        tr_results_f1[row, col, -1, :] = np.mean(tr_results_f1[row, col, min_folds:max_no_folds, :], axis=0)
-                        tr_results_acc[row, col, -1, :] = np.mean(tr_results_acc[row, col, min_folds:max_no_folds, :], axis=0)
-                        tr_results_logloss[row, col, -1, :] = np.mean(tr_results_logloss[row, col, min_folds:max_no_folds, :], axis=0)
-                        tr_results_auc[row, col, -1, :] = np.mean(tr_results_auc[row, col, min_folds:max_no_folds, :], axis=0)
+                        for AL_round in range(results_f1.shape[3]):
+                            foldrange = np.arange(min_folds, max_no_folds) # skip any rounds that did not complete when taking the mean
+                            foldrange = foldrange[results_f1[row, col, foldrange, AL_round] != 0]
+                            
+                            results_f1[row, col, -1, AL_round] = np.mean(results_f1[row, col, foldrange, AL_round], axis=0)
+                            results_acc[row, col, -1, AL_round] = np.mean(results_acc[row, col, foldrange, AL_round], axis=0)
+                            results_logloss[row, col, -1, AL_round] = np.mean(results_logloss[row, col, foldrange, AL_round], axis=0)
+                            results_auc[row, col, -1, AL_round] = np.mean(results_auc[row, col, foldrange, AL_round], axis=0)
+                            
+                            results_pearson[row, col, -1, AL_round] = np.mean(results_pearson[row, col, foldrange, AL_round], axis=0)
+                            results_spearman[row, col, -1, AL_round] = np.mean(results_spearman[row, col, foldrange, AL_round], axis=0)
+                            results_kendall[row, col, -1, AL_round] = np.mean(results_kendall[row, col, foldrange, AL_round], axis=0)
+                            
+                            tr_results_f1[row, col, -1, AL_round] = np.mean(tr_results_f1[row, col, foldrange, AL_round], axis=0)
+                            tr_results_acc[row, col, -1, AL_round] = np.mean(tr_results_acc[row, col, foldrange, AL_round], axis=0)
+                            tr_results_logloss[row, col, -1, AL_round] = np.mean(tr_results_logloss[row, col, foldrange, AL_round], axis=0)
+                            tr_results_auc[row, col, -1, AL_round] = np.mean(tr_results_auc[row, col, foldrange, AL_round], axis=0)
                         
                     if row == 0: # set the column headers    
                         columns[col] = expt_settings['feature_type'] + ', ' + expt_settings['embeddings_type']
@@ -467,12 +471,12 @@ if __name__ == '__main__':
     
     npairs = 0
     di = 0
-    max_no_folds = 23
+    max_no_folds = 32
 
-    methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
-    datasets = ['UKPConvArgStrict']#['UKPConvArgCrowdSample_evalMACE']
+    methods = ['SinglePrefGP_weaksprior']#, 'SinglePrefGP_weaksprior_oldoptmethod']#, 'SinglePrefGP_weaksprior_additive']
+    datasets = ['UKPConvArgAll']#['UKPConvArgCrowdSample_evalMACE'] ']#
     feature_types = ['both']
-    embeddings_types = ['word_mean']#'skipthoughts']
+    embeddings_types = ['skipthoughts', 'siamese-cbow']
      
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
