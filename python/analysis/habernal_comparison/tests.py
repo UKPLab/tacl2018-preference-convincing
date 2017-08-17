@@ -56,12 +56,14 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 from gp_pref_learning import GPPrefLearning, pref_likelihood
 from gp_classifier_svi import GPClassifierSVI
+from gp_classifier_vb import max_no_jobs
 from sklearn.svm import SVR 
 from data_loading import load_train_test_data, load_embeddings, load_ling_features, data_root_dir, \
     combine_into_libsvm_files, load_siamese_cbow_embeddings, load_skipthoughts_embeddings
 from joblib import Parallel, delayed
 import multiprocessing
 import numpy as np
+#import skipthoughts
     
 def save_fold_order(resultsdir, folds=None, dataset=None):
     if folds is None and dataset is not None:
@@ -135,8 +137,8 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
                     
     #for f in range(items_feat.shape[1]):  
     num_jobs = multiprocessing.cpu_count()
-    if num_jobs > 8:
-        num_jobs = 8
+    if num_jobs > max_no_jobs:
+        num_jobs = max_no_jobs
     default_ls_value = Parallel(n_jobs=num_jobs, backend="multiprocessing")(delayed(_dists_f)(items_feat_sample[:, f], f) for f in range(ndims))
             
     ls_initial_guess = np.ones(ndims) * default_ls_value 
