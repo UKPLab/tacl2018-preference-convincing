@@ -21,34 +21,102 @@ from matplotlib.ticker import MaxNLocator
 if __name__ == '__main__':
     
     dataset = 'UKPConvArgStrict'#'UKPConvArgAll_evalMACE'#
-    method = 'SinglePrefGP'
+    method = 'SinglePrefGP_weaksprior'
     feature_type = 'both'
     embeddings_type = 'word_mean'
+    di = 0.00
       
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
-    resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts_2/' + \
-                    'habernal_%s_%s_%s_%s_test.pkl' % (dataset, method, feature_type, embeddings_type)
-  
-    with open(resultsfile, 'r') as fh:
-        data = pickle.load(fh)
-          
-    nFolds = len(data[0])
+    resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
+
+    resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
+        resultsfile_template % (dataset, method, 
+        feature_type, embeddings_type, 1.0, di) + '_test.pkl'
+                    
+    resultsdir = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
+        resultsfile_template % (dataset, method, 
+        feature_type, embeddings_type, 1.0, di)      
+
+    foldorderfile = None
+    if foldorderfile is not None:
+        fold_order = np.genfromtxt(os.path.expanduser(foldorderfile), 
+                                                    dtype=str)
+    elif os.path.isfile(resultsdir + '/foldorder.txt'):
+        fold_order = np.genfromtxt(os.path.expanduser(resultsdir + '/foldorder.txt'), 
+                                                    dtype=str)
+    else:
+        fold_order = None 
+    nFolds = 1
+    start_fold = 12
+    end_fold = 12
+    if os.path.isfile(resultsfile): 
+        
+        with open(resultsfile, 'r') as fh:
+            data = pickle.load(fh)
+                
+        if nFolds < 1:
+            nFolds = len(data[0])
+    else:
+        data = None                        
+
+    min_folds = 0
       
     # Sort the features by their ID. 
     # If we have discarded some features that were all zeros, the current index will not be the original feature idx.
     # How to map them back? Reload the original data and find out which features were discarded.
       
-    folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map = load_train_test_data(dataset)
+    folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = load_train_test_data(dataset)
     word_embeddings = load_embeddings(word_index_to_embeddings_map)
     ling_feat_spmatrix, docids = load_ling_features(dataset)
       
+    #default_ls_value = compute_lengthscale_heuristic(feature_type, embeddings_type, word_embeddings,
+    #                                         ling_feat_spmatrix, docids, folds, index_to_word_map)      
+      
+    mean_ls = None
     for foldidx, fold in enumerate(folds.keys()):
-        if foldidx >= nFolds:
-            print "data incomplete -- foldidx %i has not been run" % foldidx
+        if foldidx < start_fold or foldidx > end_fold:
             continue
         
-        trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test,\
-                                                                        X, uids = get_fold_data(folds, fold, docids)
+        if fold_order is None: # fall back to the order on the current machine
+            fold = folds.keys()[foldidx]
+        else:
+            fold = fold_order[foldidx] 
+            if fold[-2] == "'" and fold[0] == "'":
+                fold = fold[1:-2]
+            elif fold[-1] == "'" and fold[0] == "'":
+                fold = fold[1:-1]  
+            fold_order[foldidx] = fold        
+        
+        # look for new-style data in separate files for each fold. Prefer new-style if both are found.
+        foldfile = resultsdir + '/fold%i.pkl' % foldidx
+        if os.path.isfile(foldfile):
+            with open(foldfile, 'r') as fh:
+                data_f = pickle.load(fh)
+        else: # convert the old stuff to new stuff
+            if data is None:
+                min_folds = foldidx+1
+                print 'Skipping fold with no data %i' % foldidx
+                print "Skipping results for %s, %s, %s, %s" % (method, 
+                                                               dataset, 
+                                                               feature_type, 
+                                                               embeddings_type)
+                print "Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
+                                                                                        resultsfile)
+                continue        
+        
+            if not os.path.isdir(resultsdir):
+                os.mkdir(resultsdir)
+            data_f = []
+            for thing in data:
+                if foldidx in thing:
+                    data_f.append(thing[foldidx])
+                else:
+                    data_f.append(thing)
+            with open(foldfile, 'w') as fh:
+                pickle.dump(data_f, fh)        
+        
+        trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test, \
+                                                                    X, uids, utexts = get_fold_data(folds, fold, docids)
                                                                                   
         # get the embedding values for the test data -- need to find embeddings of the whole piece of text
         items_feat, valid_feats = get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1, trainids_a2, uids, 
@@ -56,63 +124,77 @@ if __name__ == '__main__':
               
         nfeats = len(valid_feats)
         # take the mean ls for each feature across the folds
-        if foldidx == 0:
-            mean_ls = np.zeros(nfeats) 
+        if foldidx == 0 or mean_ls is None:
+            mean_ls = np.zeros(nfeats, dtype=float) 
             totals = np.zeros(nfeats, dtype=int)
               
-        #mean_ls = data[7][foldidx]
         #print "Warning: not computing means."
-        mean_ls[valid_feats] += data[7][foldidx]
+        mean_ls[valid_feats] += data_f[7] / data_f[5]
+        print "Max normed l: %f" % np.max(data_f[7] / data_f[5])
         totals[valid_feats] += 1
          
-    #mean_ls[totals != 0] = mean_ls[totals != 0] / totals[totals != 0]
+    mean_ls = mean_ls[valid_feats]
+    totals = totals[valid_feats]
+    mean_ls[totals != 0] = mean_ls[totals != 0] / totals[totals != 0]
     
-    # assign category labels to each feature
-    feat_cats = np.empty(nfeats, dtype=object)
-    nembeddings = word_embeddings.shape[1]
-    feat_cats[:nembeddings] = "embeddings"
-    
-    catnames = np.array(['embeddings', '_pos_ngram', 'ProductionRule', #'AdjectiveRate', 'AdverbRate', 
-         'Rate', 'Ratio', 'DependencyTreeDepth', 'Modal', 'flesch', 'coleman', 'ari', 'sentiment', 'spell_skill', 
-         '_length', '_'])
-    marks = np.array(['2', 'p', '^', 'H', 'x', ',', 'D', '<', '>', 'v', ',', '8', '1', 'o', '*'])
-    col = np.array(['r', 'lightgreen', 'b', 'y', 'purple', 'black', 'darkgoldenrod', 'magenta', 'darkgreen', 'darkblue',
-                    'brown', 'darkgray', 'orange', 'dodgerblue', 'lightgray', 'cyan', ])
-       
-    with open(data_root_dir + "/tempdata/feature_names_all3.txt", 'r') as fh:
-        lines = fh.readlines()
-    
-    featnames = lines[0].strip()
-    featidxs = lines[1].strip()
-    
-    if featnames[-1] == ']':
-        featnames = featnames[:-1]
-    if featnames[0] == '[':
-        featnames = featnames[1:]
+    if feature_type == 'debug':
+        feat_cats = np.array(['one', 'two', 'three'])
+        featnames = feat_cats
+        col = np.array(['r', 'lightgreen', 'b'])
+        marks = np.array(['2', 'p', '^'])
+        nembeddings = 3
+    else:
+        # assign category labels to each feature
+        feat_cats = np.empty(nfeats, dtype=object)
+        nembeddings = word_embeddings.shape[1]
+        feat_cats[:nembeddings] = "embeddings"
         
-    featidxs = np.fromstring(featidxs, dtype=int, sep=',') + nembeddings
-    featnames = np.array(featnames.split(', '), dtype=str)
-    
-    for f, fname in enumerate(featnames):
-        featnames[f] = featnames[f][2:] # skip the a1 bit at the start
-        for catname in catnames:
-            if catname in fname:
-                print "%i, Recognised %s as type %s" % (f, fname, catname)
-                feat_cats[nembeddings + f] = catname
-                break
-        if not feat_cats[nembeddings + f]:
-            print "%i, Unrecognised language feature: %s" % (f, fname)
-            feat_cats[nembeddings + f] = 'unigram/other'
-    
-    feat_cats[feat_cats=='_'] = 'bigram'
-    feat_cats[feat_cats=='ari'] = 'readability'
-    feat_cats[feat_cats=='coleman'] = 'readability'
-    feat_cats[feat_cats=='flesch'] = 'readability'
-    feat_cats[feat_cats=='_pos_ngram'] = 'POS'
-    feat_cats[feat_cats=='_length'] = 'sentence_length_etc'
-    feat_cats[feat_cats=='Modal'] = 'modal_verb'
-    for f in range(len(feat_cats)):
-        feat_cats[f] = feat_cats[f].lower()
+        catnames = np.array(['embeddings', '_pos_ngram', 'ProductionRule', #'AdjectiveRate', 'AdverbRate', 
+             'Rate', 'Ratio', 'DependencyTreeDepth', 'Modal', 'flesch', 'coleman', 'ari', 'sentiment', 'spell_skill', 
+             '_length', '_'])
+        marks = np.array(['2', 'p', '^', 'H', 'x', ',', 'D', '<', '>', 'v', ',', '8', '1', 'o', '*'])
+        col = np.array(['r', 'lightgreen', 'b', 'y', 'purple', 'black', 'darkgoldenrod', 'magenta', 'darkgreen', 'darkblue',
+                        'brown', 'darkgray', 'orange', 'dodgerblue', 'lightgray', 'cyan', ])
+           
+        with open(data_root_dir + "/tempdata/feature_names_all3.txt", 'r') as fh:
+            lines = fh.readlines()
+        
+        featnames = lines[0].strip()
+        featidxs = lines[1].strip()
+        
+        if featnames[-1] == ']':
+            featnames = featnames[:-1]
+        if featnames[0] == '[':
+            featnames = featnames[1:]
+            
+        featidxs = np.fromstring(featidxs, dtype=int, sep=',') + nembeddings
+        featnames = np.array(featnames.split(', '), dtype=str)
+        
+        for f, fname in enumerate(featnames):
+            featnames[f] = featnames[f][2:] # skip the a1 bit at the start
+            for catname in catnames:
+                if catname in fname:
+                    print "%i, Recognised %s as type %s" % (f, fname, catname)
+                    feat_cats[nembeddings + f] = catname
+                    break
+            if not feat_cats[nembeddings + f]:
+                print "%i, Unrecognised language feature: %s" % (f, fname)
+                feat_cats[nembeddings + f] = 'unigram'
+        
+        feat_cats[feat_cats=='_'] = 'bigram'
+        feat_cats[feat_cats=='ari'] = 'readability'
+        feat_cats[feat_cats=='coleman'] = 'readability'
+        feat_cats[feat_cats=='flesch'] = 'readability'
+        feat_cats[feat_cats=='spell_skill'] = 'readability'
+        feat_cats[feat_cats=='Rate'] = 'grammar'
+        feat_cats[feat_cats=='Ratio'] = 'grammar'
+        feat_cats[feat_cats=='_pos_ngram'] = 'POS'
+        feat_cats[feat_cats=='_length'] = 'readability'
+        feat_cats[feat_cats=='Modal'] = 'grammar'
+        feat_cats[feat_cats=='DependencyTreeDepth'] = 'dep. tree'
+        feat_cats[feat_cats=='ProductionRule'] = 'dep. tree'
+        for f in range(len(feat_cats)):
+            feat_cats[f] = feat_cats[f].lower()
 
     # sort by length scale
     sorted_idxs = np.argsort(mean_ls)
@@ -133,9 +215,16 @@ if __name__ == '__main__':
     sorted_featnames = featnames[sorted_idxs]
     sorted_featnames = sorted_featnames[totals[sorted_idxs]>0]
     
-    plt.figure()
+    '''
+    An alternative to plotting the distributions would be to list the top ten most important and least important features.
+    '''
+    figure_path = os.path.expanduser('./documents/pref_learning_for_convincingness/figures/features/')
+    
+    np.savetxt(figure_path + '/feature_table.tex', np.concatenate((sorted_featnames[:, None], sorted_vals[:, None]), 
+                                                                  axis=1), fmt='%s & %.5f \\nonumber\\\\')
     
     # Try a histogram instead? For each length-scale band, how many features of each type are there?    
+    plt.figure()
     
     cat_arr = []
     labels = []
@@ -148,6 +237,44 @@ if __name__ == '__main__':
     plt.xlabel('length-scale')
     plt.ylabel('no. features')
     plt.legend(loc='best')
+   
+    plt.savefig(figure_path + 'hist.pdf') 
+    
+    # produce content for a latex table
+    
+    plt.figure(figsize=(10,3))
+    
+    meds = []
+    low = []
+    high = []
+    mins = []
+    maxs = []
+    vals = []
+    for c, cat in enumerate(np.unique(feat_cats)):
+        clengthscales = sorted_vals[sorted_cats == cat]
+        #print '%s & %s & %s' & (cat, np.median(clengthscales), np.percentile(clengthscales, 25), np.percentile(clengthscales, 75))
+        #meds.append(np.median(clengthscales))
+        #low.append(np.percentile(clengthscales, 25))
+        #high.append(np.percentile(clengthscales, 75))
+        #mins.append(np.min(clengthscales))
+        #maxs.append(np.max(clengthscales))
+        vals.append(clengthscales)
+        
+    bp = plt.boxplot(vals, labels=labels, notch=0, whiskerprops={'linestyle':'solid'}, 
+                     patch_artist=True)
+    plt.setp(bp['boxes'], color='black')
+    plt.setp(bp['whiskers'], color='black')    
+    for patch in bp['boxes']:
+        patch.set_facecolor('tan')
+    plt.ylabel('Mean normalised length-scale')
+    plt.gca().yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+    plt.gca().set_axisbelow(True)
+    
+    plt.ylim(0,3)
+    
+    plt.savefig(figure_path + 'boxplot.pdf')
+    
+    ############
     
     plt.figure()
 
