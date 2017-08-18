@@ -441,8 +441,10 @@ class GPPrefLearning(GPClassifierSVI):
         elif items_features is not None:
             if items_coords is None:
                 items_coords = np.arange(items_features.shape[0])
+            else:
+                items_coords = items_coords.flatten() # needs to be 1D otherwise the shapes don't fit
             self.output_coords = items_features[items_coords, :]
-        else:
+        elif items_coords is not None:
             self.output_coords = items_coords
         
         nblocks, noutputs = self._init_output_arrays(self.output_coords, max_block_size)
