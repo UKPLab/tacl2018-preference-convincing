@@ -354,7 +354,7 @@ def subsample_tr_data(dataset, fold, subsample_amount, items_feat, trainids_a1, 
 # Methods for running the prediction methods --------------------------------------------------------------------------
 def run_gppl(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_feat, embeddings, X, ndims, 
              optimize_hyper, testids_a1, testids_a2, unseenids_a1, unseenids_a2, ls_initial_guess, verbose, 
-             item_idx_ranktrain=None, rankscores_train=None, item_idx_ranktest=None):
+             item_idx_ranktrain=None, rankscores_train=None, item_idx_ranktest=None, personIDs_train=None, personIDs_test=None):
     if 'additive' in method:
         kernel_combination = '+'
     else:
@@ -402,7 +402,7 @@ def run_gppl(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_f
 
 def run_gpsvm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_feat, embeddings, X, ndims, 
              optimize_hyper, testids_a1, testids_a2, unseenids_a1, unseenids_a2, ls_initial_guess, verbose, item_idx_ranktrain=None, 
-             rankscores_train=None, item_idx_ranktest=None):
+             rankscores_train=None, item_idx_ranktest=None, personIDs_train=None, personIDs_test=None):
     if model is None:
         model = GPPrefLearning(ninput_features=1, ls_initial=[1000], verbose=verbose, 
                 shape_s0 = 1.0, rate_s0 = 1.0,  
@@ -436,7 +436,7 @@ def run_gpsvm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_
     
 def run_gpc(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_feat, embeddings, X, ndims, 
              optimize_hyper, testids_a1, testids_a2, unseenids_a1, unseenids_a2, ls_initial_guess, verbose, item_idx_ranktrain=None, 
-             rankscores_train=None, item_idx_ranktest=None):
+             rankscores_train=None, item_idx_ranktest=None, personIDs_train=None, personIDs_test=None):
     if 'additive' in method:
         kernel_combination = '+'
     else:
@@ -491,7 +491,7 @@ def run_gpc(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_fe
 
 def run_svm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_feat, embeddings, X, ndims, 
              optimize_hyper, testids_a1, testids_a2, unseenids_a1, unseenids_a2, ls_initial_guess, verbose, item_idx_ranktrain=None, 
-             rankscores_train=None, item_idx_ranktest=None):
+             rankscores_train=None, item_idx_ranktest=None, personIDs_train=None, personIDs_test=None):
     from svmutil import svm_train, svm_predict, svm_read_problem
      
     svc_labels = np.concatenate((np.array(prefs_train, dtype=float) * 0.5,
@@ -544,7 +544,7 @@ def run_svm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_fe
  
 def run_bilstm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items_feat, embeddings, X, ndims, 
              optimize_hyper, testids_a1, testids_a2, unseenids_a1, unseenids_a2, ls_initial_guess, verbose, item_idx_ranktrain=None, 
-             rankscores_train=None, item_idx_ranktest=None):     
+             rankscores_train=None, item_idx_ranktest=None, personIDs_train=None, personIDs_test=None):     
     from keras.preprocessing import sequence
     from keras.models import Graph
     from keras.layers.core import Dense, Dropout
@@ -664,10 +664,26 @@ def run_bilstm(fold, model, method, trainids_a1, trainids_a2, prefs_train, items
 
     return proba, predicted_f, tr_proba, model         
         
+def method_chooser(method, feature_type):
+    if 'SinglePrefGP' in method:
+        method_runner_fun = run_gppl
+    elif 'GP+SVM' in method:
+        method_runner_fun = run_gpsvm
+    elif 'SingleGPC' in method:
+        method_runner_fun = run_gpc
+    elif 'SVM' in method:
+        method_runner_fun = run_svm
+    elif 'BI-LSTM' in method:
+        if feature_type != 'embeddings':
+            logging.error("BI-LSTM can only be run using embedings. Will switch to this feature type...")
+        method_runner_fun = run_bilstm    
+        
+    return method_runner_fun
+
 def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_type=None, embeddings=None, 
              ling_feat_spmatrix=None, docids=None, index_to_word_map=None, subsample_amount=0, default_ls=None, 
              expt_tag='habernal', dataset_increment=0, acc=1.0, initial_pair_subset=None, min_no_folds=0, 
-             max_no_folds=32, npairs=0, test_on_train=False):
+             max_no_folds=32, npairs=0, test_on_train=False, choose_method=method_chooser):
     # To run the active learning tests, call this function with dataset_increment << 1.0. 
     # To add artificial noise to the data, run with acc < 1.0.
         
@@ -800,23 +816,12 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                 unseen_subset[pair_subset] = False
 
             # run the method with the current data subset
-            if 'SinglePrefGP' in method:
-                method_runner_fun = run_gppl
-            elif 'GP+SVM' in method:
-                method_runner_fun = run_gpsvm
-            elif 'SingleGPC' in method:
-                method_runner_fun = run_gpc
-            elif 'SVM' in method:
-                method_runner_fun = run_svm
-            elif 'BI-LSTM' in method:
-                if feature_type != 'embeddings':
-                    logging.error("BI-LSTM can only be run using embedings. Will switch to this feature type...")
-                method_runner_fun = run_bilstm
+            method_runner_fun = choose_method(method, feature_type)
                 
             proba, predicted_f, tr_proba, model = method_runner_fun(fold, model, method, trainids_a1[pair_subset], 
                 trainids_a2[pair_subset], prefs_train[pair_subset], items_feat_test, embeddings, X, ndims, optimize_hyper, 
                 testids_a1, testids_a2, trainids_a1[unseen_subset], trainids_a2[unseen_subset], ls_initial_guess, 
-                verbose, item_idx_ranktrain, rankscores_train, item_idx_ranktest)
+                verbose, item_idx_ranktrain, rankscores_train, item_idx_ranktest, personIDs_train, personIDs_test)
         
             endtime = time.time() 
             
@@ -943,7 +948,8 @@ Steps needed to run them:
 4. Run!
 
 '''
-def run_test_set(run_test_fun=run_test, subsample_tr=0, min_no_folds=0, max_no_folds=32, npairs=0, test_on_train=False):
+def run_test_set(run_test_fun=run_test, subsample_tr=0, min_no_folds=0, max_no_folds=32, npairs=0, test_on_train=False,
+                 choose_method=method_chooser):
     # keep these variables around in case we are restarting the script with different method settings and same data.
     global dataset
     global folds
@@ -1042,13 +1048,15 @@ def run_test_set(run_test_fun=run_test, subsample_tr=0, min_no_folds=0, max_no_f
                         embeddings, ling_feat_spmatrix, docids, index_to_word_map, subsample_amount=subsample_tr, 
                         default_ls=default_ls_value, dataset_increment=dataset_increment, acc=1.0, 
                         min_no_folds=min_no_folds, max_no_folds=max_no_folds,
-                        initial_pair_subset=pair_subset, npairs=npairs, test_on_train=test_on_train)
+                        initial_pair_subset=pair_subset, npairs=npairs, test_on_train=test_on_train, 
+                        choose_method=choose_method)
                     
                     logging.info("**** Completed: method %s with features %s, embeddings %s ****" % (method, feature_type, 
                                                                                            embeddings_type) )
     return default_ls_values
         
 if __name__ == '__main__':
+    # active learning 
 #     acc = 1.0
 #     dataset_increment = 2
 #       
@@ -1058,140 +1066,13 @@ if __name__ == '__main__':
 #     embeddings_types = ['word_mean']
 #     default_ls_values = run_test_set(min_no_folds=0, max_no_folds=1, npairs=2)
  
+ 
+    # single tests 
     dataset_increment = 0 
       
     datasets = ['UKPConvArgAll']
-    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
+    feature_types = ['embeddings'] # can be 'embeddings' or 'ling' or 'both'
     methods = ['SinglePrefGP_weaksprior']#, 'SinglePrefGP_weaksprior_additive'] 
-    embeddings_types = ['skipthoughts'] # 'siamese-cbow'] 
+    embeddings_types = ['skipthoughts', 'siamese-cbow'] 
                  
     default_ls_values = run_test_set(test_on_train=True)     
-  
-# #     methods = ['SinglePrefGP_weaksprior_additive']
-# #     embeddings_types = ['word_mean']
-# #     default_ls_values = run_test_set(test_on_train=True)
-#     
-#     datasets = ['UKPConvArgAll']
-#     methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_weaksprior_additive']
-#     embeddings_types = ['word_mean']
-#     default_ls_values = run_test_set(test_on_train=True)
-#     
-#     datasets = ['UKPConvArgAll']
-#     methods = ['SinglePrefGP_weaksprior']
-#     embeddings_types = ['skipthoughts']
-#     default_ls_values = run_test_set(test_on_train=True)
-# # #  
-# #     # Issue #34 Compare kernel operators
-# #     datasets = ['UKPConvArgStrict', 'UKPConvArgAll']
-# #     methods = ['SinglePrefGP_noOpt_additive_weaksprior', 'SinglePrefGP_noOpt_additiveshrunk_weaksprior']
-# #     feature_types = ['both']
-# #     embeddings_types = ['word_mean']
-# #     default_ls_values = run_test_set()
-# #     # Issue #36 Optimize best setup
-# 
-# #      
-# #     datasets = ['UKPConvArgStrict']
-# #     methods = ['SinglePrefGP_noOpt_weaksprior'] 
-# #     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
-# #     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese-cbow']
-# #              
-# #     default_ls_values = run_test_set(test_on_train=True)
-# #  
-# #     methods = ['BI-LSTM']
-# #     feature_types = ['embeddings']
-# #     default_ls_values = run_test_set(max_no_folds=10, npairs=100)
-# #     
-# #     methods = ['SVM']
-# #     feature_types = ['ling']
-# #     default_ls_values = run_test_set(max_no_folds=10, npairs=100)
-# # 
-# #     methods = ['GP+SVM', 'SingleGPC_noOpt_weaksprior_additive']
-# #     feature_types = ['both']
-# #     default_ls_values = run_test_set(max_no_folds=10, npairs=100)
-# 
-# # # Running all competitive methods on a new subset
-# #     datasets = ['UKPConvArgCrowdSample_evalMACE']
-# #     methods = ['SinglePrefGP_weaksprior']
-# #     feature_types = ['ling']
-# #     embeddings_types = ['']
-# #     default_ls_values = run_test_set()
-# #     
-# #     methods = ['BI-LSTM', 'SinglePrefGP_weaksprior_noOpt']    
-# #     feature_types = ['embeddings']
-# #     embeddings_types = ['word_mean']
-# #     default_ls_values = run_test_set()
-# #     
-# #     methods = ['SingleGPC_weaksprior_noOpt', 'SinglePrefGP_weaksprior_noOpt']
-# #     feature_types = ['both']
-# #     embeddings_types = ['siamese-cbow']
-# #     default_ls_values = run_test_set()       
-# 
-# # # Issue #38, Run SVM on other datasets and compute missing metrics
-# #     datasets = ['UKPConvArgCrowd_evalMACE']# This needs subsampling, currently it is too large: 'UKPConvArgCrowd_evalAll']
-# #     methods = ['SVM']
-# #     feature_types = ['ling'] # it says both, but it actually only uses linguistic features
-# #     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese-cbow']
-# #     default_ls_values = run_test_set() 
-#              
-# # # Issue #41: compare alternative embeddings
-# #     datasets = ['UKPConvArgStrict', 'UKPConvArgAll']
-# #     methods = ['SinglePrefGP_noOpt_weaksprior']
-# #     feature_types = ['embeddings']
-# #     embeddings_types = ['skipthoughts']
-# #     default_ls_values = run_test_set()
-# #     
-# #     embeddings_types = ['siamese-cbow']
-# #     default_ls_values = run_test_set()    
-# # 
-# #     feature_types = ['both']
-# #     embeddings_types = ['skipthoughts']
-# #     default_ls_values = run_test_set()
-# #     
-# #     embeddings_types = ['siamese-cbow']
-# #     default_ls_values = run_test_set()
-# #   
-#     
-# # # # # Issue #35 Best setup with other datasets
-# # #     datasets = ['UKPConvArgCrowd_evalAll'] #'UKPConvArgAll', 
-# # #     methods = ['SinglePrefGP_noOpt_weaksprior']#, 'SinglePrefGP_noOpt_additive_weaksprior'] 
-# # #     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both'
-# # #     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese-cbow']
-# # #      
-# # #     default_ls_values = run_test_set()
-# # #         
-# # #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='35')
-# # #    
-# # #running on desktop-169 now
-# # # # Issue #37 GP+SVR. The GPC method should be run on Barney as it needs more memory.
-# # #     datasets = ['UKPConvArgAll', 'UKPConvArgCrowd_evalAll']
-# # #     methods = ['GP+SVM']
-# # #     feature_types = ['both', 'ling'] # we run with ling as well because this is how SVM was originally run by IH.
-# # #     embeddings_types = ['word_mean']
-# # #         
-# # #     default_ls_values = run_test_set()
-# # #         
-# # #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='37')
-# # #      
-# # # 
-# # # #  GPC. The GPC method should be run on Barney as it needs more memory.
-# # #     datasets = ['UKPConvArgStrict']
-# # #     methods = ['SingleGPC']
-# # #     feature_types = ['embeddings'] # we run with ling as well because this is how SVM was originally run by IH.
-# # #     embeddings_types = ['word_mean']
-# # #           
-# # #     default_ls_values = run_test_set()
-# # #           
-# # #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='37')
-# # 
-#              
-# # ------------------------------
-# 
-# # # Issue #39, Run BILSTM on other datasets and compute missing metrics
-# #     datasets = ['UKPConvArgAll', 'UKPConvArgCrowd_evalAll']
-# #     methods = ['BI-LSTM']
-# #     feature_types = ['embeddings']
-# #     embeddings_types = ['word_mean']#, 'skipthoughts', 'siamese-cbow']
-# #     default_ls_values = run_test_set() 
-# #          
-# #     compute_metrics(methods, datasets, feature_types, embeddings_types, tag='38')
-
