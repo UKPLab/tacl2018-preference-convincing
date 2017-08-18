@@ -22,36 +22,61 @@ from preproc_raw_data import load_amt, load_synthetic, exptlabel
 if __name__ == '__main__':
     # Experiment configuration ----------------------------------------------------------------------------------------
 
-    dataset = 'amt'
-    split_results_by_no_annotations = True
-    nruns = 1
+#     dataset = 'amt'
+#     split_results_by_no_annotations = True
+#     nruns = 1
     
-    synth_worker_accs = [0.9]#[0.7, 0.8, 0.9]    
-#     dataset = 'synth'
-#     nruns = len(synth_worker_accs)
-#     split_results_by_no_annotations = False
-#     
+    synth_worker_accs = [0.7, 0.8, 0.9] # [0.9]    
+    dataset = 'synth'
+    nruns = len(synth_worker_accs)
+    split_results_by_no_annotations = False
+
     # number of factors or components that we can try in our models
     nfactors_min = 5
     nfactors_max = 5
     
     # list the names of methods to test here
     methods = [
-            #'GPFABayes_GP',
-            'Separate_GP',  
-            'GPFA_soft',  # no. factors?
-            'GPGMM_GP', 
-            'GPGMM_soft', 
-            'GPGMM_Averaging',
-            'GPAffProp_GP', # this takes ages because there are too many clusters
-#             'Baseline_MostCommon', 
-#             'Combined_Averaging', 
-#             'Combined_GP',
+            # seems like we are missing alternative learning-to-rank methods -- only have GP.
+            'Combined_GP',
+            # Noise: current approach is to de-noise with MACE, then feed to other classifiers. Rankings are then 
+            # obtained using PageRank, which could also be used to produce pairwise classifications if no feature data.
+            # Testing with feature data would show whether features actually help to de-noise, plus allow comparison
+            # between GP and MACE+SVM at different noise levels. 
+            
+            # Sparsity: again, we want to compare the initial fusion step using MACE with the GP. Similar comparisons
+            # needed as in previous step.
+            
+            # A single plot (set of subplots)? We can explore noise and sparsity using a single set of plots so that 
+            # we can show the interplay between noise and sparsity. Make separate sets of plots for CEE and ACC.
+            # Each subplot shows the variation in performance as we introduce more pairs at a given noise level.
+            # Three different noise levels should be sufficient.
+            
+            # Step 1: get the setup running with the post-MACE dataset (handling the noise in crowdsourced data is 
+            # another topic; however, our method should still deal with the noise/uncertainty that comes out of MACE).
+            # Step 2: introduce the sparsity variation.
+            # Step 3: loop over different noise levels.
+            # Step 4: plot
+            # Step 5: page rank (can output pair classifications by looking at rankings).
+            # Step 6: SVR (trained on pagerank) and SVC methods.
+            # Step 7: Update and save plots.
+            
+            
+            #'Baseline_MostCommon', 
+            #'Combined_Averaging', # these two only make sense with multiple labels from different workers?
+            # personalised, factored and clustered models
+#             'GPFABayes_GP',
+#             'Separate_GP',  
+#             'GPFA_soft',  # no. factors?
+#             'GPGMM_GP', 
+#             'GPGMM_soft', 
+#             'GPGMM_Averaging',
+#             'GPAffProp_GP', # this takes ages because there are too many clusters
 #             'AffProp_Averaging', 
 #             'AffProp_GP', 
 #             'Agg_Averaging', 
 #             'Agg_GP', 
-             'LDA_soft' # no. topics? Needs posterior over no. topics, not likelihood
+#             'LDA_soft' # no. topics? Needs posterior over no. topics, not likelihood
             ] 
             #'GMM_GP', 'GMM_Averaging', 'GMM_soft'] # these don't make any sense as cannot learn GMM from a discrete data
             #'GPGMM_GP', 'GPGMM_soft', 'Separate_GP', 'GPAffProp_GP' # this may be infeasible with lots of workers 
@@ -82,8 +107,8 @@ if __name__ == '__main__':
             if not os.path.isdir(plotdir):
                 os.mkdir(plotdir)
         else:
-            datadir, plotdir, nx, ny, data, pair1coords, pair2coords, pair1idxs, pair2idxs, xvals, yvals, prefs, personids,\
-                npairs, nworkers, ntexts, f = load_amt()
+            datadir, plotdir, nx, ny, data, pair1coords, pair2coords, pair1idxs, pair2idxs, xvals, yvals, prefs, \
+                personids, npairs, nworkers, ntexts, f = load_amt()
             # make sure the root exists    
             if not os.path.isdir(plotdir):
                 os.mkdir(plotdir)                

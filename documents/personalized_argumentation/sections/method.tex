@@ -49,7 +49,7 @@ $\mathcal{O}(N^3)$ and is therefore impractical for large datasets. For our modi
 The variational approximation to the posterior is given by...
 
 The variational inference algorithm maximises a lower bound on the log marginal likelihood:
-\begin{flalign*}
+\begin{eqnarray}
   \mathcal{L} = \sum_{i=1}^N \mathbb{E}[ \log p(t_i | x_{i,1}, x_{i,2}, \bs f) ] + \nonumber\\
   \sum_{u=1}^U  \mathbb{E}\left[ \log \frac{p(\bs f_u | \bs w \bs y_u, \bs K_{f,u} / s_{f,u} )}{q(\bs f_u)}\right] + \nonumber\\
   \sum_{c=1}^C \mathbb{E}\left[\log\frac{p(\bs w_c | \bs 0, \bs K_w / s_{w,c} ) }{q(\bs w_c) } \right] + \nonumber\\
@@ -58,13 +58,13 @@ The variational inference algorithm maximises a lower bound on the log marginal 
   \sum_{u=1}^U \mathbb{E}\left[\log\frac{p(s_{f,u} | a_{f,u}, b_{f,u})}{q(s_{f,u})}\right] + \nonumber\\
   \sum_{d=1}^D \mathbb{E}\left[\log\frac{p(s_{w,d} | a_{w,d}, b_{w,d})}{q(s_{w,d})}\right] +\nonumber\\
   \sum_{d=1}^D \mathbb{E}\left[\log\frac{p(s_{y,d} | a_{y,d}, b_{y,d})}{q(s_{y,d})}\right] 
-\end{flalign*}
+\end{eqnarray}
 where $t_i$ is the preference label for the $i$th pair, 
 
 To perform feature selection with large numbers of features, we introduce 
 an automatic relevance determination
 (ARD) approach that uses the gradient of the lower bound on the log marginal likelihood to optimise the kernel length-scales using the L-BFGS-B method\cite{??}. The gradient is given by:
-\begin{flalign*}
+\begin{eqnarray}
 \nabla\mathcal{L} = \left[ \frac{\partial \mathcal{L}}{\partial l_{w,1}}, ...,  \frac{\partial \mathcal{L}}{\partial l_{w,D_w}},  \frac{\partial \mathcal{L}}{\partial l_{y,1}}, ...,  \frac{\partial \mathcal{L}}{\partial l_{y,D_y}} \right], &&\\
 \frac{\partial \mathcal{L}}{\partial l_{w,d}} = \frac{\partial}{\partial l_{w,d}} 
 \sum_{u=1}^U  \mathbb{E}\left[\log\frac{p(\bs f_u | \bs w \bs y_u, \bs K_{f,u} / s_{f,u} )}{q(\bs f_u)}\right] + \nonumber && \\
@@ -73,9 +73,5 @@ an automatic relevance determination
 = 0.5 (\hat{f}_u - wy_u)^T \bs K_{f,u}^{-1} \frac{\partial \bs K}{\partial \log l_{w,d}} \hat{s}_{f,u} \bs K_{f,u}^{-1} (\hat{f}_u - wy_u) \nonumber\\
 - 0.5\mathrm{tr}\left( (\bs K_{f,u}^{-1} - \frac{\bs C^{-1}}{\hat{s}_{f,u}} ) \frac{\partial \bs K_{f,u}}{\partial \log l_{w,d}} \right)\nonumber&&\\
 \frac{\partial \mathcal{L}}{\partial l_{y,d}} = &&\\
-\end{flalign*}
+\end{eqnarray}
 where $l_{w,d}$ is a length-scale used for all the GPs over item features. The implicit terms are zero when the VB algorithm has converged.
-
-\pagebreak
-No
-\pagebreak

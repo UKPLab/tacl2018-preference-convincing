@@ -110,9 +110,11 @@ class GPPrefLearning(GPClassifierSVI):
     pref_v = [] # the first items in each pair -- index to the observation coordinates in self.obsx and self.obsy
     pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
     
+    item_features = None
+    
     def __init__(self, ninput_features, mu0=0, shape_s0=2, rate_s0=2, shape_ls=10, rate_ls=0.1, ls_initial=None, 
-         force_update_all_points=False, kernel_func='matern_3_2', max_update_size=10000, ninducing=500, use_svi=True,
-         delay=1, forgetting_rate=0.9, verbose=False):
+         force_update_all_points=False, kernel_func='matern_3_2', kernel_combination='*',
+          max_update_size=10000, ninducing=500, use_svi=True, delay=1, forgetting_rate=0.9, verbose=False):
         
         # We set the function scale and noise scale to the same value so that we assume apriori that the differences
         # in preferences can be explained by noise in the preference pairs or the latent function. Ordering patterns 
@@ -131,14 +133,15 @@ class GPPrefLearning(GPClassifierSVI):
             rate_s0 = 0.5
         
         super(GPPrefLearning, self).__init__(ninput_features, mu0, shape_s0, rate_s0, shape_ls, rate_ls, ls_initial, 
-         force_update_all_points, kernel_func, max_update_size, ninducing, use_svi, delay, forgetting_rate, verbose=verbose)
+         force_update_all_points, kernel_func, kernel_combination,
+         max_update_size, ninducing, use_svi, delay, forgetting_rate, verbose=verbose)
     
     # Initialisation --------------------------------------------------------------------------------------------------
-        
     def _init_prior_mean_f(self, z0):
         self.mu0_default = z0 # for preference learning, we pass in the latent mean directly  
     
     def _init_obs_prior(self):
+        # to make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
         m_prior, not_m_prior, v_prior = self._post_rough(self.mu0, self.rate_s0/self.shape_s0, self.pref_v, self.pref_u)
 
         # find the beta parameters
@@ -147,8 +150,8 @@ class GPPrefLearning(GPClassifierSVI):
         b = (a_plus_b * not_m_prior)
 
         self.nu0 = np.array([b, a])
-        if self.verbose:
-            logging.debug("Prior parameters for the observed pairwise preference variance are: %s" % str(self.nu0))           
+        #if self.verbose:
+        #    logging.debug("Prior parameters for the observed pairwise preference variance are: %s" % str(self.nu0))           
     
     def _init_obs_f(self):
         # Mean probability at observed points given local observations
@@ -178,7 +181,7 @@ class GPPrefLearning(GPClassifierSVI):
             obs_coords_1 = obs_coords_1[:, np.newaxis]
                 
         # duplicate locations should be merged and the number of duplicates counted
-        poscounts = poscounts.astype(int)
+        #poscounts = poscounts.astype(int)
         totals = totals.astype(int)  
                                
         if self.item_features is not None:
@@ -251,21 +254,26 @@ class GPPrefLearning(GPClassifierSVI):
             
         return pref_likelihood(f, subset_idxs, v, u, return_g_f)
     
-    def _update_jacobian(self, G_update_rate=1.0):
+    def _compute_jacobian(self, data_idx_i=None):
         phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
-            
         J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * np.sqrt(0.5)
+        
         obs_idxs = np.arange(self.n_locs)[np.newaxis, :]
         
-        if hasattr(self, 'data_obs_idx_i') and len(self.data_obs_idx_i): 
-            obs_idxs = obs_idxs[:, self.data_idx_i]
+        if data_idx_i is not None and hasattr(self, 'data_obs_idx_i') and len(self.data_obs_idx_i): 
+            obs_idxs = obs_idxs[:, data_idx_i]
             J = J[self.data_obs_idx_i, :]
             s = (self.pref_v[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int) -\
                                                     (self.pref_u[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int)
         else:    
             s = (self.pref_v[:, np.newaxis]==obs_idxs).astype(int) - (self.pref_u[:, np.newaxis]==obs_idxs).astype(int)
             
-        J = J * s 
+        J = J * s         
+        
+        return phi, J
+    
+    def _update_jacobian(self, G_update_rate=1.0):            
+        phi, J = self._compute_jacobian(self.data_idx_i)
         
         if self.G is None or not np.any(self.G) or self.G.shape != J.shape: 
             # either G has not been initialised, or is from different observations:
@@ -309,7 +317,8 @@ class GPPrefLearning(GPClassifierSVI):
         elif process_obs and input_type != 'binary':
             raise ValueError('input_type for preference labels must be either "binary" or "zero-centered"') 
             
-        self.item_features = item_features
+        if item_features is not None: # keep the old item features if we pass in none
+            self.item_features = item_features
             
         super(GPPrefLearning, self).fit((items1_coords, items2_coords), preferences, totals, process_obs, 
                                         mu0=mu0, optimize=optimize)  
@@ -327,44 +336,59 @@ class GPPrefLearning(GPClassifierSVI):
             self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)                            
             
     # Prediction methods ---------------------------------------------------------------------------------------------
-
-    def predict(self, items_0_coords=[], items_1_coords=[], item_features=None, max_block_size=1e5, 
-                expectedlog=False, return_var=True, return_not=False, mu0_output1=None, mu0_output2=None):
+    def predict(self, items_0_coords=None, items_1_coords=None, item_features=None, max_block_size=1e5, 
+                expectedlog=False, return_var=True, return_not=False, mu0_output1=None, mu0_output2=None, 
+                use_training_items=False, reuse_output_kernel=False):
         '''
         Evaluate the function posterior mean and variance at the given co-ordinates using the 2D squared exponential 
         kernel
-        '''
+        
+        item_features should be 'training', an NxF array, or None.
+        '''        
         # if no output_coords provided, give predictions at the fitted locations
-        if not len(items_0_coords) and not len(items_1_coords):
+        if items_0_coords is None and items_1_coords is None:
             return_args = self.predict_obs('rough', False, return_not)
             if expectedlog:
                 return_args[0] = np.log(return_args[0])
                 if len(return_args) == 3:
                     return_args[1] = np.log(return_args[1])
             return return_args
+
+        items_0_coords = np.array(items_0_coords)
         
-        if not isinstance(items_0_coords, np.ndarray):
-            items_0_coords = np.array(items_0_coords)
+        # if only one set of idxs is provided, predict all possible pairs            
+        if items_1_coords is None:
+            items_1_coords = items_0_coords.copy()
+
+        items_1_coords = np.array(items_1_coords)                        
             
-        if not len(items_1_coords):
-            items_1_coords = items_0_coords.copy()            
-            
-        if item_features is None:
+        # the input arguments are coordinates
+        if item_features is None and not use_training_items:
             if items_0_coords.ndim==2 and items_0_coords.shape[1]!=self.ninput_features and \
                                                                         items_0_coords.shape[0]==self.ninput_features:
                 items_0_coords = items_0_coords.T
             if items_1_coords.ndim==2 and items_1_coords.shape[1]!=self.ninput_features and \
                                 items_1_coords.shape[0]==self.ninput_features:
                 items_1_coords = items_1_coords.T                
-            output_coords, out_pref_v, out_pref_u, original_idxs = get_unique_locations(items_0_coords, items_1_coords)
+            self.output_coords, out_pref_v, out_pref_u, original_idxs = get_unique_locations(items_0_coords, items_1_coords)
+        # coords are indices into item_features
         else:
-            output_coords = item_features
+            # item_features not provided so we use the same set of items as training to predict new pairs
+            if item_features is None:
+                item_features = self.item_features
+                if 0 not in self.K_out:
+                    if self.use_svi:
+                        self.K_out[0] = self.K_nm
+                    else:
+                        self.K_out[0] = self.K
+                reuse_output_kernel = True
+                        
+            self.output_coords = item_features
+                      
             out_pref_v = items_0_coords
             out_pref_u = items_1_coords
         
-        self.output_coords = output_coords
-        
-        nblocks, noutputs = self._init_output_arrays(output_coords, max_block_size)
+        nblocks, noutputs = self._init_output_arrays(self.output_coords, max_block_size)
                 
         self.mu0_output = np.zeros((noutputs, 1)) + self.mu0_default
         if mu0_output1 is not None and mu0_output2 is not None:
@@ -373,9 +397,12 @@ class GPPrefLearning(GPClassifierSVI):
         for block in range(nblocks):
             if self.verbose:
                 logging.debug("GPClassifierVB predicting block %i of %i" % (block, nblocks))            
-            self._predict_block(block, max_block_size, noutputs)
+            self._predict_block(block, max_block_size, noutputs, reset_block=not reuse_output_kernel)
 
-        m_post, not_m_post, v_post = self._post_rough(self.f, self.v, out_pref_v, out_pref_u)
+        if return_var:
+            m_post, not_m_post, v_post = self._post_rough(self.f, self.v, out_pref_v, out_pref_u)
+        else:
+            m_post, not_m_post = self._post_rough(self.f, None, out_pref_v, out_pref_u)
         
         if expectedlog:
             m_post = np.log(m_post)
@@ -389,10 +416,36 @@ class GPPrefLearning(GPClassifierSVI):
         elif return_var:
             return m_post, v_post
         else:
-            return m_post     
+            return m_post
         
-    def predict_f(self, items_coords=None, max_block_size=1e5, mu0_output=None):
-        nblocks, noutputs = self._init_output_arrays(items_coords, max_block_size)
+    def predict_f(self, items_coords=None, items_features=None, max_block_size=1e5, mu0_output=None, 
+                  use_training_items=False, reuse_output_kernel=False):
+        ''' 
+        items_features can be None, in which case items_coords provide the coordinates directly.
+        If items_features contains a list of features, items_coords provides indexes into this list we should predict.
+        If items_features == 'training', we use the same items_features provided during training, and items_coords
+        provides an index into the training items.
+        If items_features is not None, items_coords can be None, meaning that all items are predicted.
+        '''       
+        
+        if items_features is None and use_training_items:
+            if items_coords is None:
+                items_coords = np.arange(self.obs_coords.shape[0])
+            if 0 not in self.K_out or items_coords is not None:   
+                if self.use_svi:
+                    self.K_out[0] = self.K_nm[items_coords, :]
+                else:
+                    self.K_out[0] = self.K[items_coords, :][:, items_coords]
+            self.output_coords = self.item_features[items_coords]        
+            reuse_output_kernel = True
+        elif items_features is not None:
+            if items_coords is None:
+                items_coords = np.arange(items_features.shape[0])
+            self.output_coords = items_features[items_coords, :]
+        else:
+            self.output_coords = items_coords
+        
+        nblocks, noutputs = self._init_output_arrays(self.output_coords, max_block_size)
                 
         if mu0_output is not None and len(mu0_output):
             self.mu0_output = mu0_output
@@ -402,7 +455,7 @@ class GPPrefLearning(GPClassifierSVI):
         for block in range(nblocks):
             if self.verbose:
                 logging.debug("GPClassifierVB predicting block %i of %i" % (block, nblocks))            
-            self._predict_block(block, max_block_size, noutputs, items_coords is not None)
+            self._predict_block(block, max_block_size, noutputs, reset_block=not reuse_output_kernel)
         
         return self.f, self.v
             
@@ -422,7 +475,9 @@ class GPPrefLearning(GPClassifierSVI):
         
         not_m_post = 1 - m_post
 
-        if f_var is not None:
+        if f_var is not None and np.any(f_var <= 0):
+            return m_post, not_m_post, np.zeros(m_post.shape)
+        elif f_var is not None:
             samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(f_mean.shape[0], 1000))
             samples = self.forward_model(samples, v=pref_v, u=pref_u, return_g_f=False)
             v_post = np.var(samples, axis=1)[:, np.newaxis]

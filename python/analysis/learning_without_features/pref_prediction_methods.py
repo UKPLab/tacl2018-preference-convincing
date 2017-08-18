@@ -227,6 +227,7 @@ class PredictionTester(object):
             
     def fit_predict_gp(self, pair1coords_train, pair2coords_train, prefs, pair1coords_test, pair2coords_test, 
                        return_latent_f=False):
+        # TODO: update the parameters in function calls
         model = GPPrefLearning([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10])
         model._select_covariance_function('diagonal')
         model.max_iter_VB = 50
@@ -271,6 +272,7 @@ class PredictionTester(object):
         notlabelledidxs = self.results[self.testidxs, m] == 0.5
         
         logging.debug("--- Running Pref GP model for all workers --- ")
+        # TODO: do the results of this actually get saved anywhere? 
         self.fit_predict_gp(self.pair1coords[self.trainidxs], 
                             self.pair2coords[self.trainidxs], 
                             self.prefs[self.trainidxs], 
