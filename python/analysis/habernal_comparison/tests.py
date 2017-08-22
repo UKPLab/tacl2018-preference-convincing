@@ -986,7 +986,7 @@ def run_test_set(run_test_fun=run_test, subsample_tr=0, min_no_folds=0, max_no_f
         for dataset in datasets:
             if load_data:
                 folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = \
-                load_train_test_data(dataset)
+                            load_train_test_data(dataset)
                 if 'word_mean' in embeddings_types:
                     word_embeddings = load_embeddings(word_index_to_embeddings_map)
                 else:
