@@ -1,0 +1,132 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[letterpaper]{geometry}
+\usepackage{acl2012}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[fleqn]{amsmath}
+\usepackage{multirow}
+\usepackage{url}
+\makeatletter
+\newcommand{\@BIBLABEL}{\@emptybiblabel}
+\newcommand{\@emptybiblabel}[1]{}
+\makeatother
+\usepackage[hidelinks]{hyperref}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\setlength\titlebox{6.5cm}    % Expanding the titlebox
+
+% \documentclass[11pt]{article}
+% \usepackage{acl2016}
+% \usepackage{times}
+% \usepackage{url}
+% \usepackage{latexsym}
+% 
+% \usepackage[fleqn]{amsmath}
+% \usepackage{amssymb}
+% \usepackage{amstext}
+% \usepackage{amsthm}
+% 
+% \usepackage{cite}
+
+\usepackage{graphicx}
+\usepackage{amsfonts}
+\usepackage{algorithm2e}
+\usepackage{array}
+\usepackage[caption=false,font=footnotesize]{subfig}
+\usepackage{url}
+\usepackage{tabularx}
+\usepackage{numprint}
+\usepackage{multirow}
+
+\newcommand{\bs}{\boldsymbol}  
+\newcommand{\wrtd}{\mathrm{d}}
+
+\makeatletter
+\makeatother %some sort of hack related to the symbol @
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title{ 
+Finding Convincing Arguments using Scalable Bayesian Preference Learning
+}
+
+\author{First Author \\
+  Affiliation / Address line 1 \\
+  Affiliation / Address line 2 \\
+  Affiliation / Address line 3 \\
+  {\tt email@domain} \\\And
+  Second Author \\
+  Affiliation / Address line 1 \\
+  Affiliation / Address line 2 \\
+  Affiliation / Address line 3 \\
+  {\tt email@domain} \\}
+
+\date{}
+\begin{document}
+
+\maketitle
+
+% Points to address:
+% 1. Is scalability needed when data is sparse? Yes -- for a single topic we quickly hit the 
+% limits with > 500 comparisons; these pairs may be noisy rather than just small; the 
+% large feature space means data is still sparse; scalabe method means that model can be
+% continuously updated as new data arrives.
+
+\begin{abstract}
+%Automated methods for identifying convincing arguments can be hampered by 
+%a lack of gold-standard ratings or rankings in new topics or domains.
+%We address this problem by introducing a scalable Bayesian preference learning method
+%for argument convincingness.
+We introduce a scalable Bayesian preference learning method for identifying
+convincing arguments in the absence of gold-standard ratings or rankings.
+% so far, classifiers and graph ranking methods have been adapted to PL -- our approach addresses the problem without a pipeline and without 
+In contrast to previous work, we avoid the need for separate approaches or pipelines
+to produce training data, predict rankings and perform pairwise classification.
+Although Bayesian methods are known to be effective when faced with sparse or noisy training data, 
+they have not previously been used to identify convincing arguments.
+One deterrent is their perceived lack of scalability, which we address by developing a 
+stochastic variational inference method for Gaussian process (GP) preference learning.
+We show how our method can be applied to predict argument convincingness from crowdsourced data, 
+outperforming state-of-the-art methods, particularly when the data is sparse or noisy.  
+We demonstrate how our Bayesian approach enables more effective active learning,
+thereby reducing the amount of data required to identify convincing arguments for new users and domains.
+While word embeddings are principally used with neural networks, our results show that word embeddings in combination with linguistic features also benefit GPs when predicting
+argument convincingness.
+
+\end{abstract}
+
+% For peer review papers, you can put extra information on the cover
+% page as needed:
+% \ifCLASSOPTIONpeerreview
+% \begin{center} \bfseries EDICS Category: 3-BBND \end{center}
+% \fi
+%
+% For peerreview papers, this IEEEtran command inserts a page break and
+% creates the second title. It will be ignored for other modes.
+%\IEEEpeerreviewmaketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\input{sections/intro}
+\input{sections/method}
+\input{sections/experiments}
+\input{sections/discussion}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% use section* for acknowledgment
+\section*{Acknowledgments}
+
+\cleardoublepage
+
+% \addcontentsline{toc}{chapter}{Bibliography}
+%\bibliographystyle{apalike}
+\bibliographystyle{acl2012}
+\bibliography{simpson_pref_learning_for_convincingness}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\cleardoublepage
+\appendix
+\input{sections/appendix}
+
+\end{document}
