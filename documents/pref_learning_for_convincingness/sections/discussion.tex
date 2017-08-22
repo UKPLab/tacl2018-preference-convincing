@@ -1,18 +1,20 @@
 \section{Conclusions and Future Work}
 
-We presented a novel, scalable approach to predicting argument convincingness using Bayesian preference learning,
-and demonstrated how our method can outperform SVM and neural network methods with sparse and noisy 
-training data.
-Several related NLP and argumentation problems could benefit from a similar methodology, particularly in an 
-interactive setting where large amounts of clean training data are unavailable. 
-An example is the argument reasoning comprehension task\cite{habernal2017arg}, 
-where annotators select preferred components to complete an argument. 
-Future work will therefore evaluate this preference learning approach on 
-other NLP tasks where training data for standard classification and regression is unavailable.
-
-The GP approach could also be used to combine information of different types: classifications and 
-absolute scores as well as pairwise labels. The idea of combining scores and pairwise labels 
-using an active learning approach for image quality assessment with crowds was demonstrated by
-\cite{ye2013combining}, albeit using the Laplace approximation for the Gaussian process. 
-In future we plan to investigate the effectiveness of this idea using our 
-scalable Gaussian process approach for interactive learning settings with implicit feedback.
+We presented a novel, scalable approach to predicting argument convincingness 
+using Bayesian preference learning, and demonstrated how our method outperforms the state-of-the-art.
+We showed particularly strong performance with sparse and noisy training data,
+as may be found in crowdsourcing or interactive learning scenarios.
+%Several related NLP and argumentation problems could benefit from a similar methodology, particularly in an 
+%interactive setting where large amounts of clean training data are unavailable. 
+%An example is the argument reasoning comprehension task\cite{habernal2017arg}, 
+%where annotators select preferred components to complete an argument. 
+Future work will evaluate our approach on other NLP tasks 
+such as the argument reasoning comprehension task~\cite{habernal2017arg} where reliable
+classifications may be difficult to obtain.
+We also plan to investigate whether the GP preference function can be trained 
+using a combination of classifications and absolute scores as well as pairwise labels.
+%The idea of combining scores and pairwise labels 
+%using an active learning approach for image quality assessment with crowds was demonstrated by
+%\cite{ye2013combining}, albeit using the Laplace approximation for the Gaussian process. 
+%In future we plan to investigate the effectiveness of this idea using our 
+%scalable Gaussian process approach for interactive learning settings with implicit feedback.

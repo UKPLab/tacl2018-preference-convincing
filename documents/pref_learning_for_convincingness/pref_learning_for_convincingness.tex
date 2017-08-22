@@ -65,37 +65,32 @@ Finding Convincing Arguments using Scalable Bayesian Preference Learning
 
 \maketitle
 
+% Points to address:
+% 1. Is scalability needed when data is sparse? Yes -- for a single topic we quickly hit the 
+% limits with > 500 comparisons; these pairs may be noisy rather than just small; the 
+% large feature space means data is still sparse; scalabe method means that model can be
+% continuously updated as new data arrives.
+
 \begin{abstract}
-%To do: move bits to intro that we have to cut 
-% Convincingness: decision-making by extracting the best arguments; analysing opinions & influence by seeing who says what; personalised argumentation, where an agent selects the most persuasive arguments for a target person.
-% First three sentences need re-writing completely.
-% This is hard because the motivation is still unclear/too complex! Multiple points:
-% - modelling argument convincingness is useful (motivation part i)
-% - existing methods don't work with small data in new domains (motivating problem part ii)
-% - Bayesian approach solves this but needs to be more scalable (can reword this to state our contribution)
-% - preference learning allows us to learn from pairwise comparisons including implicit feedback (advantages of our contribution)
-% - scalability overcomes previous limitations of Bayesian methods
-% A good motivation states an opportunity in 1/2 sentences. Can state limitation of existing solutions.
-% Follow immediately with clear statement of contribution.
-% Argumentation is a key part of human decision making ...
-
-
-% However, the challenge is to handle the noise in such preference labels and their limited number. 
-%    \item We develop a gradient-based approach to automatic relevance determination that enables us to identify the most informative features for predicting arguments when the input space contains tens of thousands of dimensions % this is too detailed for here -- part of our scalable approach. 
-Argumentative texts vary greatly in quality, 
-meaning that identifying the most convincing arguments 
-on each side of a controversial topic could be highly beneficial for decision making.
-To address this problem, we present a scalable Gaussian process approach for preference learning 
-and apply the method to predicting argument convincingness. 
-While Bayesian methods have been shown to be effective when dealing with small and noisy datasets,
-methods such as Gaussian processes (GP) have not previously been applied to argument quality.
-A perceived drawback is a lack of scalability, which we address through a new
-inference method for GP preference learning using recent advances in stochastic variational inference.
+%Automated methods for identifying convincing arguments can be hampered by 
+%a lack of gold-standard ratings or rankings in new topics or domains.
+%We address this problem by introducing a scalable Bayesian preference learning method
+%for argument convincingness.
+We introduce a scalable Bayesian preference learning method for identifying
+convincing arguments in the absence of gold-standard ratings or rankings.
+% so far, classifiers and graph ranking methods have been adapted to PL -- our approach addresses the problem without a pipeline and without 
+In contrast to previous work, we avoid the need for separate approaches or pipelines
+to produce training data, predict rankings and perform pairwise classification.
+Although Bayesian methods are known to be effective when faced with sparse or noisy training data, 
+they have not previously been used to identify convincing arguments.
+One deterrent is their perceived lack of scalability, which we address by developing a 
+stochastic variational inference method for Gaussian process (GP) preference learning.
 We show how our method can be applied to predict argument convincingness from crowdsourced data, 
 outperforming state-of-the-art methods, particularly when the data is sparse or noisy.  
-We demonstrate more effective active learning using our Bayesian approach, 
+We demonstrate how our Bayesian approach enables more effective active learning,
 thereby reducing the amount of data required to identify convincing arguments for new users and domains.
-Our results also illustrate the value of combining linguistic features with word embeddings to improve performance. 
+While word embeddings are principally used with neural networks, our results show that word embeddings in combination with linguistic features also benefit GPs when predicting
+argument convincingness.
 
 \end{abstract}
 
