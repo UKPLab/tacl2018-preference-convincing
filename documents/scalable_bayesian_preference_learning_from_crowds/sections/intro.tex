@@ -1,1 +1,18 @@
 \section{Introduction}\label{sec:intro}
+
+Many tasks are more suited to pairwise comparisons than classification etc. 
+Crowds of non-expert annotators may label more accurately if presented with pairs. 
+Implicit feedback may be taken from user actions in an application that can be represented as a preference, such as choosing
+an option over other options.
+
+There are several works for learning from noisy pairwise comparisons so far (Horvitz et al. 2013 or something like that?). 
+However, these do not provide a way to take account of item features or to model different but valid subjective viewpoints. 
+They assume there is a single ground truth and can therefore model only one task and one user's (or a consensus of all users) preferences at once. 
+
+Work by Felt et al. 2015, Simpson et al. 2015 etc. shows that item features are particularly useful when combining crowdsourced data. A Gaussian process has not been tested for this purpose before?
+
+GP preference learning presents a way to learn from noisy preferences but assumes constant noise and a single underlying preference function. 
+The collaborative Gaussian process (Houlsby et al. 2012) learns multiple users' preferences. 
+However existing implementations do not scale and do not identify ground truth. 
+
+We show how to scale it using SVI and how to use the model to identify ground truth from subjective preferences. 

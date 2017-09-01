@@ -14,6 +14,8 @@
 \DeclareMathOperator*{\argmax}{arg\,max}
 \setlength\titlebox{6.5cm}    % Expanding the titlebox
 
+\usepackage[draft]{todonotes}
+
 % \documentclass[11pt]{article}
 % \usepackage{acl2016}
 % \usepackage{times}
@@ -92,6 +94,15 @@ thereby reducing the amount of data required to identify convincing arguments fo
 While word embeddings are principally used with neural networks, our results show that word embeddings in combination with linguistic features also benefit GPs when predicting
 argument convincingness.
 
+\todo{Two options for the paper's main claim (at the moment it is more toward number 1): (1) We provide a scalable Bayesian method that improves preference learning with sparse/noisy data (2) We show state of the art performance for argumentation by developing a scalable Bayesian preference learning method. 
+Notes from other papers in source comments:
+%From reece 2011 -- data fusion task is put first; main claim is not more general than the application domain of data fusion:
+%"The complex target of interest in this paper is the ‘pattern of life’ associated with a counter-insurgency (COIN) scenario involving vehicle movements between specific buildings in a fictitious town... The focus of this paper is the formulation and proof-of- principle testing of a mathematical framework for representing and fusing heterogeneous data sources to provide inference in
+%support of intelligence analysts."
+% Look at structure of intro to "A Bayesian Approach to Unsupervised Semantic Role Induction". The application domain is front-and-centre here. 
+Concerns about the first claim -- currently it is phrased in a way that is too general, e.g. "We demonstrate how our Bayesian approach enables more effective active learning"; it would have to be more specific to the scalable method presented, e.g. "...from sparse and noisy preferences with large real-world NLP datasets". To emphasise claim 2: "...of argument convincingess from small numbers of judgements provided by human annotators". 
+Options: (1) claim 1 should be played down completely so it can be made into a separate ML paper; (2) claim 2 becomes focus but claim 1 is rephrased to specifically back it up; (3) claim 1 is the main focus but need a lot more background on the use cases in NLP and prior work on Bayesian methods in NLP + sell as new tool for NLP.
+}
 \end{abstract}
 
 % For peer review papers, you can put extra information on the cover
@@ -124,9 +135,5 @@ argument convincingness.
 \bibliography{simpson_pref_learning_for_convincingness}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\cleardoublepage
-\appendix
-\input{sections/appendix}
 
 \end{document}

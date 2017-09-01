@@ -1,5 +1,5 @@
 \section{Experiments}\label{sec:expts}
-
+\subsection{Datasets and Evaluation}
 % If we need to cut something large, cut the UKPConvArgAll classification results!
 
 %Structure of this section?
@@ -13,6 +13,9 @@
 %To evaluate our approach, we consider a number of different scenarios in which we test both classification performance, i.e. predicting binary pairwise labels, and ranking performance, i.e. predicting the order of preference of arguments.
 %We begin by using synthetic data to illustrate how our method works,
 %then evaluate the methods on real crowdsourced data for argumentation.
+\todo{Show examples from the dataset if not already done so in intro.}
+\todo{Make the point about using word embeddings with GPs less of an afterthought, more
+of a novelty.}
 We use crowdsourced preference datasets provided by 
 Habernal and Gurevych~\shortcite{habernal2016argument},
 which contain pairwise preference labels for arguments taken from online discussion forums. 
@@ -228,7 +231,18 @@ on the horizontal axis is preferred to the argument on the vertical axis.]{
 \end{figure*}
 
 \subsection{Experiment 2: Clean Data}
-
+\todo{emphasise we beat state of the art}
+\todo{what kind of error analysis is required? Review other papers on similar topics (see comments in latex source).
+%From semantic role labelling EACL paper: "In order to verify that this and argu- ment filler clustering were not the only aspects of our approach contributing to performance im- provements, we also evaluated our coupled model without Brown clustering and treating modifiers as regular arguments". "Due to the space con- straints we are not able to present detailed anal- ysis of the induced similarity graph D, however, argument-key pairs with the highest induced sim- ilarity encode, among other things, passivization, benefactive alternations, near-interchangeability of some subordinating conjunctions and preposi- tions (e.g., if and whether), as well as, restoring some of the unnecessary splits introduced by the argument key definition (e.g., semantic roles for adverbials do not normally depend on whether the construction is passive or active)."
+%From what makes a convincing argument: "some topics are more challenging regardless of the system", "We examined about fifty random false predic- tions to gain some insight into the limitations of both systems. We looked into argument pairs, in which both methods failed, as well as into instances where only one model was correct. BLSTM won in few cases by properly catching jokes or off-topic arguments; SVM was properly catching all-upper-case arguments (considered as less convincing). By examining failures common to both systems, we found several cases where the prediction was wrong due to very negative senti- ment (which might be a sign of the less convinc- ing argument), but in other cases an argument with strong negative sentiment was actually the more convincing one. In general, we did not find any tendency on failures; they were also independent of the worker assignments distribution, thus not caused by likely ambiguous (hard) instances." --> i.e. only half a column
+%of text is needed. 
+% From Semantic Annotation Aggregation with Conditional Crowdsourcing Models and Word Embeddings (about half a page): ""
+Where do the models differ?
+}
+\todo{
+Note that human upper bound is 93\% so we could still improve (with better background knowledge?)
+}
+\todo{statistical significance?}
 We comparemethods for classification on the UKPConvArgStrict dataset and ranking on the UKPConvArgRank dataset. 
 Both datasets were cleaned to remove disagreements between annotators as stated in Table \ref{tab:expt_data}
 To choose settings for the GPPL hyper-parameters $a_0$ and $b_0$, which control
@@ -274,7 +288,7 @@ we take the mean of the individual word embeddings for the tokens in the argumen
 %  \caption{Different hyper-parameters and kernel combinations for 
 %  GPPL with Glove + ling features}
 %\end{table}
-
+\todo{Remove discussion of different kernels and just show best}
 The results are shown in Table \ref{tab:clean_results}. When using \emph{ling} features,
 GPPL produces similar accuracy and improves the area under the ROC curve (AUC) by 2\%,
 and cross entropy error by 0.01. Much larger improvements can be seen in the ranking metrics. 
@@ -338,6 +352,7 @@ Kend.: &0.34&0.27&0.47 &0.31  &0.49     &  0.50 & 0.49 &  0.49 & 0.47  & - \\
   \caption{Performance comparison on clean datasets. }
   \label{tab:clean_results}
 \end{table*}
+\todo{Remove results for different kernels and just show best}
 % \begin{table}
 % \npdecimalsign{.}
 % \nprounddigits{2}
@@ -404,6 +419,7 @@ Kend.: &0.34&0.27&0.47 &0.31  &0.49     &  0.50 & 0.49 &  0.49 & 0.47  & - \\
 
 \subsection{Experiment 3: Conflicts and Noisy Crowdsourced Data}
 
+\todo{Can we crunch expt 2 and 3 together? Perhaps 3 can be dropped entirely so we make the same point with active learning.}
 In this experiment, we introduced 
 %conflicts into the classification task by comparing methods on the UKPConvArgAll dataset, then additionally introduce 
 noise to both the classification and the regression tasks by 
@@ -433,8 +449,8 @@ results for BLSTM and particularly for SVM are much poorer than with UKPConvArgR
 \begin{table}
   \begin{tabularx}{\columnwidth}{ | l | X | X | X | X | X |}\hline
 % \multicolumn{6}{|l|}{UKPConvArgAll} \\   \hline
-%             & SVM &B-LSTM &GPPL         &PL+ SVR     &GPC \\
-%             &ling &Glove & ling+ Glove &ling+ Glove&ling+ Glove\\\hline
+             & SVM &B-LSTM &GPPL         &PL+ SVR     &GPC \\
+             &ling &Glove & ling+ Glove &ling+ Glove&ling+ Glove\\\hline
 % Acc:     &0.71 &0.73  & 0.77        &0.75       &0.76 \\
 % AUC:          &0.81 &0.81  & 0.84        &0.82       &0.86 \\
 % CEE:          &0.56 &0.53  & 0.49        &0.52       &0.50 \\
@@ -476,6 +492,7 @@ uncertainty sampling in situations where obtaining labelled data is expensive.
 
 \subsection{Experiment 5: Embeddings}
 
+\todo{cut this section and just state that we found no improvement with other embeddings?}
 In our previous experiments, we found that including mean Glove word embeddings boosted performance above only using linguistic features. However, there are several alternative methods to mean word embeddings for representing longer pieces of text, 
 notably skip-thoughts~\cite{kiros2015skip} and Siamese-CBOW~\cite{kenter2016siamesecbow}.
 We compare mean Glove embeddings with skip-thoughts embeddings 
@@ -506,9 +523,13 @@ Kend.: & 0.31 & 0.36         & 0.28  & 0.49       & 0.43               & 0.47   
   \caption{Comparison between different types of embeddings with GPPL}
   \label{tab:embeddings}
 \end{table*}
+  \todo{remove results for different LS from table:embeddings}
 
 \subsection{Experiment 6: Informative Features}
 
+\todo{how much does this really show us? Could we skip this section to make more space for error analysis?
+In contrast with Lampos et al 2014, we cannot identify a small number of important features --> looks like we need
+a combination, perhaps a hierarchical feature representation.}
 Finally, we show how the length-scales learned by optimising GPPL can be used to identify
 informative sets of features. Since a larger length-scale causes greater smoothing, 
 a very large length-scale implies that the value of that feature is irrelevant when predicting 
@@ -557,3 +578,211 @@ optimisation increased accuracy from 75\% to 80\%. }
   ratios for linguistic features and word embeddings.}
   \label{tab:extreme_features}
 \end{table}
+
+
+\subsection{Error Analysis}
+
+We compared the errors when using GPPL with mean Glove embeddings
+and with linguistic features. We
+manually inspected the twenty-five arguments most frequently
+mis-classified by GPPL \emph{ling} and correctly classified by GPPL \emph{Glove}.
+We found that GPPL \emph{ling} mistakenly marked several arguments 
+as less convincing where they contained grammar and spelling errors but otherwise
+made a logical point. 
+In contrast, arguments that did not strongly take a side but did not contain 
+language errors were often marked mistakenly as more convincing.
+We also examined the twenty-five arguments most frequently misclassified by GPPL \emph{Glove} and correctly labelled by GPPL \emph{ling}.
+GPPL \emph{Glove} did not correctly mark arguments as less convincing 
+even though they contained multiple exclamation marks and all-caps sentences. 
+Other failures were very short arguments and underrating arguments containing the emotive term 'rape'.
+The analysis confirms that the different feature sets can identify different aspects of convincingness.
+
+% Notes on first paragraph:
+% ling failed on:
+% overrated: good grammar and structure but weak points?
+% both; short and direct argument but not very thoughtful.
+% both: seems well structured...
+% both: seems to argue for middle ground rather than one side
+% both: grammar/spelling errors but strong argument underneath?
+% both: grammar/spelling errors but strong argument underneath?
+% underrated: very specific example may seem off topic? 
+% both: unclear points
+% underrated: bad spelling but okay points
+% underrated: very personal "I" language to make a good point
+% mostly underrated: makes multiple points, some are quite extreme. 
+% underrated: sounds quite personal "you" but strong argument.
+% both: kind of doesn't try to convince strongly for one side although well written.
+%  overrrated: doesn't address the main point although language is reasonable.
+% mostly overrated: response to previous answer with no new points.
+% underrated: contains '?' and 'you' a lot but makes a good point.
+% overrated: language is reasonable, no mistakes, but doesn't clearly take a side.
+% overrated: no obvious language indicators but doesn't address main point.
+% underrated: lots of spelling mistakes hide the main point.
+% mostly overrated: good language but doesn't really support or attack the point directly
+% underrated argument with grammatical mistakes but possibly a good point?
+% avoiding the argument/debate overrated
+% illogical and quite emotional argument underrated
+% personal/ad hom attack with 'crap' overrated -- but need to identify the username as such to know it  is a personal attack?
+% obvious nonsense without proper words was overrated
+%
+% embeddings failed on:
+%
+% both: very short argument, unclear why ling features would help
+% overrated: claims lack support
+% overrated: spelling mistakes; doesn't address stance of the topic 
+% underrated: very short; mean embedding could be an outlier?
+% underrated: short
+% underrated: no linguistic markers of a bad argument; unclear why embeddings a problem
+%     mostly underrated; as above
+% underrated: as above; perhaps the words such as 'rape' are associated in the embeddings
+% with poor emotional arguments? Perhaps not the word 'rape' itself, but some of the related words in embedding space are common in bad arguments.
+% underrated: no idea
+% underrated: again mentions 'murder'
+% mostly underrated: all caps; why underrated?
+% underrated: sensible argument mentions 'personal' a lot
+% underrated: very short; mentions wrong and right --> link to emotional arguments without evidence?
+% overrated: very short and gives no argument; perhaps contains no bad argument embeddings but linguistic features such as word counts will show it up.
+% overrated: mentions of 'dreamt'?
+% underrated: no idea
+% overrated: doesn't address main point; hard to see why ling would help
+% underrated: no idea why; has no linguistic errors
+% overrated: no idea; no idea why linguistic features help
+% underrated: again maybe because of emotional topic of abortion; no linguistic problems
+% overrated: very short sentence; no structure; lots of '!'
+% overrated: grammatical errors, very short text that doesn't really make any point or provide any support
+% overrated: nonsense detected by all caps
+% overrated: very short, cannot really make a good point in that much text
+% underrated: why this would beat any other argument is unclear; it's all caps and has lots of '!' too
+% 
+%  Problem is we don't see what they were misclassified against -- number of 
+% misclassifications is too few to know if it is a general problem with that sentence.
+% 
+% which of these errors are resolved by combining? Pick out errors from either ling that
+% were fixed with both; pick our errors from embeddings that were fixed with both.
+
+% when comparing 'both' to 'ling', most of the errors that are made by embeddings
+% no longer appear -- those with all caps and '!' have gone. Differences are few.
+% seem to be that poorly written arguments continue to be mis-classified.
+% with 'both' to embeddings, some of the errors that ling made have gone, e.g. including 'lol'. The remaining ones are mainly those with good superficial structure/correct grammar
+% but covering emotional topics. Suggests need for better trade-off between semantics/deeper understanding and linguistic indicators such as good grammar.
+
+% this analysis also shows whether the errors are due to epistemic uncertainty given the features (small difference in 
+% similarities between false/true labelled items) or if better training data would help (larger difference between 
+% false/true similarities). If GPPL handles the sparse data better, the difference should be reduced compared to SVM.
+% the text below is good but the results are not really worth reporting...
+%We next investigate whether the Bayesian approach is better able to handle sparsity in the training data. 
+%Training data sparsity occurs when the training provides very few examples of arguments in some important regions of feature space, meaning  
+% there are arguments in the test dataset that are not similar to any training arguments.
+%For each fold, we computed the mean cosine similarity of each argument in the 
+%test dataset to the arguments in the training dataset, which we refer to as \emph{training similarity}.
+%For UKPConvArgStrict, the mean training similarity for the arguments in pairs correctly classified by GPPL (ling + Glove) was 694.63 and the mean for incorrectly classified arguments was 694.703. This suggests that training similarity is not a strong indicator of a correct
+%prediction and training data sparsity does not appear to be a key source of error for GPPL
+%in this dataset. In comparison, using  SVM,  
+%the mean training similarity for correctly classified arguments
+% was 694.72 against 0.     for incorrectly classified arguments, showing that 
+% lower training data similarity corresponds to a more misclassified pairs. 
+% This indicates that SVM was more affected by training data sparsity.
+% However, the small difference in similarities indicates that sparsity was not a problem here?
+% The lower similarity of correctly labelled arguments with GPPL suggests it is able to handle more outlying arguments correctly. 
+%results: 
+% using matern covariance to determine similarity:
+% SVM: correctly classified pairs: 694.715334 (STD 3.251511), incorrectly classified pairs: 694.164449 (STD 3.809051). 
+% So similarity to training data is higher for correct pairs.
+% GPPL: correctly classified pairs: 694.625999 (STD 3.213874), incorrectly classified pairs: 694.703252 (STD 3.580148).
+% with cosine similarity:
+%SVM For all folds: mean total_sim for correctly classified pairs: 0.998826 (STD 0.021547)
+%SVM For all folds: mean total_sim for incorrectly classified pairs: 0.998770 (STD 0.025875)
+%GPPL For all folds: mean total_sim for correctly classified pairs: 0.998825 (STD 0.021434)
+%GPPL For all folds: mean total_sim for incorrectly classified pairs: 0.998770 (STD 0.026505)
+% Using max similarity rather than mean (most similar training point) gives similar results.
+% So similarity to training data is actually higher for incorrect pairs; for correct pairs it is lower than for SVM. 
+% Suggests that similarity to training data (not being outliers) is less important for GPPL.
+
+To investigate the differences between our best approach, GPPL opt. (ling+Glove), 
+and the previous best performer, SVM, 
+we manually examined forty randomly chosen false classifications, where one of 
+either GPPL (ling+Glove) or SVM (also ling) was correct and the other was incorrect. 
+We found that both SVM and GPPL falsely classified arguments when they were either very short or long and complex, suggesting deeper semantic or structural understanding of the argument may be required. However, SVM also made mistakes
+where the arguments contained few verbs.
+%We were not able to identify any common source of error for cases where both 
+%methods produced errors. % required deeper semantic understanding and background knowledge of the topics involved
+% to evaluate the validity of claims.
+% Case 1: SVM right, GPPL wrong.
+% underrated, short
+% overrated, maybe SVM is right because it dislikes '!'
+% underrated, less common language -- perhaps not learned?
+% overrated, complex language
+% underrated, short argument
+% ...
+% overrated, irrelevant but well written
+% more long arguments with fairly sophisticated language and no obvious errors.
+% some cases of arguments that do not take a strong position either way
+% The number of errors are small -- could be noise rather than consistent problems with GPPL.
+% Some arguments with mainly topic-specific words were misclassified by GPPL but not SVM.
+%notable that there are lots of errors on the singapore topics
+% Case 2: GPPL right, SVM wrong
+% short arguments with few verbs
+% long arguments with no obvious language errors and no emotional arguments.
+% notable that lots of errors on the school uniform topics
+We also compare the rankings produced by GPPL opt. (ling+Glove), 
+and SVM on UKPConvArgRank, by examining the 20 largest deviations from the 
+gold standard rank for each method. SVM underrated some arguments that GPPL did not where they contained
+exclamation marks, common spelling errors (likely due to unigram or bigram features).
+GPPL underrated short arguments with the ngrams ``I think", ``why?", and
+``don't know". In these cases, the phrases were used in a rhetorical question 
+rather than to state that the author was uncertain or uninformed; these case
+may not be possible to distinguish given \emph{ling + Glove} features.
+% Case 1: GPPL better, SVM worse
+% svm underrated some arguments containing !, thankyou, lots of 'if'
+% underrated: long argument, common spelling errors (unigrams usually correlated with bad arguments?), India, long and complex arguments, short arguments
+% overrated: ('because' could be either over or underrated), mention of another website, 
+% Hard to see pattern here because the arguments are very varied in length, grammatical standard; most are not using emotive terms.
+
+% Case 2: SVM better, GPPL worse
+% mistakes by GPPL: several short arguments containing "i think"... perhaps leading to a more neutral score than the other features suggest?
+% 
+
+% Case 3: GPPL's worst problems (including mistakes by SVM)
+% an argument with lots of caps in was underrated
+% argument with lots of short sentences (sometimes few verbs) is underrated. 
+% underrated: "why?"
+% underrated: "don't know" is a big indicator. These two suggest that the model needs a way to determine whether the "don't know" was used in a way that undermines the argument strength (admission of a lack of knowledge) or as a rhetorical device to say that an opposing viewpoint is nonsensical ("don't know why they would do x"). 
+
+% Entropy for SVM correct/incorrect labels: 0.187555, 1.583709
+% Entropy for GPPL correct/incorrect labels: 0.128872, 2.443407
+% Shows better division between certain and uncertain predictions
+A proposed advantage of GPPL is that it provides more meaningful uncertainty estimates. 
+We examined whether the erroneous classifications correspond to more uncertain predictions
+when using GPPL compared to SVM when both methods use the \emph{ling} features.
+For UKPConvArgStrict, the mean Shannon entropy
+of the pairwise predictions from GPPL 
+was 0.129 for correct predictions and 2.443 for errors,
+showing that on average, more confident predictions were less likely to lead to errors.
+For SVM, the mean Shannon entropy was  0.188 for correct predictions and 
+1.583 for incorrect.
+The more extreme values for the GPPL predictions 
+ suggest that the probabilities provided by GPPL were indeed more reflective of 
+ the probability of error than those given by the SVM classifier.
+
+% % the analysis below is possible only using the predictions for the training points; however we do not predict for
+% % the provided training points?
+% To judge whether the GPPL improvements in UKPConvArgCrowdSample are due to better
+% handling of noisy labels, we examined whether annotations that disagreed with the 
+% MACE gold label -- i.e. erroneous training labels -- led to erroneous predictions. 
+% We chart the results of this error analysis in Table \ref{tab:noise_errors}.
+% This shows that while arguments with erroneous training labels are more likely to 
+% be incorrectly classified using both SVM and GPPL, the Bayesian approach is less susceptible
+% to this error.
+% \begin{table}
+% \begin{tabularx}{\columnwidth}{| l | X | X | X | X | }
+% \hline
+% & \multicolumn{4}{c | }{\emph{Predictions}} \\
+% & \multicolumn{2}{c|}{SVM} & \multicolumn{2}{c|}{GPPL} \\\hline
+% \emph{Annotations}           & \emph{True} & \emph{False} & \emph{True} & \emph{False} \\
+% Incorrect & & & &  \\
+% Correct   & & & & \\
+% \hline
+% \end{tabularx}
+% \caption{Coincidence of erroneous annotations and false predictions by pairwise classification methods.}
+% \label{tab:noise_errors}
+% \end{table}
