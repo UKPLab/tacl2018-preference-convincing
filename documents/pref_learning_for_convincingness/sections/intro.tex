@@ -1,262 +1,199 @@
 \section{Introduction}\label{sec:intro}
 
-Argumentation is intended to persuade the reader of a particular point of view and 
-is an important way for humans to reason about controversial topics~\cite{mercier2011humans}. 
-The amount of argumentative text on any given topic can, however, overwhelm a reader, particularly
-considering the scale of historical text archives 
-and the prevalence of social media platforms with millions of authors.
-To gain an understanding of a topic, it is therefore useful to identify high-quality, 
-persuasive arguments from different sides of a debate.
+Arguments are intended to persuade the audience of a particular point of view and 
+are an important way for humans to reason about controversial topics~\cite{mercier2011humans}. 
+The amount of argumentative text on any chosen topic can, however, overwhelm a reader.
+Consider the scale of historical text archives 
+and the debates on social media platforms with millions of users.
+Automated methods could enable readers to overcome this challenge by identifying high-quality, 
+persuasive arguments from different sides of a debate. 
 
-Theoretical approaches for identifying high-quality arguments have proved difficult to apply to everyday arguments~\cite{boudry2015fake}.
+Theoretical approaches for assessing argument quality have proved difficult to apply to everyday arguments~\cite{boudry2015fake}.
 However, empirical approaches using machine learning have recently shown success in 
-identify convincing arguments in online discussions.
-Habernal and Gurevych~\shortcite{habernal2016argument} 
-trained a model of convincingness on arguments taken from discussion forums, then
-used the model to predict convincingness of arguments from a new topic.
- % How other papers put in examples:
- % Lukin - examples of arguments with different characteristics that may be differently convincing to different audiences
- % Habernal - we take a pragmatic perspective... we asked whether we could quantify and predict how convincing... Figure 1 shows arguments... Why we do pairwise labelling. 
-To apply machine learning to predict which arguments are most convincing, 
-we require our target audience to provide examples of arguments paired with judgements of their convincingness.
-Consider the arguments in Figure \ref{fig:argument_examples}, which are taken from online discussion forums:
-how does a member of our audience assign a numerical convincingness score to each argument? 
-If the audience considers each argument independently, it is difficult to ensure that scores remain
-consistent with their view of convincingness after they have judged multiple arguments.
-A solution to this problem is to compare argument 1 and 2 against one another. 
-In this case we may judge that argument 1 is less convincing due to its writing style, whereas argument 2 
-presents evidence in the form of historical events.
-Pairwise comparisons are known to place less cognitive burden on human annotators than asking them to 
-choose a numerical rating and allow fine-grained sorting of items that is not possible with categorical labels
-~\cite{kendall1948rank,kingsley2006preference}.
-By using relative judgements instead of numerical scores, we can also avoid the problem that multiple annotators 
-may have different biases toward high, low or middling values, making their sores hard to compare.
+identifying convincing arguments in online discussions~\cite{habernal2016argument}.
 \begin{figure}
 \textbf{Topic:} ``William Farquhar ought to be honoured as the rightful founder of Singapore". \\
 \textbf{Stance:} ``No, it is Raffles!" \\
 \textbf{Argument 1:}  
 HE HAS A BOSS(RAFFLES) HE HAS TO FOLLOW HIM AND NOT GO ABOUT DOING ANYTHING ELSE... \\
-% IF THEN WHY CANT FARQUHAR HELP SINGAPORE AFTER HE WAS FIRED!!! I SAID HE DOES NOT HAVE THE POSITION TO BE THE FOUNDER!!!! & 
 \textbf{Argument 2:} 
 Raffles conceived a town plan to remodel Singapore into a modern city. The plan consisted of separate areas for different...
-%...Raffles' ambition and vision led him to search for another British base in
-%the Straits of Malacca and to select Singapore...
-% as the best location to achieve British economic and strategic objectives in the region....
-% Without Raffles, it is likely that Singapore would have remained a sparsely inhabited island, on the margins of the Dutch colonial empire in the East Indies.
-\caption{Example of an argument pair.}
+\caption{Example argument pair from an online debate.}
 \label{fig:argument_examples}
 \end{figure}
-\todo{motivate use of word embeddings as additional input to GP. 
-They have been shown to provided complementary information in applications such as... Mainly because they provided some semantic information not captured by the
-other features.}
+These approaches require examples of arguments paired with judgements of their convincingness.
+Consider the arguments in Figure \ref{fig:argument_examples}:
+how does one assign a numerical convincingness score to each argument? 
+If the audience considers each argument independently, it is difficult to ensure that the scores for all arguments
+remain consistent with their view of convincingness.
 
-We propose the use of Gaussian process preference learning (GPPL)~\cite{chu2005preference} 
-to model of argument convincingness as a function of textual features, including word embeddings,
-which can be inferred from noisy crowdsourced pairwise preferences.
-%Our method learns
-%is based on the model of~\cite{chu2005preference}, which assumes that preferences over items are described by 
-%a latent convincingness function.
-%By providing a Gaussian process (GP) prior over this latent function, 
-% Our method uses a Gaussian process (GP) to treat noise and data sparsity as  uncertainty in the convincingness function in a principled manner.
-% To enable us to apply this approach to NLP problems,
-%text problems with large numbers of features,
-% and their proposed inference scheme was limited 
-%by a computational complexity of $\mathcal{O}(N^3)$, where $N$ is the number of items.
-We address the poor scalability of GPPL by developing a stochastic variational inference (SVI) approach~\cite{hoffman2013stochastic}.
-%We further show how we our method enables efficient optimisation of important %hyper-parameters.
-%We then demonstrate how our method can be applied to argument convincingness 
-%with a large number of linguistic features and high-dimensional text embeddings.
-Our evaluation using datasets provided by Habernal and Gurevych~\shortcite{habernal2016argument}
-shows that our method outperforms the previous state-of-the-art for ranking arguments by convincingness and 
-identifying the most convincing argument in a pair. 
-Further experiments with subsets of crowdsourced data show that our Bayesian approach is particularly advantageous with small, noisy datasets.
+An alternative way to judge arguments is to compare them against one another. 
+In the case of arguments 1 and 2 in Figure \ref{fig:argument_examples}, we may judge that argument 1 is less convincing due to its writing style, whereas argument 2 
+presents evidence in the form of historical events.
+Pairwise comparisons such as this are known to place less cognitive burden on human annotators than  
+choosing a numerical rating and allow fine-grained sorting of items that is not possible with categorical labels
+~\cite{kendall1948rank,kingsley2006preference}.
+Relative judgements also avoid the problem that different annotators 
+may have biases toward high, low or middling ratings, making their scores hard to compare.
+
+% \todo{the reliance of these models on massive sets of hand-labeled training data. data acquisition bottleneck. Prevalent in NLP: consider wordnet versus euronet for languages --> hard to get non-English. See comment on collobert.
+% % Typical neural network approaches have achieved success by using more than 200,000 training data points for each task\cite{}.
+% Not really connected to previous paragraph?
+% }
+In practice, we face a data acquisition bottleneck when encountering new domains or audiences.
+For example, machine learning methods such as neural networks typically require datasets with 
+many thousands of hand-labelled examples to perform well~\cite{srivastava2014dropout,collobert2011natural}.
+One solution is to employ multiple non-specialist annotators at low cost (\emph{crowdsourcing}), 
+but this requires quality control techniques to account for errors.
+Another source of data are the actions of users of a software application, which can be interpreted as pairwise judgements~\cite{joachims2002optimizing}. For example, when a user clicks on an argument in a list it can be interpreted
+ as a preference for the selected argument over more highly-ranked arguments.
+However, the resulting pairwise labels are an extremely noisy indication of preference.
+
+% \todo{motivate use of word embeddings as additional input to GP. 
+% They have been shown to provided complementary information in applications such as... Mainly because they provided some semantic information not captured by the
+% other features.}
+% \todo{making software available -- see TACL?}
+In this paper, we develop a Bayesian approach to learn from noisy pairwise preferences
+based on Gaussian process preference learning (GPPL)~\cite{chu2005preference}.
+We model argument convincingness as a function of textual features, including word embeddings,
+and develop an inference method for GPPL that scales to realistic dataset sizes using a stochastic variational inference (SVI) ~\cite{hoffman2013stochastic}. % and make our software available at...
+Using datasets provided by Habernal and Gurevych~\shortcite{habernal2016argument},
+we show that our method outperforms the previous state-of-the-art for ranking arguments by convincingness 
+and identifying the most convincing argument in a pair. 
+%We also show the benefit of combining linguistic features with word embeddings.
+Further experiments show that our Bayesian approach is particularly advantageous with small, noisy datasets, 
+and in an active learning set-up.
 
 The rest of the paper is structured as follows.
 Section \ref{sec:related} reviews related work on argumentation,
 then Section \ref{sec:bayesian} motivates the use of Bayesian methods by discussing their successful applications in NLP.
-In Section \ref{sec:pref_learning}, we review preference learning methods and then in Section \ref{sec:model}
-we present our scalable Gaussian process-based approach.
-Section \ref{sec:expts} then presents our evaluation: 
-a comparison with the state-of-the art on predicting preferences in online debates; 
-noisy datasets; active learning; and feature relevance determination.
-Finally, we present conclusions and avenues for future work.
+In Section \ref{sec:pref_learning}, we review preference learning methods and then Section \ref{sec:model}
+describes our scalable Gaussian process-based approach.
+Section \ref{sec:expts} presents our evaluation, 
+comparing our method to the state-of-the art and testing with noisy data and active learning.
+Finally, we present conclusions and future work.
 
 \section{Identifying Convincing Arguments}\label{sec:related}
 
-\todo{Move some of the discussion from the intro to here about the pipeline etc.}
-%Recent work on argumentation by \cite{habernal2016argument} has established datasets and methods for
-%predicting which argument is most convincing. Our experiments make extensive use of this data to establish
-%a different methodology. 
-Habernal and Gurevych~\shortcite{habernal2016argument} used pairwise comparisons obtained using crowdsourcing 
-to train models for predicting both 
-pairwise labels for arguments and numerical scores of convincingness.
-However, this crowdsourced data required quality control techniques to account for errors.
-We may also wish to use other sources of noisy pairwise data to train a model of 
-convincingness.
-For instance, when there is insufficient annotated data, 
-we may try to learn which arguments a user finds convincing from their actions in a software application.
-A user's clicks can be interpreted as pairwise preferences~\cite{joachims2002optimizing},
-for example if they select an argument from a list, however the resulting pairwise labels are very noisy.
-We may also be faced with very small amounts of data when we move to new domains and topics,
-%topics and users for whom we wish to predict convincingness. 
-which can present a problem to methods such as deep neural networks~\cite{srivastava2014dropout}.
-The approach used by Habernal and Gurevych \shortcite{habernal2016argument} to handle unreliable 
-crowdsourced data involved first determining consensus labels using the MACE algorithm~\cite{hovy2013learning};
-these consensus labels were then used to train a classifier and as input to 
-PageRank; the resulting rankings were then used as training data for regression models.
-However, such pipeline approaches can be prone to error propagation~\cite{chen2016joint} 
+% Recently, Habernal and Gurevych~\shortcite{habernal2016makes} analysed reasons provided by annotators for why one argument is more convincing than another. In this paper we assume that explicit reasons are not provided. 
+Lukin et al.~\shortcite{lukin2017argument} demonstrated that an audience's personality and prior stance affect
+an argument's persuasiveness, but they were unable to predict belief change accurately.
+Related work has shown how persuasiveness is also affected by the sequence of arguments in a discussion 
+~\cite{tan2016winning,rosenfeld2016providing,monteserin2013reinforcement},
+but this work focuses on predicting salience given the state of the debate rather than the qualities of arguments.
+
+Habernal and Gurevych~\shortcite{habernal2016argument} established datasets
+containing crowdsourced pairwise judgements of convincingness for arguments taken from online discussions. 
+Errors in the crowdsourced data were handled by determining consensus labels using the MACE algorithm~\cite{hovy2013learning}.
+The consensus labels were then used to train SVM and bi-directional long short-term memory (BiLSTM) classifiers to predict pairwise
+labels for new arguments. 
+The MACE consensus labels were also input to PageRank to produce convincingness scores for each argument. 
+These scores were then to train SVM and BiLSTM regression models.
+A drawback of such pipeline approaches is that they are prone to error propagation~\cite{chen2016joint},
 and consensus algorithms such as MACE require multiple crowdsourced labels for each argument pair, 
-and so have higher annotation costs.
-Recently, Habernal and Gurevych~\shortcite{habernal2016makes} analysed reasons provided by annotators for why one argument is more convincing than another. In this paper we assume that explicit reasons are not provided. 
-Investigations by Lukin et. al~\shortcite{lukin2017argument} demonstrated the effect of personality and the audience's prior stance on persuasiveness,
-although their work does not extend to modelling persuasiveness using preference learning.
-%Lukin et al.~\shortcite{lukin2017argument} trained a model to predict the
-% persuasiveness of online arguments media given information about the audience's personality and prior beliefs.
-The sequence of arguments in a dialogue is another important factor in their ability to change
-the audience's opinions~\cite{tan2016winning}. Reinforcement learning has been used 
-to choose the best argument to present to a user~\cite{rosenfeld2016providing,monteserin2013reinforcement},
-but such approaches do not model user preferences for arguments with certain qualities.
+which increases annotation costs.
 
 \section{Bayesian Methods for NLP}\label{sec:bayesian}
 
 When faced with a lack of annotated data or noisy labels, 
 Bayesian approaches have a number of advantages.
 Bayesian inference provides a mathematical framework for combining multiple observations
-with prior information. Given a model, $M$, and observed data, $D$, we can apply Bayes' rule
+with prior information. 
+Given a model, $M$, and observed data, $D$, we can apply Bayes' rule
 to obtain a posterior distribution over $M$:
 \begin{equation}
-  P(M | D ) = \frac{P(D|M)P(M)}{P(D)}.
+  P(M|D) = \frac{P(D|M)P(M)}{P(D)}.
+  \label{eq:bayesrule}
 \end{equation}
 If the dataset is large, the likelihood $P(D|M)$ will dominate the posterior,
-but when $D$ is small, the posterior will remain closer to the prior, $P(M)$,
-thereby reducing overfitting.
-In contrast, neural network methods typically select model parameters to maximise the likelihood,
-meaning that Bayesian methods can perform better with small datasets ~\cite{xiong2011bayesian}.
-Bayesian methods naturally operate using unsupervised or semi-supervised learning,
-which can be an advantage when labelled training data is in short supply.
-A popular example in NLP is the use of  Latent Dirichlet Allocation (LDA) for topic modelling~\cite{blei2003latent}, 
+but when $D$ is small, the posterior will remain closer to the prior, $P(M)$.
+%which reduces overfitting.
+In contrast, neural network methods typically select model parameters that maximise the likelihood,
+so are more prone to overfitting with small datasets, which can reduce performance~\cite{xiong2011bayesian}.
+
+% \todo{link each paragraph to argumentation problem: no trustworthy labels; multiple annotators; ?}
+Bayesian methods can be trained using unsupervised or semi-supervised learning
+to take advantage of structure in unlabelled data when labelled data is in short supply.
+Popular examples in NLP are
+Latent Dirichlet Allocation (LDA)~\cite{blei2003latent}, which is used for topic modelling,
 and its extension, the hierarchical Dirichlet process (HDP)~\cite{teh2005sharing}, which learns the 
-the number of topics that best describes the data rather than requiring it to be fixed a priori.
-% Variational autoencoders are a recent approach~\cite{vaes} for learning vector representations of text
-% that also benefit from an approximate Bayesian approach 
-More recently, semi-supervised Bayesian learning
-has been used to achieve state-of-the-art results for semantic role labelling~\cite{titov2012bayesian}.
-Bayesian inference can also be used to combine multiple pieces of evidence.
-For instance, it is possible to infer attack relations between arguments by combining votes for acceptable arguments from different people using a Bayesian network~\cite{kido2017}.
-Errors in crowdsourced annotations can also be remedied using a Bayesian approach
-that simultaneously learns a sentiment classifier~\cite{simpson2015language,felt2016semantic}.
-Many successful Bayesian approaches make use of Gaussian processes (GP), which are a particular form of prior
-distribution over functions of input features. For example, 
-they have been used to analyse the relationship between text features of tweets and user impact on Twitter~\cite{lampos2014predicting}, 
-to predict the level of emotion in text~\cite{beck2014joint},
-or to estimate the quality of a machine translation given the source and translated texts~\cite{cohn2013modelling}.
+the number of topics than requiring it to be fixed a priori.
+Semi-supervised Bayesian learning
+has also been used to achieve state-of-the-art results for semantic role labelling~\cite{titov2012bayesian}.
+
+Bayes' rule allows us to combine independent pieces of weak evidence.
+For instance, a Bayesian network can be used to infer attack relations between arguments by combining votes for acceptable arguments from different people~\cite{kido2017}.
+Graphical models can also combine crowdsourced annotations to train a sentiment classifier
+without a separate quality control step~\cite{simpson2015language,felt2016semantic}.
+
+Several successful Bayesian approaches in NLP make use of Gaussian processes (GPs), which are 
+prior distributions over functions of input features. 
+GPs are nonparametric, meaning they can model highly nonlinear functions by
+allowing function complexity to grow with the amount of data~\cite{rasmussen_gaussian_2006}.
+They account for model uncertainty when extrapolating from sparse training data
+and can be incorporated into larger graphical models.
+Example applications include analysing the relationship between a user's impact on Twitter 
+and the text features of their tweets~\cite{lampos2014predicting}, 
+predicting the level of emotion in text~\cite{beck2014joint},
+and estimating the quality of machine translations given source and translated texts~\cite{cohn2013modelling}.
 % In scenarios where there is a high cost of obtaining annotations, active learning techniques
 % can be used to obtain more informative annotations by making use of the model uncertainty estimates provided by
 % Bayesian approaches~\cite{mackay1992information}.
-% NLP example? --> see Dynamite or vision paper?
-%The state-of-the-art approach for Bayesian regression is the Gaussian process (GP), which
-%can be adapted to other tasks, such as classification, and used as a component in more complex hierarchical models.
 % GPs in NLP:
 % State of the art for regression
-% I exact posterior inference
 % I supports very complex non-linear functions
 % I elegant model selection
 % Now mature enough for use in NLP
-% I support for classification, ranking, etc
-% I fancy kernels, e.g., text
 % I sparse approximations for large scale inference
 % I probabilistic formulation allows incorporation into larger
 % graphical models
 % I models the prediction uncertainty so that it’s propagated
 % through pipelines of probabilistic components
-% Define a prior over the unknowns, p(✓).
-% I
-% encodes our intitial intuitions about reasonable values
-% Observing data gives rise to a likelihood, p(y|✓).
-% I
-% how well the model fits the training sample
-% Seek to reason over the posterior
-% I incorporating the above to form our updated beliefs about
-% the unknowns
-% I formulated using Bayes’ rule
-%
-% Lampos et al. (2014), EACL --> Predicting and characterising user impact on Twitter --> define a user impact score,
-% use a GP to model how this relates to text and profile features --> identify features that lead to high impact scores.
-% Preot ̧iuc-Pietro and Cohn (2013), EMNLP: forecasting hashtag popularity, looks at effects of different kernels --> 
-% choose kernels. Text classification task in same paper: assign the hashtag given text using forecasts of hashtag frequencies.
-% Cohn and Specia (2013), ACL --> quality estimation of machine translations given source and tranlated texts.
-% Assume that workers annotate translation quality with different biases. Use multi-output GP to model correlations  
-% between them. Sounds similar to collaborative preference learning with GPs.
-% Beck et al. (2014), EMNLP. Emotion analysis --> detect emotions (multiple outputs for each different emotion).
-% \todo{Provide greater background on Bayesian methods in NLP here. Why? We 
-% are presenting a methodology here for argumentation or for NLP preference learning in general. We need to relate the methodology to other tasks the reader will be familiar with
-% to show how Bayesian methods really work and how our work differs from what has been done in NLP so far. We also claim that they have not been used due to scalability problems --
-% need to be clear this was not applicable to all models, but did apply to GPs. }
 
 \section{Preference Learning}\label{sec:pref_learning}
 
 % GP-based approach versus Bradley/Terry/Luce/MPM method or Mallows models?
-The goal is to learn convincingness as a function of argument features given
-a set of \emph{pairwise preference labels}, where a label $x_i \succ x_j$
-expresses that the user finds argument $x_i$ more convincing than argument $x_j$.
+Our aim is to develop a Bayesian method for identifying convincing arguments 
+given their features, which can be trained on noisy pairwise labels.
+Each label, $i \succ j$, states that an argument, $i$, is more convincing than another argument, $j$. 
+This type of learning task is a form of \emph{preference learning}, which can be addressed in several ways.
 % rank or score arguments in terms of convincingness,
 % or predict which item in a subset the user finds more convincing. 
 %Given a ranking over items, it is possible to determine the pairwise preferences, but 
-Pairwise labels can be predicted using a generic classifier without the need to learn a total ordering.
-To do this, pairs of items are transformed either by concatenating the feature vectors of two items~\cite{habernal2016argument}, 
+A simple approach is to use a generic classifier by
+obtaining a single feature vector for each pair in the training and test datasets,
+either by concatenating the feature vectors of the items in the pair 
 or by computing the difference of the two feature vectors, as in SVM-Rank~\cite{joachims2002optimizing}. 
-The classifier is then trained using the transformed feature vectors as input data and 
-the preference labels binary class labels.
-However, the ranking of items is useful for producing ordered lists in response to a query -- 
-consider a sorted list of the most convincing arguments in favour of topic X.
-Another approach is to learn the ordering directly using Mallows models~\cite{mallows1957non},
-which define distributions over permutations of a list. 
-Mallows models have been extended to provide a generative model~\cite{qin2010new} and 
-to be trained from pairwise preferences %rather than by observing rankings
-~\cite{lu2011learning}, but inference is typically costly
-since the number of possible permutations to be considered is $\mathcal{O}(N^2)$, 
-where $N$ is the number of items to be ranked. 
-Modelling only the order of items means we are unable to quantify 
-how closely rated items at similar ranks are to one another: how much better is the top ranked item 
-from the second-rated?
+However, this approach does not produce ranked lists of convincing arguments without predicting a large number of pairwise labels, nor give scores of convincingness. %can it quantify the difference in convincingness between arguments. 
 
-% Bradley-Terry: MPM\cite{volkovs_new_2014}
+Alternatively, we can learn an ordering over arguments directly using Mallows models~\cite{mallows1957non},
+which define distributions over list permutations.  
+Mallows models can be trained from pairwise preferences 
+~\cite{lu2011learning}, but inference is typically costly
+since the number of possible permutations is $\mathcal{O}(N^2)$, 
+where $N$ is the number of arguments. 
+Modelling only the ordering does not allow us to quantify 
+the difference between arguments at similar ranks.
+
 To avoid the problems of classifier-based and permutation-based methods, 
-another approach is to learn a set of real-valued scores from pairwise labels
-that can be used to predict rankings, pairwise labels, or as ratings for individual items.
-There are two established approaches for mapping discrete pairwise labels to real-valued scores:
+we propose to learn a real-valued convincingness function, $f$, that takes argument features as input
+and can be used to predict rankings, pairwise labels, or ratings for individual arguments.
+There are two well established approaches for mapping pairwise labels to real-valued scores: 
 the Bradley-Terry-Plackett-Luce model~\cite{bradley1952rank,luce1959possible,plackett1975analysis}
 and the Thurstone-Mosteller model~\cite{thurstone1927law,mosteller2006remarks}.
-More recently, Bayesian extensions of the Bradley-Terry-Plackett-Luce model
-were proposed by~\cite{guiver2009bayesian,volkovs_new_2014}, 
-while the Thurstone-Mosteller model was used by~\cite{chu2005preference}.
-This latter piece of work assumes a Gaussian process (GP) prior over the scores,
-which enables us to predict scores for previously unseen items given their features 
-using a Bayesian nonparametric approach.
-Nonparametric methods allow the function complexity to grow with the amount of data. 
-Gaussian processes are a well established tool for extrapolating from training data 
-in a principled manner, taking into account model uncertainty that may arise when 
-data for new domains is limited~\cite{rasmussen_gaussian_2006}.
-%These characteristics make them suitable for the task of modelling argument convincingness
-%where data for new topics, domains and users is limited. 
-
+Based on the latter approach, 
+Chu and Ghahramani~\shortcite{chu2005preference} introduced 
+Gaussian process preference learning (GPPL), 
+a Bayesian model that can tolerate errors in pairwise training labels
+and gains the advantages of a GP for learning nonlinear functions from sparse datasets.
 % The Gaussian process (GP) preference learning approach of \cite{chu2005preference} resolves inconsistencies between preferences and provides a way to predict rankings or preferences for 
 % items for which we have not observed any pairwise comparisons based on the item's features. 
 % This model assumes that preferences are noisy, i.e. contain some erroneous labels.
 % particularly as the modular nature of inference algorithms such as Gibb's sampling and variational approximation is suited to extending the model to handle different types of feedback that give indications of some underlying preferences. 
-
-\todo{reduce this scalability discussion}
-The inference method used by Chu and Ghahramani~\shortcite{chu2005preference}% used the Laplace approximation to perform approximate
-%inference over the model. Unfortunately 
-has memory and computational costs that scale with $\mathcal{O}(N^3)$. %due to matrix inversion. 
-Besides this limitation, there is also a computational and memory cost 
-during training of $\mathcal{O}(N^2)$ due to the number of pairs in the training dataset.
-Recently, the stochastic variational inference (SVI) algorithm proposed by \cite{hoffman2013stochastic} 
-has been used to address this problem in Gaussian process models~\cite{hensman2013gaussian,hensman_scalable_2015} 
-but has not previously been adapted for preference learning with GPs.
-% The modular nature of VB allows us to take advantage of models for feedback of different types
-% where the input values for each type of feedback do not directly correspond (e.g. explicit user ratings and number of clicks may have different values).
-% By using SVI, we provide a formal way to deal with scalability that comes with guarantees\cite{hoffman2013stochastic}.
-The next section explains how we apply this technique to create a scalable preference learning method for argument convincingness.
+However, the inference method proposed by Chu and Ghahramani~\shortcite{chu2005preference} 
+has memory and computational costs that scale with $\mathcal{O}(N^3)$,
+making it unsuitable for real-world text datasets. 
+The next section explains how we use recent developments in inference methods 
+to develop scalable Bayesian preference learning for argument convincingness.
 
 %GPs for NLP in other task areas?

@@ -20,6 +20,8 @@ Created on 18 May 2017
 '''
 import sys
 import os
+from scipy.stats.stats import ttest_ind
+from scipy.stats.morestats import wilcoxon
 
 sys.path.append("./python")
 sys.path.append("./python/analysis")
@@ -41,14 +43,16 @@ def get_fold_data(data, f, expt_settings):
             pred_disc = np.array(data[1][f]) * 2
             if pred_disc.ndim == 1:
                 pred_disc = pred_disc[:, np.newaxis]
-            #pred_disc = 2 - pred_disc
+            if expt_settings['method'] == 'SVM':
+                pred_disc = 2 - pred_disc
             
             # probabilities
             gold_prob = gold_disc / 2.0
             pred_prob = np.array(data[0][f])
             if pred_prob.ndim == 1:
                 pred_prob = pred_prob[:, np.newaxis]
-            #pred_prob = 1 - pred_prob    
+            if expt_settings['method'] == 'SVM':
+                pred_prob = 1 - pred_prob    
             
             # scores used to rank
             if len(data[4]) > 0:
@@ -79,15 +83,16 @@ def get_fold_data(data, f, expt_settings):
         pred_disc = np.array(data[1]) * 2
         if pred_disc.ndim == 1:
             pred_disc = pred_disc[:, np.newaxis]
-        #pred_disc = 2 - pred_disc
+        #if expt_settings['method'] == 'SVM':            
+        #    pred_disc = 2 - pred_disc
         
         # probabilities
         gold_prob = gold_disc / 2.0
         pred_prob = np.array(data[0])
         if pred_prob.ndim == 1:
             pred_prob = pred_prob[:, np.newaxis]
-            
-        #pred_prob = 1 - pred_prob
+        #if expt_settings['method'] == 'SVM':            
+        #    pred_prob = 1 - pred_prob
         
         # scores used to rank
         if data[4] is not None and len(data[4]) > 0:
@@ -469,7 +474,7 @@ if __name__ == '__main__':
     di = 0
     max_no_folds = 32
 
-    methods = ['SinglePrefGP_noOpt_weaksprior']
+    methods = ['SVM']
     datasets = ['UKPConvArgCrowdSample_evalMACE']
     feature_types = ['both']
     embeddings_types = ['word_mean']#['word_mean', 'skipthoughts', 'siamese-cbow']
@@ -478,3 +483,23 @@ if __name__ == '__main__':
     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
                       max_no_folds=max_no_folds)
+        
+#     # compute p values of first result to other results in the list
+#     for row in range(results_f1.shape[0]):
+#         for col in range(results_f1.shape[1]):
+#             if row == 0 and col == 0:
+#                 continue
+#             
+#             
+#             _, p = wilcoxon(results_acc[row, col, :-1, 0], results_acc[0, 0, :-1, 0])
+#             print "p-value of %f" % p
+#             _, p = wilcoxon(results_auc[row, col, :-1, 0], results_auc[0, 0, :-1, 0])
+#             print "p-value of %f" % p
+#             _, p = wilcoxon(results_logloss[row, col, :-1, 0], results_logloss[0, 0, :-1, 0])
+#             print "p-value of %f" % p
+#             _, p = wilcoxon(results_pearson[row, col, :-1, 0], results_pearson[0, 0, :-1, 0])
+#             print "p-value of %f" % p
+#             _, p = wilcoxon(results_spearman[row, col, :-1, 0], results_spearman[0, 0, :-1, 0])
+#             print "p-value of %f" % p
+#             _, p = wilcoxon(results_kendall[row, col, :-1, 0], results_kendall[0, 0, :-1, 0])
+#             print "p-value of %f" % p

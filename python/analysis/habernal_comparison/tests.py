@@ -264,12 +264,12 @@ def get_noisy_fold_data(folds, fold, docids, acc, tr_pair_subset=None):
     
 def get_fold_regression_data(folds_regression, fold, docids):
     if folds_regression is not None:
-        _, rankscores_train, argids_rank_train, _ = folds_regression.get(fold)["training"] # blank argument is turkIDs_rank_test
+        _, rankscores_train, argids_rank_train, _, _ = folds_regression.get(fold)["training"] # blank argument is turkIDs_rank_test
         item_idx_ranktrain = np.array([np.argwhere(trainid==docids)[0][0] for trainid in argids_rank_train])
         rankscores_train = np.array(rankscores_train)
         argids_rank_train = np.array(argids_rank_train)    
         
-        _, rankscores_test, argids_rank_test, _ = folds_regression.get(fold)["test"] # blank argument is turkIDs_rank_test
+        _, rankscores_test, argids_rank_test, _, _ = folds_regression.get(fold)["test"] # blank argument is turkIDs_rank_test
         item_idx_ranktest = np.array([np.argwhere(testid==docids)[0][0] for testid in argids_rank_test])
         rankscores_test = np.array(rankscores_test)
         argids_rank_test = np.array(argids_rank_test)
@@ -793,7 +793,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                         
             nnew_pairs = dataset_increment#int(np.floor(dataset_increment * npairs_f))
             # select the initial subsample of training pairs
-            pair_subset = np.random.choice(npairs_f, nnew_pairs, replace=False)
+            pair_subset = np.random.choice(len(trainids_a1), nnew_pairs, replace=False)
         else:
             nnew_pairs = npairs_f
             pair_subset = np.arange(npairs_f)                
@@ -1070,22 +1070,22 @@ def run_test_set(run_test_fun=run_test, subsample_tr=0, min_no_folds=0, max_no_f
         
 if __name__ == '__main__':
     # active learning 
-#     acc = 1.0
-#     dataset_increment = 2
+    acc = 1.0
+    dataset_increment = 2
+       
+    datasets = ['UKPConvArgCrowdSample_evalMACE']
+    methods = ['SinglePrefGP_noOpt_weaksprior_smalldata']#
+    feature_types = ['both']
+    embeddings_types = ['word_mean']
+    default_ls_values = run_test_set(min_no_folds=0, max_no_folds=32, npairs=200)
+ 
+ 
+#     # single tests 
+#     dataset_increment = 0 
 #       
-#     datasets = ['UKPConvArgCrowdSample_evalMACE']
-#     methods = ['SVM']#, 'SingleGPC_noOpt_weaksprior_additive']#
-#     feature_types = ['embeddings']
-#     embeddings_types = ['word_mean']
-#     default_ls_values = run_test_set(min_no_folds=0, max_no_folds=1, npairs=2)
- 
- 
-    # single tests 
-    dataset_increment = 0 
-      
-    datasets = ['UKPConvArgAll']
-    feature_types = ['embeddings'] # can be 'embeddings' or 'ling' or 'both'
-    methods = ['SinglePrefGP_weaksprior']#, 'SinglePrefGP_weaksprior_additive'] 
-    embeddings_types = ['skipthoughts', 'siamese-cbow'] 
-                 
-    default_ls_values = run_test_set(test_on_train=True)     
+#     datasets = ['UKPConvArgAll']
+#     feature_types = ['embeddings'] # can be 'embeddings' or 'ling' or 'both'
+#     methods = ['SinglePrefGP_weaksprior']#, 'SinglePrefGP_weaksprior_additive'] 
+#     embeddings_types = ['skipthoughts', 'siamese-cbow'] 
+#                  
+#     default_ls_values = run_test_set(test_on_train=True)     
