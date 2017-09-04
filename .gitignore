@@ -130,3 +130,5 @@ results/*
 outputdata/*.pkl
 /.DS_Store
 /hardcopy.1
+**/*.out
+**/*.synctex.gz

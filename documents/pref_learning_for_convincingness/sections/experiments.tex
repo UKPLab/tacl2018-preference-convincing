@@ -31,6 +31,22 @@
   \end{tabularx}
   \caption{\label{tab:expt_data} Summary of the internet argument datasets produced using different processing steps.}
 \end{table*}
+\begin{figure*}
+\subfloat[no cycle]{
+  \includegraphics[width=0.5\columnwidth, clip=True, trim=30 30 20 30]{figures/cycles_demo/no_cycle/arggraph_arg_graph}
+}
+\subfloat[single cycle]{
+  \includegraphics[width=0.5\columnwidth, clip=True, trim=30 30 20 30]{figures/cycles_demo/simple_cycle/arggraph_arg_graph}
+}
+\subfloat[double cycle]{
+  \includegraphics[width=0.5\columnwidth, clip=True, trim=30 30 20 30]{figures/cycles_demo/double_cycle/arggraph_arg_graph}
+}
+\subfloat[cycle with 9 undecided prefs.]{
+  \includegraphics[width=0.5\columnwidth, clip=True, trim=30 30 20 30]{figures/cycles_demo/undecided/arggraph_arg_graph}
+}
+\caption{Argument preference graphs for each scenario. Arrows point to the preferred argument.}
+\label{fig:arg_graph}
+\end{figure*}
 We test our approach on datasets provided by Habernal and Gurevych~\shortcite{habernal2016argument},
 which contain pairwise labels for arguments taken from online discussion forums.
 A pairwise label can have a value of $0$, meaning the annotator found the second argument in the pair more convincing,
@@ -48,22 +64,22 @@ to address the cold-start problem in new domains with no labelled data.
 \subsection{Method Comparison}
 
 \begin{figure*}
+\centering
 \subfloat[no cycle]{
-  \includegraphics[width=0.5\columnwidth, clip=True, trim=30 30 20 30]{figures/cycles_demo/no_cycle/arggraph_arg_graph}
+  \includegraphics[width=0.4\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/no_cycle/PageRank_scores}
 }
 \subfloat[single cycle]{
-  \includegraphics[width=0.5\columnwidth, clip=True, trim=30 30 20 30]{figures/cycles_demo/simple_cycle/arggraph_arg_graph}
+  \includegraphics[width=0.4\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/simple_cycle/PageRank_scores}
 }
 \subfloat[double cycle]{
-  \includegraphics[width=0.5\columnwidth, clip=True, trim=30 30 20 30]{figures/cycles_demo/double_cycle/arggraph_arg_graph}
+  \includegraphics[width=0.4\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/double_cycle/PageRank_scores}
 }
-\subfloat[cycle with 9 undecided prefs.]{
-  \includegraphics[width=0.5\columnwidth, clip=True, trim=30 30 20 30]{figures/cycles_demo/undecided/arggraph_arg_graph}
+\subfloat[cycle with 9 undecided]{
+  \includegraphics[width=0.4\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/undecided/PageRank_scores}
 }
-\caption{Argument preference graphs for each scenario. Arrows point to the preferred argument.}
-\label{fig:arg_graph}
+\caption{Mean scores over 25 repeats. Bars for GPPL show standard deviation of convincingness function posterior.}
+\label{fig:scores}
 \end{figure*}
-
 Our two basic tasks are \emph{ranking} arguments in terms of convincingness and  
 \emph{classification} of pairwise labels for pairs of arguments, i.e. predicting which argument is preferred. 
 We compare our scalable Gaussian process preference learning method (\emph{GPPL}) against 
@@ -111,98 +127,8 @@ effectiveness across a wide range of tasks~\cite{rasmussen_gaussian_2006}.
 To set the length-scales, we compare the median heuristic (labelled ``medi.")
 with MLII optimisation (labelled as ``OptGPPL").
 
-% In practice, the data acquisition bottleneck makes it difficult to obtain pairwise labels from a single, 
-% reliable source with no conflicting preference labels. Therefore,
-% we evaluate performance when data preprocessing steps are omitted and the data is noisy and was produced by multiple annotators.
-% As a solution to 
-% we also evaluate suitability of each method for active learning.
-% We demonstrate how our Bayesian approach naturally performs automatic relevance determination
-% to identify informative features from the large number of linguistic features and word embeddings.
-% Finally, we perform error analysis on our results to identify common sources of error that may be addressed in future work.
-% 
-% 
-% The size of the datasets in Table \ref{tab:expt_data} is large enough that a non-SVI method 
-% cannot be run in a reasonable amount of time, since the cubic complexity of the 
-% matrix inversion in the Gaussian process requires $\mathcal{O}(1e9)$ time. 
-% We compared our SVI method for GPPL against a less scalable variational method 
-% that did not use inducing points nor stochastic subsampling of data. 
-% Since the size of the datasets in Table \ref{tab:expt_data} made it impractical to run the latter method
-% given memory and time constraints, we tested on small subsets of the UKPConvArgStrict dataset.
-% We found that GPPL converges to the same result using our SVI method 
-% as with variational inference. For the complete datasets listed in Table \ref{tab:expt_data} 
-% we therefore report results only for our SVI approach.
-%TODO: include rought timings for each method?
-% GPPL takes ~2 hours per fold on my workstation with optimisation
-% Requires approx 10 minutes without optimisation.
-%As well as comparing classification and ranking performance, 
-%we also investigate how each method resolves conflicting preference pairs in crowdsourced data;
-%which types of input features are useful for modelling convincingness;
-%how well each method estimates uncertainty and how well it performs with active learning to address cold-start problems; and how well does each method cope with data sparsity, e.g. in a cold-start situation,
-% and noisy data.
-
 \subsection{Experiment 1: Toy Data}
 
-\begin{figure*}
-\centering
-\subfloat[no cycle]{
-  \includegraphics[width=0.4\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/no_cycle/PageRank_scores}
-}
-\subfloat[single cycle]{
-  \includegraphics[width=0.4\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/simple_cycle/PageRank_scores}
-}
-\subfloat[double cycle]{
-  \includegraphics[width=0.4\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/double_cycle/PageRank_scores}
-}
-\subfloat[cycle with 9 undecided]{
-  \includegraphics[width=0.4\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/undecided/PageRank_scores}
-}
-\caption{Mean scores over 25 repeats. Bars for GPPL show standard deviation of convincingness function posterior.}
-\label{fig:scores}
-\end{figure*}
-We use synthetic data to illustrate the different behaviour of GPPL, SVM for pairwise classification,
-and PageRank for scoring arguments.
-We simulate four scenarios, each of which contains arguments labelled \emph{arg0} to \emph{arg4}.  
-In each scenario, we generate a set of pairwise preference labels according to the 
-convincingness graphs shown in Figure \ref{fig:arg_graph}.
-Each scenario is repeated 25 times: in each repeat, we select arguments at random from one fold of UKPConvArgStrict
-then associate the mean Glove embeddings for these arguments with the labels arg0 to arg4. 
-We train GPPL, PageRank and the SVM classifier on the preference pairs shown in each graph and
-make predictions for arguments arg0 to arg4.
-
-In the  ``no cycle" scenario, 
-arg0 is preferred to both arg1 and arg2, which is reflected in the PageRank and GPPL scores in Figure \ref{fig:scores}. However, arg3 and arg4 are not connected to the rest of the graph and receive different scores with PageRank and GPPL. 
-Figure \ref{fig:gppl_classifications} shows how GPPL provides probabilistic classifications that are less confident for pairs that were not yet observed, e.g. arg2 $\succ$ arg4. This contrasts with Figure \ref{fig:svm_classification} which shows discrete classifications produced by SVM.
-
-The ``single cycle" scenario shows how each method handles a cycle in the preference graph.
-Both PageRank and GPPL produce equal values for the arguments in the cycle (arg0, arg1 and arg2). PageRank assigns lower scores to both arg3 and arg4 than the arguments in the cycle, 
-while GPPL more intuitively gives a higher score to arg3, which was preferred to arg4. 
-SVM predicts that arg0 and arg1 are preferred over arg3, 
-although arg0 and arg1 are in a cycle so there is no reason to prefer arg0 and arg1. 
-GPPL, in contrast, gives a weak prediction that arg3 is preferred.
-
-In the ``double cycle" scenario, PageRank and GPPL produce very different results.
-Here, the argument graph shows two paths from arg2 to arg0 via arg1 or arg3, and one conflicting
-preference arg2 $\succ$ arg0. 
-GPPL scores the arguments as if the single conflicting preference, arg2 $\succ$ arg0, 
-is less important than the two parallel paths from arg2 to arg0. 
-In contrast, PageRank gives high scores to both arg0 and arg2.
-The classifications by GPPL and SVM are similar, but GPPL produces more uncertain 
-predictions than in the first scenario due to the conflict.
-
-Finally, ``cycle with 9 undecided prefs" shows an exaggerated scenario in which
-we have added nine undecided labels to the ``no cycle" scenario, indicated by 
-undirected edges in Figure \ref{fig:arg_graph}, to simulate a case where multiple annotators labelled the pair 
-and did not all agree. 
-This does not affect the PageRank scores, 
-but reduces the difference in GPPL scores between arg0 and the other arguments, 
-since GPPL gives the edge from arg0 to arg0 less weight due to the undecided labels. 
-This is reflected in the GPPL classifications, which are less confident than in the ``no cycle" scenario.
-The SVM cannot be trained using the uncertain labels and therefore does not adapt to the undecided labels. 
-
-In conclusion, GPPL appears to resolve conflicts in the preference graphs in a
-more intuitive manner than PageRank, which was designed for ranking web pages by 
-importance rather than preference. 
-In contrast to SVM, GPPL is able to account for undecided labels to soften the latent convincingness function.
 \begin{figure*}
 \centering
 \subfloat[no cycle]{
@@ -240,8 +166,73 @@ on the horizontal axis is preferred to the argument on the vertical axis.}
 \label{fig:svm_classification}
 \end{figure*}
 
+We use synthetic data to illustrate the different behaviour of GPPL, SVM for pairwise classification,
+and PageRank for scoring arguments.
+We simulate four scenarios, each of which contains arguments labelled \emph{arg0} to \emph{arg4}.  
+In each scenario, we generate a set of pairwise preference labels according to the 
+convincingness graphs shown in Figure \ref{fig:arg_graph}.
+Each scenario is repeated 25 times: in each repeat, we select arguments at random from one fold of UKPConvArgStrict
+then associate the mean Glove embeddings for these arguments with the labels arg0 to arg4. 
+We train GPPL, PageRank and the SVM classifier on the preference pairs shown in each graph and
+make predictions for arguments arg0 to arg4.
+
+In the  ``no cycle" scenario, 
+arg0 is preferred to both arg1 and arg2, which is reflected in the PageRank and GPPL scores in Figure \ref{fig:scores}. However, arg3 and arg4 are not connected to the rest of the graph and receive different scores with PageRank and GPPL. 
+Figure \ref{fig:gppl_classification} shows how GPPL provides probabilistic classifications that are less confident for pairs that were not yet observed, e.g. arg2 $\succ$ arg4. This contrasts with Figure \ref{fig:svm_classification} which shows discrete classifications produced by SVM.
+
+The ``single cycle" scenario shows how each method handles a cycle in the preference graph.
+Both PageRank and GPPL produce equal values for the arguments in the cycle (arg0, arg1 and arg2). PageRank assigns lower scores to both arg3 and arg4 than the arguments in the cycle, 
+while GPPL more intuitively gives a higher score to arg3, which was preferred to arg4. 
+SVM predicts that arg0 and arg1 are preferred over arg3, 
+although arg0 and arg1 are in a cycle so there is no reason to prefer arg0 and arg1. 
+GPPL, in contrast, gives a weak prediction that arg3 is preferred.
+
+In the ``double cycle" scenario, PageRank and GPPL produce very different results.
+Here, the argument graph shows two paths from arg2 to arg0 via arg1 or arg3, and one conflicting
+preference arg2 $\succ$ arg0. 
+GPPL scores the arguments as if the single conflicting preference, arg2 $\succ$ arg0, 
+is less important than the two parallel paths from arg2 to arg0. 
+In contrast, PageRank gives high scores to both arg0 and arg2.
+The classifications by GPPL and SVM are similar, but GPPL produces more uncertain 
+predictions than in the first scenario due to the conflict.
+
+Finally, ``cycle with 9 undecided prefs" shows an exaggerated scenario in which
+we have added nine undecided labels to the ``no cycle" scenario, indicated by 
+undirected edges in Figure \ref{fig:arg_graph}, to simulate a case where multiple annotators labelled the pair 
+and did not all agree. 
+This does not affect the PageRank scores, 
+but reduces the difference in GPPL scores between arg0 and the other arguments, 
+since GPPL gives the edge from arg0 to arg0 less weight due to the undecided labels. 
+This is reflected in the GPPL classifications, which are less confident than in the ``no cycle" scenario.
+The SVM cannot be trained using the uncertain labels and therefore does not adapt to the undecided labels. 
+
+In conclusion, GPPL appears to resolve conflicts in the preference graphs in a
+more intuitive manner than PageRank, which was designed for ranking web pages by 
+importance rather than preference. 
+In contrast to SVM, GPPL is able to account for undecided labels to soften the latent convincingness function.
+
 \subsection{Experiment 2: UKPConvArgStrict and UKPConvArgRank}
 
+\begin{table*}
+\small
+  \begin{tabularx}{\textwidth}{ | l  | X |  X |  X |  X |  X | X | X | X |}% X | X |}
+  \hline
+\multicolumn{9}{| l |}{UKPConvArgStrict} \\   \hline
+       &SVM  &BiLSTM&\multicolumn{3}{c|}{GPPL medi.}&GPPLopt. & GPC & PL+ SVR\\\hline
+       %& GPPL+, medi. & GPPL+, opt      \\\hline
+       &ling &Glove  &ling &Glove &\multicolumn{4}{c|}{ling+ Glove}\\\hline
+Acc.:  &0.78 &0.76   &0.78 &0.71  &0.79  & 0.80  & \textbf{0.81} & 0.78\\%& 0.78 & 0.78     \\
+AUC:   &0.83 &0.84   &0.85 &0.77  &0.87  & 0.87 & \textbf{0.89} & 0.85\\%& 0.86  &  0.86    \\
+CEE:   & 0.52 &0.64  &0.51 &1.12  &0.47  & 0.51 & \textbf{0.43} & 0.51 \\%& 0.69  & 0.69   \\
+\hline \multicolumn{9}{| l |}{UKPConvArgRank} \\   \hline
+Pearson's r:&0.36&0.32   &0.38 &0.33  & \textbf{0.45} &  0.44 & - & 0.39 \\%& 0.40 &  0.40   \\
+Spearman's $\rho$:&0.47&0.37   &0.62 &0.44  &0.65&  \textbf{0.67} & - & 0.63\\% & 0.64 &  0.64   \\
+Kendall's $\tau$: &0.34&0.27&0.47 &0.31  &0.49   &  \textbf{0.50} & - & 0.47\\% & 0.49 &  0.49   \\
+\hline
+  \end{tabularx}
+  \caption{Performance comparison on UKPConvArgStrict and UKPConvArgRank datasets. }
+  \label{tab:clean_results}
+\end{table*}
 % \todo{statistical significance? paired Wilcoxon signed-rank test, GPPL ARD vs. SVM. }
 % acc p-value of 0.043437
 % auc p-value of 0.129870
@@ -292,29 +283,30 @@ The classification improvement over GPPL may result from training directly for t
 rather than through a preference learning likelihood. In this experiment, the larger feature space of GPC 
 due to concatenating the feature vectors of the first and second items in each pair  
 does not seem to have damaged its performance.
-\begin{table*}
-\small
-  \begin{tabularx}{\textwidth}{ | l  | X |  X |  X |  X |  X | X | X | X |}% X | X |}
-  \hline
-\multicolumn{9}{| l |}{UKPConvArgStrict} \\   \hline
-       &SVM  &BiLSTM&\multicolumn{3}{c|}{GPPL medi.}&GPPLopt. & GPC & PL+ SVR\\\hline
-       %& GPPL+, medi. & GPPL+, opt      \\\hline
-       &ling &Glove  &ling &Glove &\multicolumn{4}{c|}{ling+ Glove}\\\hline
-Acc.:  &0.78 &0.76   &0.78 &0.71  &0.79  & 0.80  & \textbf{0.81} & 0.78\\%& 0.78 & 0.78     \\
-AUC:  &0.83 &0.84   &0.85 &0.77  &0.87  & 0.87 & \textbf{0.89} & 0.85\\%& 0.86  &  0.86    \\
-CEE:   & 0.52 &0.64  &0.51 &1.12  &0.47  & 0.51 & \textbf{0.43} & 0.51 \\%& 0.69  & 0.69   \\
-\hline \multicolumn{9}{| l |}{UKPConvArgRank} \\   \hline
-Pearson's r:&0.36&0.32   &0.38 &0.33  & \textbf{0.45} &  0.44 & - & 0.39 \\%& 0.40 &  0.40   \\
-Spearman's \rho:&0.47&0.37   &0.62 &0.44  &0.65&  \textbf{0.67} & - & 0.63\\% & 0.64 &  0.64   \\
-Kendall's \tau: &0.34&0.27&0.47 &0.31  &0.49   &  \textbf{0.50} & - & 0.47\\% & 0.49 &  0.49   \\
-\hline
-  \end{tabularx}
-  \caption{Performance comparison on UKPConvArgStrict and UKPConvArgRank datasets. }
-  \label{tab:clean_results}
-\end{table*}
 
 \subsection{Experiment 3: Conflicting and Noisy Data}
 
+\begin{table}
+\small
+  \begin{tabularx}{\columnwidth}{ | l | X | X | X | X | X |}\hline
+% \multicolumn{6}{|l|}{UKPConvArgAll} \\   \hline
+\multicolumn{6}{| l |}{UKPConvArgCrowdSample} \\   \hline
+             & SVM &Bi-LSTM &GPPL medi.        &PL+ SVR     &GPC \\
+             &ling &Glove & ling+ Glove &ling+ Glove&ling+ Glove\\\hline
+% Acc:     &0.71 &0.73  & 0.77        &0.75       &0.76 \\
+% AUC:          &0.81 &0.81  & 0.84        &0.82       &0.86 \\
+% CEE:          &0.56 &0.53  & 0.49        &0.52       &0.50 \\
+Acc:     &0.70 &0.73  & \textbf{0.77}        &0.75       &0.73 \\
+AUC:          &0.81 &0.80  & 0.84        &0.82       & \textbf{0.86} \\
+CEE:          &0.58 &0.54  & \textbf{0.50}     &0.55       &0.53 \\
+Pears.:      &0.18 &0.26  & \textbf{0.35}        &0.31       & - \\
+Spear.:     &0.17 &0.20  & 0.54        & \textbf{0.55}       & - \\
+Kend.:      &0.12 &0.13  & \textbf{0.40}        & \textbf{0.40}       & - \\
+\hline
+  \end{tabularx}
+  \caption{Performance comparison on datasets containing conflicts and noise.}
+  \label{tab:noisy}
+\end{table}
 In this experiment, we use UKPConvArgCrowdSample to introduce noisy crowdsourced data 
 including conflicting pairwise labels
 to both the classification and the regression tasks.
@@ -362,27 +354,6 @@ differences between GPPL and SVM are highly statistically significant with $p<<<
 % p-value of 0.640161
 % 
 %  }
-\begin{table}
-\small
-  \begin{tabularx}{\columnwidth}{ | l | X | X | X | X | X |}\hline
-% \multicolumn{6}{|l|}{UKPConvArgAll} \\   \hline
-\multicolumn{6}{| l |}{UKPConvArgCrowdSample} \\   \hline
-             & SVM &Bi-LSTM &GPPL medi.        &PL+ SVR     &GPC \\
-             &ling &Glove & ling+ Glove &ling+ Glove&ling+ Glove\\\hline
-% Acc:     &0.71 &0.73  & 0.77        &0.75       &0.76 \\
-% AUC:          &0.81 &0.81  & 0.84        &0.82       &0.86 \\
-% CEE:          &0.56 &0.53  & 0.49        &0.52       &0.50 \\
-Acc:     &0.70 &0.73  & \textbf{0.77}        &0.75       &0.73 \\
-AUC:          &0.81 &0.80  & 0.84        &0.82       & \textbf{0.86} \\
-CEE:          &0.58 &0.54  & \textbf{0.50}     &0.55       &0.53 \\
-Pears.:      &0.18 &0.26  & \textbf{0.35}        &0.31       & - \\
-Spear.:     &0.17 &0.20  & 0.54        & \textbf{0.55}       & - \\
-Kend.:      &0.12 &0.13  & \textbf{0.40}        & \textbf{0.40}       & - \\
-\hline
-  \end{tabularx}
-  \caption{Performance comparison on datasets containing conflicts and noise.}
-  \label{tab:noisy}
-\end{table}
 
 \subsection{Experiment 4: Active Learning}
 
@@ -437,7 +408,7 @@ a very high length-scale, suggesting it is not informative and may be discarded.
 % It is possible that continuing the optimisation procedure for a larger number of steps would 
 % identify large length-scales for other features that may be discarded. However, caution is 
 % required to avoid overfitting to the training set during optimisation~\cite{qi2004predictive}.
-\begin{figure}
+\begin{figure}[h]
 \includegraphics[width=\columnwidth, clip=True, trim=32 0 57 0]{figures/features/boxplot}
 \caption{Distribution of length-scales for each type of feature after optimisation. 
 Values are relative to the median heuristic value before optimisation, optimised 
@@ -483,7 +454,7 @@ language errors were often marked mistakenly as more convincing.
 We also examined the twenty-five arguments most frequently misclassified by GPPL \emph{Glove} and correctly labelled by GPPL \emph{ling}.
 GPPL \emph{Glove} did not correctly mark arguments as less convincing 
 even though they contained multiple exclamation marks and all-caps sentences. 
-Other failures were very short arguments and underrating arguments containing the emotive term 'rape'.
+Other failures were very short arguments and underrating arguments containing the emotive term `rape'.
 The analysis confirms that the different feature sets can identify different aspects of convincingness.
 
 % Notes on first paragraph:
