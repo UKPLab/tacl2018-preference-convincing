@@ -87,7 +87,7 @@ def _dists_f(items_feat_sample, f):
 # use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.
 # First, grab a sample of points because N^2 could be too large.    
 def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, ling_feat_spmatrix, docids, folds, 
-                                  index_to_word_map):
+                                  index_to_word_map, multiply_heuristic_power=1.0):
     # get the embedding values for the test data -- need to find embeddings of the whole piece of text
     if feature_type == 'both' or feature_type == 'embeddings' or feature_type == 'debug':
         
@@ -142,9 +142,10 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
     default_ls_value = Parallel(n_jobs=num_jobs, backend="multiprocessing")(delayed(_dists_f)(items_feat_sample[:, f], f) for f in range(ndims))
             
     ls_initial_guess = np.ones(ndims) * default_ls_value 
+    
     logging.info('I am using a heuristic multiplier for the length-scale because median is too low to work in high-D spaces')
     #ls_initial_guess *= 1000 # this worked reasonably well but was plucked out of thin air
-    ls_initial_guess *= items_feat.shape[1] # this is a heuristic, see e.g. "On the High-dimensional 
+    ls_initial_guess *= items_feat.shape[1]**multiply_heuristic_power # this is a heuristic, see e.g. "On the High-dimensional 
     #Power of Linear-time Kernel Two-Sample Testing under Mean-difference Alternatives" by Ramdas et al. 2014. In that 
     # paper they refer to root(no. dimensions) because they square the lengthscale in the kernel function.
             
@@ -153,20 +154,32 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
     
     return ls_initial_guess     
     
-def get_doc_token_seqs(ids, doclist, texts=None):
+def get_doc_token_seqs(ids, X_list, texts=None):
+    '''
+    ids -- list of document IDs
+    X_list -- list of lists of word indices for each argument corresponding to the ids
+    texts -- list of texts corresponding to the ids
+    returns
+    X -- list of lists of word indices for each argument corresponding to the uids
+    uids -- list of unique document IDs
+    utexts -- unique texts corresponding to the uids
+    '''
     # X_train_a1 and trainids_a1 both have one entry per observation. We want to replace them with a list of 
     # unique arguments, and the indexes into that list. First, get the unique argument ids from trainids and testids:
-    allids = np.concatenate(ids)
+    if hasattr(ids[0], '__len__'):
+        allids = np.concatenate(ids)
+    else:
+        allids = ids
     uids, uidxs = np.unique(allids, return_index=True)
     # get the word index vectors corresponding to the unique arguments
     X = np.zeros(np.max(uids) + 1, dtype=object)
     
     if texts is not None:
-        utexts = np.zeros(np.max(uids) + 1, dtype=object)    
+        utexts = np.zeros(np.max(uids) + 1, dtype=object)
+        utexts[:] = '' 
     
     start = 0
     fin = 0
-    X_list = doclist
     for i in range(len(X_list)):
         fin += len(X_list[i])
         idxs = (uidxs>=start) & (uidxs<fin)
@@ -251,12 +264,12 @@ def get_noisy_fold_data(folds, fold, docids, acc, tr_pair_subset=None):
     
 def get_fold_regression_data(folds_regression, fold, docids):
     if folds_regression is not None:
-        _, rankscores_train, argids_rank_train, _ = folds_regression.get(fold)["training"] # blank argument is turkIDs_rank_test
+        _, rankscores_train, argids_rank_train, _, _ = folds_regression.get(fold)["training"] # blank argument is turkIDs_rank_test
         item_idx_ranktrain = np.array([np.argwhere(trainid==docids)[0][0] for trainid in argids_rank_train])
         rankscores_train = np.array(rankscores_train)
         argids_rank_train = np.array(argids_rank_train)    
         
-        _, rankscores_test, argids_rank_test, _ = folds_regression.get(fold)["test"] # blank argument is turkIDs_rank_test
+        _, rankscores_test, argids_rank_test, _, _ = folds_regression.get(fold)["test"] # blank argument is turkIDs_rank_test
         item_idx_ranktest = np.array([np.argwhere(testid==docids)[0][0] for testid in argids_rank_test])
         rankscores_test = np.array(rankscores_test)
         argids_rank_test = np.array(argids_rank_test)
@@ -780,7 +793,7 @@ def run_test(folds, folds_regression, dataset, method, feature_type, embeddings_
                         
             nnew_pairs = dataset_increment#int(np.floor(dataset_increment * npairs_f))
             # select the initial subsample of training pairs
-            pair_subset = np.random.choice(npairs_f, nnew_pairs, replace=False)
+            pair_subset = np.random.choice(len(trainids_a1), nnew_pairs, replace=False)
         else:
             nnew_pairs = npairs_f
             pair_subset = np.arange(npairs_f)                
@@ -986,7 +999,7 @@ def run_test_set(run_test_fun=run_test, subsample_tr=0, min_no_folds=0, max_no_f
         for dataset in datasets:
             if load_data:
                 folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = \
-                load_train_test_data(dataset)
+                            load_train_test_data(dataset)
                 if 'word_mean' in embeddings_types:
                     word_embeddings = load_embeddings(word_index_to_embeddings_map)
                 else:
@@ -1057,22 +1070,22 @@ def run_test_set(run_test_fun=run_test, subsample_tr=0, min_no_folds=0, max_no_f
         
 if __name__ == '__main__':
     # active learning 
-#     acc = 1.0
-#     dataset_increment = 2
+    acc = 1.0
+    dataset_increment = 2
+       
+    datasets = ['UKPConvArgCrowdSample_evalMACE']
+    methods = ['SinglePrefGP_noOpt_weaksprior_smalldata']#
+    feature_types = ['both']
+    embeddings_types = ['word_mean']
+    default_ls_values = run_test_set(min_no_folds=0, max_no_folds=32, npairs=200)
+ 
+ 
+#     # single tests 
+#     dataset_increment = 0 
 #       
-#     datasets = ['UKPConvArgCrowdSample_evalMACE']
-#     methods = ['SVM']#, 'SingleGPC_noOpt_weaksprior_additive']#
-#     feature_types = ['embeddings']
-#     embeddings_types = ['word_mean']
-#     default_ls_values = run_test_set(min_no_folds=0, max_no_folds=1, npairs=2)
- 
- 
-    # single tests 
-    dataset_increment = 0 
-      
-    datasets = ['UKPConvArgAll']
-    feature_types = ['embeddings'] # can be 'embeddings' or 'ling' or 'both'
-    methods = ['SinglePrefGP_weaksprior']#, 'SinglePrefGP_weaksprior_additive'] 
-    embeddings_types = ['skipthoughts', 'siamese-cbow'] 
-                 
-    default_ls_values = run_test_set(test_on_train=True)     
+#     datasets = ['UKPConvArgAll']
+#     feature_types = ['embeddings'] # can be 'embeddings' or 'ling' or 'both'
+#     methods = ['SinglePrefGP_weaksprior']#, 'SinglePrefGP_weaksprior_additive'] 
+#     embeddings_types = ['skipthoughts', 'siamese-cbow'] 
+#                  
+#     default_ls_values = run_test_set(test_on_train=True)     

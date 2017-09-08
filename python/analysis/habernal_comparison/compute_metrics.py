@@ -20,6 +20,8 @@ Created on 18 May 2017
 '''
 import sys
 import os
+from scipy.stats.stats import ttest_ind
+from scipy.stats.morestats import wilcoxon
 
 sys.path.append("./python")
 sys.path.append("./python/analysis")
@@ -41,14 +43,16 @@ def get_fold_data(data, f, expt_settings):
             pred_disc = np.array(data[1][f]) * 2
             if pred_disc.ndim == 1:
                 pred_disc = pred_disc[:, np.newaxis]
-            #pred_disc = 2 - pred_disc
+            if expt_settings['method'] == 'SVM':
+                pred_disc = 2 - pred_disc
             
             # probabilities
             gold_prob = gold_disc / 2.0
             pred_prob = np.array(data[0][f])
             if pred_prob.ndim == 1:
                 pred_prob = pred_prob[:, np.newaxis]
-            #pred_prob = 1 - pred_prob    
+            if expt_settings['method'] == 'SVM':
+                pred_prob = 1 - pred_prob    
             
             # scores used to rank
             if len(data[4]) > 0:
@@ -79,15 +83,16 @@ def get_fold_data(data, f, expt_settings):
         pred_disc = np.array(data[1]) * 2
         if pred_disc.ndim == 1:
             pred_disc = pred_disc[:, np.newaxis]
-        #pred_disc = 2 - pred_disc
+        #if expt_settings['method'] == 'SVM':            
+        #    pred_disc = 2 - pred_disc
         
         # probabilities
         gold_prob = gold_disc / 2.0
         pred_prob = np.array(data[0])
         if pred_prob.ndim == 1:
             pred_prob = pred_prob[:, np.newaxis]
-            
-        #pred_prob = 1 - pred_prob
+        #if expt_settings['method'] == 'SVM':            
+        #    pred_prob = 1 - pred_prob
         
         # scores used to rank
         if data[4] is not None and len(data[4]) > 0:
@@ -95,7 +100,7 @@ def get_fold_data(data, f, expt_settings):
         else:
             gold_rank = None
                     
-        if data[2] is not None and len(data[2]) > 0:
+        if data[2] is not None and (len(data[2]) > 0 or data[2].item() is not None):
             pred_rank = np.array(data[2])
         
             if pred_rank.ndim == 1:
@@ -151,18 +156,47 @@ def collate_AL_results(AL_rounds, results, combined_labels, label):
         
     return mean_results
 
-#     method = expt_settings.method
-#     global dataset
-#     global feature_type
-#     global embeddings_type
-#     global acc
-#     global dataset_increment
-#     global folds
-#     global expt_settings['folds_regression']
-#     global fold_order
+def get_results_dir(data_root_dir, resultsfile_template, expt_settings):
+    resultsdir = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
+            resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
+                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
+                expt_settings['di'])
+            
+    if expt_settings['foldorderfile'] is not None:
+        expt_settings['fold_order'] = np.genfromtxt(os.path.expanduser(expt_settings['foldorderfile']), 
+                                                    dtype=str)
+    elif os.path.isfile(resultsdir + '/foldorder.txt'):
+        expt_settings['fold_order'] = np.genfromtxt(os.path.expanduser(resultsdir + '/foldorder.txt'), 
+                                                    dtype=str)
+    else:
+        expt_settings['fold_order'] = None             
+            
+    return resultsdir    
+
+def load_results_data(data_root_dir, resultsfile_template, expt_settings):
+    # start by loading the old-style data
+    resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
+            resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
+                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
+                expt_settings['di']) + '_test.pkl'
+    
+    resultsdir = get_results_dir(data_root_dir, resultsfile_template, expt_settings)                       
+    
+    nFolds = max_no_folds
+    if os.path.isfile(resultsfile): 
+        
+        with open(resultsfile, 'r') as fh:
+            data = pickle.load(fh)
+                
+        if nFolds < 1:
+            nFolds = len(data[0])
+    else:
+        data = None
+        
+    return data, nFolds, resultsdir, resultsfile          
 
 def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, accuracy=1.0, di=0, npairs=0, tag='', 
-                    remove_seen_from_mean=False, max_no_folds=32, min_folds=0):
+                    remove_seen_from_mean=False, max_no_folds=32, min_folds=0, compute_tr_performance=False):
         
     expt_settings['acc'] = accuracy
     expt_settings['di'] = di
@@ -228,36 +262,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                 else:
                     embeddings_to_use = embeddings_types
                 for expt_settings['embeddings_type'] in embeddings_to_use:
-                    # start by loading the old-style data
-                    resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
-                            resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
-                                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
-                                expt_settings['di']) + '_test.pkl'
-                    
-                    resultsdir = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
-                            resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
-                                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
-                                expt_settings['di'])
-                    
-                    if expt_settings['foldorderfile'] is not None:
-                        expt_settings['fold_order'] = np.genfromtxt(os.path.expanduser(expt_settings['foldorderfile']), 
-                                                                    dtype=str)
-                    elif os.path.isfile(resultsdir + '/foldorder.txt'):
-                        expt_settings['fold_order'] = np.genfromtxt(os.path.expanduser(resultsdir + '/foldorder.txt'), 
-                                                                    dtype=str)
-                    else:
-                        expt_settings['fold_order'] = None                    
-                    
-                    nFolds = max_no_folds
-                    if os.path.isfile(resultsfile): 
-                        
-                        with open(resultsfile, 'r') as fh:
-                            data = pickle.load(fh)
-                                
-                        if nFolds < 1:
-                            nFolds = len(data[0])
-                    else:
-                        data = None                        
+                    data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template, expt_settings)
 
                     #min_folds = 0
 
@@ -353,7 +358,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                 Nunseen = (N - Nseen)
                                 return (result * N - Nseen) / Nunseen
                             
-                            if pred_tr_prob is not None and AL_round < pred_tr_disc.shape[1]:
+                            if pred_tr_prob is not None and AL_round < pred_tr_disc.shape[1] and compute_tr_performance:
                                 _, _, gold_tr, _, _, _, _ = expt_settings['folds'].get(fold)["training"]
                                 gold_tr = np.array(gold_tr)
 
@@ -411,7 +416,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
     combined_labels = []
     for row in row_index:
         for col in columns:
-            combined_labels.append(row + '_' + col)
+            combined_labels.append(str(row) + '_' + str(col))
 
     mean_results = []
     mean_results.append(collate_AL_results(AL_rounds, results_f1, combined_labels, "Macro-F1 scores for round %i: "))
@@ -446,10 +451,6 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
 #         pickle.dump((results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, 
 #                      results_kendall), fh)
     
-    # TODO: Show how the method resolves cycles
-    
-    # TODO: Show the features that were chosen
-    
     # TODO: Correlations between reasons and features?
     
     # TODO: Correlations between reasons and latent argument features found using preference components?
@@ -473,12 +474,32 @@ if __name__ == '__main__':
     di = 0
     max_no_folds = 32
 
-    methods = ['SinglePrefGP_weaksprior']#, 'SinglePrefGP_weaksprior_oldoptmethod']#, 'SinglePrefGP_weaksprior_additive']
-    datasets = ['UKPConvArgAll']#['UKPConvArgCrowdSample_evalMACE'] ']#
+    methods = ['SVM']
+    datasets = ['UKPConvArgCrowdSample_evalMACE']
     feature_types = ['both']
-    embeddings_types = ['skipthoughts', 'siamese-cbow']
+    embeddings_types = ['word_mean']#['word_mean', 'skipthoughts', 'siamese-cbow']
      
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
                       max_no_folds=max_no_folds)
+        
+#     # compute p values of first result to other results in the list
+#     for row in range(results_f1.shape[0]):
+#         for col in range(results_f1.shape[1]):
+#             if row == 0 and col == 0:
+#                 continue
+#             
+#             
+#             _, p = wilcoxon(results_acc[row, col, :-1, 0], results_acc[0, 0, :-1, 0])
+#             print "p-value of %f" % p
+#             _, p = wilcoxon(results_auc[row, col, :-1, 0], results_auc[0, 0, :-1, 0])
+#             print "p-value of %f" % p
+#             _, p = wilcoxon(results_logloss[row, col, :-1, 0], results_logloss[0, 0, :-1, 0])
+#             print "p-value of %f" % p
+#             _, p = wilcoxon(results_pearson[row, col, :-1, 0], results_pearson[0, 0, :-1, 0])
+#             print "p-value of %f" % p
+#             _, p = wilcoxon(results_spearman[row, col, :-1, 0], results_spearman[0, 0, :-1, 0])
+#             print "p-value of %f" % p
+#             _, p = wilcoxon(results_kendall[row, col, :-1, 0], results_kendall[0, 0, :-1, 0])
+#             print "p-value of %f" % p

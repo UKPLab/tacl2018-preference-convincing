@@ -73,7 +73,7 @@ def pers_method_chooser(method, feature_type):
 
 if __name__ == '__main__':
     tests.dataset_increment = 0     
-    tests.datasets = ['UKPConvArgCrowd']
+    tests.datasets = ['UKPConvArgCrowdSample']
     tests.feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
     tests.methods = ['PersPrefGP_houlsby_noOpt', 'PersPrefGP_noOpt', 'PersPrefGP_indnoise_noOpt', 
                      'PersPrefGP_fa_noOpt', 'IndPrefGP_noOpt'] 

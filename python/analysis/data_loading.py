@@ -167,7 +167,7 @@ def load_train_test_data(dataset):
     folds, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = load_my_data_separate_args(csvdirname, 
                                                                                           embeddings_dir=embeddings_dir)
     if ranking_csvdirname is not None:             
-        folds_regression, _ = load_my_data_regression(ranking_csvdirname, load_embeddings=False)
+        folds_regression, _ = load_my_data_regression(ranking_csvdirname, embeddings_dir=embeddings_dir, load_embeddings=True)
         
     if folds_test is not None:
         for fold in folds:

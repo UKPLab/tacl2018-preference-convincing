@@ -1,5 +1,39 @@
 \section{Identifying Common Patterns of Convincingness}\label{sec:model}
 
+Differences with/notes on Houlsby method:
+\begin{itemize}
+  \item No common mean
+  \item Houlsby uses: w as weights for each user on the D latent functions; w has a GP prior with the user features
+  as the input space; 
+  in our code, I think we call these weights y just to be confusing;  they use a standard normal noise distribution
+  for all users and all items
+  \item It seems unnecessary to extend their model with a personal GP over the noise because this could be captured 
+  by the latent GPs; therefore it may be better to start with nfactors \leq npeople, then see if the Bayesian shrinkage
+  effect reduces the number of active latent functions due to people having common traits; this means we reduce the 
+  number of GPs we need
+  \item It may also be unecessary to extend their model with a separate noise level per worker because noisiness could also be captured by the noise level of the latent dimensions themselves; however it is possible that allowing
+  variations in noise levels could reduce the number of latent factors needed, since we no longer need a latent
+  factor to represent noise?
+  \item Common means for all workers could be unnecessary, since this too could be captured by a latent factor that
+  is shared by most workers; however, if we want to determine the 'consensus' preference, we need to identify this 
+  common factor and it may be useful to view the workers as deviating from this underlying mean; this makes the view 
+  more similar to CBCC view, where latent factors correspond to community confusion matrices, and user weights 
+  correspond to worker community weights; the latent factor GPs model bias in a given community but unlike the CBCC model, they take into account the features of the items; the weights also account for user features when available, unlike CBCC; all modelling of noise, bias levels is then done at community level as in CBCC and individuals are
+  described by weights alone.
+  \item novelty comes then in using this model for combining preferences from crowdsourcing to infer an underlying consensus or a ground truth (specified by training data in semi-supervised mode) 
+  \item experiments therefore need to look at not just predicting individuals' preference labels, but also at
+  predicting a ground truth from noisy labels; we continue to use MACE with lots of labels to define ground truth,
+  and see what happens when we use only one label per pair
+  \item also need to examine differences between results produced by MACE and by collab. pref learning
+  \item combining labels does not fit personalisation narrative? Personalised models help correct individual biases
+  when inferring ground truth; helps transfer from one person's preferences to a target set of preferences
+  \item Thompson sampling for active selection of labels from the crowd? like the crowdsample dataset but we get
+  to choose which worker?
+  \item Changing the current code: preference components needs to use a single GP with a diagonal covariance 
+  and pump the results correctly back into self.f
+\end{itemize}
+
+
 \subsection{Baseline methods}
 
 \begin{itemize}
