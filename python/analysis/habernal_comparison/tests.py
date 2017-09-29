@@ -54,14 +54,11 @@ import pickle
 import time
 import logging
 logging.basicConfig(level=logging.DEBUG)
-from gp_pref_learning import GPPrefLearning, pref_likelihood
+from gp_pref_learning import GPPrefLearning, pref_likelihood, compute_median_lengthscales
 from gp_classifier_svi import GPClassifierSVI
-from gp_classifier_vb import max_no_jobs
 from sklearn.svm import SVR 
 from data_loading import load_train_test_data, load_embeddings, load_ling_features, data_root_dir, \
     combine_into_libsvm_files, load_siamese_cbow_embeddings, load_skipthoughts_embeddings
-from joblib import Parallel, delayed
-import multiprocessing
 import numpy as np
 #import skipthoughts
     
@@ -72,16 +69,6 @@ def save_fold_order(resultsdir, folds=None, dataset=None):
         print "Need to provide a dataset label or a set of fold data..."
         return 
     np.savetxt(resultsdir + "/foldorder.txt", np.array(folds.keys())[:, None], fmt="%s")
-    
-def _dists_f(items_feat_sample, f):
-    if np.mod(f, 1000) == 0:
-        logging.info('computed lengthscale for feature %i' % f)
-    dists = np.abs(items_feat_sample[:, np.newaxis] - items_feat_sample[np.newaxis, :])
-    # we exclude the zero distances. With sparse features, these would likely downplay the lengthscale.                                
-    med = np.median(dists[dists>0])
-    if np.isnan(med):
-        med = 1.0
-    return med     
     
 # Lengthscale initialisation -------------------------------------------------------------------------------------------
 # use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.
@@ -125,29 +112,10 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
     if feature_type == 'debug':
         items_feat = items_feat[:, :3]
     
-    ndims = items_feat.shape[1]
-            
     starttime = time.time()
-            
-    N_max = 3000
-    if items_feat.shape[0] > N_max:
-        items_feat_sample = items_feat[np.random.choice(items_feat.shape[0], N_max, replace=False)]
-    else:
-        items_feat_sample = items_feat
-                    
+                                
     #for f in range(items_feat.shape[1]):  
-    num_jobs = multiprocessing.cpu_count()
-    if num_jobs > max_no_jobs:
-        num_jobs = max_no_jobs
-    default_ls_value = Parallel(n_jobs=num_jobs, backend="multiprocessing")(delayed(_dists_f)(items_feat_sample[:, f], f) for f in range(ndims))
-            
-    ls_initial_guess = np.ones(ndims) * default_ls_value 
-    
-    logging.info('I am using a heuristic multiplier for the length-scale because median is too low to work in high-D spaces')
-    #ls_initial_guess *= 1000 # this worked reasonably well but was plucked out of thin air
-    ls_initial_guess *= items_feat.shape[1]**multiply_heuristic_power # this is a heuristic, see e.g. "On the High-dimensional 
-    #Power of Linear-time Kernel Two-Sample Testing under Mean-difference Alternatives" by Ramdas et al. 2014. In that 
-    # paper they refer to root(no. dimensions) because they square the lengthscale in the kernel function.
+    ls_initial_guess = compute_median_lengthscales(items_feat, multiply_heuristic_power, N_max=3000)
             
     endtime = time.time()
     logging.info('@@@ Selected initial lengthscales in %f seconds' % (endtime - starttime))

@@ -156,7 +156,7 @@ class PreferenceComponents(object):
     variational Bayes.
     '''
 
-    def __init__(self, nitem_features, nperson_features=0, mu0=0, mu0_y=0, shape_s0=1, rate_s0=1, 
+    def __init__(self, nitem_features, nperson_features=0, mu0=0, shape_s0=1, rate_s0=1, 
                  shape_ls=1, rate_ls=100, ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=20, 
                  use_fa=False, no_factors=False, use_common_mean_t=True, uncorrelated_noise=False, 
                  kernel_func='matern_3_2',
@@ -272,13 +272,15 @@ class PreferenceComponents(object):
             logging.error('PreferenceComponents: Invalid covariance type %s' % cov_type)        
     
         
-    def _init_params(self):
+    def _init_params(self):       
+        self.N = self.obs_coords.shape[0]
+        
         if self.person_features is not None:
             self.use_svi_people = True
-        
-        self.N = self.obs_coords.shape[0]
-        self.Npeople = np.max(self.people).astype(int) + 1
-        
+            self.Npeople = self.person_features.shape[0]
+        else:              
+            self.Npeople = np.max(self.people).astype(int) + 1
+                    
         if self.Nfactors is None:
             self.Nfactors = self.Npeople
         
@@ -378,7 +380,7 @@ class PreferenceComponents(object):
         # choose a set of inducing points -- for testing we can set these to the same as the observation points.
         nobs = self.obs_coords.shape[0]
         
-        self.update_size = self.max_update_size # number of inducing points in each stochastic update        
+        self.update_size = self.max_update_size # number of observed points in each stochastic update        
         if self.update_size > nobs:
             self.update_size = nobs 
             
@@ -466,8 +468,8 @@ class PreferenceComponents(object):
             blocks = [self.invKy_mm_block for _ in range(self.Nfactors)]
             self.invKy_mm = block_diag(*blocks)  
             
-            self.Ky_nm = self.kernel_func(self.y_inducing_coords, self.lsy, self.person_features)
-            blocks = [self.Ky_nm for _ in range(self.Nfactors)]
+            self.Ky_nm_block = self.kernel_func(self.person_features, self.lsy, self.y_inducing_coords)
+            blocks = [self.Ky_nm_block for _ in range(self.Nfactors)]
             self.Ky_nm = block_diag(*blocks)
             
             self.Lambda_factor_y = self.invKy_mm.dot(self.Ky_nm.T)             
@@ -842,156 +844,169 @@ class PreferenceComponents(object):
             logging.debug("...with item length-scales = %s, person length-scales = %s" % (self.ls, self.lsy))
         return -lml_jac # negative because the objective function is also negated
  
+    def predict_item_feats(self, items_coords, item_features=None):
+        if item_features is None:
+            coords = items_coords
+        else:
+            coords = item_features[items_coords]
+               
+        if self.use_svi:
+            K1 = self.kernel_func(coords, self.ls, self.inducing_coords)
+            w1 = K1.dot(self.invK_mm).dot(self.w_u)
+        else:    
+            K1 = self.kernel_func(coords, self.ls, self.obs_coords)
+            invKw = solve_triangular(self.cholK, self.w, trans=True, check_finite=False)
+            w1 = K1.dot(invKw)
+            
+        return w1
+ 
     def predict(self, personids, items_1_coords, items_2_coords, item_features=None, person_features=None):
         Npairs = len(personids)
         predicted_prefs = np.zeros(Npairs)
-         
         upeople = np.unique(personids)
+        
+        if item_features is None:
+            coords_1 = items_1_coords
+            coords_2 = items_2_coords
+        else:
+            coords_1 = item_features[items_1_coords]
+            coords_2 = item_features[items_2_coords]
+         
+        if self.person_features is None:
+            y = np.zeros((self.Nfactors, len(upeople)))
+        else:
+            if self.use_svi_people:
+                Ky = self.kernel_func(person_features, self.lsy, self.y_inducing_coords)                    
+                # use kernel to compute y
+                invKy_train = self.Ky_mm_block
+                y_train = self.y_u.reshape(self.Nfactors, self.y_ninducing).T
+            else:
+                #distances for y-space. Kernel between p and people already seen
+                Ky = self.kernel_func(person_features, self.lsy, self.person_features)
+                invKy_train = np.linalg.inv(self.Ky_block)
+                y_train = self.y.T
+            
+            # use kernel to compute y
+            y = Ky.dot(invKy_train).dot(y_train)
+            y *= self.rate_sy / self.shape_sy      
+            y = y.T
+            
+        # this could be made more efficient because duplicate locations are computed separately!
+        # distances for t-space
+        if self.use_svi:
+            # kernel between pidxs and t
+            K1 = self.kernel_func(coords_1, self.ls, self.inducing_coords)
+            K2 = self.kernel_func(coords_2, self.ls, self.inducing_coords)
+        
+            # use kernel to compute t. 
+            t1 = K1.dot(self.invK_mm).dot(self.t_u)
+            t2 = K2.dot(self.invK_mm).dot(self.t_u)
+
+            # kernel between pidxs and w -- use kernel to compute w. Don't need Kw_mm block-diagonal matrix
+            w1 = K1.dot(self.invK_mm).dot(self.w_u)   
+            w2 = K2.dot(self.invK_mm).dot(self.w_u)                    
+        else:                                
+            # kernel between pidxs and t
+            K1 = self.kernel_func(coords_1, self.ls, self.obs_coords)
+            K2 = self.kernel_func(coords_2, self.ls, self.obs_coords) 
+        
+            # use kernel to compute t
+            invKt = solve_triangular(self.cholK, self.t, trans=True, check_finite=False)
+            invKt = solve_triangular(self.cholK, invKt, overwrite_b=True, check_finite=False)
+
+            t1 = K1.dot(invKt)
+            t2 = K2.dot(invKt)
+
+            # kernel between pidxs and w -- use kernel to compute w
+            invKw = solve_triangular(self.cholK, self.w, trans=True, check_finite=False)
+            invKw = solve_triangular(self.cholK, invKw, overwrite_b=True, check_finite=False)
+            
+            w1 = K1.dot(invKw)
+            w2 = K2.dot(invKw)   
+        
+        wy_1p = w1.dot(y)
+        wy_2p = w2.dot(y)
+        mu0_1 = wy_1p + t1
+        mu0_2 = wy_2p + t2         
+         
         for p in upeople:            
             pidxs = personids == p
-            if p in self.people:
-                y = self.y[:, p:p+1] 
-            elif self.person_features is None:
-                y = np.zeros((self.Nfactors, 1))
-            else:
-                if self.use_svi_people:
-                    Ky = self.kernel_func(person_features[p, :], self.lsy, self.y_inducing_coords)                    
-                    # use kernel to compute y
-                    invKy_train = self.Ky_mm_block
-                    y_train = self.y_u.reshape(self.Nfactors, self.Npeople).T
-                else:
-                    #distances for y-space. Kernel between p and people already seen
-                    Ky = self.kernel_func(person_features[p, :], self.lsy, self.person_features)
-                    invKy_train = np.linalg.inv(self.Ky_block)
-                    y_train = self.y.T
-                
-                # use kernel to compute y
-                y = Ky.dot(invKy_train).dot(y_train)
-                y *= self.rate_sy / self.shape_sy      
-                y = y.T
-                
-            if item_features is None:
-                coords_1 = items_1_coords[pidxs]
-                coords_2 = items_2_coords[pidxs]
-            else:
-                coords_1 = item_features[items_1_coords[pidxs]]
-                coords_2 = item_features[items_2_coords[pidxs]]
-            
-            # this could be made more efficient because duplicate locations are computed separately!
-            # distances for t-space
-            if self.use_svi:
-                # kernel between pidxs and t
-                K1 = self.kernel_func(coords_1, self.ls, self.inducing_coords)
-                K2 = self.kernel_func(coords_2, self.ls, self.inducing_coords)
-            
-                # use kernel to compute t. 
-                t1 = K1.dot(self.invK_mm).dot(self.t_u)
-                t2 = K2.dot(self.invK_mm).dot(self.t_u)
-
-                # kernel between pidxs and w -- use kernel to compute w. Don't need Kw_mm block-diagonal matrix
-                w1 = K1.dot(self.invK_mm).dot(self.w_u)   
-                w2 = K2.dot(self.invK_mm).dot(self.w_u)                    
-            else:                                
-                # kernel between pidxs and t
-                K1 = self.kernel_func(coords_1, self.ls, self.obs_coords)
-                K2 = self.kernel_func(coords_2, self.ls, self.obs_coords) 
-            
-                # use kernel to compute t
-                invKt = solve_triangular(self.cholK, self.t, trans=True, check_finite=False)
-                invKt = solve_triangular(self.cholK, invKt, overwrite_b=True, check_finite=False)
-
-                t1 = K1.dot(invKt)
-                t2 = K2.dot(invKt)
-
-                # kernel between pidxs and w -- use kernel to compute w
-                invKw = solve_triangular(self.cholK, self.w, trans=True, check_finite=False)
-                invKw = solve_triangular(self.cholK, invKw, overwrite_b=True, check_finite=False)
-                
-                w1 = K1.dot(invKw)
-                w2 = K2.dot(invKw)   
-            
-            wy_1p = w1.dot(y)
-            wy_2p = w2.dot(y)
-            mu0_1 = wy_1p + t1
-            mu0_2 = wy_2p + t2                                        
+            npairs_p = np.sum(pidxs)
+                                    
             if p in self.people:            
                 pref_gp_p = self.pref_gp[p]
-                predicted_prefs[pidxs] = pref_gp_p.predict(coords_1, coords_2, 
-                                      mu0_output1=mu0_1, mu0_output2=mu0_2, return_var=False).flatten()
+                predicted_prefs[pidxs] = pref_gp_p.predict(coords_1[pidxs, :], coords_2[pidxs, :], 
+                                      mu0_output1=mu0_1[pidxs, p:p+1], mu0_output2=mu0_2[pidxs, p:p+1], return_var=False).flatten()
             else:
-                mu0 = np.concatenate((mu0_1, mu0_2), axis=0)
+                mu0 = np.concatenate((mu0_1[pidxs,:], mu0_2[pidxs,:]), axis=0)
                 predicted_prefs[pidxs] = pref_likelihood(f=mu0, subset_idxs=[], 
-                                     v=np.arange(len(mu0_1)), u=np.arange(len(mu0_1), len(mu0_1)+len(mu0_2)))
+                                     v=np.arange(npairs_p), u=np.arange(npairs_p, npairs_p*2))
                 
         return predicted_prefs
     
     def predict_f(self, personids, items_1_coords, item_features=None, person_features=None):
         N = items_1_coords.shape[0]
         predicted_f = np.zeros(N)
-         
         upeople = np.unique(personids)
+         
+        if item_features is None:
+            coords_1 = items_1_coords
+        else:
+            coords_1 = item_features[items_1_coords]         
+         
+        if person_features is None:
+            y = np.zeros((self.Nfactors, len(upeople)))
+        else:
+            if self.use_svi_people:
+                Ky = self.kernel_func(person_features, self.lsy, self.y_inducing_coords)
+                # use kernel to compute y
+                invKy_train = self.Ky_mm_block
+                y_train = self.y_u.reshape(self.Nfactors, self.y_ninducing).T            
+            else:
+                #distances for y-space. Kernel between test people and people already seen
+                Ky = self.kernel_func(person_features, self.lsy, self.person_features)
+                    
+                invKy_train = np.linalg.inv(self.Ky_block)
+                y_train = self.y.T
+            
+            # use kernel to compute y
+            y = Ky.dot(invKy_train).dot(y_train)
+            y *= self.rate_sy / self.shape_sy      
+            y = y.T           
+         
+        if self.use_svi:
+            K1 = self.kernel_func(coords_1, self.ls, self.inducing_coords)
+            # use kernel to compute t. 
+            t1 = K1.dot(self.invK_mm).dot(self.t_u)
+
+            # kernel between test items and w -- use kernel to compute w. Don't need Kw_mm block-diagonal matrix
+            w1 = K1.dot(self.invK_mm).dot(self.w_u)               
+        else:
+            K1 = self.kernel_func(coords_1, self.ls, self.obs_coords)
+            
+            # use kernel to compute t
+            invKt = solve_triangular(self.cholK, self.t, trans=True, check_finite=False)
+            invKt = solve_triangular(self.cholK, invKt, overwrite_b=True, check_finite=False)
+
+            t1 = K1.dot(invKt)
+
+            # kernel between pidxs and w -- use kernel to compute w
+            invKw = solve_triangular(self.cholK, self.w, trans=True, check_finite=False)
+            invKw = solve_triangular(self.cholK, invKw, overwrite_b=True, check_finite=False)
+                
+            w1 = K1.dot(invKw)                                  
+
+        wy_1p = w1.dot(y)
+        mu0_1 = wy_1p + t1
+         
         for p in upeople:            
             pidxs = personids == p
-            if p in self.people:
-                y = self.y[:, p:p+1] 
-            elif self.person_features is None:
-                y = np.zeros((self.Nfactors, 1))
-            else:
-                if self.use_svi_people:
-                    Ky = self.kernel_func(person_features[p, :], self.lsy, self.y_inducing_coords)                    
-                    # use kernel to compute y
-                    invKy_train = self.Ky_mm_block
-                    y_train = self.y_u.reshape(self.Nfactors, self.Npeople).T
-                else:
-                    #distances for y-space. Kernel between p and people already seen
-                    Ky = self.kernel_func(person_features[p, :], self.lsy, self.person_features)
-                    invKy_train = np.linalg.inv(self.Ky_block)
-                    y_train = self.y.T
-                
-                # use kernel to compute y
-                y = Ky.dot(invKy_train).dot(y_train)
-                y *= self.rate_sy / self.shape_sy      
-                y = y.T
-                
-            if item_features is None:
-                coords_1 = items_1_coords[pidxs]
-            else:
-                coords_1 = item_features[items_1_coords[pidxs]]
-            
-            # this could be made more efficient because duplicate locations are computed separately!
-            # distances for t-space
-            if self.use_svi:
-                # kernel between pidxs and t
-                K1 = self.kernel_func(coords_1, self.ls, self.inducing_coords)
-            
-                # use kernel to compute t. 
-                t1 = K1.dot(self.invK_mm).dot(self.t_u)
 
-                # kernel between pidxs and w -- use kernel to compute w. Don't need Kw_mm block-diagonal matrix
-                w1 = K1.dot(self.invK_mm).dot(self.w_u)   
-            else:                                
-                # kernel between pidxs and t
-                K1 = self.kernel_func(coords_1, self.ls, self.obs_coords)
-            
-                # use kernel to compute t
-                invKt = solve_triangular(self.cholK, self.t, trans=True, check_finite=False)
-                invKt = solve_triangular(self.cholK, invKt, overwrite_b=True, check_finite=False)
-
-                t1 = K1.dot(invKt)
-
-                # kernel between pidxs and w -- use kernel to compute w
-                invKw = solve_triangular(self.cholK, self.w, trans=True, check_finite=False)
-                invKw = solve_triangular(self.cholK, invKw, overwrite_b=True, check_finite=False)
-                
-                w1 = K1.dot(invKw)
-            
-            wy_1p = w1.dot(y)
-            mu0_1 = wy_1p + t1
             if p in self.people:            
                 pref_gp_p = self.pref_gp[p]
-                predicted_f[pidxs] = pref_gp_p.predict_f(coords_1, mu0_output=mu0_1)[0].flatten()
+                predicted_f[pidxs] = pref_gp_p.predict_f(coords_1[pidxs, :], mu0_output=mu0_1[pidxs, p:p+1])[0].flatten()
             else:
-                predicted_f[pidxs] = mu0_1
+                predicted_f[pidxs] = mu0_1[pidxs, 0]
                 
         return predicted_f
         
@@ -1072,11 +1087,7 @@ class PreferenceComponents(object):
             return
             
         # Put a GP prior on w with covariance K/gamma and mean 0
-        if self.use_svi:
-            N = self.ninducing
-        else:
-            N = self.N
-        
+        N = self.N
         x = np.zeros((N, self.Nfactors))
         Sigma = np.zeros((N * self.Nfactors, N * self.Nfactors))
 
@@ -1090,7 +1101,7 @@ class PreferenceComponents(object):
             pidxs = self.coordidxs[p]
             y_p = self.y[:, p:p+1]
             if self.use_svi_people:
-                if hasattr(self, 'invKy_mm_S'):
+                if hasattr(self, 'invKys_mm_S'):
                     y_cov = self.Ky_nm.dot(self.Kys_mm.dot(self.invKys_mm_S)).dot(self.Ky_nm.T)
                 else:
                     y_cov = np.array(self.rate_sy / self.shape_sy).flatten()
@@ -1172,11 +1183,7 @@ class PreferenceComponents(object):
         '''
         Compute expectation over the personality components using VB
         '''
-        if self.use_svi_people:
-            Npeople = self.y_ninducing
-        else:
-            Npeople = self.Npeople  
-                    
+        Npeople = self.Npeople  
         Sigma = np.zeros((self.Nfactors * Npeople, self.Nfactors * Npeople))
         x = np.zeros((Npeople, self.Nfactors))
 
@@ -1264,11 +1271,8 @@ class PreferenceComponents(object):
             return
         if not self.use_t:
             return
-        if self.use_svi:
-            N = self.ninducing
-        else:
-            N = self.N
-            
+
+        N = self.N    
         Sigma = np.zeros((N, N))
         x = np.zeros((N, 1))
         
