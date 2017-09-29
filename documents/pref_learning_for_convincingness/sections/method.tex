@@ -33,16 +33,16 @@ Instead, we use a variational approximation to a fully Bayesian approach
 to the preference likelihood given by Equation \ref{eq:pl}.
 Given a set of observed preference pairs, $\bs y$,
 we assume an approximation, $q(f,s)$,  to the true posterior distribution, $p(f,s|\bs y, \theta, a_0, b_0)$.
-We then update $q(f,s)$ iteratively to maximises a lower bound on the log marginal likelihood, 
+We then update $q(f,s)$ iteratively to maximise a lower bound on the log marginal likelihood, 
 $\mathcal{L} \leq \log p(\bs y | \theta, a_0, b_0)$.
 This optimisation procedure minimises the Kullback-Leibler divergence of $p(f,s|\bs y, \theta, a_0, b_0)$ from $q(f,s)$,
 meaning that $q(f,s)$ converges to an approximate posterior. 
 
 The variational approach still requires an $\mathcal{O}(N^3)$ matrix inversion,
 which is impractical with more than a few hundred data points. 
-However, the recent introduction of stochastic variational inference (SVI) 
-\cite{hoffman2013stochastic,hensman_scalable_2015}
- means we can adapt our variational inference method
+However, we apply a recently introduced technique, stochastic variational inference (SVI) 
+\cite{hoffman2013stochastic,hensman_scalable_2015},
+ to adapt our variational inference method
 to scale to datasets containing at least tens of thousands of 
 arguments and pairwise labels.
 
@@ -68,6 +68,6 @@ the log marginal likelihood, $\mathcal{L}$.
 This process is known as maximum likelihood II~\cite{rasmussen_gaussian_2006}.
 Features with larger length-scales after optimisation are less relevant because their values
 have less effect on $k_{\theta}(\bs x, \bs x') $.
-To cut out the cost of optimising the length-scales, we can also use a median heuristic,
+To cut out the cost of optimising the length-scales, we can alternatively set them using a median heuristic,
 which has been shown to perform well in practice~\cite{gretton2012optimal}: 
 $ l_{d,MH} = \frac{1}{D} \mathrm{median}( \{ |x_{i,d} - x_{j,d}| \forall i=1,..,N, \forall j=1,...,N\} ) $.

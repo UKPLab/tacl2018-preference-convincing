@@ -66,43 +66,21 @@ Finding Convincing Arguments using Scalable Bayesian Preference Learning
 \begin{document}
 
 \maketitle
-
-% Points to address:
-% 1. Is scalability needed when data is sparse? Yes -- for a single topic we quickly hit the 
-% limits with > 500 comparisons; these pairs may be noisy rather than just small; the 
-% large feature space means data is still sparse; scalabe method means that model can be
-% continuously updated as new data arrives.
-
 \begin{abstract}
-%Automated methods for identifying convincing arguments can be hampered by 
-%a lack of gold-standard ratings or rankings in new topics or domains.
-%We address this problem by introducing a scalable Bayesian preference learning method
-%for argument convincingness.
 We introduce a scalable Bayesian preference learning method for identifying
 convincing arguments in the absence of gold-standard ratings or rankings.
-% so far, classifiers and graph ranking methods have been adapted to PL -- our approach addresses the problem without a pipeline and without 
-In contrast to previous work, we avoid the need for separate approaches or pipelines
+In contrast to previous work, we avoid the need for separate methods
 to produce training data, predict rankings and perform pairwise classification.
-Bayesian methods are an effective solution when faced with sparse or noisy training data, 
+Bayesian approaches are an effective solution when faced with sparse or noisy training data, 
 but have not previously been used to identify convincing arguments.
 One issue is scalability, which we address by developing a 
 stochastic variational inference method for Gaussian process (GP) preference learning.
 We show how our method can be applied to predict argument convincingness from crowdsourced data, 
-outperforming state-of-the-art methods, particularly when the data is sparse or noisy.  
+outperforming state-of-the-art methods, particularly with small amounts of unreliable training data.  
 We demonstrate how our Bayesian approach enables more effective active learning,
 thereby reducing the amount of data required to identify convincing arguments for new users and domains.
 While word embeddings are principally used with neural networks, our results show that word embeddings in combination with linguistic features also benefit GPs when predicting
 argument convincingness.
-
-% \todo{Two options for the paper's main claim (at the moment it is more toward number 1): (1) We provide a scalable Bayesian method that improves preference learning with sparse/noisy data (2) We show state of the art performance for argumentation by developing a scalable Bayesian preference learning method. 
-% Notes from other papers in source comments:
-% %From reece 2011 -- data fusion task is put first; main claim is not more general than the application domain of data fusion:
-% %"The complex target of interest in this paper is the ‘pattern of life’ associated with a counter-insurgency (COIN) scenario involving vehicle movements between specific buildings in a fictitious town... The focus of this paper is the formulation and proof-of- principle testing of a mathematical framework for representing and fusing heterogeneous data sources to provide inference in
-% %support of intelligence analysts."
-% % Look at structure of intro to "A Bayesian Approach to Unsupervised Semantic Role Induction". The application domain is front-and-centre here. 
-% Concerns about the first claim -- currently it is phrased in a way that is too general, e.g. "We demonstrate how our Bayesian approach enables more effective active learning"; it would have to be more specific to the scalable method presented, e.g. "...from sparse and noisy preferences with large real-world NLP datasets". To emphasise claim 2: "...of argument convincingess from small numbers of judgements provided by human annotators". 
-% Options: (1) claim 1 should be played down completely so it can be made into a separate ML paper; (2) claim 2 becomes focus but claim 1 is rephrased to specifically back it up; (3) claim 1 is the main focus but need a lot more background on the use cases in NLP and prior work on Bayesian methods in NLP + sell as new tool for NLP.
-% }
 \end{abstract}
 
 % For peer review papers, you can put extra information on the cover

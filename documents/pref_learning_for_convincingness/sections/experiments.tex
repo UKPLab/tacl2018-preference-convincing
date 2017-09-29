@@ -29,11 +29,11 @@
   One original crowdsourced label per pair\newline
   PageRank run on each topic to produce gold rankings
   \end{tabularx}
-  \caption{\label{tab:expt_data} Summary of the internet argument datasets produced using different processing steps.}
+  \caption{\label{tab:expt_data} Summary of datasets, showing the different steps used to produce each Internet argument dataset.}
 \end{table*}
 \begin{figure*}
 \subfloat[no cycle]{
-  \includegraphics[width=0.5\columnwidth, clip=True, trim=30 30 20 30]{figures/cycles_demo/no_cycle/arggraph_arg_graph}
+  \includegraphics[width=0.46\columnwidth, clip=True, trim=60 30 20 30]{figures/cycles_demo/no_cycle/arggraph_arg_graph}
 }
 \subfloat[single cycle]{
   \includegraphics[width=0.5\columnwidth, clip=True, trim=30 30 20 30]{figures/cycles_demo/simple_cycle/arggraph_arg_graph}
@@ -41,21 +41,22 @@
 \subfloat[double cycle]{
   \includegraphics[width=0.5\columnwidth, clip=True, trim=30 30 20 30]{figures/cycles_demo/double_cycle/arggraph_arg_graph}
 }
-\subfloat[cycle with 9 undecided prefs.]{
+\subfloat[no cycle + 9 undecided prefs.]{
   \includegraphics[width=0.5\columnwidth, clip=True, trim=30 30 20 30]{figures/cycles_demo/undecided/arggraph_arg_graph}
 }
 \caption{Argument preference graphs for each scenario. Arrows point to the preferred argument.}
 \label{fig:arg_graph}
 \end{figure*}
-We test our approach on datasets provided by Habernal and Gurevych~\shortcite{habernal2016argument},
+We first use toy datasets to illustrate the behaviour of the several different methods (described below).
+Then, 
+we test our approach on datasets provided by Habernal and Gurevych~\shortcite{habernal2016argument},
 which contain pairwise labels for arguments taken from online discussion forums.
 A pairwise label can have a value of $0$, meaning the annotator found the second argument in the pair more convincing,
 $1$ if the annotator was undecided, or $2$ if the first argument was more convincing.
 To test different scenarios, different pre-processing steps were used to produce the
-four datasets shown in Table \ref{tab:expt_data}.
-For all datasets we perform 32-fold cross validation, using 31 folds for training and one for testing. 
+three \emph{UKPConvArg*} datasets shown in Table \ref{tab:expt_data}.
+For these datasets we perform 32-fold cross validation, using 31 folds for training and one for testing. 
 Each fold corresponds to one of 16 controversial topics, and one of two stances for that topic.
-The toy datasets are used to illustrate the different behaviour of our compared methods (described below).
 \emph{UKPConvArgStrict} and \emph{UKPConvArgRank} test performance with noise-free labelled data,
 while \emph{UKPConvArgCrowdSample} is used to evaluate performance with noisy crowdsourced data 
 including conflicts and undecided labels, and to test the suitability of our method for active learning
@@ -66,22 +67,22 @@ to address the cold-start problem in new domains with no labelled data.
 \begin{figure*}
 \centering
 \subfloat[no cycle]{
-  \includegraphics[width=0.4\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/no_cycle/PageRank_scores}
+  \includegraphics[width=0.45\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/no_cycle/PageRank_scores}
 }
 \subfloat[single cycle]{
-  \includegraphics[width=0.4\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/simple_cycle/PageRank_scores}
+  \includegraphics[width=0.45\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/simple_cycle/PageRank_scores}
 }
 \subfloat[double cycle]{
-  \includegraphics[width=0.4\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/double_cycle/PageRank_scores}
+  \includegraphics[width=0.45\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/double_cycle/PageRank_scores}
 }
 \subfloat[cycle with 9 undecided]{
-  \includegraphics[width=0.4\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/undecided/PageRank_scores}
+  \includegraphics[width=0.45\columnwidth, clip=True, trim=20 5 10 22]{figures/cycles_demo/undecided/PageRank_scores}
 }
 \caption{Mean scores over 25 repeats. Bars for GPPL show standard deviation of convincingness function posterior.}
 \label{fig:scores}
 \end{figure*}
-Our two basic tasks are \emph{ranking} arguments in terms of convincingness and  
-\emph{classification} of pairwise labels for pairs of arguments, i.e. predicting which argument is preferred. 
+Our two basic tasks are \emph{ranking} arguments by convincingness and  
+\emph{classification} of pairwise labels for pairs of arguments, i.e. predicting which argument is more convincing. 
 We compare our scalable Gaussian process preference learning method (\emph{GPPL}) against 
 the state-of-the-art SVM approach and a bi-directional long short-term memory network (BiLSTM),
 both tested by Habernal and Gurevych~\shortcite{habernal2016argument}.
@@ -97,8 +98,9 @@ For ranking, PageRank is first applied to arguments in the training folds to obt
 As a Bayesian alternative to GPPL, 
 we test a Gaussian process classifier (\emph{GPC}) for the classification task 
 by concatenating the feature vectors of arguments in the same way as the SVM classifier.
-We also evaluate a non-Bayesian approach that uses the same pairwise preference likelihood as GPPL
-but trains an SVM regression model instead of a GP (\emph{PL+SVR}).
+We also evaluate a non-Bayesian approach that uses the same pairwise likelihood as GPPL
+(Equation \ref{eq:pl}) to infer function values, 
+but uses them to train an SVM regression model instead of a GP (\emph{PL+SVR}).
 
 As input features, SVM uses $\sim32000$ linguistic features, labelled \emph{ling} in the results, 
 including unigrams, bigrams, ratios and counts of different parts-of-speech and verb forms,
@@ -115,8 +117,8 @@ To create a single embedding vector per argument as input for GPPL,
 we take the mean of individual word embeddings for tokens in the argument.
 As an alternative,
 we also tested skip-thoughts~\cite{kiros2015skip} and Siamese-CBOW~\cite{kenter2016siamesecbow} 
-with GPPL on UKPConvArgStrict and UKPConvArgRank, both with ARD optimisation and using the median heuristic,
-and alone and combined with \emph{ling}. 
+with GPPL on UKPConvArgStrict and UKPConvArgRank, both with MLII optimisation and the median heuristic,
+ both alone and combined with \emph{ling}. 
 However, we found that mean Glove embeddings produced substantially better performance in all tests.
 
 We set the GPPL hyper-parameters $a_0=2$ and $b_0=200$ after
@@ -124,8 +126,8 @@ testing three different settings on UKPConvArgStrict and UKPConvArgRank.
 This is a weak prior favouring a moderate level of noise in the pairwise labels.
 For the kernel function, $k_d$, we chose the Mat\'ern $\frac{3}{2}$ function due to its 
 effectiveness across a wide range of tasks~\cite{rasmussen_gaussian_2006}.
-To set the length-scales, we compare the median heuristic (labelled ``medi.")
-with MLII optimisation (labelled as ``OptGPPL").
+To set the length-scales, $l_d$, we compare the median heuristic (labelled ``medi.")
+with MLII optimisation (labelled ``opt.").
 
 \subsection{Experiment 1: Toy Data}
 
@@ -202,7 +204,7 @@ undirected edges in Figure \ref{fig:arg_graph}, to simulate a case where multipl
 and did not all agree. 
 This does not affect the PageRank scores, 
 but reduces the difference in GPPL scores between arg0 and the other arguments, 
-since GPPL gives the edge from arg0 to arg0 less weight due to the undecided labels. 
+since GPPL gives the edge from arg2 to arg0 less weight due to the undecided labels. 
 This is reflected in the GPPL classifications, which are less confident than in the ``no cycle" scenario.
 The SVM cannot be trained using the uncertain labels and therefore does not adapt to the undecided labels. 
 
@@ -255,11 +257,10 @@ Kendall's $\tau$: &0.34&0.27&0.47 &0.31  &0.49   &  \textbf{0.50} & - & 0.47\\% 
 % p-value of 0.114077
 We compare classification performance on UKPConvArgStrict  
 and ranking performance on UKPConvArgRank. 
-Both datasets were cleaned to remove disagreements between annotators as stated in Table \ref{tab:expt_data}.
-
-The results are shown in Table \ref{tab:clean_results}. When using \emph{ling} features,
+Both datasets were cleaned to remove disagreements between annotators, as stated in Table \ref{tab:expt_data}.
+The results in Table \ref{tab:clean_results} show that when using \emph{ling} features,
 GPPL produces similar accuracy and improves the area under the ROC curve (AUC) by 2\%,
-and cross entropy error by 0.01.
+and cross entropy error by $0.01$.
 The AUC quantifies how well the predicted probabilities separate the classes,
 while the cross entropy error quantifies the usefulness of the probabilities output by each method.
 Much larger improvements can be seen in the ranking metrics. 
@@ -268,19 +269,21 @@ BiLSTM for classification but improves the ranking metrics. Using a combination 
 GPPL outperforms the alternative methods for both classification and ranking, 
 suggesting that embeddings and linguistic features contain complementary information.
 
-Optimising the length-scale using Bayesian model selection improves classification accuracy by 2\% over the median heuristic,
+Optimising the length-scale using MLII improves classification accuracy by 2\% over the median heuristic,
 giving a statistically significant improvement over SVM, the previous state-of-the-art ($p=0.0434$ using
 two-tailed Wilcoxon signed-rank test).
 The differences in ranking metrics between GPPL opt. \emph{ling + Glove}
 and SVM are highly statistically significant, with $p <<<0.01$.
-However, the cost of these improvements is that each fold required around 2 hours to compute instead of approximately 10 minutes on the same machine (an Intel i7 quad core desktop) using the median heuristic. 
+However, the cost of these improvements is that each fold required around 2 hours to compute instead of 
+approximately 10 minutes on the same machine (an Intel i7 quad-core desktop) using the median heuristic. 
 
 The results show that PL+SVR does not reach the same performance as GPPL, 
 suggesting that GPPL benefits from  integrating a GP in a Bayesian manner. 
 GPC produces the best results on the classification task, 
 indicating the benefits of the Bayesian approach, although it cannot be used to rank the arguments.
-The classification improvement over GPPL may result from training directly for this task, 
-rather than through a preference learning likelihood. In this experiment, the larger feature space of GPC 
+The improvement of GPC over GPPL may result from training directly for classification, 
+rather than first performing regression through the pairwise likelihood. 
+In this experiment, the larger feature space of GPC 
 due to concatenating the feature vectors of the first and second items in each pair  
 does not seem to have damaged its performance.
 
@@ -307,10 +310,10 @@ Kend.:      &0.12 &0.13  & \textbf{0.40}        & \textbf{0.40}       & - \\
   \caption{Performance comparison on datasets containing conflicts and noise.}
   \label{tab:noisy}
 \end{table}
-In this experiment, we use UKPConvArgCrowdSample to introduce noisy crowdsourced data 
-including conflicting pairwise labels
-to both the classification and the regression tasks.
-Our hypothesis was that GPPL would be better able to handle unreliable crowdsourced data.
+We use UKPConvArgCrowdSample to introduce unreliable data,
+including conflicting pairwise labels,
+to both the classification and regression tasks.
+Our hypothesis was that GPPL would best handle noise and conflicts in the crowdsourced data.
 
 The results in Table \ref{tab:noisy} show that all methods perform worse compared to Experiment 2
 due to the noisy pairwise labels. 
@@ -386,10 +389,10 @@ uncertainty sampling.
 % \todo{how much does this really show us? Could we skip this section to make more space for error analysis?
 % In contrast with Lampos et al 2014, we cannot identify a small number of important features --> looks like we need
 % a combination, perhaps a hierarchical feature representation.}
-Finally, we show how the length-scales learned by optimising GPPL can be used to identify
+Finally, we show how the length-scales learned by optimising GPPL using MLII can be used to identify
 informative sets of features. 
 A larger length-scale causes greater smoothing, 
-implying that the feature is less relevant when predicting the convincingness function.
+implying that the feature is less relevant when predicting the convincingness function
 than a feature with a small length-scale. 
 %In contrast, small length-scales indicate more informative features, since their
 %precise value affects the latent preference function.
@@ -399,21 +402,22 @@ Due to the computation time required, our optimisation procedure was limited to 
 which may have resulted in the large number of values close to $1$,
 % may result from  not being able to optimise all features in the available time.
 as features with larger gradients were optimised first.
-
 The length-scales for many dimensions of the mean word embeddings were increased,
 giving ratios close to $4$ times the median heuristic, suggesting that these dimensions may be
 only very weakly informative. Table \ref{tab:extreme_features} shows the largest
 and smallest ratios for embeddings and linguistic features. The unigram "safety" has
-a very high length-scale, suggesting it is not informative and may be discarded. 
+a very high length-scale, suggesting it is not informative and could be discarded. 
+The length-scales learned using MLII could in future be used to discard irrelevant features
+automatically. 
 % It is possible that continuing the optimisation procedure for a larger number of steps would 
 % identify large length-scales for other features that may be discarded. However, caution is 
 % required to avoid overfitting to the training set during optimisation~\cite{qi2004predictive}.
 \begin{figure}[h]
 \includegraphics[width=\columnwidth, clip=True, trim=32 0 57 0]{figures/features/boxplot}
-\caption{Distribution of length-scales for each type of feature after optimisation. 
-Values are relative to the median heuristic value before optimisation, optimised 
-on fold "should physical education be mandatory in schools -- no", where 
-optimisation increased accuracy from 75\% to 80\%. }
+\caption{Distribution of length-scales for each type of feature after MLII optimisation 
+on fold ``should physical education be mandatory in schools -- no". 
+Values are ratios over the median heuristic value. 
+Optimisation on this fold increased accuracy from 75\% to 80\%. }
 \label{fig:boxplot}
 \end{figure}
 \begin{table}
@@ -562,7 +566,7 @@ To investigate the differences between our best approach, GPPL opt. \emph{ling +
 and the previous best performer, SVM, 
 we manually examined forty randomly chosen false classifications, where one of 
 either  \emph{ling + Glove} or SVM was correct and the other was incorrect. 
-We found that both SVM and GPPL falsely classified arguments when they were either very short or long and complex, suggesting deeper semantic or structural understanding of the argument may be required. However, SVM also made mistakes
+We found that both SVM and GPPL falsely classified arguments that were either very short or long and complex, suggesting deeper semantic or structural understanding of the argument may be required. However, SVM also made mistakes
 where the arguments contained few verbs.
 %We were not able to identify any common source of error for cases where both 
 %methods produced errors. % required deeper semantic understanding and background knowledge of the topics involved
@@ -592,7 +596,7 @@ contained exclamation marks or common spelling errors (likely due to unigram or 
 GPPL underrated short arguments with the ngrams ``I think", ``why?", and
 ``don't know", which were used as part of a rhetorical question
 rather than to state that the author was uncertain or uninformed.
-These cases may not be distinguishable using \emph{ling + Glove} features.
+These cases may not be distinguishable by a GP given only \emph{ling + Glove} features.
 % Case 1: GPPL better, SVM worse
 % svm underrated some arguments containing !, thankyou, lots of 'if'
 % underrated: long argument, common spelling errors (unigrams usually correlated with bad arguments?), India, long and complex arguments, short arguments
@@ -622,7 +626,7 @@ while for SVM, the mean Shannon entropy was  0.188 for correct predictions and
 1.583 for incorrect.
 With both methods, more uncertain predictions correlate with more errors,
 but the more extreme values for GPPL suggest that its output probabilities more 
-accurately reflect the probability of error than those given by the SVM classifier.
+accurately reflect the probability of error than those given by the SVM.
 
 % % the analysis below is possible only using the predictions for the training points; however we do not predict for
 % % the provided training points?

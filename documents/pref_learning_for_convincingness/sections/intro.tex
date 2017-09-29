@@ -21,8 +21,8 @@ Raffles conceived a town plan to remodel Singapore into a modern city. The plan 
 \caption{Example argument pair from an online debate.}
 \label{fig:argument_examples}
 \end{figure}
-These approaches require examples of arguments paired with judgements of their convincingness.
-Consider the arguments in Figure \ref{fig:argument_examples}:
+Typically, machine learning approaches require examples of arguments paired with judgements of their convincingness.
+However, consider the arguments in Figure \ref{fig:argument_examples}:
 how does one assign a numerical convincingness score to each argument? 
 If the audience considers each argument independently, it is difficult to ensure that the scores for all arguments
 remain consistent with their view of convincingness.
@@ -77,39 +77,44 @@ Finally, we present conclusions and future work.
 
 % Recently, Habernal and Gurevych~\shortcite{habernal2016makes} analysed reasons provided by annotators for why one argument is more convincing than another. In this paper we assume that explicit reasons are not provided. 
 Lukin et al.~\shortcite{lukin2017argument} demonstrated that an audience's personality and prior stance affect
-an argument's persuasiveness, but they were unable to predict belief change accurately.
+an argument's persuasiveness, but they were unable to predict belief change to a high degree of accuracy.
 Related work has shown how persuasiveness is also affected by the sequence of arguments in a discussion 
 ~\cite{tan2016winning,rosenfeld2016providing,monteserin2013reinforcement},
-but this work focuses on predicting salience given the state of the debate rather than the qualities of arguments.
+but this work focuses on predicting salience of an argument given the state of the debate,
+ rather than the qualities of arguments.
 
 Habernal and Gurevych~\shortcite{habernal2016argument} established datasets
 containing crowdsourced pairwise judgements of convincingness for arguments taken from online discussions. 
-Errors in the crowdsourced data were handled by determining consensus labels using the MACE algorithm~\cite{hovy2013learning}.
-The consensus labels were then used to train SVM and bi-directional long short-term memory (BiLSTM) classifiers to predict pairwise
+Errors in the crowdsourced data were handled by determining gold labels using the MACE algorithm~\cite{hovy2013learning}.
+The gold labels were then used to train SVM and bi-directional long short-term memory (BiLSTM) classifiers to predict pairwise
 labels for new arguments. 
-The MACE consensus labels were also input to PageRank to produce convincingness scores for each argument. 
-These scores were then to train SVM and BiLSTM regression models.
+The gold labels were also used to construct a directed graph of convincingness, which was input to PageRank 
+to produce scores for each argument. 
+These scores were then used to train SVM and BiLSTM regression models.
 A drawback of such pipeline approaches is that they are prone to error propagation~\cite{chen2016joint},
 and consensus algorithms such as MACE require multiple crowdsourced labels for each argument pair, 
 which increases annotation costs.
 
 \section{Bayesian Methods for NLP}\label{sec:bayesian}
 
-When faced with a lack of annotated data or noisy labels, 
+When faced with a lack of reliable annotated data, 
 Bayesian approaches have a number of advantages.
 Bayesian inference provides a mathematical framework for combining multiple observations
 with prior information. 
-Given a model, $M$, and observed data, $D$, we can apply Bayes' rule
-to obtain a posterior distribution over $M$:
+Given a model, $M$, and observed data, $D$, we apply Bayes' rule
+to obtain a posterior distribution over $M$, which can be used to make predictions 
+about unseen data or latent variables:
 \begin{equation}
-  P(M|D) = \frac{P(D|M)P(M)}{P(D)}.
+  P(M|D) = \frac{P(D|M)P(M)}{P(D)},
   \label{eq:bayesrule}
 \end{equation}
-If the dataset is large, the likelihood $P(D|M)$ will dominate the posterior,
-but when $D$ is small, the posterior will remain closer to the prior, $P(M)$.
+where $P(D|M)$ is the likelihood of the data given $M$, and $P(M)$ is the model prior.
+If the dataset is large, the likelihood will dominate the posterior,
+but when $D$ is small, the posterior will remain closer to the prior.
 %which reduces overfitting.
-In contrast, neural network methods typically select model parameters that maximise the likelihood,
-so are more prone to overfitting with small datasets, which can reduce performance~\cite{xiong2011bayesian}.
+Rather than learning a posterior distribution over $M$,
+neural network training typically selects model parameters that maximise the likelihood, 
+so they are prone to overfitting with small datasets, which can reduce performance~\cite{xiong2011bayesian}.
 
 % \todo{link each paragraph to argumentation problem: no trustworthy labels; multiple annotators; ?}
 Bayesian methods can be trained using unsupervised or semi-supervised learning
@@ -121,13 +126,13 @@ the number of topics than requiring it to be fixed a priori.
 Semi-supervised Bayesian learning
 has also been used to achieve state-of-the-art results for semantic role labelling~\cite{titov2012bayesian}.
 
-Bayes' rule allows us to combine independent pieces of weak evidence.
+We can combine independent pieces of weak evidence using Bayesian methods through the likelihood.
 For instance, a Bayesian network can be used to infer attack relations between arguments by combining votes for acceptable arguments from different people~\cite{kido2017}.
 Graphical models can also combine crowdsourced annotations to train a sentiment classifier
 without a separate quality control step~\cite{simpson2015language,felt2016semantic}.
 
 Several successful Bayesian approaches in NLP make use of Gaussian processes (GPs), which are 
-prior distributions over functions of input features. 
+distributions over functions of input features. 
 GPs are nonparametric, meaning they can model highly nonlinear functions by
 allowing function complexity to grow with the amount of data~\cite{rasmussen_gaussian_2006}.
 They account for model uncertainty when extrapolating from sparse training data
@@ -156,7 +161,7 @@ and estimating the quality of machine translations given source and translated t
 Our aim is to develop a Bayesian method for identifying convincing arguments 
 given their features, which can be trained on noisy pairwise labels.
 Each label, $i \succ j$, states that an argument, $i$, is more convincing than another argument, $j$. 
-This type of learning task is a form of \emph{preference learning}, which can be addressed in several ways.
+This learning task is a form of \emph{preference learning}, which can be addressed in several ways.
 % rank or score arguments in terms of convincingness,
 % or predict which item in a subset the user finds more convincing. 
 %Given a ranking over items, it is possible to determine the pairwise preferences, but 
