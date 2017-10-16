@@ -167,7 +167,8 @@ def load_train_test_data(dataset):
     folds, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = load_my_data_separate_args(csvdirname, 
                                                                                           embeddings_dir=embeddings_dir)
     if ranking_csvdirname is not None:             
-        folds_regression, _ = load_my_data_regression(ranking_csvdirname, embeddings_dir=embeddings_dir, load_embeddings=True)
+        folds_regression, _ = load_my_data_regression(ranking_csvdirname, embeddings_dir=embeddings_dir, 
+                                                      load_embeddings=True)
         
     if folds_test is not None:
         for fold in folds:
@@ -188,6 +189,7 @@ def load_embeddings(word_index_to_embeddings_map):
 
 def load_skipthoughts_embeddings(word_to_indices_map):
     print('Loading Skip-thoughts model...')
+    global skipthoughts
     import skipthoughts
     model = skipthoughts.load_model()
     return model

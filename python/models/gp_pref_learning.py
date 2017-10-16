@@ -9,10 +9,6 @@ from scipy.sparse import coo_matrix, issparse, hstack
 import logging
 from gp_classifier_vb import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
 from gp_classifier_svi import GPClassifierSVI
-import multiprocessing
-from gp_classifier_vb import max_no_jobs
-from joblib import Parallel, delayed
-
 
 def get_unique_locations(obs_coords_0, obs_coords_1):
     if issparse(obs_coords_0) or issparse(obs_coords_1):
@@ -97,38 +93,6 @@ def pref_likelihood(f=[], subset_idxs=[], v=[], u=[], return_g_f=False):
     else:
         return phi
     
-def _dists_f(items_feat_sample, f):
-    if np.mod(f, 1000) == 0:
-        logging.info('computed lengthscale for feature %i' % f)
-    dists = np.abs(items_feat_sample[:, np.newaxis] - items_feat_sample[np.newaxis, :])
-    # we exclude the zero distances. With sparse features, these would likely downplay the lengthscale.                                
-    med = np.median(dists[dists>0])
-    if np.isnan(med):
-        med = 1.0
-    return med         
-
-def compute_median_lengthscales(items_feat, multiply_heuristic_power=1.0, N_max=3000):
-    
-    if items_feat.shape[0] > N_max:
-        items_feat = items_feat[np.random.choice(items_feat.shape[0], N_max, replace=False)]
-    
-    ndims = items_feat.shape[1]
-    num_jobs = multiprocessing.cpu_count()
-    if num_jobs > max_no_jobs:
-        num_jobs = max_no_jobs
-    default_ls_value = Parallel(n_jobs=num_jobs, backend="multiprocessing")(delayed(_dists_f)(
-        items_feat[:, f], f) for f in range(ndims))
-            
-    ls_initial_guess = np.ones(ndims) * default_ls_value 
-    
-    logging.info('I am using a heuristic multiplier for the length-scale because median is too low to work in high-D spaces')
-    #ls_initial_guess *= 1000 # this worked reasonably well but was plucked out of thin air
-    ls_initial_guess *= items_feat.shape[1]**multiply_heuristic_power # this is a heuristic, see e.g. "On the High-dimensional 
-    #Power of Linear-time Kernel Two-Sample Testing under Mean-difference Alternatives" by Ramdas et al. 2014. In that 
-    # paper they refer to root(no. dimensions) because they square the lengthscale in the kernel function.   
-    
-    return ls_initial_guess 
-
 class GPPrefLearning(GPClassifierSVI):
     '''
     Preference learning with GP, with variational inference implementation. Can use stochastic variational inference.

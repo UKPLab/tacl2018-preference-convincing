@@ -8,6 +8,11 @@ we do the following simple test:
 - for a set of test pairs (users + arguments chosen at random from training set), predict the preference rating
 - for a set of test triples (users + argument pairs chosen at random from the training set), predict the pairwise label    
 
+TODO: move user analysis stuff to a separate script
+TODO: switch to 10-fold cross validation instead of training on all
+TODO: Add missing prior belief data
+TODO: Check whether the lmh labels are correctly converted to preferences -- in some cases they should be flipped
+
 Created on Sep 25, 2017
 
 @author: simpson
@@ -15,6 +20,8 @@ Created on Sep 25, 2017
 
 import numpy as np, os, sys
 from sklearn.metrics.classification import accuracy_score
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 sys.path.append("./python")
 sys.path.append("./python/analysis")
@@ -24,8 +31,8 @@ sys.path.append("./python/analysis/lukin_comparison")
 sys.path.append(os.path.expanduser("~/git/HeatMapBCC/python"))
 sys.path.append(os.path.expanduser("~/git/pyIBCC/python"))
 
-from preference_features import PreferenceComponents
-from gp_pref_learning import compute_median_lengthscales
+from preference_features import PreferenceComponentsSVI
+from gp_classifier_vb import compute_median_lengthscales
 
 use_entrenched = True
 
@@ -68,10 +75,10 @@ if __name__ == '__main__':
     ls_initial = compute_median_lengthscales(item_feat)
     person_ls_initial = compute_median_lengthscales(person_feat)
     
-    model = PreferenceComponents(nitem_features=ndims, ls=ls_initial, lsy=person_ls_initial, verbose=True, nfactors=20, 
-                rate_ls = 1.0 / np.mean(ls_initial), use_svi=True, use_fa=False, uncorrelated_noise=True, 
-                use_common_mean_t=False, max_update_size=500)
-    model.max_iter = 2
+    model = PreferenceComponentsSVI(nitem_features=ndims, ls=ls_initial, lsy=person_ls_initial, shape_s0=2, rate_s0=200,
+                                    verbose=False, nfactors=20, rate_ls = 1.0 / np.mean(ls_initial), 
+                                    uncorrelated_noise=True, use_common_mean_t=False)
+    model.max_iter = 200
     model.fit(personIDs_train, trainids_a1, trainids_a2, item_feat, prefs_train, person_feat, optimize=False, 
               nrestarts=1, input_type='zero-centered')
         
@@ -86,7 +93,6 @@ if __name__ == '__main__':
     test_arg_ids = np.arange(100) # PLACEHOLDER -- replace this with the real document IDs loaded from file
     test_item_feat = item_feat[test_arg_ids, :] # PLACEHOLDER -- replace this with the real test document IDs loaded from file
     # ***** End *****
-    
     
     Ntest = len(test_arg_ids) # keep this
     testids = np.arange(Ntest) # keep this -- this is the index into the test_item_feat. In this case, we test all the items
@@ -108,12 +114,11 @@ if __name__ == '__main__':
     f_val = np.zeros(test_person_feat.shape[1]) + feat_min
         
     for p in range(feat_range):
-        for f in range(test_person_feat.shape[1]):
+        for f in range(npersonality_feats):
             test_person_feat[p, f] = f_val[f]
             
             if np.mod(p+1, (nfeat_vals ** f) ) == 0:
-                f_val[f] += 1
-                f_val[f] = np.mod(f_val[f], nfeat_vals)
+                f_val[f] = np.mod(f_val[f], nfeat_vals) + 1
 
     testids = np.tile(testids[:, None], (1, feat_range)).flatten()
     test_people = np.tile(test_people[None, :], (Ntest, 1)).flatten()
