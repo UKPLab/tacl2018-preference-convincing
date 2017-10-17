@@ -1,18 +1,17 @@
 Dependencies for running gp_pref_learning model:
 
-scikit-learn==0.18.1
-scipy==0.19.0
-numpy==1.12.1
+   * scikit-learn==0.18.1
+   * scipy==0.19.0
+   * numpy==1.12.1
 
 Pull these repositories from Github and add the /python directories to your pythonpath:
 
-https://github.com/edwinrobots/pyIBCC
-https://github.com/edwinrobots/HeatMapBCC
+   * https://github.com/edwinrobots/pyIBCC
+   * https://github.com/edwinrobots/HeatMapBCC
 
 For running the experiments, please see the requirements.txt for further dependencies. 
 
-gp_pref_learning class is in python/models/gp_pref_learning.py.
-
+To run preference learning, see gp_pref_learning class in python/models/gp_pref_learning.py.
 To see an example and test your setup, please run python/test/gp_pref_learning_test.py
 
 For setting the prior mean function:
