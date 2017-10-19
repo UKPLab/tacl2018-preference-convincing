@@ -299,8 +299,9 @@ class GPPrefLearning(GPClassifierSVI):
     def fit(self, items1_coords=None, items2_coords=None, item_features=None, preferences=None, totals=None, 
             process_obs=True, mu0=None, optimize=False, input_type='binary'):
         '''
-        preferences -- Preferences by default are 1 = item 1 is preferred to item 2, or 0 = item 2 is preferred to item 1, 
-        0.5 = no preference. This is controlled by input_type.
+        preferences -- Preferences by default can be 1 = item 1 is preferred to item 2, 
+        or 0 = item 2 is preferred to item 1, 0.5 = no preference, or values in between.
+        For preferences that are not normalised to between 0 and 1, the value of input_type needs to be set. 
         input_type -- can be 'binary', meaning preferences must be [0,1], or 'zero-centered' meaning that value 1 
         indicates item 1 is preferred, value -1 indicates item 2 is preferred, and 0 indicates no preference. The value
         are converted internally to [0,1]. 

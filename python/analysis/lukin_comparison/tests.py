@@ -120,8 +120,8 @@ if __name__ == '__main__':
             if np.mod(p+1, (nfeat_vals ** f) ) == 0:
                 f_val[f] = np.mod(f_val[f], nfeat_vals) + 1
 
-    testids = np.tile(testids[:, None], (1, feat_range)).flatten()
-    test_people = np.tile(test_people[None, :], (Ntest, 1)).flatten()
+    testids = np.tile(testids[:, None], (1, feat_range))
+    test_people = np.tile(test_people[None, :], (Ntest, 1))
 
     if use_entrenched:
         test_person_feat = np.concatenate((test_person_feat, test_person_feat), axis=0)
@@ -129,31 +129,32 @@ if __name__ == '__main__':
         entrenched_feat[:Npeople] = 1
         test_person_feat = np.concatenate((test_person_feat, entrenched_feat), axis=1)
         
-        test_people = np.concatenate((test_people, test_people + feat_range))
-        testids = np.concatenate((testids, testids))
+        test_people = np.concatenate((test_people, test_people + feat_range), axis=1)
+        testids = np.concatenate((testids, testids), axis=1)
         
         Npeople = Npeople * 2
-             
+        
     # predict the ratings from each of the simulated people
     npairs = Npeople * Ntest
-    predicted_f = np.zeros(npairs)
+    predicted_f = np.zeros((Ntest, Npeople))
     # do it in batches of 500 because there are too many people
-    batchsize = 500
+    batchsize = 2000
     nbatches = int(np.ceil(npairs / float(batchsize)))
+    
     for b in range(nbatches):
         print "Predicting simulated users in batch %i of %i" % (b, nbatches)
         start = batchsize * b
         fin = batchsize * (b + 1)
         if fin > npairs:
             fin = npairs
-        predicted_f[start:fin] = model.predict_f(test_people[start:fin], testids[start:fin], 
+            
+        rows, cols = np.unravel_index(np.arange(start, fin), dims=(Ntest, Npeople))
+        predicted_f[rows, cols] = model.predict_f(test_people[rows, cols], 
+                                                 testids[rows, cols], 
                                                  test_item_feat, test_person_feat) 
     
-    # put into a matrix of row=item, col=person
-    predicted_f_mat = np.reshape(predicted_f, (Ntest, Npeople))
-    
     # who had the highest preference?
-    max_people_idx = np.argmax(predicted_f_mat, axis=1)
+    max_people_idx = np.argmax(predicted_f, axis=1)
         
     # get the features of the max people
     max_people_feats = test_person_feat[max_people_idx, :]
@@ -168,7 +169,7 @@ if __name__ == '__main__':
 
     if use_entrenched:
         fmt += '%i'
-        header += ',entrenched'
+        header += 'entrenched,'
         
     if not os.path.isdir('./results/lukin'):
         os.mkdir('./results/lukin')

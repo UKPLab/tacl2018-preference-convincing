@@ -65,14 +65,13 @@ from scipy.stats import multivariate_normal as mvn, norm
 import logging
 from gp_classifier_vb import matern_3_2_from_raw_vals, derivfactor_matern_3_2_from_raw_vals
 from gp_pref_learning import GPPrefLearning, get_unique_locations, pref_likelihood
-from scipy.linalg import cholesky, solve_triangular, block_diag
+from scipy.linalg import block_diag
 from scipy.special import gammaln, psi
 from scipy.stats import gamma
 from scipy.optimize import minimize
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.gaussian_process import GaussianProcessRegressor as GPR
 from sklearn.gaussian_process.kernels import Matern
-from preference_features2 import PreferenceComponents
 
 def expec_output_scale(shape_s0, rate_s0, N, invK, f_mean, m, invK_f_cov=None, f_cov=None):
     # learn the output scale with VB
@@ -199,22 +198,33 @@ class PreferenceComponents(object):
         # In practice: smallish precision scales s seem to work well, but small shape_s0 values and very small s values
         # should be avoided as they lead to errors.
         self.shape_sf0 = shape_s0
-        self.rate_sf0 = rate_s0
+        self.rate_sf0 = rate_s0 / 2.0 # split variance in two -- noise and components
                 
         # For the latent means and components, the relative sizes of the scales controls how much the components can 
         # vary relative to the overall f, i.e. how much they learn from f. A high s will mean that the wy & t functions 
         # have smaller scale relative to f, so they will be less fitted to f. By default we assume a common prior.   
+        # Since the mean of f is formed by wy+t, we may wish to make the scale of f and wy+t similar. Since wy is a 
+        # product of gaussian-distributed random variables, the variance of wy is defined in the equations in 
+        # "Products and Convolutions of Gaussian Probability Density Functions", P.A. Bromiley 2003 (updated 2014).
+        # To make var(wy) = var(f), assume var(w) = var(y), then var(w)=var(y) = 2 * var(f)^2. We use this as our 
+        # default, but halve var(wy) so that var(wy)=var(t). In practice, since var(f) represents noise, we may set the 
+        # prior for f to be smaller --> this leads us to use big values for var(w) and var(y).  
         self.shape_sw0 = shape_s0
-        self.rate_sw0 = rate_s0# * 10
+        self.rate_sw0 = rate_s0 # don't multiply by two because we are halving the variance 
                             
         self.shape_sy0 = shape_s0
-        self.rate_sy0 = rate_s0# * 10 #* 100 --> this made it detect features, but not very well.
+        self.rate_sy0 =  rate_s0
     
         # if the scale doesn't matter, then let's fix the mean to be scaled to one? However, fixing t's scale and not
         # the noise scale in f means that since preference learning can collapse toward very large scales, the noise
         # can grow large and the shared mean t has less influence. So it makes sense to limit noise and  
         self.shape_st0 = shape_s0
         self.rate_st0 = rate_s0
+        
+        if use_common_mean_t: # make var(wy+t) = var(f) 
+            self.rate_sw0 /= 2.0
+            self.rate_sy0 /= 2.0
+            self.rate_st0 /= 2.0
         
         # y has different length-scales because it is over user features space
         self.shape_ls = shape_ls
@@ -286,6 +296,7 @@ class PreferenceComponents(object):
         else:
             self.lsy = np.zeros(self.nperson_features) + self.lsy  
             self.Ky_block = self.kernel_func(self.person_features, self.lsy)
+            self.invKy_block = np.linalg.inv(self.Ky_block)
     
             blocks = [self.Ky_block for _ in range(self.Nfactors)]
             self.Ky = block_diag(*blocks) 
@@ -751,6 +762,13 @@ class PreferenceComponents(object):
             coords_1 = item_features[items_1_coords]
             coords_2 = item_features[items_2_coords]
          
+        if person_features is None and self.person_features:
+            logging.debug('No person features provided -- assuming same people as during training')
+            reuse_training_people = True
+            person_features = self.person_features
+        else:
+            reuse_training_people = False                  
+         
         y = self._predict_y(person_features, len(upeople))
             
         # this could be made more efficient because duplicate locations are computed separately!
@@ -762,6 +780,10 @@ class PreferenceComponents(object):
         wy_2p = w2.dot(y)
         mu0_1 = wy_1p + t1
         mu0_2 = wy_2p + t2         
+         
+        if not reuse_training_people:
+            mu0 = np.concatenate((mu0_1, mu0_2), axis=0)
+            return pref_likelihood(f=mu0, subset_idxs=[], v=np.arange(Npairs), u=np.arange(Npairs, Npairs*2))
          
         for p in upeople:            
             pidxs = personids == p
@@ -787,6 +809,13 @@ class PreferenceComponents(object):
             coords_1 = items_1_coords
         else:
             coords_1 = item_features[items_1_coords]         
+
+        if person_features is None and self.person_features:
+            logging.debug('No person features provided -- assuming same people as during training')
+            person_features = self.person_features
+            reuse_training_people = True
+        else:
+            reuse_training_people = False
          
         y = self._predict_y(person_features, len(upeople))
          
@@ -794,6 +823,9 @@ class PreferenceComponents(object):
 
         wy_1p = w1.dot(y)
         mu0_1 = wy_1p + t1
+         
+        if not reuse_training_people:
+            return mu0_1[np.arange(N), personids]
          
         for p in upeople:            
             pidxs = personids == p
@@ -825,16 +857,16 @@ class PreferenceComponents(object):
     
     def _predict_y(self, person_features, Npeople):
         if person_features is None:
-            y = np.zeros((self.Nfactors, Npeople))
+            y = np.ones((self.Nfactors, Npeople))
         else:
             #distances for y-space. Kernel between p and people already seen
             Ky = self.kernel_func(person_features, self.lsy, self.person_features)
-            invKy_train = np.linalg.inv(self.Ky_block)
+            invKy_train = self.invKy_block
             y_train = self.y.T
             
             # use kernel to compute y
             y = Ky.dot(invKy_train).dot(y_train)
-            y *= self.rate_sy / self.shape_sy      
+            #y *= self.rate_sy / self.shape_sy # why was this line used before? It seems wrong.      
             y = y.T   
             
         return y        
@@ -1214,7 +1246,7 @@ class PreferenceComponentsFA(PreferenceComponents):
         self.w = np.zeros((self.N, self.Nfactors))
 
     def _init_y(self):
-        self.y = np.zeros((self.Nfactors, self.Npeople))
+        self.y = np.ones((self.Nfactors, self.Npeople))
         
     def _optimize(self, personIDs, items_1_coords, items_2_coords, item_features, preferences, person_features=None, 
                  maxfun=20, use_MAP=False, nrestarts=1, input_type='binary'):
@@ -1585,15 +1617,14 @@ class PreferenceComponentsSVI(PreferenceComponents):
         if self.use_svi_people and person_features is not None:
             Ky = self.kernel_func(person_features, self.lsy, self.y_inducing_coords)                    
             # use kernel to compute y
-            invKy_train = self.Ky_mm_block
+            invKy_train = self.invKy_mm_block
             y_train = self.y_u.reshape(self.Nfactors, self.y_ninducing).T
             
             # use kernel to compute y
             y = Ky.dot(invKy_train).dot(y_train)
-            y *= self.rate_sy / self.shape_sy      
             return y.T
         else:
-            return super(PreferenceComponentsSVI, self)._compute_output_y(person_features, Npeople)
+            return super(PreferenceComponentsSVI, self)._predict_y(person_features, Npeople)
             
     def _expec_f_p(self, p, mu0_output):
         if not self.use_noise_svi:
@@ -1859,8 +1890,8 @@ class PreferenceComponentsSVI(PreferenceComponents):
     def _update_sample(self):
         self._update_sample_idxs()
         
-        sw_mm = np.zeros((self.Nfactors * self.ninducing, self.Nfactors * self.ninducing))
-        sw_nm = np.zeros((self.Nfactors * self.N, self.Nfactors * self.ninducing))
+        sw_mm = np.zeros((self.Nfactors * self.ninducing, self.Nfactors * self.ninducing), dtype=float)
+        sw_nm = np.zeros((self.Nfactors * self.N, self.Nfactors * self.ninducing), dtype=float)
         for f in range(self.Nfactors):
             fidxs = np.arange(self.ninducing) + (self.ninducing * f)
             sw_mm[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]
@@ -1878,8 +1909,8 @@ class PreferenceComponentsSVI(PreferenceComponents):
         self.Kts_nm = self.K_nm / st   
         
         if self.use_svi_people:
-            sy_mm = np.zeros((self.Nfactors * self.y_ninducing, self.Nfactors * self.y_ninducing))
-            sy_nm = np.zeros((self.Nfactors * self.Npeople, self.Nfactors * self.y_ninducing))
+            sy_mm = np.zeros((self.Nfactors * self.y_ninducing, self.Nfactors * self.y_ninducing), dtype=float)
+            sy_nm = np.zeros((self.Nfactors * self.Npeople, self.Nfactors * self.y_ninducing), dtype=float)
             for f in range(self.Nfactors):
                 fidxs = np.arange(self.y_ninducing) + (self.y_ninducing * f)
                 sy_mm[fidxs, :] = self.shape_sy[f] / self.rate_sy[f]
