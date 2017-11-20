@@ -15,7 +15,7 @@ Provide a zoomed-in variant for the best 25 features.
 import os, pickle
 import numpy as np
 import matplotlib.pyplot as plt
-from tests import load_train_test_data, load_embeddings, load_ling_features, get_fold_data, get_features
+from tests import load_train_test_data, load_embeddings, load_ling_features, get_fold_data, load_features
 from matplotlib.ticker import MaxNLocator
 
 if __name__ == '__main__':
@@ -119,7 +119,7 @@ if __name__ == '__main__':
                                                                     X, uids, utexts = get_fold_data(folds, fold, docids)
                                                                                   
         # get the embedding values for the test data -- need to find embeddings of the whole piece of text
-        items_feat, valid_feats = get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1, trainids_a2, uids, 
+        items_feat, valid_feats = load_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1, trainids_a2, uids, 
                                                 word_embeddings, X)
               
         nfeats = len(valid_feats)

@@ -23,7 +23,7 @@ sys.path.append(os.path.expanduser("~/git/pyIBCC/python"))
 
 import numpy as np
 import matplotlib.pyplot as plt
-from tests import run_gppl, load_ling_features, get_features, get_noisy_fold_data, load_embeddings, \
+from tests import run_gppl, load_ling_features, load_features, get_noisy_fold_data, load_embeddings, \
                         compute_lengthscale_heuristic
 from data_loading import load_train_test_data
 import networkx as nx
@@ -275,7 +275,7 @@ if __name__ == '__main__':
     trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test,\
                         X, uids, utexts = get_noisy_fold_data(folds, fold, docids, 1.0)                            
         
-    items_feat, valid_feats = get_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1, 
+    items_feat, valid_feats = load_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1, 
                                            trainids_a2, uids, embeddings, X, index_to_word_map, utexts)
     ndims = items_feat.shape[1]
     # Generate simple training data containing a->b, b->c, c->a cycle.

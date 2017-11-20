@@ -113,12 +113,12 @@ def process_list_of_turker_assts(pairlist):
     
     pairlist = pairlist['annotatedArgumentPair']
     for pair in pairlist:
-        for workerlabel in pair['mTurkAssignments']['mTurkAssignment']:
-            row = [pair['id'].encode('utf-8'), workerlabel['turkID'].encode('utf-8'), 
-                   workerlabel['value'].encode('utf-8'),
-                   pair['arg1']['text'].encode('utf-8').replace('\n', ' ').replace('\t', ' '), 
-                   pair['arg2']['text'].encode('utf-8').replace('\n', ' ').replace('\t', ' ')]
-            crowdlabels.append(row)
+        workerlabel = pair['mTurkAssignments']['mTurkAssignment']
+        row = [pair['id'].encode('utf-8'), workerlabel['turkID'].encode('utf-8'), 
+               workerlabel['value'].encode('utf-8'),
+               pair['arg1']['text'].encode('utf-8').replace('\n', ' ').replace('\t', ' '), 
+               pair['arg2']['text'].encode('utf-8').replace('\n', ' ').replace('\t', ' ')]
+        crowdlabels.append(row)
         
     return np.array(crowdlabels)
 
