@@ -1,5 +1,10 @@
 '''
-TODO 1: lower bound should use inducing points in SVI option
+TODO: SVI and non-SVI implementations give different answers
+TODO: SVI results seem not to converge with small datasets
+TODO: non-SVI results seem to have overly small w and y -- perhaps need broader priors (smaller s)
+TODO: SVI results seem to vary hugely between runs or on different computers despite same seeds -- need to verify this is true
+TODO: Lower bound can go down with SVI -- what about without SVI? Bug in LB or in the SVI algorithm? 
+TODO: Lower bound for noise SVI should be computed inside GP code -- is this possible? I think we can just add the missing cov_mu term.
 
 Preference learning model for identifying relevant input features of items and people, plus finding latent 
 characteristics of items and people. Can be used to predict preferences or rank items, therefore could be part of
@@ -88,16 +93,20 @@ def expec_output_scale(shape_s0, rate_s0, N, invK, f_mean, m, invK_f_cov=None, f
     
     return shape_s, rate_s
 
-def lnp_output_scale(shape_s0, rate_s0, shape_s, rate_s):
-    s = shape_s / rate_s
-    Elns = psi(shape_s) - np.log(rate_s)
+def lnp_output_scale(shape_s0, rate_s0, shape_s, rate_s, s=None, Elns=None):
+    if s is None:
+        s = shape_s / rate_s
+    if Elns is None:
+        Elns = psi(shape_s) - np.log(rate_s)
     
     logprob_s = - gammaln(shape_s0) + shape_s0 * np.log(rate_s0) + (shape_s0-1) * Elns - rate_s0 * s
     return logprob_s            
         
-def lnq_output_scale(shape_s, rate_s):
-    s = shape_s / rate_s
-    Elns = psi(shape_s) - np.log(rate_s)
+def lnq_output_scale(shape_s, rate_s, s=None, Elns=None):
+    if s is None:
+        s = shape_s / rate_s
+    if Elns is None:
+        Elns = psi(shape_s) - np.log(rate_s)
     
     lnq_s = - gammaln(shape_s) + shape_s * np.log(rate_s) + (shape_s-1) * Elns - rate_s * s
     return lnq_s
@@ -150,7 +159,37 @@ def svi_update_gaussian(invQi_y, mu0_n, mu_u, K_mm, invK_mm, K_nm, Lambda_factor
     else:
         covpair =  K_nm.dot(invK_mm)    
         C = K_nn + (covpair_uS - covpair.dot(K_mm)).dot(covpair.T)
-    return fhat, C, invS, invSm, fhat_u, invK_mm_S
+    return fhat, C, invS, invSm, fhat_u, invK_mm_S, S
+
+def expec_pdf_gaussian(K, invK, Elns, N, s, f, mu, f_cov, mu_cov):
+    '''
+    Expected value of the PDF with respect to the function values with expectation f, the mean values with expectation
+    mu, and the inverse covariance scale with expectation s.
+    
+    Parameters
+    ----------
+    
+    K : covariance matrix (without scaling)
+    invK : inverse of the covariance matrix (without scaling)
+    Elns : expected log of the covariance inverse scale factor
+    N : number of data points
+    s : expected covariance inverse scale factor
+    f : expected function values
+    mu : expected mean values
+    f_cov : covariance of the function values
+    mu_cov : covariance of the mean parameters; this is needed if the mean is a model parameter inferred using VB
+    '''
+    _, logdet_K = np.linalg.slogdet(K)
+    logdet_Ks = - np.sum(N * Elns) + logdet_K
+    invK_expecF = (s * invK).dot(f_cov + (f-mu).dot((f-mu).T) + mu_cov)
+    logpf = 0.5 * (- np.log(2*np.pi) * N - logdet_Ks - np.trace(invK_expecF))
+    
+    return logpf
+
+def expec_q_gaussian(f_cov, D):
+    _, logdet_C = np.linalg.slogdet(f_cov)
+    logqf = 0.5 * (- np.log(2*np.pi)*D - logdet_C - D)
+    return logqf    
 
 class PreferenceComponents(object):
     '''
@@ -160,7 +199,7 @@ class PreferenceComponents(object):
 
     def __init__(self, nitem_features, nperson_features=0, mu0=0, shape_s0=1, rate_s0=1, 
                  shape_ls=1, rate_ls=100, ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=20, 
-                 use_common_mean_t=True, uncorrelated_noise=False, use_noise_svi=True, kernel_func='matern_3_2',
+                 use_common_mean_t=True, uncorrelated_noise=False, kernel_func='matern_3_2',
                  max_update_size=10000, ninducing=500, forgetting_rate=0.9, delay=1.0):
         '''
         Constructor
@@ -173,10 +212,7 @@ class PreferenceComponents(object):
         self.nperson_features = nperson_features
         self.mu0 = mu0 # these are abstract latent functions, not related to any real-world variables: mu0=0 by default
         # other means should be provided later so that we can put priors on type of person liking type of object
-        self.use_noise_svi = use_noise_svi
-        if uncorrelated_noise:
-            logging.info('Switching off SVI for the noise model because we are using uncorrelated noise.')
-            self.use_noise_svi = False
+
         self.ninducing = ninducing
         self.max_update_size = max_update_size # maximum number of data points to update in each SVI iteration of noise GPs
 
@@ -198,7 +234,7 @@ class PreferenceComponents(object):
         # In practice: smallish precision scales s seem to work well, but small shape_s0 values and very small s values
         # should be avoided as they lead to errors.
         self.shape_sf0 = shape_s0
-        self.rate_sf0 = rate_s0 / 2.0 # split variance in two -- noise and components
+        self.rate_sf0 = rate_s0 / 2.0 # split variance -- noise and components
                 
         # For the latent means and components, the relative sizes of the scales controls how much the components can 
         # vary relative to the overall f, i.e. how much they learn from f. A high s will mean that the wy & t functions 
@@ -206,11 +242,11 @@ class PreferenceComponents(object):
         # Since the mean of f is formed by wy+t, we may wish to make the scale of f and wy+t similar. Since wy is a 
         # product of gaussian-distributed random variables, the variance of wy is defined in the equations in 
         # "Products and Convolutions of Gaussian Probability Density Functions", P.A. Bromiley 2003 (updated 2014).
-        # To make var(wy) = var(f), assume var(w) = var(y), then var(w)=var(y) = 2 * var(f)^2. We use this as our 
+        # To make var(wy) = var(f), assume var(w) = var(y), then var(w)=var(y) = 2 * var(f). We use this as our 
         # default, but halve var(wy) so that var(wy)=var(t). In practice, since var(f) represents noise, we may set the 
-        # prior for f to be smaller --> this leads us to use big values for var(w) and var(y).  
-        self.shape_sw0 = shape_s0
-        self.rate_sw0 = rate_s0 # don't multiply by two because we are halving the variance 
+        # prior for f to be smaller --> this leads us to use big values for var(w) and var(y).
+        self.shape_sw0 = shape_s0 
+        self.rate_sw0 = rate_s0
                             
         self.shape_sy0 = shape_s0
         self.rate_sy0 =  rate_s0
@@ -219,12 +255,11 @@ class PreferenceComponents(object):
         # the noise scale in f means that since preference learning can collapse toward very large scales, the noise
         # can grow large and the shared mean t has less influence. So it makes sense to limit noise and  
         self.shape_st0 = shape_s0
-        self.rate_st0 = rate_s0
+        self.rate_st0 = rate_s0 / 2.0
         
-        if use_common_mean_t: # make var(wy+t) = var(f) 
-            self.rate_sw0 /= 2.0
-            self.rate_sy0 /= 2.0
-            self.rate_st0 /= 2.0
+        if not use_common_mean_t: # make var(wy+t) = var(f) 
+            self.rate_sw0 *= np.sqrt(2.0)
+            self.rate_sy0 *= np.sqrt(2.0)
         
         # y has different length-scales because it is over user features space
         self.shape_ls = shape_ls
@@ -246,8 +281,8 @@ class PreferenceComponents(object):
         
         self.t_mu0 = 0
         
-        self.conv_threshold = 1e-1
-        self.max_iter = 100
+        self.conv_threshold = 1e-3
+        self.max_iter = 1000
         self.min_iter = 3
         self.n_converged = 10 # number of iterations while apparently converged (avoids numerical errors)
         self.vb_iter = 0
@@ -277,7 +312,7 @@ class PreferenceComponents(object):
             logging.error('PreferenceComponents: Invalid covariance type %s' % cov_type)        
     
     def _init_w(self):
-        self.K = self.kernel_func(self.obs_coords, self.ls)
+        self.K = self.kernel_func(self.obs_coords, self.ls) + np.eye(self.N) * 1e-6
         self.invK = np.linalg.inv(self.K)
     
         # kernel used by w
@@ -287,15 +322,19 @@ class PreferenceComponents(object):
         
         self.sw_matrix = np.ones(self.Kw.shape) * self.shape_sw0 / self.rate_sw0
         
-        self.w = mvn.rvs(np.zeros(self.Nfactors * self.N), cov=self.Kw / self.sw_matrix).reshape((self.Nfactors, self.N)).T
+        # initialise the factors randomly -- otherwise they can get stuck because there is nothing to differentiate them,
+        # i.e. the cluster identifiability problem        
+        self.w = np.zeros((self.N, self.Nfactors))#mvn.rvs(np.zeros(self.Nfactors * self.N), cov=self.Kw / self.sw_matrix).reshape((self.Nfactors, self.N)).T
         self.w_cov = np.diag(np.ones(self.N*self.Nfactors)) # use ones to avoid divide by zero
+        
+        self.Sigma_w = np.zeros((self.N, self.N, self.Nfactors))
         
     def _init_y(self):
         if self.person_features is None: 
             self.invKy = np.diag(np.ones(self.Npeople * self.Nfactors)) # they are all ones
         else:
             self.lsy = np.zeros(self.nperson_features) + self.lsy  
-            self.Ky_block = self.kernel_func(self.person_features, self.lsy)
+            self.Ky_block = self.kernel_func(self.person_features, self.lsy) + np.eye(self.Npeople) * 1e-6
             self.invKy_block = np.linalg.inv(self.Ky_block)
     
             blocks = [self.Ky_block for _ in range(self.Nfactors)]
@@ -305,45 +344,61 @@ class PreferenceComponents(object):
         # needs the brackets to get the right shape for some reason
         self.sy_matrix = np.ones(self.invKy.shape) * (self.shape_sy0 / float(self.rate_sy0))
         
-        self.y = np.mod(np.arange(self.Npeople), self.Nfactors).astype(float) + 1
-        self.y /= np.max(self.y)
-        self.y = self.y * self.rate_sy[:, np.newaxis] / self.shape_sy[:, np.newaxis]
-        self.y_cov = np.diag(np.ones(self.Npeople*self.Nfactors)) # use ones to avoid divide by zero
+        #self.y = mvn.rvs(np.zeros(self.Npeople), self.Ky_block, self.Nfactors)
+        #self.y /= (self.shape_sy/self.rate_sy)[:, None]
         
+        #self.y = np.mod(np.arange(self.Npeople), self.Nfactors).astype(float) + 1
+        #self.y /= np.max(self.y)
+        #self.y = self.y * self.rate_sy[:, np.newaxis] / self.shape_sy[:, np.newaxis]
+        
+        self.y = np.ones((self.Nfactors, self.Npeople))
+        
+        self.y_cov = np.diag(np.ones(self.Npeople*self.Nfactors)) # use ones to avoid divide by zero
+        #self.y_cov = np.diag(np.zeros(self.Npeople*self.Nfactors)) # use ones to avoid divide by zero
+                
+        self.Sigma_y = np.zeros((self.Npeople, self.Npeople, self.Nfactors))
+
     def _init_t(self):
         self.t_cov = np.diag(np.ones(self.N))
+        self.Sigma_t = np.zeros((self.N, self.N))
         
-        self._choose_inducing_points()
+    def _init_obs(self, p):
+        if p not in self.coordidxs:
+            internal_coords_p = self.pref_gp[p].obs_coords
+            self.matches[p] = np.ones((internal_coords_p.shape[0], self.N), dtype=bool)
+            for dim in range(internal_coords_p.shape[1]):
+                self.matches[p] = self.matches[p] & np.equal(internal_coords_p[:, dim:dim+1], 
+                                                                       self.obs_coords[:, dim:dim+1].T)
+            self.coordidxs[p] = np.sort(np.argwhere(np.sum(self.matches[p], 0))).flatten()        
         
-    def _choose_inducing_points(self):
-        ''' 
-        If the child GPs use SVI, they can use a common set of inducing points to save computing the 
-        kernels multiple times. This may not help if each person has only a few observations. 
-        '''
-        if not self.use_noise_svi:
-            return 
+        if p in self.invKf:
+            return
         
-        # choose a set of inducing points -- for testing we can set these to the same as the observation points.
-        if self.ninducing > self.obs_coords.shape[0]:
-            self.ninducing = self.obs_coords.shape[0]
+        if self.pref_gp[p].K is None or len(self.pref_gp[p].K) == 0: # other conditions make this redundant: self.use_noise_svi? 
+            self.pref_gp[p].K = self.pref_gp[p].kernel_func(self.pref_gp[p].obs_coords, self.pref_gp[p].ls, 
+                                                                operator=self.pref_gp[p].kernel_combination)
+        self.invKf[p] = np.linalg.inv(self.pref_gp[p].K)          
+            
+    def _init_f(self, use_noise_svi):
+        self.invKf = {}
+        self.coordidxs = {}
+        self.wyt_cov = np.zeros((self.Npeople, self.N, self.N))
         
-        init_size = 300
-        if self.ninducing > init_size:
-            init_size = self.ninducing
-        kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.ninducing)
-        kmeans.fit(self.obs_coords)
-        
-        self.inducing_coords = kmeans.cluster_centers_
-
-        self.K_mm = self.kernel_func(self.inducing_coords, self.ls) + 1e-6 * np.eye(self.ninducing) # jitter
-        self.invK_mm = np.linalg.inv(self.K_mm)
-        self.K_nm = self.kernel_func(self.obs_coords, self.ls, self.inducing_coords)
-        
-        if not self.uncorrelated_noise:
-            for person in self.pref_gp:
-                self.pref_gp[person].init_inducing_points(self.inducing_coords, self.K_mm, self.invK_mm, self.K_nm)
+        for person in self.people:
+            self.pref_gp[person] = GPPrefLearning(self.nitem_features, self.mu0, self.shape_sf0, self.rate_sf0,
+                                    self.shape_ls, self.rate_ls, self.ls, 
+                                    use_svi=use_noise_svi, delay=self.delay, 
+                                    forgetting_rate=self.forgetting_rate, 
+                                    kernel_func='diagonal' if self.uncorrelated_noise else self.cov_type,
+                                    ninducing=self.N if self.uncorrelated_noise else 500)
+            self.pref_gp[person].max_iter_VB = 1
+            self.pref_gp[person].min_iter_VB = 1
+            self.pref_gp[person].max_iter_G = 1
+            self.pref_gp[person].verbose = self.verbose
+            self.pref_gp[person].conv_threshold = 1e-3
+            self.pref_gp[person].conv_check_freq = 1
                 
-    def _init_params(self):       
+    def _init_params(self, use_noise_svi=False):       
         self.N = self.obs_coords.shape[0]
         
         if self.person_features is not None:
@@ -368,35 +423,18 @@ class PreferenceComponents(object):
         self.rate_sy = np.zeros(self.Nfactors) + self.rate_sy0
         self.shape_st = self.shape_st0
         self.rate_st = self.rate_st0                
-        
-        self.invKf = {}
-        self.coordidxs = {}
-        
-        if self.new_obs:
-            for person in self.people:
-                self.pref_gp[person] = GPPrefLearning(self.nitem_features, self.mu0, self.shape_sf0, self.rate_sf0,
-                                        self.shape_ls, self.rate_ls, self.ls, 
-                                        use_svi=self.use_noise_svi, delay=self.delay, 
-                                        forgetting_rate=self.forgetting_rate, 
-                                        kernel_func='diagonal' if self.uncorrelated_noise else self.cov_type,
-                                        ninducing=self.N if self.uncorrelated_noise else 500)
-                self.pref_gp[person].max_iter_VB = 1
-                self.pref_gp[person].min_iter_VB = 1
-                self.pref_gp[person].max_iter_G = 1 # could be left as default?
-                self.pref_gp[person].verbose = self.verbose
                 
-        # kernel used by t
+        if self.new_obs:
+            self._init_f(use_noise_svi)
+                
         self.ls = np.zeros(self.nitem_features) + self.ls
         
         self._init_w()
         self._init_y()
-        
-        # initialise the factors randomly -- otherwise they can get stuck because there is nothing to differentiate them,
-        # i.e. the cluster identifiability problem
-            
+        self._init_t()
+                    
         self.wy = self.w.dot(self.y)
-        
-        self._choose_inducing_points()
+        self._update_cov_mu0()
         
     def fit(self, personIDs=None, items_1_coords=None, items_2_coords=None, item_features=None, 
             preferences=None, person_features=None, optimize=False, maxfun=20, use_MAP=False, nrestarts=1, 
@@ -430,8 +468,10 @@ class PreferenceComponents(object):
             
             if person_features is not None:
                 self.person_features = np.array(person_features, copy=False) # rows per person, columns for feature values
+                self.nperson_features = self.person_features.shape[1]
             else:
                 self.person_features = None
+                self.nperson_features = 0 
             self.preferences = np.array(preferences, copy=False)
         else:  
             self.new_obs = False # do we have new data? If so, reset everything. If not, don't reset the child GPs.
@@ -442,11 +482,9 @@ class PreferenceComponents(object):
         # reset the iteration counters
         self.vb_iter = 0    
         diff = np.inf
-        if not use_lb:
-            old_w = np.inf
-            old_y = np.inf
-        else:
-            old_lb = -np.inf
+        old_w = np.inf
+        old_y = np.inf
+        old_lb = -np.inf
         converged_count = 0
         while (self.vb_iter < self.min_iter) or (((diff > self.conv_threshold) or (converged_count < self.n_converged)) 
                                                  and (self.vb_iter < self.max_iter)):
@@ -458,18 +496,23 @@ class PreferenceComponents(object):
                 self._expec_t()            
             
             # find the personality components
-            self._expec_w()
+            self._expec_w()          
+            
+            lb = self.lowerbound()
+            difflb = lb - old_lb
+            logging.debug('Iteration %i: lower bound = %.5f, difference = %.5f' % (self.vb_iter, lb, difflb))
+            
+            diffwy = np.max((np.max(np.abs(old_w - self.w)), np.max(np.abs(old_y - self.y))))
+            logging.debug( "Max difference in latent features: %f at %i iterations" % (diffwy, self.vb_iter))
             
             if not use_lb:
-                diff = np.max((np.max(np.abs(old_w - self.w)), np.max(np.abs(old_y - self.y))))
-                logging.debug( "Max difference in latent features: %f at %i iterations" % (diff, self.vb_iter))
-                old_w = self.w
-                old_y = self.y
+                diff = diffwy
             else:
-                lb = self.lowerbound()
-                logging.debug('Iteration %i: lower bound = %.5f, difference = %.5f' % (self.vb_iter, lb, lb-old_lb))
-                diff = lb - old_lb
-                old_lb = lb
+                diff = difflb                
+
+            old_w = self.w
+            old_y = self.y            
+            old_lb = lb
 
             self.vb_iter += 1
             
@@ -781,22 +824,18 @@ class PreferenceComponents(object):
         mu0_1 = wy_1p + t1
         mu0_2 = wy_2p + t2         
          
-        if not reuse_training_people:
-            mu0 = np.concatenate((mu0_1, mu0_2), axis=0)
-            return pref_likelihood(f=mu0, subset_idxs=[], v=np.arange(Npairs), u=np.arange(Npairs, Npairs*2))
-         
         for p in upeople:            
             pidxs = personids == p
             npairs_p = np.sum(pidxs)
                                     
-            if p in self.people:            
+            if p in self.people and reuse_training_people:            
                 pref_gp_p = self.pref_gp[p]
                 predicted_prefs[pidxs] = pref_gp_p.predict(coords_1[pidxs, :], coords_2[pidxs, :], 
                                       mu0_output1=mu0_1[pidxs, p:p+1], mu0_output2=mu0_2[pidxs, p:p+1], return_var=False).flatten()
             else:
-                mu0 = np.concatenate((mu0_1[pidxs,:], mu0_2[pidxs,:]), axis=0)
+                mu0 = np.concatenate((mu0_1[pidxs, p:p+1], mu0_2[pidxs, p:p+1]), axis=0)
                 predicted_prefs[pidxs] = pref_likelihood(f=mu0, subset_idxs=[], 
-                                     v=np.arange(npairs_p), u=np.arange(npairs_p, npairs_p*2))
+                                     v=np.arange(npairs_p), u=np.arange(npairs_p, npairs_p*2)).flatten()
                 
         return predicted_prefs
     
@@ -872,16 +911,6 @@ class PreferenceComponents(object):
         return y        
         
     def _expec_f_p(self, p, mu0_output):
-        if p not in self.invKf:
-            if self.pref_gp[p].cov_type == 'diagonal':
-                self.invKf[p] = 1.0
-            else:
-                if self.pref_gp[p].K is None or len(self.pref_gp[p].K) == 0:
-                    self.pref_gp[p].K = self.pref_gp[p].kernel_func(self.pref_gp[p].obs_coords, self.pref_gp[p].ls, 
-                                                                    operator=self.pref_gp[p].kernel_combination)
-                    
-                self.invKf[p] = np.linalg.inv(self.pref_gp[p].K)
-
         f, _ = self.pref_gp[p].predict_f(
                 items_coords=self.coordidxs[p] if self.vb_iter==0 else None,
                 items_features=self.obs_coords if self.vb_iter==0 else None, 
@@ -889,49 +918,47 @@ class PreferenceComponents(object):
                 reuse_output_kernel=True)
         self.f[self.coordidxs[p], p] = f.flatten()        
         
+    def _update_cov_mu0(self):
+        
+        for p in self.people:
+            for f in range(self.Nfactors):
+                fidxs = np.arange(self.N) + (f * self.N)
+                pidx = f * self.Npeople + p
+                self.wyt_cov[p] += self.w_cov[fidxs, :][:, fidxs] * self.y_cov[pidx, pidx] + \
+                                self.w_cov[fidxs, :][:, fidxs] * self.y[f, p:p+1]**2 + \
+                                self.w[:, f]**2 * self.y_cov[pidx, pidx]
+            if self.use_t:
+                self.wyt_cov[p] += self.t_cov
+            
+        return self.wyt_cov        
+        
     def _expec_f(self):
         '''
         Compute the expectation over each worker's latent preference function values for the set of objects.
         '''
+        
+        mu0_output = self.wy + self.t
+        # update covariance terms relating to wy+t. These are used in lower bound and by child noise GPs
+        self._update_cov_mu0()
+                           
         for p in self.pref_gp:
             if self.verbose:    
                 logging.debug( "Running expec_f for person %i..." % p )
             plabelidxs = self.personIDs == p
-            if self.pref_v is not None:
-                items_1_p = self.pref_v[plabelidxs]
-                items_2_p = self.pref_u[plabelidxs]
-                prefs_p = self.preferences[plabelidxs]
-            else: # no data passed in -- likely because it has already been provided in a previous function call 
-                items_1_p = None
-                items_2_p = None
-                prefs_p = None
-            
-            if self.vb_iter == 0 or self.new_obs:
-                mu0_output = self.t_mu0.copy()
-            else:
-                mu0_output = self.wy[:, p:p+1] + self.t            
-            
-            if not self.new_obs and self.vb_iter==0:
-                self.pref_gp[p]._init_params(mu0_output)
-            
-            self.pref_gp[p].fit(items_1_p, items_2_p, self.obs_coords, prefs_p, mu0=mu0_output, 
-                                process_obs=self.new_obs, input_type=self.input_type)                
+                        
+            self.pref_gp[p].fit(self.pref_v[plabelidxs], self.pref_u[plabelidxs], self.obs_coords, 
+                                self.preferences[plabelidxs], mu0=mu0_output[:, p:p+1], 
+                                cov_mu0=self.wyt_cov[p], process_obs=self.new_obs, input_type=self.input_type)                
             
             # find the index of the coords in coords_p in self.obs_coords
             # coordsidxs[p] needs to correspond to data points in same order as invKf[p]
-            if p not in self.coordidxs:
-                internal_coords_p = self.pref_gp[p].obs_coords
-                self.matches[p] = np.ones((internal_coords_p.shape[0], self.N), dtype=bool)
-                for dim in range(internal_coords_p.shape[1]):
-                    self.matches[p] = self.matches[p] & np.equal(internal_coords_p[:, dim:dim+1], 
-                                                                           self.obs_coords[:, dim:dim+1].T)
-                self.coordidxs[p] = np.sort(np.argwhere(np.sum(self.matches[p], 0))).flatten()
+            self._init_obs(p)
             
-            self._expec_f_p(p, mu0_output)
+            self._expec_f_p(p, mu0_output[:, p:p+1])
                 
             if self.verbose:    
                 logging.debug( "Expec_f for person %i out of %i. s=%.3f" % (p, len(self.pref_gp.keys()), self.pref_gp[p].s) )
-                
+
         self.new_obs = False # don't process the observations again unless fit() is called
 
         if self.verbose:
@@ -946,7 +973,7 @@ class PreferenceComponents(object):
             Sigma_yscaling = y_p.dot(y_p.T)
             Sigma_yscaling[range(self.Nfactors), range(self.Nfactors)] += self.y_cov # covariance between people?
         
-        Sigma_w = []
+        Sigma_w = np.zeros((N, N, self.Nfactors))
         
         for f in range(self.Nfactors):
             for g in range(self.Nfactors):
@@ -956,7 +983,7 @@ class PreferenceComponents(object):
                 Sigma_p[pidxs + f * N, :] += Sigma_p_rows
 
                 if f==g:
-                    Sigma_w.append(Sigma_p_fg)
+                    Sigma_w[:, :, f] = Sigma_p_fg
                     
         return Sigma_p, Sigma_w
                  
@@ -966,8 +993,8 @@ class PreferenceComponents(object):
         '''
         # Put a GP prior on w with covariance K/gamma and mean 0
         N = self.N
-        x = np.zeros((N, self.Nfactors))
         Sigma = np.zeros((N * self.Nfactors, N * self.Nfactors))
+        x = np.zeros((N, self.Nfactors))
 
         for p in self.pref_gp:
             pidxs = self.coordidxs[p]
@@ -977,7 +1004,7 @@ class PreferenceComponents(object):
             prec_p = self.invKf[p] * self.pref_gp[p].s
             invQ_f = prec_p.dot(self.f[pidxs, p:p+1] - self.t[pidxs, :])     
             # add the means for this person's observations to the list of observations, x 
-            x[pidxs, :] += y_p.T * invQ_f
+            x[pidxs, :] += y_p.T * invQ_f 
             
             Sigma_p, Sigma_w_p = self._compute_sigma_w_p(N, y_p, yidxs, prec_p, pidxs)
             Sigma += Sigma_p
@@ -994,6 +1021,7 @@ class PreferenceComponents(object):
             fidxs = np.arange(self.N) + (self.N * f)
             self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, self.N, 
                             self.invK, self.w[:, f:f+1], np.zeros((self.N, 1)), f_cov=self.w_cov[fidxs, :][:, fidxs])
+            
             self.sw_matrix[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]            
         
         self._expec_y()
@@ -1050,7 +1078,7 @@ class PreferenceComponents(object):
         for f in range(self.Nfactors):
             fidxs = np.arange(self.Npeople) + (self.Npeople * f)
             self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.Npeople, 
-                        self.invKy, self.y[f:f+1, :].T, np.zeros((self.Npeople, 1)), f_cov=self.y_cov[fidxs, :][:, fidxs])
+                        self.invKy_block, self.y[f:f+1, :].T, np.zeros((self.Npeople, 1)), f_cov=self.y_cov[fidxs, :][:, fidxs])
             
             self.sy_matrix[fidxs, :] = self.shape_sy[f] / self.rate_sy[f] # sy_rows
  
@@ -1062,12 +1090,10 @@ class PreferenceComponents(object):
         Sigma = np.zeros((N, N))
         x = np.zeros((N, 1))
         
-        #size_added = 0
         for p in self.pref_gp:
             pidxs = self.coordidxs[p]
             prec_f = self.invKf[p] * self.pref_gp[p].s
-            f_obs = self.f[pidxs, p:p+1] - self.wy[pidxs, p:p+1]
-            invQ_f = prec_f.dot(f_obs)
+            invQ_f = prec_f.dot(self.f[pidxs, p:p+1] - self.wy[pidxs, p:p+1])
             x[pidxs, :] += invQ_f
                 
             sigmarows = np.zeros((len(pidxs), N))
@@ -1083,50 +1109,56 @@ class PreferenceComponents(object):
 
         self.shape_st, self.rate_st = expec_output_scale(self.shape_st0, self.rate_st0, self.N, self.invK, 
                                                         self.t, np.zeros((self.N, 1)), f_cov=self.t_cov)
-        
+                
     def lowerbound(self):
         f_terms = 0
-        y_terms = 0
-        
         for p in self.pref_gp:
             f_terms += self.pref_gp[p].lowerbound()
+             
             if self.verbose:
                 logging.debug('s_f^%i=%.2f' % (p, self.pref_gp[p].s))
+                
+            break # do only one person for debugging
             
-        logpw = mvn.logpdf(self.w.T.flatten(), cov=self.Kw / self.sw_matrix, allow_singular=True)
-        logqw = mvn.logpdf(self.w.T.flatten(), mean=self.w.T.flatten(), cov=self.w_cov, allow_singular=True)
+        Elnsw = psi(self.shape_sw) - np.log(self.rate_sw)
+        Elnsy = psi(self.shape_sy) - np.log(self.rate_sy)
+        Elnst = psi(self.shape_st) - np.log(self.rate_st)
+        
+        sw = self.shape_sw / self.rate_sw
+        sy = self.shape_sy / self.rate_sy
+        st = self.shape_st / self.rate_st
+            
+        logpw = expec_pdf_gaussian(self.Kw, self.invKw, Elnsw, self.N*self.Nfactors, self.sw_matrix, 
+                                   self.w.T.reshape(self.N * self.Nfactors, 1), 0, self.w_cov, 0) 
+        logqw = expec_q_gaussian(self.w_cov, self.N * self.Nfactors) 
         
         if self.use_t:
-            logpt = mvn.logpdf(self.t.flatten(), mean=self.t_mu0.flatten(), cov=self.K * self.rate_st / self.shape_st)
-            logqt = mvn.logpdf(self.t.flatten(), mean=self.t.flatten(), cov=self.t_cov)
+            logpt = expec_pdf_gaussian(self.K, self.invK, Elnst, self.N, st, self.t, self.t_mu0, self.t_cov, 0)
+            logqt = expec_q_gaussian(self.t_cov, self.N) 
         else:
             logpt = 0
             logqt = 0        
 
-        if self.person_features is not None: 
-            logpy = mvn.logpdf(self.y.flatten(), cov=self.Ky / self.sy_matrix)
-        else:
-            logpy = 0
-            for f in range(self.Nfactors):
-                logpy += np.sum(norm.logpdf(self.y[f, :], scale=np.sqrt(self.rate_sy[f] / self.shape_sy[f])))
-        logqy = mvn.logpdf(self.y.flatten(), mean=self.y.flatten(), cov=self.y_cov)
+        logpy = expec_pdf_gaussian(self.Ky, self.invKy, Elnsy, self.Npeople*self.Nfactors, self.sy_matrix, 
+                                       self.y.reshape(self.Npeople * self.Nfactors, 1), 0, self.y_cov, 0) 
+        logqy = expec_q_gaussian(self.y_cov, self.Npeople*self.Nfactors) 
 
         logps_y = 0
         logqs_y = 0
         logps_w = 0
         logqs_w = 0        
         for f in range(self.Nfactors):
-            logps_w += lnp_output_scale(self.shape_sw0, self.rate_sw0, self.shape_sw[f], self.rate_sw[f])
-            logqs_w += lnq_output_scale(self.shape_sw[f], self.rate_sw[f])
+            logps_w += lnp_output_scale(self.shape_sw0, self.rate_sw0, self.shape_sw[f], self.rate_sw[f], sw[f], Elnsw[f])
+            logqs_w += lnq_output_scale(self.shape_sw[f], self.rate_sw[f], sw[f], Elnsw[f])
                     
-            logps_y += lnp_output_scale(self.shape_sy0, self.rate_sy0, self.shape_sy[f], self.rate_sy[f])
-            logqs_y += lnq_output_scale(self.shape_sy[f], self.rate_sy[f])
+            logps_y += lnp_output_scale(self.shape_sy0, self.rate_sy0, self.shape_sy[f], self.rate_sy[f], sy[f], Elnsy[f])
+            logqs_y += lnq_output_scale(self.shape_sy[f], self.rate_sy[f], sy[f], Elnsy[f])
         
-        logps_t = lnp_output_scale(self.shape_st0, self.rate_st0, self.shape_st, self.rate_st) 
-        logqs_t = lnq_output_scale(self.shape_st, self.rate_st)        
+        logps_t = lnp_output_scale(self.shape_st0, self.rate_st0, self.shape_st, self.rate_st, st, Elnst) 
+        logqs_t = lnq_output_scale(self.shape_st, self.rate_st, st, Elnst)
     
         w_terms = logpw - logqw + logps_w - logqs_w
-        y_terms += logpy - logqy + logps_y - logqs_y
+        y_terms = logpy - logqy + logps_y - logqs_y
         t_terms = logpt - logqt + logps_t - logqs_t
 
         lb = f_terms + t_terms + w_terms + y_terms
@@ -1134,8 +1166,9 @@ class PreferenceComponents(object):
         if self.verbose:
             logging.debug('s_w=%s' % (self.shape_sw/self.rate_sw))        
             logging.debug('s_y=%s' % (self.shape_sy/self.rate_sy))
-            logging.debug('s_t=%.2f' % (self.shape_st/self.rate_st))        
-            logging.debug('fterms=%.3f, wterms=%.3f, yterms=%.3f, tterms=%.3f' % (f_terms, w_terms, y_terms, t_terms))
+            logging.debug('s_t=%.2f' % (self.shape_st/self.rate_st))
+            
+        logging.debug('fterms=%.3f, wterms=%.3f, yterms=%.3f, tterms=%.3f' % (f_terms, w_terms, y_terms, t_terms))
     
         if self.verbose:
             logging.debug( "Iteration %i: Lower bound = %.3f, " % (self.vb_iter, lb) )
@@ -1388,11 +1421,16 @@ class PreferenceComponentsSVI(PreferenceComponents):
     
     def __init__(self, nitem_features, nperson_features=0, mu0=0, shape_s0=1, rate_s0=1, 
                  shape_ls=1, rate_ls=100, ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=20, 
-                 use_common_mean_t=True, uncorrelated_noise=False, kernel_func='matern_3_2',
+                 use_common_mean_t=True, uncorrelated_noise=False, use_noise_svi=True, kernel_func='matern_3_2',
                  max_update_size=10000, ninducing=500, forgetting_rate=0.9, delay=1.0):
         
         self.use_svi_people = False # this gets switched on later if we have features and correlations between people
         self.t_mu0_u = 0
+        
+        self.use_noise_svi = use_noise_svi
+        if uncorrelated_noise:
+            logging.info('Switching off SVI for the noise model because we are using uncorrelated noise.')
+            self.use_noise_svi = False        
 
         super(PreferenceComponentsSVI, self).__init__(nitem_features, nperson_features, mu0, shape_s0, rate_s0, 
                  shape_ls, rate_ls, ls, shape_lsy, rate_lsy, lsy, verbose, nfactors, use_common_mean_t, 
@@ -1405,10 +1443,9 @@ class PreferenceComponentsSVI(PreferenceComponents):
         if not self.use_svi_people:
             return super(PreferenceComponentsSVI, self)._init_y()
         
-        # needs the brackets to get the right shape for some reason
-        self.y = np.mod(np.arange(self.Npeople), self.Nfactors).astype(float) + 1
-        self.y /= np.max(self.y)
-        self.y = self.y * self.rate_sy[:, np.newaxis] / self.shape_sy[:, np.newaxis]        
+        #self.y = np.mod(np.arange(self.Npeople), self.Nfactors).astype(float) + 1
+        #self.y /= np.max(self.y)
+        self.y = self.Ky_nm_block.dot(self.invKy_mm_block).dot(self.y_u.T).T
         
         if not self.use_svi_people:        
             self.y_cov = np.diag(np.ones(self.Npeople*self.Nfactors)) # use ones to avoid divide by zero
@@ -1422,9 +1459,11 @@ class PreferenceComponentsSVI(PreferenceComponents):
     def _init_params(self):       
         if self.person_features is not None:
             self.use_svi_people = True
-            
-        super(PreferenceComponentsSVI, self)._init_params()
+        super(PreferenceComponentsSVI, self)._init_params(self.use_noise_svi)
+        self._choose_inducing_points()
         
+    # merge this with below... should not be possible to use SVI with the child GPs without SVI for the factors.
+    # make sure correct setting is used for the child GPs in their constructor...
     def _choose_inducing_points(self):
         # choose a set of inducing points -- for testing we can set these to the same as the observation points.
         nobs = self.obs_coords.shape[0]
@@ -1433,29 +1472,35 @@ class PreferenceComponentsSVI(PreferenceComponents):
         if self.update_size > nobs:
             self.update_size = nobs 
             
-        # For w and t               
-        if self.ninducing > self.obs_coords.shape[0]:
-            self.ninducing = self.obs_coords.shape[0]
+        if self.ninducing > nobs:
+            self.ninducing = nobs
+            self.inducing_coords = self.obs_coords
+        else:
+            init_size = 300
+            if self.ninducing < init_size:
+                init_size = self.ninducing
+            kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.ninducing, random_state=345)
+            kmeans.fit(self.obs_coords)
+        
+            self.inducing_coords = kmeans.cluster_centers_            
         
         self.w_invSm = np.zeros((self.ninducing * self.Nfactors, 1), dtype=float)# theta_1
         self.w_invS = np.zeros((self.ninducing * self.Nfactors, self.ninducing * self.Nfactors), dtype=float) # theta_2
 
         self.t_invSm = np.zeros((self.ninducing, 1), dtype=float)# theta_1
         self.t_invS = np.diag(np.ones(self.ninducing, dtype=float)) # theta_2
-                
-        init_size = 300
-        if self.ninducing > init_size:
-            init_size = self.ninducing
-        kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.ninducing)
-        kmeans.fit(self.obs_coords)
-        
-        self.inducing_coords = kmeans.cluster_centers_
 
         self.t_mu0_u = np.zeros((self.ninducing, 1)) + self.t_mu0_u
         
         self.K_mm = self.kernel_func(self.inducing_coords, self.ls) + 1e-6 * np.eye(self.ninducing) # jitter
         self.invK_mm = np.linalg.inv(self.K_mm)
         self.K_nm = self.kernel_func(self.obs_coords, self.ls, self.inducing_coords)
+
+        #If the child GPs use SVI, they can use a common set of inducing points to save computing the 
+        #kernels multiple times. This may not help if each person has only a few observations. 
+        if self.use_noise_svi and not self.uncorrelated_noise:
+            for person in self.pref_gp:
+                self.pref_gp[person].init_inducing_points(self.inducing_coords, self.K_mm, self.invK_mm, self.K_nm)
         
         self.Lambda_factor_t = np.diag(np.ones(self.K_mm.shape[0])) # self.invK_mm.dot(self.K_mm.T) 
         
@@ -1498,8 +1543,6 @@ class PreferenceComponentsSVI(PreferenceComponents):
         if self.y_ninducing > self.people.shape[0]:
             self.y_ninducing = self.people.shape[0]
         
-        self.y_u = np.random.rand(self.Nfactors, self.y_ninducing) - 0.5 #np.zeros((self.Nfactors, self.y_ninducing))
-        
         init_size = 300
         if self.y_ninducing > init_size:
             init_size = self.y_ninducing
@@ -1525,6 +1568,11 @@ class PreferenceComponentsSVI(PreferenceComponents):
         self.Ky_nm = block_diag(*blocks)
         
         self.Lambda_factor_y = self.invKy_mm.dot(self.Ky_nm.T)
+        
+        self.y_u = mvn.rvs(np.zeros(self.y_ninducing), self.Ky_mm_block, self.Nfactors)
+        self.y_u /= (self.shape_sy / self.rate_sy)[:, None]
+
+        #np.random.rand(self.Nfactors, self.y_ninducing) - 0.5 #np.zeros((self.Nfactors, self.y_ninducing))        
         
     def _gradient_dim(self, lstype, d, dimension):
         der_logpw_logqw = 0
@@ -1642,6 +1690,18 @@ class PreferenceComponentsSVI(PreferenceComponents):
                                  mu0_output=self.w_u.dot(self.y[:, p:p+1]) + self.t_u, reuse_output_kernel=True)
         self.f_u[:, p] = f.flatten()
             
+    def _update_cov_mu0(self, p):
+        super(PreferenceComponentsSVI, self)._update_cov_mu0(p)
+        
+        for f in range(self.Nfactors):
+            fidxs = np.arange(self.N) + (f * self.N)
+            pidx = f * self.Npeople + p
+            self.pref_gp[p].cov_mu0_mm += self.wS[fidxs, :][:, fidxs] * self.y_cov[pidx, pidx] + \
+                            self.wS[fidxs, :][:, fidxs] * self.y[f, p:p+1]**2 + \
+                            self.w_u[:, f]**2 * self.y_cov[pidx, pidx]
+        if self.use_t:
+            self.pref_gp[p].cov_mu0_mm += self.tS
+        
     def _expec_f(self):
         self._update_sample()
         super(PreferenceComponentsSVI, self)._expec_f()              
@@ -1699,8 +1759,8 @@ class PreferenceComponentsSVI(PreferenceComponents):
                     continue 
                 Nobs_counter_i += len(pidxs)            
                 
-                prec_p = self.pref_gp[p].s
-                invQ_f = (self.f[pidxs, p:p+1] - self.t[pidxs, :]) * prec_p
+                prec_p = self.invKf[p] * self.pref_gp[p].s
+                invQ_f = prec_p.dot(self.f[pidxs, p:p+1] - self.t[pidxs, :])     
                 x_p = y_p.T * invQ_f
                 x[psample, :] += x_p
 
@@ -1720,7 +1780,7 @@ class PreferenceComponentsSVI(PreferenceComponents):
             widxs_i = (np.tile(self.data_idx_i[:,None], (1,self.Nfactors)) + np.arange(self.Nfactors)[None,:]).flatten()
             Lambda_factor_w_i = self.invKw_mm.dot(self.Kw_nm[widxs_i, :].T)
         
-        self.w, _, self.w_invS, self.w_invSm, self.w_u, self.invKws_mm_S = svi_update_gaussian(x, 0, 0,
+        self.w, _, self.w_invS, self.w_invSm, self.w_u, self.invKws_mm_S, self.wS = svi_update_gaussian(x, 0, 0,
             self.Kws_mm, self.inv_Kws_mm, self.Kws_nm, Lambda_factor_w_i, None, Sigma, self.w_invS, 
             self.w_invSm, self.vb_iter, self.delay, self.forgetting_rate, Nobs_counter, Nobs_counter_i)                
     
@@ -1775,8 +1835,8 @@ class PreferenceComponentsSVI(PreferenceComponents):
                 prec_f = self.invK_mm * self.pref_gp[p].s                
                 invQ_f = prec_f.dot(self.f_u[:, p:p+1] - self.t_u)
             else:
-                prec_f = self.pref_gp[p].s
-                invQ_f = (self.f[pidxs, p:p+1] - self.t[pidxs, :]) * prec_f
+                prec_f = self.invKf[p] * self.pref_gp[p].s
+                invQ_f = prec_f.dot(self.f[pidxs, p:p+1] - self.t[pidxs, :]) 
                 
             Sigma_p = self._compute_sigma_y_p(N, w, w_cov, prec_f, pidxs)
             sigmaidxs = np.arange(self.Nfactors) * Npeople + pidx
@@ -1808,7 +1868,7 @@ class PreferenceComponentsSVI(PreferenceComponents):
                 
                 self.sy_matrix[fidxs, :] = self.shape_sy[f] / self.rate_sy[f] # sy_rows
         else: # SVI implementation
-            self.y, _, self.y_invS, self.y_invSm, self.y_u, self.invKys_mm_S = svi_update_gaussian(x, 0, 0, 
+            self.y, _, self.y_invS, self.y_invSm, self.y_u, self.invKys_mm_S, self.yS = svi_update_gaussian(x, 0, 0, 
                 self.Kys_mm, self.inv_Kys_mm, self.Kys_nm, self.Lambda_factor_y, None, Sigma, self.y_invS, 
                 self.y_invSm, self.vb_iter, self.delay, self.forgetting_rate, Nobs_counter, Nobs_counter_i)
         
@@ -1825,7 +1885,7 @@ class PreferenceComponentsSVI(PreferenceComponents):
                 fidxs = np.arange(self.Npeople) + (self.Npeople * f)
 
     def _compute_sigma_t(self):
-        self.Sigma_t = np.zeros((self.N, self.N))
+        self.Sigma_t = np.zeros((self.ninducing, self.ninducing))
         
         for p in self.pref_gp:
             prec_f = self.invK_mm * self.pref_gp[p].s
@@ -1877,7 +1937,7 @@ class PreferenceComponentsSVI(PreferenceComponents):
         else:
             Lambda_factor_t = self.invK_mm.dot(self.K_nm[self.data_idx_i, :].T)
                 
-        self.t, _, self.t_invS, self.t_invSm, self.t_u, self.invKts_mm_S = svi_update_gaussian(x, 
+        self.t, _, self.t_invS, self.t_invSm, self.t_u, self.invKts_mm_S, self.tS = svi_update_gaussian(x, 
             self.t_mu0, self.t_mu0_u, self.Kts_mm, self.inv_Kts_mm, self.Kts_nm, Lambda_factor_t, 
             None, Sigma, self.t_invS, self.t_invSm, self.vb_iter, self.delay, 
             self.forgetting_rate, Nobs_counter, Nobs_counter_i)
@@ -1926,7 +1986,6 @@ class PreferenceComponentsSVI(PreferenceComponents):
         
         if self.use_svi_people:
             self.pdata_idx_i = np.sort(np.random.choice(self.Npeople, self.y_update_size, replace=False))        
-                        
                         
     def lowerbound(self):
         f_terms = 0

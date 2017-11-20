@@ -73,15 +73,22 @@ if __name__ == '__main__':
     datasets = ['UKPConvArgCrowdSample']
     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
 
-    methods = ['PersPrefGP_fa_noOpt', 'PersPrefGP_noOpt_gpnoise', 'PersPrefGP_noOpt', 'PersPrefGP_commonmean_noOpt', 
-               'IndPrefGP_noOpt',  
-               # make sure code works without SVI for latent factors
-               'PersPrefGP_noOpt_nofactorsvi', 'PersPrefGP_noOpt_gpnoise_nofactorsvi']  
+    methods = [
+        'PersPrefGP_fa_noOpt', 'PersPrefGP_noOpt_gpnoise', 'PersPrefGP_noOpt', 'PersPrefGP_commonmean_noOpt', 
+        'IndPrefGP_noOpt',  
+               ]  
     embeddings_types = ['word_mean']#, 'skipthoughts'] # 'siamese-cbow'] 
-    
-    # TODO: why only one person?
     
     #if 'runner' not in globals():
     runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods, 
                                         dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=1)#, npairs=1000, subsample_tr=1000)
+    runner.run_test_set(min_no_folds=0, max_no_folds=1)
+    
+    methods = [ 
+        'PersPrefGP_noOpt_nofactorsvi', 'PersPrefGP_noOpt_gpnoise_nofactorsvi', # make sure code works without SVI for latent factors
+        ]  
+    
+    #if 'runner' not in globals():
+    runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods, 
+                                        dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=1, npairs=1000, subsample_tr=1000)

@@ -145,7 +145,7 @@ class GPPrefLearning(GPClassifierSVI):
         m_prior, not_m_prior, v_prior = self._post_rough(self.mu0, self.rate_s0/self.shape_s0, self.pref_v, self.pref_u)
 
         # find the beta parameters
-        a_plus_b = 1.0 / (v_prior / (m_prior*(not_m_prior))) - 1
+        a_plus_b = 1.0 / (v_prior / (m_prior*not_m_prior)) - 1
         a = (a_plus_b * m_prior)
         b = (a_plus_b * not_m_prior)
 
@@ -158,13 +158,15 @@ class GPPrefLearning(GPClassifierSVI):
         self.obs_f = np.zeros((self.n_locs, 1)) + self.mu0
         self.Ntrain = self.pref_u.size 
         
-    def _init_obs_mu0(self, mu0):
+    def _init_obs_mu0(self, mu0, cov_mu0=0):
         if mu0 is None or not len(mu0):
             self.mu0 = np.zeros((self.n_locs, 1)) + self.mu0_default
         else:
             self.mu0 = mu0
             self.mu0_1 = self.mu0[self.pref_v, :]
             self.mu0_2 = self.mu0[self.pref_u, :]
+            
+        self.cov_mu0 = cov_mu0
     
     # Input data handling ---------------------------------------------------------------------------------------------
 
@@ -297,7 +299,7 @@ class GPPrefLearning(GPClassifierSVI):
     # Training methods ------------------------------------------------------------------------------------------------  
             
     def fit(self, items1_coords=None, items2_coords=None, item_features=None, preferences=None, totals=None, 
-            process_obs=True, mu0=None, optimize=False, input_type='binary'):
+            process_obs=True, mu0=None, cov_mu0=0, optimize=False, input_type='binary'):
         '''
         preferences -- Preferences by default can be 1 = item 1 is preferred to item 2, 
         or 0 = item 2 is preferred to item 1, 0.5 = no preference, or values in between.
@@ -322,7 +324,7 @@ class GPPrefLearning(GPClassifierSVI):
             self.item_features = item_features
             
         super(GPPrefLearning, self).fit((items1_coords, items2_coords), preferences, totals, process_obs, 
-                                        mu0=mu0, optimize=optimize)  
+                                        mu0=mu0, cov_mu0=cov_mu0, optimize=optimize)  
         
     def _update_sample_idxs(self):
         nobs = self.obs_f.shape[0]
@@ -473,20 +475,26 @@ class GPPrefLearning(GPClassifierSVI):
         if pref_u is None:
             pref_u = self.pref_u
         
-        m_post = self.forward_model(f_mean, v=pref_v, u=pref_u, return_g_f=False)
-        m_post = temper_extreme_probs(m_post)
-        
-        not_m_post = 1 - m_post
-
-        if f_var is not None and np.any(f_var <= 0):
-            return m_post, not_m_post, np.zeros(m_post.shape)
-        elif f_var is not None:
-            samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(f_mean.shape[0], 1000))
+        if f_var is not None and not np.any(f_var <= 0):
+            samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(f_mean.shape[0], 5000))
             samples = self.forward_model(samples, v=pref_v, u=pref_u, return_g_f=False)
+            
+            samples[samples <= 1e-7] = 1e-7
+            samples[samples >= 1-1e-7] = 1-1e-7 # zeros are bad at this point, leads to zero variance
+            
+            m_post = np.mean(samples, axis=1)[:, np.newaxis]
+            not_m_post = 1 - m_post
             v_post = np.var(samples, axis=1)[:, np.newaxis]
-            v_post = temper_extreme_probs(v_post, zero_only=True)
-            v_post[m_post * (1 - not_m_post) <= 1e-7] = 1e-8 # important to make sure our fixes for extreme values lead
+            #v_post = temper_extreme_probs(v_post, zero_only=True) # causes errors when m_post is close to 0 or 1 
+            # v_post[m_post * (1 - m_post) <= 1e-7] = 1e-8 # important to make sure our fixes for extreme values lead
             # to sensible values
             return m_post, not_m_post, v_post            
         else:        
-            return m_post, not_m_post
+            m_post = self.forward_model(f_mean, v=pref_v, u=pref_u, return_g_f=False)
+            m_post = temper_extreme_probs(m_post)
+            not_m_post = 1 - m_post
+            
+            if f_var is not None:
+                return m_post, not_m_post, np.zeros(m_post.shape)
+            else:
+                return m_post, not_m_post
