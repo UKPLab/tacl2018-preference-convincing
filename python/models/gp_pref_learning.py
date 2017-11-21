@@ -141,6 +141,7 @@ class GPPrefLearning(GPClassifierSVI):
         self.mu0_default = z0 # for preference learning, we pass in the latent mean directly  
     
     def _init_obs_prior(self):
+        # TODO: are we missing adding the uncertainty in the prior mu0? 
         # to make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
         m_prior, not_m_prior, v_prior = self._post_rough(self.mu0, self.rate_s0/self.shape_s0, self.pref_v, self.pref_u)
 
@@ -476,7 +477,7 @@ class GPPrefLearning(GPClassifierSVI):
             pref_u = self.pref_u
         
         if f_var is not None and not np.any(f_var <= 0):
-            samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(f_mean.shape[0], 5000))
+            samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(f_mean.shape[0], 1000))
             samples = self.forward_model(samples, v=pref_v, u=pref_u, return_g_f=False)
             
             samples[samples <= 1e-7] = 1e-7

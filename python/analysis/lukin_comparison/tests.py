@@ -38,7 +38,7 @@ from gp_classifier_vb import compute_median_lengthscales
 use_entrenched = True
 
 if __name__ == '__main__':
-    np.random.seed(123)
+    np.random.seed(1212)
     
     #load the dataset -----------------------------------------------------------------------------------
     arg_data = np.genfromtxt('./data/lukin/arguments2.csv', dtype=float, delimiter=',', skip_header=1)
@@ -73,9 +73,9 @@ if __name__ == '__main__':
     trainids_a1 = np.array([np.argwhere(arg_ids==aid)[0][0] for aid in pair_data[:, 1].astype(int)])
     trainids_a2 = np.array([np.argwhere(arg_ids==aid)[0][0] for aid in pair_data[:, 2].astype(int)])
 
-    prefs_train = pair_data[:, 6] # use the norm labels
+    #prefs_train = pair_data[:, 6] # use the norm labels
     #prefs_train = pair_data[:, 4] # use the lmh labels
-    #prefs_train = pair_data[:, 5] # use the lh labels
+    prefs_train = pair_data[:, 5] # use the lh labels
     
     # Training ---------------------------------------------------------------------------------------------
     #train on the whole dataset
