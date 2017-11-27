@@ -79,20 +79,21 @@ if __name__ == '__main__':
     initial_ls = [100, 100]
     
     # Create a GPPrefLearning model
-    model = GPPrefLearning(2, mu0=0, shape_s0=1000, rate_s0=100, ls_initial=initial_ls, use_svi=True, ninducing=100)    
+    model = GPPrefLearning(2, mu0=0, shape_s0=1000, rate_s0=100, ls_initial=initial_ls, use_svi=True, ninducing=100, max_update_size=60)    
     #model.verbose = True
-    model.delay = 1
     
     models['SVI'] = model
     
-    # Create a GPPrefLearning model
-    model = GPPrefLearning(2, mu0=0, shape_s0=1000, rate_s0=100, ls_initial=initial_ls, use_svi=False)    
-    #model.verbose = True
-    
-    #models['VB'] = model
+#     # Create a GPPrefLearning model
+#    model = GPPrefLearning(2, mu0=0, shape_s0=1000, rate_s0=100, ls_initial=initial_ls, use_svi=False)    
+#     #model.verbose = True
+#     
+#    models['VB'] = model
     
     if fix_seeds:
         np.random.seed() # do this if we want to use a different seed each time to test the variation in results
+    
+    f_means = {}
     
     for modelkey in models:
         model = models[modelkey]
@@ -101,6 +102,8 @@ if __name__ == '__main__':
         
         model.fit(pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], optimize=True)
         print "Final lower bound: %f" % model.lowerbound()
+        
+        f_means[modelkey] = model.obs_f
         
         # Predict at all locations
         fpred, vpred = model.predict_f(item_features)
@@ -117,13 +120,9 @@ if __name__ == '__main__':
         print "Kendall's tau (test): %.3f" % kendalltau(f_test, fpred)[0] 
             
         t = (f[pair1idxs[testidxs]] > f[pair2idxs[testidxs]]).astype(int)
-        rho_pred, var_rho_pred = model.predict(pair1idxs[testidxs], pair2idxs[testidxs], item_features)
+        rho_pred, var_rho_pred = model.predict(item_features, pair1idxs[testidxs], pair2idxs[testidxs])
         rho_pred = rho_pred.flatten()
         t_pred = np.round(rho_pred)
-        
-        # To make sure the simulation is repeatable, re-seed the RNG after all the stochastic inference has been completed
-        if fix_seeds:
-            np.random.seed(2)    
         
         print "Brier score of %.3f" % np.sqrt(np.mean((t-rho_pred)**2))
         print "Cross entropy error of %.3f" % -np.sum(t * np.log(rho_pred) + (1-t) * np.log(1 - rho_pred))    
