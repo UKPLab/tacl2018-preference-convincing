@@ -675,7 +675,7 @@ class TestRunner:
             print('Prediction on unseen data...')
             if use_doc_level_features:
                 pair_doc_feats_unseen = np.concatenate((self.ling_items_feat[self.a1_unseen, :], 
-                                                        self.ling_items_feat[self.a2_unseen, :])) 
+                                                        self.ling_items_feat[self.a2_unseen, :]), axis=1) 
                 model_predict = self.model.predict({'input': X_test, 'docfeatures': pair_doc_feats_unseen}, batch_size=batch_size)
             else:
                 model_predict = self.model.predict({'input': X_test}, batch_size=batch_size)
