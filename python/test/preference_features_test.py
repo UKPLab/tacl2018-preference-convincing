@@ -5,7 +5,17 @@ Created on 3 Mar 2017
 
 @author: edwin
 '''
-import logging
+import logging, sys, os
+logging.basicConfig(level=logging.DEBUG)
+
+sys.path.append("./python")
+sys.path.append("./python/analysis")
+sys.path.append("./python/models")
+sys.path.append("./python/analysis/lukin_comparison")
+
+sys.path.append(os.path.expanduser("~/git/HeatMapBCC/python"))
+sys.path.append(os.path.expanduser("~/git/pyIBCC/python"))
+
 import numpy as np
 from gp_classifier_vb import matern_3_2_from_raw_vals, coord_arr_to_1d
 from scipy.stats import multivariate_normal as mvn
@@ -38,7 +48,7 @@ if __name__ == '__main__':
 #         nx = 5
 #         ny = 5
      
-        Npeople = 200
+        Npeople = 10
         N = 100
         P = 100
         nx = 25
@@ -117,17 +127,16 @@ if __name__ == '__main__':
         
     # Model initialisation --------------------------------------------------------------------------------------------
     use_svi = True
-    ls_initial = np.array(ls) + 5
+    ls_initial = np.array(ls)# + 5
     print "Initial guess of length scale for items: %s, true length scale is %s" % (ls_initial, ls)
-    lsy_initial = np.array(lsy) + 7
+    lsy_initial = np.array(lsy)# + 7
     print "Initial guess of length scale for people: %s, true length scale is %s" % (lsy_initial, lsy)
-    model = PreferenceComponents(2, Npeoplefeatures, ls=ls_initial, lsy=lsy_initial, use_fa=False, 
-             use_svi=use_svi, delay=1, forgetting_rate=0.9, ninducing=500, max_update_size=100, use_common_mean_t=False)
-    model.verbose = True
+    model = PreferenceComponents(2, Npeoplefeatures, ls=ls_initial, lsy=lsy_initial, use_common_mean_t=True)
+    model.verbose = False
     model.min_iter = 1
     model.max_iter = 200
     model.fit(personids[trainidxs], pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], 
-              person_features.T, optimize=True)
+              person_features.T, optimize=False)
 #               None, optimize=True)    
     print "Difference between true item length scale and inferred item length scale = %s" % (ls - model.ls)
     print "Difference between true person length scale and inferred person length scale = %s" % (lsy - model.lsy)
@@ -189,9 +198,9 @@ if __name__ == '__main__':
     w_var = np.diag(model.w_cov)[(np.arange(w.shape[0])[np.newaxis, :]*chosen_features[:, np.newaxis]).flatten()].reshape(
                                                                                          w.shape[1], w.shape[0]).T
     
-    print "RMSE of %.3f" % np.sqrt(np.mean((w-w_pred)**2))
+    print "w: RMSE of %.3f" % np.sqrt(np.mean((w-w_pred)**2))
     from scipy.stats import norm
-    print "NLPD error of %.3f" % -np.mean(norm.logpdf(w, loc=w_pred, scale=np.sqrt(w_var)))
+    print "w: NLPD error of %.3f" % -np.mean(norm.logpdf(w, loc=w_pred, scale=np.sqrt(w_var)))
             
     print " --- Latent person feature prediction metrics --- " 
 
@@ -201,8 +210,8 @@ if __name__ == '__main__':
     y_var = np.diag(model.y_cov)[(np.arange(y.shape[1])[np.newaxis, :]*chosen_features[:, np.newaxis]).flatten()].reshape(
                                                                                              y.shape[0], y.shape[1]).T
 
-    print "RMSE of %.3f" % np.sqrt(np.mean((y.T-y_pred)**2))
-    print "NLPD error of %.3f" % -np.mean(norm.logpdf(y.T, loc=y_pred, scale=np.sqrt(y_var)))   
+    print "y: RMSE of %.3f" % np.sqrt(np.mean((y.T-y_pred)**2))
+    print "y: NLPD error of %.3f" % -np.mean(norm.logpdf(y.T, loc=y_pred, scale=np.sqrt(y_var)))   
             
 #     from scipy.stats import kendalltau
 #      

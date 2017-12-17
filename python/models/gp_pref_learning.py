@@ -10,7 +10,7 @@ import logging
 from gp_classifier_vb import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
 from gp_classifier_svi import GPClassifierSVI
 
-def get_unique_locations(obs_coords_0, obs_coords_1):
+def get_unique_locations(obs_coords_0, obs_coords_1, mu_0, mu_1):
     if issparse(obs_coords_0) or issparse(obs_coords_1):
         uidxs_0 = []
         pref_vu = []
@@ -55,7 +55,9 @@ def get_unique_locations(obs_coords_0, obs_coords_1):
     pref_v = pref_vu[:obs_coords_0.shape[0]]
     pref_u = pref_vu[obs_coords_0.shape[0]:]
     
-    return obs_coords, pref_v, pref_u, uidxs
+    mu_vu = np.concatenate((mu_0, mu_1), axis=0)[uidxs]
+    
+    return obs_coords, pref_v, pref_u, mu_vu
 
 def pref_likelihood(f=[], subset_idxs=[], v=[], u=[], return_g_f=False):
     '''
@@ -338,7 +340,7 @@ class GPPrefLearning(GPClassifierSVI):
             self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)                            
             
     # Prediction methods ---------------------------------------------------------------------------------------------
-    def predict(self, out_feats=None, items_0_idxs=None, items_1_idxs=None, out_1_feats=None, K_star=None, K_starstar=None,  
+    def predict(self, out_feats=None, item_0_idxs=None, item_1_idxs=None, out_1_feats=None, K_star=None, K_starstar=None,  
                 max_block_size=1e4, expectedlog=False, return_not=False, mu0_out=None, mu0_out_1=None,
                 reuse_output_kernel=False, return_var=True):
         '''
@@ -346,11 +348,11 @@ class GPPrefLearning(GPClassifierSVI):
         kernel
         
         If using items_0_idxs and items_1_idxs, out_1_feats can be set to None so that both sets of indexes look up values in out_feats 
-        '''          
-        if items_0_idxs is None and items_1_idxs is None and out_1_feats is not None and out_feats is not None:
-            out_feats, items_0_idxs, items_1_idxs, mu0_out = get_unique_locations(out_feats, out_1_feats, mu0_out, mu0_out_1)
+        '''
+        if item_0_idxs is None and item_1_idxs is None and out_1_feats is not None and out_feats is not None:
+            out_feats, item_0_idxs, item_1_idxs, mu0_out = get_unique_locations(out_feats, out_1_feats, mu0_out, mu0_out_1)
             out_1_feats = None # the object is no longer needed.
-        elif items_0_idxs is None and items_1_idxs is None and out_1_feats is None and out_feats is not None:
+        elif item_0_idxs is None and item_1_idxs is None and out_1_feats is None and out_feats is not None:
             # other combinations are invalid
             logging.error('Invalid combination of parameters for predict(): please supply either (items_0_idxs AND \
             items_1_idxs AND out_feats) OR (items_0_idxs AND \
@@ -360,17 +362,17 @@ class GPPrefLearning(GPClassifierSVI):
         # predict f for all the rows in out_feats or K_star if these variables are not None, otherwise error.
         f, v = self.predict_f(out_feats, None, K_star, K_starstar, max_block_size, mu0_out, reuse_output_kernel)
 
-        if items_0_idxs is not None and items_1_idxs is not None and out_1_feats is not None and out_feats is not None:
+        if item_0_idxs is not None and item_1_idxs is not None and out_1_feats is not None and out_feats is not None:
             # in this case, out_1_feats specifies a different set of points to out_feats
             f1, v1 = self.predict_f(None, out_1_feats, K_star, K_starstar, max_block_size, mu0_out_1, reuse_output_kernel)
-            items_1_idxs = items_1_idxs + f.shape[0]
+            item_1_idxs = item_1_idxs + f.shape[0]
             f = np.concatenate((f, f1), axis=0)
             v = np.concatenate((v, v1), axis=0)
                 
         if return_var:
-            m_post, not_m_post, v_post = self._post_rough(f, v, items_0_idxs, items_1_idxs)
+            m_post, not_m_post, v_post = self._post_rough(f, v, item_0_idxs, item_1_idxs)
         else:
-            m_post, not_m_post = self._post_rough(f, None, items_0_idxs, items_1_idxs)
+            m_post, not_m_post = self._post_rough(f, None, item_0_idxs, item_1_idxs)
         
         if expectedlog:
             m_post = np.log(m_post)
