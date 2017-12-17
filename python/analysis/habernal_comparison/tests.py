@@ -308,6 +308,7 @@ class TestRunner:
             # trim away any features not in the training data because we can't learn from them
             valid_feats = np.sum((items_feat[a1_train] != 0) + (items_feat[a2_train] != 0), axis=0) > 0
             items_feat = items_feat[:, valid_feats]
+            self.ling_items_feat = None # will get overwritten if we load the linguistic features further down.
             
         elif feature_type == 'ling':
             items_feat = np.zeros((self.X.shape[0], 0))
@@ -319,13 +320,15 @@ class TestRunner:
             valid_feats_ling = np.sum( (self.ling_feat_spmatrix[a1_train, :] != 0) + 
                                        (self.ling_feat_spmatrix[a2_train, :] != 0), axis=0) > 0 
             valid_feats_ling = np.array(valid_feats_ling).flatten()
-            items_feat = np.concatenate((items_feat, self.ling_feat_spmatrix[uids, :][:, valid_feats_ling].toarray()), axis=1)
+            self.ling_items_feat = self.ling_feat_spmatrix[uids, :][:, valid_feats_ling].toarray()
+            items_feat = np.concatenate((items_feat, self.ling_items_feat), axis=1)
             logging.info("...loaded all linguistic features for training and test data.")
             valid_feats = np.concatenate((valid_feats, valid_feats_ling))
             
         if feature_type=='debug':
             items_feat = items_feat[:, :10] #use only three features for faster debugging
             valid_feats = valid_feats[:10]
+            self.ling_items_feat = items_feat
             
         self.items_feat = items_feat
         self.ndims = self.items_feat.shape[1]
@@ -511,13 +514,23 @@ class TestRunner:
     
         return proba, predicted_f, tr_proba 
      
-    def run_bilstm(self):     
+    def run_bilstm(self, feature_type):     
         from keras.preprocessing import sequence
         from keras.models import Graph
         from keras.layers.core import Dense, Dropout
         from keras.layers.embeddings import Embedding
         from keras.layers.recurrent import LSTM
-                     
+            
+        # Include document-level features in a simple manner using one hidden layer, which is then combined with the outputs of
+        # the LSTM layers, as in "Boosting Information Extraction Systems with Character-level Neural Networks and Free Noisy 
+        # Supervision". This is equivalent to an MLP with one hidden layer combined with the LSTM.
+        if feature_type == 'ling' or feature_type == 'both' or feature_type == 'debug':
+            use_doc_level_features = True
+            n_doc_level_feats = self.ling_items_feat.shape[1] 
+        else:
+            use_doc_level_features = False
+            
+        np.random.seed(1337) # for reproducibility         
         max_len = 300  # cut texts after this number of words (among top max_features most common words)
         batch_size = 32
         nb_epoch = 5  # 5 epochs are meaningful to prevent over-fitting...
@@ -543,26 +556,55 @@ class TestRunner:
         y_train = np.array(y_train) / 2.0
         print('y_train values: ', np.unique(y_train))
      
+        print('Training data sizes:')
+        print(X_train.shape)
+        print(y_train.shape)
+        if use_doc_level_features:
+            pair_doc_feats_tr = np.concatenate((self.ling_items_feat[self.a1_train, :], 
+                                                  self.ling_items_feat[self.a2_train, :]), axis=1)         
+            print(pair_doc_feats_tr.shape)
+            print n_doc_level_feats * 2
+            
+            pair_doc_feats_test = np.concatenate((self.ling_items_feat[self.a1_test, :], 
+                                                  self.ling_items_feat[self.a2_test, :]), axis=1)
+     
         print('Build model...')
         if self.model is None:
             self.model = Graph()
-            self.model.add_input(name='input', input_shape=(max_len,), dtype=int)
+            self.model.add_input(name='input', input_shape=(max_len,), dtype='int')
             self.model.add_node(Embedding(self.embeddings.shape[0], self.embeddings.shape[1], input_length=max_len, 
                                      weights=[self.embeddings]), name='embedding', input='input')
             self.model.add_node(LSTM(64), name='forward', input='embedding')
             self.model.add_node(LSTM(64, go_backwards=True), name='backward', input='embedding')
             self.model.add_node(Dropout(0.5), name='dropout', inputs=['forward', 'backward'])
-            self.model.add_node(Dense(1, activation='sigmoid'), name='sigmoid', input='dropout')
+            
+            if use_doc_level_features:
+                self.model.add_input(name='docfeatures', input_shape=(n_doc_level_feats*2,), dtype='float')
+                self.model.add_node(Dense(64, activation='relu'), name='docfeatures_hiddenlayer', input='docfeatures')
+                self.model.add_node(Dropout(0.5), name='dropout_docfeatures', input='docfeatures_hiddenlayer')
+                
+                self.model.add_node(Dense(1, activation='sigmoid'), name='sigmoid',
+                                    inputs=['dropout_docfeatures', 'dropout'])
+            else:
+                self.model.add_node(Dense(1, activation='sigmoid'), name='sigmoid', input='dropout')            
+            
             self.model.add_output(name='output', input='sigmoid')
           
             # try using different optimizers and different optimizer configs
             self.model.compile('adam', {'output': 'binary_crossentropy'})
           
         print('Train...')
-        self.model.fit({'input': X_train, 'output': y_train}, batch_size=batch_size, nb_epoch=nb_epoch)
+        if use_doc_level_features:
+            self.model.fit({'input': X_train, 'docfeatures' : pair_doc_feats_tr, 'output': y_train}, 
+                       batch_size=batch_size, nb_epoch=nb_epoch)
+        else:
+            self.model.fit({'input': X_train, 'output': y_train}, batch_size=batch_size, nb_epoch=nb_epoch)
       
         print('Prediction')
-        model_predict = self.model.predict({'input': X_test}, batch_size=batch_size)
+        if use_doc_level_features:
+            model_predict = self.model.predict({'input': X_test, 'docfeatures': pair_doc_feats_test}, batch_size=batch_size)
+        else:
+            model_predict = self.model.predict({'input': X_test}, batch_size=batch_size)
         proba = np.array(model_predict['output'])
          
         #proba = np.zeros(len(prefs_test))
@@ -589,17 +631,33 @@ class TestRunner:
             rank_model.add_node(Dropout(0.5), name='dropout', inputs=['forward', 'backward'])
          
             # match output layer for regression better
-            rank_model.add_node(Dense(1, activation='linear', init='uniform'), name='output_layer', input='dropout')
+            if use_doc_level_features:
+                rank_model.add_input(name='docfeatures', input_shape=(n_doc_level_feats,), dtype='float')
+                rank_model.add_node(Dense(64, activation='relu'), name='docfeatures_hiddenlayer', input='docfeatures')
+                rank_model.add_node(Dropout(0.5), name='dropout_docfeatures', input='docfeatures_hiddenlayer')
+                
+                rank_model.add_node(Dense(1, activation='linear', init='uniform'), name='output_layer', 
+                                    input=['dropout_docfeatures', 'dropout'])
+            else:            
+                rank_model.add_node(Dense(1, activation='linear', init='uniform'), name='output_layer', input='dropout')
             rank_model.add_output(name='output', input='output_layer')
          
             # use mean absolute error loss
             rank_model.compile('adam', {'output': 'mean_absolute_error'})
          
             print('Train...')
-            rank_model.fit({'input': X_train, 'output': self.scores_rank_train}, batch_size=batch_size, nb_epoch=nb_epoch)
-         
+            if use_doc_level_features:
+                rank_model.fit({'input': X_train, 'docfeatures' : self.ling_items_feat[self.a_rank_train, :], 'output': 
+                            self.scores_rank_train}, batch_size=batch_size, nb_epoch=nb_epoch)
+            else:
+                rank_model.fit({'input': X_train, 'output': self.scores_rank_train}, batch_size=batch_size, nb_epoch=nb_epoch)
+                
             print('Prediction')
-            model_predict = rank_model.predict({'input': X_test}, batch_size=batch_size)
+            if use_doc_level_features:
+                model_predict = rank_model.predict({'input': X_test, 'docfeatures': self.ling_items_feat[self.a_rank_test, :]}, 
+                                               batch_size=batch_size)
+            else:
+                model_predict = rank_model.predict({'input': X_test}, batch_size=batch_size)
             predicted_f = np.asarray(model_predict['output']).flatten()                
      
             print('Unique regression predictions: ', np.unique(predicted_f))
@@ -614,12 +672,18 @@ class TestRunner:
                 row1 = row1 + X_test2[i]
                 X_test.append(row1)   
             X_test = sequence.pad_sequences(X_test, maxlen=max_len)
-            print('Prediction')
-            model_predict = self.model.predict({'input': X_test}, batch_size=batch_size)
+            print('Prediction on unseen data...')
+            if use_doc_level_features:
+                pair_doc_feats_unseen = np.concatenate((self.ling_items_feat[self.a1_unseen, :], 
+                                                        self.ling_items_feat[self.a2_unseen, :])) 
+                model_predict = self.model.predict({'input': X_test, 'docfeatures': pair_doc_feats_unseen}, batch_size=batch_size)
+            else:
+                model_predict = self.model.predict({'input': X_test}, batch_size=batch_size)
             tr_proba = np.array(model_predict['output'])
         else:
             tr_proba = None
     
+        
         return proba, predicted_f, tr_proba           
        
     def _choose_method_fun(self, feature_type):
@@ -632,9 +696,10 @@ class TestRunner:
         elif 'SVM' in self.method:
             method_runner_fun = self.run_svm
         elif 'BI-LSTM' in self.method:
-            if feature_type != 'embeddings':
-                logging.error("BI-LSTM can only be run using embedings. Will switch to this feature type...")
-            method_runner_fun = self.run_bilstm    
+            if feature_type == 'ling':
+                logging.error("BI-LSTM can only be run using embedings. Will switch to feature type=both...")
+                feature_type = 'both'            
+            method_runner_fun = lambda: self.run_bilstm(feature_type)    
             
         return method_runner_fun
                
@@ -992,14 +1057,20 @@ class TestRunner:
                         logging.info("**** Completed: method %s with features %s, embeddings %s ****" % (self.method, feature_type, 
                                                                                                embeddings_type) )
 if __name__ == '__main__':
-    # active learning 
+    # active learning, set dataset_increment to 0 to use all data
     acc = 1.0
-    dataset_increment = 2
-       
-    datasets = ['UKPConvArgCrowdSample_evalMACE']
-    methods = ['SinglePrefGP_noOpt_weaksprior_smalldata']#
+    dataset_increment = 0
+#       
+#     datasets = ['UKPConvArgCrowdSample_evalMACE']
+#     methods = ['SinglePrefGP_noOpt_weaksprior_smalldata']#
+#     feature_types = ['both']
+#     embeddings_types = ['word_mean']
+
+    datasets = ['UKPConvArgStrict']
+    methods = ['BI-LSTM']
     feature_types = ['both']
     embeddings_types = ['word_mean']
+
     if not 'runner' in globals():
         runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
                             dataset_increment)
