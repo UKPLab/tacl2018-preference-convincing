@@ -30,6 +30,7 @@ Created on 20 Mar 2017
 '''
 
 import logging
+from scipy.stats.stats import pearsonr
 logging.basicConfig(level=logging.DEBUG)
 
 import sys
@@ -238,9 +239,9 @@ def get_fold_regression_data(folds_regression, fold, docids):
         scores_rank_train = np.array(scores_rank_train)
         argids_rank_train = np.array(argids_rank_train)    
         
-        _, rankscores_test, argids_rank_test, personIDs_rank_test, _ = folds_regression.get(fold)["test"] # blank argument is turkIDs_rank_test
+        _, scores_rank_test, argids_rank_test, personIDs_rank_test, _ = folds_regression.get(fold)["test"] # blank argument is turkIDs_rank_test
         item_idx_ranktest = np.array([np.argwhere(testid==docids)[0][0] for testid in argids_rank_test])
-        rankscores_test = np.array(rankscores_test)
+        scores_rank_test = np.array(scores_rank_test)
         argids_rank_test = np.array(argids_rank_test)
     else:
         item_idx_ranktrain = None
@@ -249,12 +250,12 @@ def get_fold_regression_data(folds_regression, fold, docids):
         person_rank_train = None
         
         item_idx_ranktest = None
-        rankscores_test = None
+        scores_rank_test = None
         argids_rank_test = None
         personIDs_rank_test = None    
 
     return item_idx_ranktrain, scores_rank_train, argids_rank_train, person_rank_train,\
-           item_idx_ranktest, rankscores_test, argids_rank_test, personIDs_rank_test
+           item_idx_ranktest, scores_rank_test, argids_rank_test, personIDs_rank_test
     
     
 def subsample_tr_data(subsample_amount, items_feat, a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, 
@@ -309,10 +310,12 @@ class TestRunner:
             valid_feats = np.sum((items_feat[a1_train] != 0) + (items_feat[a2_train] != 0), axis=0) > 0
             items_feat = items_feat[:, valid_feats]
             self.ling_items_feat = None # will get overwritten if we load the linguistic features further down.
+            self.embeddings_items_feat = items_feat
             
         elif feature_type == 'ling':
             items_feat = np.zeros((self.X.shape[0], 0))
             valid_feats = np.zeros(0)
+            self.embeddings_items_feat = None
             
         if feature_type == 'both' or feature_type == 'ling':
             logging.info("Obtaining linguistic features for argument texts.")
@@ -329,6 +332,7 @@ class TestRunner:
             items_feat = items_feat[:, :10] #use only three features for faster debugging
             valid_feats = valid_feats[:10]
             self.ling_items_feat = items_feat
+            self.embeddings_items_feat = items_feat
             
         self.items_feat = items_feat
         self.ndims = self.items_feat.shape[1]
@@ -462,8 +466,13 @@ class TestRunner:
     
         return proba, predicted_f, tr_proba      
     
-    def run_svm(self):
+    def run_svm(self, feature_type):
         from svmutil import svm_train, svm_predict, svm_read_problem
+         
+        if feature_type == 'embeddings' or feature_type == 'both' or feature_type == 'debug':
+            embeddings = self.embeddings_items_feat
+        else:
+            embeddings = None
          
         prefs_train_fl = np.array(self.prefs_train, dtype=float)
         svc_labels = np.concatenate((prefs_train_fl * 0.5, 1 - prefs_train_fl * 0.5))
@@ -473,28 +482,35 @@ class TestRunner:
           
         #if not os.path.isfile(trainfile):
         trainfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_train], self.docids[self.a2_train], 
-                                svc_labels, 'training', self.fold, nfeats, outputfile=filetemplate, reverse_pairs=True)
+            svc_labels, 'training', self.fold, nfeats, outputfile=filetemplate, reverse_pairs=True, embeddings=embeddings, 
+            a1=self.a1_train, a2=self.a2_train)
           
         problem = svm_read_problem(trainfile) 
         self.model = svm_train(problem[0], problem[1], '-b 1')
       
         #if not os.path.isfile(testfile):
         testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_test], self.docids[self.a2_test], 
-                                np.ones(len(self.a1_test)), 'test', self.fold, nfeats, outputfile=filetemplate)
+            np.ones(len(self.a1_test)), 'test', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings, 
+            a1=self.a1_test, a2=self.a2_test)
              
         problem = svm_read_problem(testfile)        
         _, _, proba = svm_predict(problem[0], problem[1], self.model, '-b 1')
+        # libSVM flips the labels if the first one it sees is positive
+        if svc_labels[0] == 1:
+            proba = 1 - np.array(proba)
          
         if self.a_rank_test is not None:
             #if not os.path.isfile(trainfile):
             trainfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a_rank_train], None, 
-                                self.scores_rank_train, 'r_training', self.fold, nfeats, outputfile=filetemplate)                
+                self.scores_rank_train, 'r_training', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings,
+                a1=self.a_rank_train)                
             problem = svm_read_problem(trainfile)
             rank_model = svm_train(problem[0], problem[1], '-s 4')
          
             #if not os.path.isfile(testfile):
             testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a_rank_test], None, 
-                                np.zeros(len(self.a_rank_test)), 'r_test', self.fold, nfeats, outputfile=filetemplate)
+                np.zeros(len(self.a_rank_test)), 'r_test', self.fold, nfeats, outputfile=filetemplate, 
+                embeddings=embeddings, a1=self.a_rank_test)
              
             problem = svm_read_problem(testfile)
             predicted_f, _, _ = svm_predict(problem[0], problem[1], rank_model)
@@ -505,10 +521,14 @@ class TestRunner:
         if self.a1_unseen is not None and len(self.a1_unseen):
             testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_unseen], 
                                                        self.docids[self.a2_unseen], np.ones(len(self.a1_unseen)), 
-                                                       'unseen', self.fold, nfeats, outputfile=filetemplate)
+                                           'unseen', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings,
+                                           a1=self.a1_unseen, a2=self.a2_unseen)
             
             problem = svm_read_problem(testfile)
             _, _, tr_proba = svm_predict(problem[0], problem[1], self.model, '-b 1')
+            # libSVM flips the labels if the first one it sees is positive
+            if svc_labels[0] == 1:
+                tr_proba = 1 - np.array(tr_proba)
         else:
             tr_proba = None
     
@@ -637,7 +657,7 @@ class TestRunner:
                 rank_model.add_node(Dropout(0.5), name='dropout_docfeatures', input='docfeatures_hiddenlayer')
                 
                 rank_model.add_node(Dense(1, activation='linear', init='uniform'), name='output_layer', 
-                                    input=['dropout_docfeatures', 'dropout'])
+                                    inputs=['dropout_docfeatures', 'dropout'])
             else:            
                 rank_model.add_node(Dense(1, activation='linear', init='uniform'), name='output_layer', input='dropout')
             rank_model.add_output(name='output', input='output_layer')
@@ -694,10 +714,13 @@ class TestRunner:
         elif 'SingleGPC' in self.method:
             method_runner_fun = self.run_gpc
         elif 'SVM' in self.method:
-            method_runner_fun = self.run_svm
+            if feature_type == 'embeddings':
+                logging.error("SVM is not set up to run without linguistic features. Will switch to feature type=both...")
+                feature_type='both'
+            method_runner_fun = lambda: self.run_svm(feature_type)
         elif 'BI-LSTM' in self.method:
             if feature_type == 'ling':
-                logging.error("BI-LSTM can only be run using embedings. Will switch to feature type=both...")
+                logging.error("BI-LSTM is not set up to run without using embeddings. Will switch to feature type=both...")
                 feature_type = 'both'            
             method_runner_fun = lambda: self.run_bilstm(feature_type)    
             
@@ -837,7 +860,7 @@ class TestRunner:
                                 self.X, uids, utexts = get_noisy_fold_data(self.folds, self.fold, self.docids, acc)                            
             
             # ranking folds
-            a_rank_train, scores_rank_train, _, person_rank_train, a_rank_test, rankscores_test, _, person_idx_ranktest = \
+            a_rank_train, scores_rank_train, _, person_rank_train, a_rank_test, scores_rank_test, _, person_idx_ranktest = \
                                                         get_fold_regression_data(self.folds_r, self.fold, self.docids)
             
             self.load_features(feature_type, embeddings_type, a1_train, a2_train, uids, utexts)
@@ -977,7 +1000,12 @@ class TestRunner:
                     foldidx, self.method, feature_type, nseen_so_far, endtime-starttime) )
                 logging.info("Accuracy for fold = %f" % (
                         np.sum(prefs_test[prefs_test != 1] == 2 * predictions.flatten()[prefs_test != 1]
-                            ) / float(np.sum(prefs_test != 1))) )      
+                            ) / float(np.sum(prefs_test != 1))) )
+                
+                if predicted_f is not None:
+                    # print out the pearson correlation
+                    logging.info("Pearson correlation for fold = %f" % pearsonr(scores_rank_test, predicted_f.flatten())[0])
+                  
                 if tr_proba is not None:
                     prefs_unseen = prefs_train[unseen_subset]
                     tr_proba_unseen = tr_proba[unseen_subset]
@@ -1009,7 +1037,7 @@ class TestRunner:
                 # Save the ground truth
                 all_target_prefs[foldidx] = prefs_test
                 if self.folds_r is not None:
-                    all_target_rankscores[foldidx] = rankscores_test
+                    all_target_rankscores[foldidx] = scores_rank_test
                 else:
                     all_target_rankscores[foldidx] = None
                 
@@ -1055,7 +1083,7 @@ class TestRunner:
                                 npairs=npairs, test_on_train=test_on_train)
                         
                         logging.info("**** Completed: method %s with features %s, embeddings %s ****" % (self.method, feature_type, 
-                                                                                               embeddings_type) )
+                                                                               embeddings_type) )
 if __name__ == '__main__':
     # active learning, set dataset_increment to 0 to use all data
     acc = 1.0
@@ -1066,12 +1094,13 @@ if __name__ == '__main__':
 #     feature_types = ['both']
 #     embeddings_types = ['word_mean']
 
-    datasets = ['UKPConvArgStrict']
-    methods = ['BI-LSTM']
-    feature_types = ['both']
+    datasets = ['UKPConvArgAll', 'UKPConvArgCrowdSample_evalMACE']#, 'UKPConvArgStrict'] #
+    #methods = ['BI-LSTM']
+    methods = ['SVM']
+    feature_types = ['ling', 'both']
     embeddings_types = ['word_mean']
 
-    if not 'runner' in globals():
-        runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
+    #if not 'runner' in globals():
+    runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
                             dataset_increment)
     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=200)

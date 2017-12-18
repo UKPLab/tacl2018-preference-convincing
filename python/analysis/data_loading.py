@@ -23,7 +23,8 @@ import numpy as np
 
 def combine_into_libsvm_files(dataset, ids1, ids2, labels, dataset_type, fold, nfeats,
         dirname=data_root_dir + '/lingdata/UKPConvArg1-Full-libsvm', 
-        outputfile=data_root_dir + '/libsvmdata/%s-%s-%s-libsvm.txt', reverse_pairs=False): 
+        outputfile=data_root_dir + '/libsvmdata/%s-%s-%s-libsvm.txt', reverse_pairs=False, 
+        embeddings=None, a1=None, a2=None): 
     outputfile = outputfile % (dataset, dataset_type, fold)
     
     outputstr = ""
@@ -41,6 +42,16 @@ def combine_into_libsvm_files(dataset, ids1, ids2, labels, dataset_type, fold, n
 
             comment_split_line = lines[0][1:].split('#')                
             outputline = str(float(labels[row])) + comment_split_line[0] 
+            
+            if embeddings is not None:
+                first_embedding_feature_id = nfeats
+                if ids2 is not None:
+                    first_embedding_feature_id += nfeats
+                
+                docvec = embeddings[a1[row], :]
+                for i, v in enumerate(docvec):
+                    outputline += str(int(i) + first_embedding_feature_id)
+                    outputline += ':' + str(v) + '\t'
                   
             if ids2 is not None:
                 fname2 = ids2[row] + '.libsvm.txt'
@@ -58,12 +69,30 @@ def combine_into_libsvm_files(dataset, ids1, ids2, labels, dataset_type, fold, n
                 #if len(comment_split_line) > 1:
                 #    outputline += '\t#' + comment_split_line[1] + '_' + comment_split_line_complete[1]  
         
+                if embeddings is not None:
+                    first_embedding_feature_id = nfeats * 2 + embeddings.shape[1]
+                    
+                    docvec = embeddings[a2[row], :]
+                    for i, v in enumerate(docvec):
+                        outputline += str(int(i) + first_embedding_feature_id)
+                        outputline += ':' + str(v) + '\t'        
+        
             outputline += '\n'
         
             ofh.write(outputline)
                 
             if reverse_pairs and ids2 is not None:
                 outputline = str(float(1 - labels[row])) + comment_split_line2[0] 
+
+                if embeddings is not None:
+                    first_embedding_feature_id = nfeats
+                    if ids2 is not None:
+                        first_embedding_feature_id += nfeats
+                
+                    docvec = embeddings[a2[row], :]
+                    for i, v in enumerate(docvec):
+                        outputline += str(int(i) + first_embedding_feature_id)
+                        outputline += ':' + str(v) + '\t'
                 
                 largestsofar = nfeats
                 
@@ -75,6 +104,15 @@ def combine_into_libsvm_files(dataset, ids1, ids2, labels, dataset_type, fold, n
                     if int(feat.split(':')[0]) + nfeats < largestsofar:
                         print 'Parsing error...'
                     largestsofar = int(feat.split(':')[0]) + nfeats
+                    
+                if embeddings is not None:
+                    first_embedding_feature_id = nfeats * 2 + embeddings.shape[1]
+                    
+                    docvec = embeddings[a1[row], :]
+                    for i, v in enumerate(docvec):
+                        outputline += str(int(i) + first_embedding_feature_id)
+                        outputline += ':' + str(v) + '\t'    
+                    
                 outputline += '\n'
                 ofh.write(outputline)
                 
