@@ -1088,19 +1088,19 @@ if __name__ == '__main__':
     # active learning, set dataset_increment to 0 to use all data
     acc = 1.0
     dataset_increment = 0
-#       
+       
 #     datasets = ['UKPConvArgCrowdSample_evalMACE']
-#     methods = ['SinglePrefGP_noOpt_weaksprior_smalldata']#
+#     methods = ['SinglePrefGP_noOpt_weaksprior']#
 #     feature_types = ['both']
 #     embeddings_types = ['word_mean']
 
-    datasets = ['UKPConvArgAll', 'UKPConvArgCrowdSample_evalMACE']#, 'UKPConvArgStrict'] #
+    datasets = ['UKPConvArgAll', 'UKPConvArgCrowdSample_evalMACE', 'UKPConvArgStrict'] #
     #methods = ['BI-LSTM']
     methods = ['SVM']
-    feature_types = ['ling', 'both']
+    feature_types = ['both']
     embeddings_types = ['word_mean']
 
     #if not 'runner' in globals():
     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
                             dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=200)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)
