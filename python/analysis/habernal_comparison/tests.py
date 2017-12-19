@@ -820,7 +820,7 @@ class TestRunner:
         return all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, all_tr_proba
            
     def run_test(self, feature_type, embeddings_type=None, dataset_increment=0, acc=1.0, subsample_amount=0, 
-                 min_no_folds=0, max_no_folds=32, npairs=0, test_on_train=False):
+                 min_no_folds=0, max_no_folds=32, npairs=0, test_on_all_training_pairs=False):
 
         logging.info("**** Running method %s with features %s, embeddings %s, on dataset %s ****" % (self.method, 
                                                         feature_type, embeddings_type, self.dataset) )
@@ -845,14 +845,15 @@ class TestRunner:
                 print("Already completed maximum no. folds. Skipping fold %i, %s" % (foldidx, self.fold))
                 continue
             foldresultsfile = results_stem + '/fold%i.pkl' % foldidx
-            if not len(all_proba.keys()) and os.path.isfile(foldresultsfile): 
+            if foldidx not in all_proba and os.path.isfile(foldresultsfile): 
                 if dataset_increment == 0:
                     print("Skipping fold %i, %s" % (foldidx, self.fold))
                     continue
                 
                 with open(foldresultsfile, 'r') as fh:
                     all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],\
-                    all_target_rankscores[foldidx], _, times[foldidx], final_ls[foldidx], all_tr_proba = pickle.load(fh)
+                    all_target_rankscores[foldidx], _, times[foldidx], final_ls[foldidx], all_tr_proba[foldidx] = \
+                                pickle.load(fh)
     
             # Get data for this fold --------------------------------------------------------------------------------------
             print("Fold name ", self.fold)
@@ -893,7 +894,7 @@ class TestRunner:
                 pair_subset = np.random.choice(len(a1_train), nnew_pairs, replace=False)                                     
             else:
                 pair_subset = np.arange(npairs_f)
-            # save so we can reuse for another method             
+            # save so we can reuse for another method
             self.initial_pair_subset[self.fold] = pair_subset
 
             self.verbose = True
@@ -922,8 +923,10 @@ class TestRunner:
                 logging.info('****** Fitting model with %i pairs in fold %i ******' % (len(pair_subset), foldidx))
                 
                 # get the indexes of data points that are not yet seen        
-                if not test_on_train:
+                if not test_on_all_training_pairs:
                     unseen_subset[pair_subset] = False
+                    if dataset_increment == 0: # no active learning, don't need to evaluate the unseen data points
+                        unseen_subset[:] = False
     
                 # set the current dataset    
                 self.a1_train = a1_train[pair_subset]
@@ -1080,27 +1083,36 @@ class TestRunner:
                     for embeddings_type in embeddings_to_use:                         
                         self.run_test(feature_type, embeddings_type, dataset_increment=self.dataset_increment, acc=1.0, 
                                 subsample_amount=subsample_tr, min_no_folds=min_no_folds, max_no_folds=max_no_folds, 
-                                npairs=npairs, test_on_train=test_on_train)
+                                npairs=npairs, test_on_all_training_pairs=test_on_train)
                         
                         logging.info("**** Completed: method %s with features %s, embeddings %s ****" % (self.method, feature_type, 
                                                                                embeddings_type) )
 if __name__ == '__main__':
     # active learning, set dataset_increment to 0 to use all data
     acc = 1.0
-    dataset_increment = 0
-       
-#     datasets = ['UKPConvArgCrowdSample_evalMACE']
-#     methods = ['SinglePrefGP_noOpt_weaksprior']#
-#     feature_types = ['both']
-#     embeddings_types = ['word_mean']
-
-    datasets = ['UKPConvArgAll', 'UKPConvArgCrowdSample_evalMACE', 'UKPConvArgStrict'] #
-    #methods = ['BI-LSTM']
-    methods = ['SVM']
+    dataset_increment = 2
+         
+    datasets = ['UKPConvArgCrowdSample_evalMACE_noranking']
+    methods = ['SinglePrefGP_noOpt_weaksprior']#['SVM']#, 'SinglePrefGP_noOpt_weaksprior']#
     feature_types = ['both']
     embeddings_types = ['word_mean']
-
+  
     #if not 'runner' in globals():
     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
                             dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=400)
+
+# 
+#     acc = 1.0
+#     dataset_increment = 0
+#       
+#     datasets = ['UKPConvArgStrict', 'UKPConvArgAll', 'UKPConvArgCrowdSample_evalMACE'] #
+#     #methods = ['BI-LSTM']
+#     methods = ['SVM']
+#     feature_types = ['both']
+#     embeddings_types = ['word_mean']
+#   
+#     #if not 'runner' in globals():
+#     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)

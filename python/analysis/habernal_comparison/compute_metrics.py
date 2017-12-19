@@ -474,8 +474,8 @@ if __name__ == '__main__':
     di = 0
     max_no_folds = 32
 
-    methods = ['SVM']
-    datasets = ['UKPConvArgCrowdSample_evalMACE']
+    methods = ['BI-LSTM'] #,'SVM',  
+    datasets = ['UKPConvArgAll', 'UKPConvArgCrowdSample_evalMACE']#, 'UKPConvArgStrict']
     feature_types = ['both']
     embeddings_types = ['word_mean']#['word_mean', 'skipthoughts', 'siamese-cbow']
      

@@ -157,7 +157,13 @@ def load_train_test_data(dataset):
     folds_regression_test = None # for when the test for the ranking is different to the training data
     
     # Select the directory containing original XML files with argument data + crowdsourced annotations.
-    # See the readme in the data folder from Habernal 2016 for further explanation of folder names.    
+    # See the readme in the data folder from Habernal 2016 for further explanation of folder names.  
+    
+    
+    norankidx = dataset.find('_noranking')
+    if norankidx > -1:
+        dataset = dataset[:norankidx]
+      
     if dataset == 'UKPConvArgCrowd':
         # basic dataset, requires additional steps to produce the other datasets        
         dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'  
@@ -179,10 +185,14 @@ def load_train_test_data(dataset):
     elif dataset == 'UKPConvArgCrowdSample_evalMACE':
         dirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-XML/'  
         ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/'
-        folds_test, folds_regression, _, _, _ = load_train_test_data('UKPConvArgAll')
+        folds_test, folds_regression_test, _, _, _ = load_train_test_data('UKPConvArgAll')
         dataset = 'UKPConvArgCrowdSample'
     else:
-        raise Exception("Invalid dataset %s" % dataset)    
+        raise Exception("Invalid dataset %s" % dataset)
+
+    if norankidx > -1:
+        ranking_csvdirname = None
+        folds_regression_test = None
     
     print("Data directory = %s, dataset=%s" % (dirname, dataset))
     csvdirname = data_root_dir + 'argument_data/%s-new-CSV/' % dataset
