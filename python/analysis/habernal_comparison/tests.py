@@ -503,6 +503,7 @@ class TestRunner:
          
         if self.a_rank_test is not None:
             #if not os.path.isfile(trainfile):
+            print self.a_rank_train
             trainfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a_rank_train], None, 
                 self.scores_rank_train, 'r_training', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings,
                 a1=self.a_rank_train)                
@@ -510,6 +511,7 @@ class TestRunner:
             rank_model = svm_train(problem[0], problem[1], '-s 4')
          
             #if not os.path.isfile(testfile):
+            print self.a_rank_test
             testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a_rank_test], None, 
                 np.zeros(len(self.a_rank_test)), 'r_test', self.fold, nfeats, outputfile=filetemplate, 
                 embeddings=embeddings, a1=self.a_rank_test)
@@ -1110,11 +1112,11 @@ if __name__ == '__main__':
        
     datasets = ['UKPConvArgAll', 'UKPConvArgStrict', 'UKPConvArgCrowdSample_evalMACE'] #
     #methods = ['BI-LSTM']
-    methods = ['SVM']
+    methods = ['SVM_test']
     feature_types = ['both']
     embeddings_types = ['word_mean']
    
     #if not 'runner' in globals():
     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
                             dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=100)
