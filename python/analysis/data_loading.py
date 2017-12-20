@@ -215,8 +215,8 @@ def load_train_test_data(dataset):
     folds, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = load_my_data_separate_args(csvdirname, 
                                                                                           embeddings_dir=embeddings_dir)
     print folds.keys()[0]
-    print folds[folds.keys()[0]]["training"][0][:20, :10]
-    print folds[folds.keys()[0]]["training"][1][:20, :10]
+    print folds[folds.keys()[0]]["training"][0][:20][:10]
+    print folds[folds.keys()[0]]["training"][1][:20][:10]
     print folds[folds.keys()[0]]["training"][2][:10]
     print folds[folds.keys()[0]]["training"][3][:20]
     if ranking_csvdirname is not None:             
