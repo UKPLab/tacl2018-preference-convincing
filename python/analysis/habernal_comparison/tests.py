@@ -347,6 +347,8 @@ class TestRunner:
             
         if 'shrunk' in self.method:
             ls_initial = self.ls_initial / float(len(self.ls_initial))
+        else:
+            ls_initial = self.ls_initial
         
         if 'weaksprior' in self.method:
             shape_s0 = 2.0
@@ -1088,31 +1090,31 @@ class TestRunner:
                         logging.info("**** Completed: method %s with features %s, embeddings %s ****" % (self.method, feature_type, 
                                                                                embeddings_type) )
 if __name__ == '__main__':
-    # active learning, set dataset_increment to 0 to use all data
-    acc = 1.0
-    dataset_increment = 2
-         
-    datasets = ['UKPConvArgCrowdSample_evalMACE_noranking']
-    methods = ['SinglePrefGP_noOpt_weaksprior']#['SVM']#, 'SinglePrefGP_noOpt_weaksprior']#
-    feature_types = ['both']
-    embeddings_types = ['word_mean']
-  
-    #if not 'runner' in globals():
-    runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
-                            dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=400)
-
-# 
+#     # active learning, set dataset_increment to 0 to use all data
 #     acc = 1.0
-#     dataset_increment = 0
-#       
-#     datasets = ['UKPConvArgStrict', 'UKPConvArgAll', 'UKPConvArgCrowdSample_evalMACE'] #
-#     #methods = ['BI-LSTM']
-#     methods = ['SVM']
+#     dataset_increment = 2
+#          
+#     datasets = ['UKPConvArgCrowdSample_evalMACE_noranking']
+#     methods = ['SinglePrefGP_noOpt_weaksprior']#['SVM']#, 'SinglePrefGP_noOpt_weaksprior']#
 #     feature_types = ['both']
 #     embeddings_types = ['word_mean']
 #   
 #     #if not 'runner' in globals():
 #     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
 #                             dataset_increment)
-#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=400)
+
+ 
+    acc = 1.0
+    dataset_increment = 0
+       
+    datasets = ['UKPConvArgStrict', 'UKPConvArgAll', 'UKPConvArgCrowdSample_evalMACE'] #
+    #methods = ['BI-LSTM']
+    methods = ['SVM']
+    feature_types = ['both']
+    embeddings_types = ['word_mean']
+   
+    #if not 'runner' in globals():
+    runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)
