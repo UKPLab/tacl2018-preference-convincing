@@ -503,6 +503,10 @@ class TestRunner:
          
         if self.a_rank_test is not None:
             #if not os.path.isfile(trainfile):
+            print self.a1_train
+            print self.a2_train
+            print self.a1_test
+            print self.a2_test
             print self.a_rank_train
             trainfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a_rank_train], None, 
                 self.scores_rank_train, 'r_training', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings,
