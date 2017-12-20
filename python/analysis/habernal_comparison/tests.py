@@ -1108,7 +1108,7 @@ if __name__ == '__main__':
     acc = 1.0
     dataset_increment = 0
        
-    datasets = ['UKPConvArgStrict', 'UKPConvArgAll', 'UKPConvArgCrowdSample_evalMACE'] #
+    datasets = ['UKPConvArgAll', 'UKPConvArgStrict', 'UKPConvArgCrowdSample_evalMACE'] #
     #methods = ['BI-LSTM']
     methods = ['SVM']
     feature_types = ['both']
