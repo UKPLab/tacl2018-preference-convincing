@@ -214,6 +214,11 @@ def load_train_test_data(dataset):
     print('Loading train/test data from %s...' % csvdirname)
     folds, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = load_my_data_separate_args(csvdirname, 
                                                                                           embeddings_dir=embeddings_dir)
+    print folds.keys()[0]
+    print folds[folds.keys()[0]]["test"][0]
+    print folds[folds.keys()[0]]["test"][1]
+    print folds[folds.keys()[0]]["test"][2]
+    print folds[folds.keys()[0]]["test"][3]
     if ranking_csvdirname is not None:             
         folds_regression, _ = load_my_data_regression(ranking_csvdirname, embeddings_dir=embeddings_dir, 
                                                       load_embeddings=True)
