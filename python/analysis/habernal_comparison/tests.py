@@ -1106,4 +1106,4 @@ if __name__ == '__main__':
     #if not 'runner' in globals():
     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
                             dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=100)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)
