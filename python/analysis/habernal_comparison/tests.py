@@ -31,6 +31,7 @@ Created on 20 Mar 2017
 
 import logging
 from scipy.stats.stats import pearsonr
+from sklearn.svm.classes import NuSVR
 logging.basicConfig(level=logging.DEBUG)
 
 import sys
@@ -502,26 +503,9 @@ class TestRunner:
             proba = 1 - np.array(proba)
          
         if self.a_rank_test is not None:
-            #if not os.path.isfile(trainfile):
-            print self.a1_train
-            print self.a2_train
-            print self.a1_test
-            print self.a2_test
-            print self.a_rank_train
-            trainfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a_rank_train], None, 
-                self.scores_rank_train, 'r_training', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings,
-                a1=self.a_rank_train)                
-            problem = svm_read_problem(trainfile)
-            rank_model = svm_train(problem[0], problem[1], '-s 4')
-         
-            #if not os.path.isfile(testfile):
-            print self.a_rank_test
-            testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a_rank_test], None, 
-                np.zeros(len(self.a_rank_test)), 'r_test', self.fold, nfeats, outputfile=filetemplate, 
-                embeddings=embeddings, a1=self.a_rank_test)
-             
-            problem = svm_read_problem(testfile)
-            predicted_f, _, _ = svm_predict(problem[0], problem[1], rank_model)
+            svr = NuSVR()    
+            svr.fit(self.items_feat[self.a_rank_train], self.scores_rank_train)
+            predicted_f = svr.predict(self.items_feat[self.a_rank_test])
             logging.debug('Predictions from SVM regression: %s ' % predicted_f)
         else:
             predicted_f = None
@@ -1096,30 +1080,30 @@ class TestRunner:
                         logging.info("**** Completed: method %s with features %s, embeddings %s ****" % (self.method, feature_type, 
                                                                                embeddings_type) )
 if __name__ == '__main__':
-    # active learning, set dataset_increment to 0 to use all data
+#     # active learning, set dataset_increment to 0 to use all data
+#     acc = 1.0
+#     dataset_increment = 2
+#           
+#     datasets = ['UKPConvArgCrowdSample_evalMACE_noranking']
+#     methods = ['SinglePrefGP_noOpt_weaksprior']#['SVM']#, 'SinglePrefGP_noOpt_weaksprior']#
+#     feature_types = ['both']
+#     embeddings_types = ['word_mean']
+#    
+#     #if not 'runner' in globals():
+#     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=400)
+ 
     acc = 1.0
-    dataset_increment = 2
-           
-    datasets = ['UKPConvArgCrowdSample_evalMACE_noranking']
-    methods = ['SinglePrefGP_noOpt_weaksprior']#['SVM']#, 'SinglePrefGP_noOpt_weaksprior']#
+    dataset_increment = 0
+        
+    datasets = ['UKPConvArgAll', 'UKPConvArgStrict', 'UKPConvArgCrowdSample_evalMACE'] #
+    #methods = ['BI-LSTM']
+    methods = ['SVM']
     feature_types = ['both']
     embeddings_types = ['word_mean']
     
     #if not 'runner' in globals():
     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
                             dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=400)
- 
-#     acc = 1.0
-#     dataset_increment = 0
-#         
-#     datasets = ['UKPConvArgAll']#, 'UKPConvArgStrict', 'UKPConvArgCrowdSample_evalMACE'] #
-#     #methods = ['BI-LSTM']
-#     methods = ['SVM_test']
-#     feature_types = ['both']
-#     embeddings_types = ['word_mean']
-#     
-#     #if not 'runner' in globals():
-#     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
-#                             dataset_increment)
-#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=100)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=100)
