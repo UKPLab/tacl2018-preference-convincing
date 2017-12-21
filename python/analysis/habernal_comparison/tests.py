@@ -372,15 +372,15 @@ class TestRunner:
         self.model.fit(self.a1_train, self.a2_train, new_items_feat, np.array(self.prefs_train, dtype=float)-1, 
                   optimize=self.optimize_hyper, input_type='zero-centered')            
     
-        proba, _ = self.model.predict(self.a1_test, self.a2_test, use_training_items=True, reuse_output_kernel=True)
+        proba, _ = self.model.predict(None, self.a1_test, self.a2_test, reuse_output_kernel=True)
     
         if self.a1_unseen is not None and len(self.a1_unseen):
-            tr_proba, _ = self.model.predict(self.a1_unseen, self.a2_unseen, use_training_items=True, reuse_output_kernel=True)
+            tr_proba, _ = self.model.predict(None, self.a1_unseen, self.a2_unseen, reuse_output_kernel=True)
         else:
             tr_proba = None
         
         if self.a_rank_test is not None:
-            predicted_f, _ = self.model.predict_f(self.a_rank_test, use_training_items=True)
+            predicted_f, _ = self.model.predict_f(None, self.a_rank_test)
         else:
             predicted_f = None
     
@@ -1099,27 +1099,26 @@ if __name__ == '__main__':
     # active learning, set dataset_increment to 0 to use all data
     acc = 1.0
     dataset_increment = 2
-          
+           
     datasets = ['UKPConvArgCrowdSample_evalMACE_noranking']
     methods = ['SinglePrefGP_noOpt_weaksprior']#['SVM']#, 'SinglePrefGP_noOpt_weaksprior']#
     feature_types = ['both']
     embeddings_types = ['word_mean']
-   
+    
     #if not 'runner' in globals():
     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
                             dataset_increment)
     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=400)
-
  
 #     acc = 1.0
 #     dataset_increment = 0
-#        
+#         
 #     datasets = ['UKPConvArgAll']#, 'UKPConvArgStrict', 'UKPConvArgCrowdSample_evalMACE'] #
 #     #methods = ['BI-LSTM']
 #     methods = ['SVM_test']
 #     feature_types = ['both']
 #     embeddings_types = ['word_mean']
-#    
+#     
 #     #if not 'runner' in globals():
 #     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
 #                             dataset_increment)
