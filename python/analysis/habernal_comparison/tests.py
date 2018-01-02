@@ -1056,6 +1056,9 @@ class TestRunner:
                      npairs=0, test_on_train=False):
         # keep these variables around in case we are restarting the script with different method settings and same data.
         for dataset in self.datasets:
+            
+            self.initial_pair_subset = {} # reset this when we use a different dataset
+            
             for self.method in self.methods:
                 if self.folds is None or self.dataset != dataset:
                     self._load_dataset(dataset) # reload only if we use a new dataset
@@ -1097,7 +1100,7 @@ if __name__ == '__main__':
     acc = 1.0
     dataset_increment = 0
         
-    datasets = ['UKPConvArgAll', 'UKPConvArgStrict', 'UKPConvArgCrowdSample_evalMACE'] #
+    datasets = ['UKPConvArgCrowdSample_evalMACE', 'UKPConvArgStrict'] #
     #methods = ['BI-LSTM']
     methods = ['SVM']
     feature_types = ['both']
