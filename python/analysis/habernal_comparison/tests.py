@@ -529,7 +529,7 @@ class TestRunner:
         #if not os.path.isfile(trainfile):
         trainfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_train], self.docids[self.a2_train], 
             svc_labels, 'training', self.fold, nfeats, outputfile=filetemplate, reverse_pairs=True, embeddings=embeddings, 
-            a1=self.a1_train, a2=self.a2_train)
+            a1=self.a1_train, a2=self.a2_train, embeddings_only=feature_type=='embeddings')
           
         problem = svm_read_problem(trainfile) 
         self.model = svm_train(problem[0], problem[1], '-b 1')
@@ -537,7 +537,7 @@ class TestRunner:
         #if not os.path.isfile(testfile):
         testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_test], self.docids[self.a2_test], 
             np.ones(len(self.a1_test)), 'test', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings, 
-            a1=self.a1_test, a2=self.a2_test)
+            a1=self.a1_test, a2=self.a2_test, embeddings_only=feature_type=='embeddings')
              
         problem = svm_read_problem(testfile)        
         _, _, proba = svm_predict(problem[0], problem[1], self.model, '-b 1')
@@ -557,7 +557,7 @@ class TestRunner:
             testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_unseen], 
                                                        self.docids[self.a2_unseen], np.ones(len(self.a1_unseen)), 
                                            'unseen', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings,
-                                           a1=self.a1_unseen, a2=self.a2_unseen)
+                                           a1=self.a1_unseen, a2=self.a2_unseen, embeddings_only=feature_type=='embeddings')
             
             problem = svm_read_problem(testfile)
             _, _, tr_proba = svm_predict(problem[0], problem[1], self.model, '-b 1')
@@ -749,9 +749,6 @@ class TestRunner:
         elif 'SingleGPC' in self.method:
             method_runner_fun = self.run_gpc
         elif 'SVM' in self.method:
-            if feature_type == 'embeddings':
-                logging.error("SVM is not set up to run without linguistic features. Will switch to feature type=both...")
-                feature_type='both'
             method_runner_fun = lambda: self.run_svm(feature_type)
         elif 'BI-LSTM' in self.method:
             if feature_type == 'ling':
@@ -1141,20 +1138,43 @@ if __name__ == '__main__':
     acc = 1.0
     dataset_increment = 0
          
-    #datasets = ['UKPConvArgStrict'] # 'UKPConvArgCrowdSample_evalMACE', 
-    #methods = ['BI-LSTM']
-    #methods = ['SVM']
-    #methods = ['SinglePrefGP_noOpt_weaksprior_M2', 'SinglePrefGP_noOpt_weaksprior_M10', 
-    #           'SinglePrefGP_noOpt_weaksprior_M100', 'SinglePrefGP_noOpt_weaksprior_M300', 
-    #           'SinglePrefGP_noOpt_weaksprior_M600', # leave out 'SinglePrefGP_noOpt_weakersprior_M500' because we've already done it 
-    #           ]
-    #feature_types = ['both', 'embeddings']
-    #embeddings_types = ['word_mean']
-      
+#     datasets = ['UKPConvArgStrict'] # 'UKPConvArgCrowdSample_evalMACE', 
+#     #methods = ['BI-LSTM']
+#     #methods = ['SVM']
+#     methods = [#'SinglePrefGP_noOpt_weaksprior_M2', 'SinglePrefGP_noOpt_weaksprior_M10', 
+#                #'SinglePrefGP_noOpt_weaksprior_M100', 'SinglePrefGP_noOpt_weaksprior_M300', 
+#                #'SinglePrefGP_noOpt_weaksprior_M600', # leave out 'SinglePrefGP_noOpt_weakersprior_M500' because we've already done it 
+#                'SinglePrefGP_noOpt_weaksprior_M400', 'SinglePrefGP_noOpt_weaksprior_M500', 'SinglePrefGP_noOpt_weaksprior_M700'
+#                ]
+#     feature_types = ['both', 'embeddings']
+#     embeddings_types = ['word_mean']
+#        
+#     #if not 'runner' in globals():
+#     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)
+    
+    datasets = ['UKPConvArgStrict'] 
+    methods = ['BI-LSTM']#'SVM', 'SinglePrefGP_noOpt_weaksprior_M200']
+    feature_types = ['debug']
+    ndebug_features = 3000
+    embeddings_types = ['word_mean']
+       
     #if not 'runner' in globals():
-    #runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
-    #                        dataset_increment)
-    #runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)
+    runner = TestRunner('crowdsourcing_argumentation_expts_3000feats', datasets, feature_types, embeddings_types, methods, 
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)
+    
+    datasets = ['UKPConvArgStrict'] 
+    methods = ['BI-LSTM']#'SVM', 'SinglePrefGP_noOpt_weaksprior_M200'] # 
+    feature_types = ['debug']
+    ndebug_features = 30
+    embeddings_types = ['word_mean']
+       
+    #if not 'runner' in globals():
+    runner = TestRunner('crowdsourcing_argumentation_expts_30feats', datasets, feature_types, embeddings_types, methods, 
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)      
 
 #     # scaling with N_tr
 #     datasets = ['UKPConvArgStrict'] 
@@ -1186,31 +1206,31 @@ if __name__ == '__main__':
 #                             dataset_increment)
 #     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=500)   
     
-    datasets = ['UKPConvArgStrict'] 
-    methods = ['BI-LSTM'] # M0 will mean no SVI # 'SVM_small']#, 
-    feature_types = ['embeddings']
-    embeddings_types = ['word_mean']
-     
-    runner = TestRunner('crowdsourcing_argumentation_expts_50', datasets, feature_types, embeddings_types, methods, 
-                            dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=50)
-    
-    runner = TestRunner('crowdsourcing_argumentation_expts_100', datasets, feature_types, embeddings_types, methods, 
-                            dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=100)
-    
-    runner = TestRunner('crowdsourcing_argumentation_expts_200', datasets, feature_types, embeddings_types, methods, 
-                            dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=200)        
-
-    runner = TestRunner('crowdsourcing_argumentation_expts_300', datasets, feature_types, embeddings_types, methods, 
-                            dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=300)
-    
-    runner = TestRunner('crowdsourcing_argumentation_expts_400', datasets, feature_types, embeddings_types, methods, 
-                            dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=400)
-    
-    runner = TestRunner('crowdsourcing_argumentation_expts_500', datasets, feature_types, embeddings_types, methods, 
-                            dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=500)
+#     datasets = ['UKPConvArgStrict'] 
+#     methods = [ 'SVM_small']#'BI-LSTM'] # M0 will mean no SVI #, 
+#     feature_types = ['embeddings']
+#     embeddings_types = ['word_mean']
+#      
+#     runner = TestRunner('crowdsourcing_argumentation_expts_50', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=50)
+#     
+#     runner = TestRunner('crowdsourcing_argumentation_expts_100', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=100)
+#     
+#     runner = TestRunner('crowdsourcing_argumentation_expts_200', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=200)        
+# 
+#     runner = TestRunner('crowdsourcing_argumentation_expts_300', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=300)
+#     
+#     runner = TestRunner('crowdsourcing_argumentation_expts_400', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=400)
+#     
+#     runner = TestRunner('crowdsourcing_argumentation_expts_500', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=500)

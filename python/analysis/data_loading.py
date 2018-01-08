@@ -24,7 +24,7 @@ import numpy as np
 def combine_into_libsvm_files(dataset, ids1, ids2, labels, dataset_type, fold, nfeats,
         dirname=data_root_dir + '/lingdata/UKPConvArg1-Full-libsvm', 
         outputfile=data_root_dir + '/libsvmdata/%s-%s-%s-libsvm.txt', reverse_pairs=False, 
-        embeddings=None, a1=None, a2=None): 
+        embeddings=None, a1=None, a2=None, embeddings_only=False): 
     outputfile = outputfile % (dataset, dataset_type, fold)
     
     outputstr = ""
@@ -40,8 +40,12 @@ def combine_into_libsvm_files(dataset, ids1, ids2, labels, dataset_type, fold, n
             with open(dirname + "/" + fname1) as fh:
                 lines = fh.readlines()
 
-            comment_split_line = lines[0][1:].split('#')                
-            outputline = str(float(labels[row])) + comment_split_line[0] 
+            comment_split_line = lines[0][1:].split('#')
+            
+            if embeddings_only:           
+                outputline = str(float(labels[row])) + comment_split_line[0]
+            else:
+                outputline = str(float(labels[row])) + '\t'
             
             if embeddings is not None:
                 first_embedding_feature_id = nfeats
@@ -60,14 +64,16 @@ def combine_into_libsvm_files(dataset, ids1, ids2, labels, dataset_type, fold, n
 
                 # move comments at end of first line to end of complete joint line
                 comment_split_line2 = lines2[0][1:].split('#')
-                for feat in comment_split_line2[0].split('\t'):
-                    if not len(feat):
-                        continue
-                    outputline += str(int(feat.split(':')[0]) + nfeats)
-                    outputline += ':' + feat.split(':')[1] + '\t'
-                # we could re-add the comments back in, but this seems to be problematic for libsvm, not sure why?
-                #if len(comment_split_line) > 1:
-                #    outputline += '\t#' + comment_split_line[1] + '_' + comment_split_line_complete[1]  
+                
+                if not embeddings_only:
+                    for feat in comment_split_line2[0].split('\t'):
+                        if not len(feat):
+                            continue
+                        outputline += str(int(feat.split(':')[0]) + nfeats)
+                        outputline += ':' + feat.split(':')[1] + '\t'
+                    # we could re-add the comments back in, but this seems to be problematic for libsvm, not sure why?
+                    #if len(comment_split_line) > 1:
+                    #    outputline += '\t#' + comment_split_line[1] + '_' + comment_split_line_complete[1]  
         
                 if embeddings is not None:
                     first_embedding_feature_id = nfeats * 2 + embeddings.shape[1]

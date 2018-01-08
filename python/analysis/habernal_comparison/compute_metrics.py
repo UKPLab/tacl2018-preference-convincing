@@ -173,9 +173,9 @@ def get_results_dir(data_root_dir, resultsfile_template, expt_settings):
             
     return resultsdir    
 
-def load_results_data(data_root_dir, resultsfile_template, expt_settings):
+def load_results_data(data_root_dir, resultsfile_template, expt_settings, foldername='crowdsourcing_argumentation_expts/'):
     # start by loading the old-style data
-    resultsfile = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
+    resultsfile = data_root_dir + 'outputdata/' + foldername + \
             resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
                 expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
                 expt_settings['di']) + '_test.pkl'
