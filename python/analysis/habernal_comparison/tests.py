@@ -276,7 +276,7 @@ def subsample_tr_data(subsample_amount, a1_train, a2_train):
 
         nselected = len(item_subsample_ids)
     
-    pair_subsample_idxs = np.in1d(a1_train, item_subsample_ids) & np.in1d(a2_train, item_subsample_ids)
+    pair_subsample_idxs = np.argwhere(np.in1d(a1_train, item_subsample_ids) & np.in1d(a2_train, item_subsample_ids))
     
     #    pair_subsample_idxs = np.random.choice(len(a1_train), subsample_amount, replace=False)
     
@@ -1187,7 +1187,7 @@ if __name__ == '__main__':
 #     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=500)   
     
     datasets = ['UKPConvArgStrict'] 
-    methods = ['SVM']#, 'BI-LSTM'] # M0 will mean no SVI
+    methods = ['BI-LSTM'] # M0 will mean no SVI # 'SVM_small']#, 
     feature_types = ['embeddings']
     embeddings_types = ['word_mean']
      
