@@ -43,16 +43,16 @@ def get_fold_data(data, f, expt_settings):
             pred_disc = np.array(data[1][f]) * 2
             if pred_disc.ndim == 1:
                 pred_disc = pred_disc[:, np.newaxis]
-            if expt_settings['method'] == 'SVM':
-                pred_disc = 2 - pred_disc
+            #if expt_settings['method'] == 'SVM':
+            #    pred_disc = 2 - pred_disc
             
             # probabilities
             gold_prob = gold_disc / 2.0
             pred_prob = np.array(data[0][f])
             if pred_prob.ndim == 1:
                 pred_prob = pred_prob[:, np.newaxis]
-            if expt_settings['method'] == 'SVM':
-                pred_prob = 1 - pred_prob    
+            #if expt_settings['method'] == 'SVM':
+            #    pred_prob = 1 - pred_prob    
             
             # scores used to rank
             if len(data[4]) > 0:
@@ -196,7 +196,7 @@ def load_results_data(data_root_dir, resultsfile_template, expt_settings):
     return data, nFolds, resultsdir, resultsfile          
 
 def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, accuracy=1.0, di=0, npairs=0, tag='', 
-                    remove_seen_from_mean=False, max_no_folds=32, min_folds=0, compute_tr_performance=False):
+                    remove_seen_from_mean=False, max_no_folds=32, min_folds_desired=0, compute_tr_performance=False):
         
     expt_settings['acc'] = accuracy
     expt_settings['di'] = di
@@ -262,9 +262,10 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                 else:
                     embeddings_to_use = embeddings_types
                 for expt_settings['embeddings_type'] in embeddings_to_use:
-                    data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template, expt_settings)
+                    data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template, 
+                                                                              expt_settings)
 
-                    #min_folds = 0
+                    min_folds = min_folds_desired
 
                     for f in range(nFolds):
                         print "Processing fold %i" % f
@@ -406,6 +407,23 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             tr_results_logloss[row, col, -1, AL_round] = np.mean(tr_results_logloss[row, col, foldrange, AL_round], axis=0)
                             tr_results_auc[row, col, -1, AL_round] = np.mean(tr_results_auc[row, col, foldrange, AL_round], axis=0)
                         
+                    print 'p-values for %s, %s, %s, %s:' % (expt_settings['dataset'], expt_settings['method'], expt_settings['feature_type'], expt_settings['embeddings_type'])
+                        
+                    print wilcoxon(results_f1[0, 0, foldrange, AL_round], 
+                                                                      results_f1[row, col, foldrange, AL_round])[1]
+                    print wilcoxon(results_acc[0, 0, foldrange, AL_round], 
+                                                                      results_acc[row, col, foldrange, AL_round])[1]
+                    print wilcoxon(results_logloss[0, 0, foldrange, AL_round], 
+                                                                      results_logloss[row, col, foldrange, AL_round])[1]
+                    print wilcoxon(results_auc[0, 0, foldrange, AL_round], 
+                                                                      results_auc[row, col, foldrange, AL_round])[1]
+                    print wilcoxon(results_pearson[0, 0, foldrange, AL_round], 
+                                                                      results_pearson[row, col, foldrange, AL_round])[1]
+                    print wilcoxon(results_spearman[0, 0, foldrange, AL_round], 
+                                                                      results_spearman[row, col, foldrange, AL_round])[1]
+                    print wilcoxon(results_kendall[0, 0, foldrange, AL_round], 
+                                                                      results_kendall[row, col, foldrange, AL_round])[1]                                                                                                                                                                        
+                        
                     if row == 0: # set the column headers    
                         columns[col] = expt_settings['feature_type'] + ', ' + expt_settings['embeddings_type']
                     
@@ -474,15 +492,41 @@ if __name__ == '__main__':
     di = 0
     max_no_folds = 32
 
-    methods = ['BI-LSTM'] #,'SVM',  
-    datasets = ['UKPConvArgAll', 'UKPConvArgCrowdSample_evalMACE']#, 'UKPConvArgStrict']
+    methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_noOpt_weaksprior', 'SVM', 'BI-LSTM', 'SingleGPC_noOpt_weaksprior', 'GP+SVM']  
+    datasets = ['UKPConvArgStrict']
     feature_types = ['both']
     embeddings_types = ['word_mean']#['word_mean', 'skipthoughts', 'siamese-cbow']
-     
+#      
+#     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
+#     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
+#     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
+#                       max_no_folds=max_no_folds)
+#     
+    datasets = ['UKPConvArgAll']
+  
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
                       max_no_folds=max_no_folds)
+     
+#     datasets = ['UKPConvArgCrowdSample_evalMACE']
+#      
+#     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
+#     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
+#     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
+#                       max_no_folds=max_no_folds)
+        
+# 
+#     methods = ['SVM' ]  
+#     datasets = ['UKPConvArgStrict', 'UKPConvArgAll', 'UKPConvArgCrowdSample_evalMACE']
+#     feature_types = ['ling']
+#     embeddings_types = ['word_mean']#['word_mean', 'skipthoughts', 'siamese-cbow']
+#      
+#     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
+#     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
+#     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
+#                       max_no_folds=max_no_folds)
+
         
 #     # compute p values of first result to other results in the list
 #     for row in range(results_f1.shape[0]):

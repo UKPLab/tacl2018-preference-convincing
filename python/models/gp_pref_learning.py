@@ -4,7 +4,7 @@ Created on 18 May 2016
 @author: simpson
 '''
 import numpy as np
-from scipy.stats import norm
+from scipy.stats import norm, multivariate_normal as mvn
 from scipy.sparse import coo_matrix, issparse, hstack
 import logging
 from gp_classifier_vb import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
@@ -59,7 +59,7 @@ def get_unique_locations(obs_coords_0, obs_coords_1, mu_0, mu_1):
     
     return obs_coords, pref_v, pref_u, mu_vu
 
-def pref_likelihood(f=[], subset_idxs=[], v=[], u=[], return_g_f=False):
+def pref_likelihood(fmean, fvar=None, subset_idxs=[], v=[], u=[], return_g_f=False):
     '''
     f - should be of shape nobs x 1
     
@@ -75,15 +75,23 @@ def pref_likelihood(f=[], subset_idxs=[], v=[], u=[], return_g_f=False):
             v = v[pair_subset]
             u = u[pair_subset]
         else:
-            f = f[subset_idxs]  
+            fmean = fmean[subset_idxs]  
 
-    if f.ndim < 2:
-        f = f[:, np.newaxis]
+    if fmean.ndim < 2:
+        fmean = fmean[:, np.newaxis]
+        
+    if fvar is None:
+        fvar = 2.0
+    else:
+        if fvar.ndim < 2:
+            fvar = fvar[:, np.newaxis]        
+        fvar += 2.0
     
-    if len(v) and len(u):   
-        g_f = (f[v, :] - f[u, :]) / np.sqrt(2) # / np.sqrt(self.s)) # gives an NobsxNobs matrix
+    # TODO: should we include posterior covariance of f? Would this mean replacing 2 with 2 + var(u) + var(v) - cov(uv)?
+    if len(v) and len(u):
+        g_f = (fmean[v, :] - fmean[u, :]) / np.sqrt(fvar) # / np.sqrt(self.s)) # gives an NobsxNobs matrix
     else: # provide the complete set of pairs
-        g_f = (f - f.T) / np.sqrt(2) # / np.sqrt(self.s))  # the maths shows that s cancels out -- it's already 
+        g_f = (fmean - fmean.T) / np.sqrt(fvar) # / np.sqrt(self.s))  # the maths shows that s cancels out -- it's already 
         # included in our estimates of f, which are scaled by s. However, the prior mean mu0 should also be scaled
         # to match, but this should happen automatically if we learn s, I think. 
             
@@ -145,8 +153,25 @@ class GPPrefLearning(GPClassifierSVI):
     def _init_obs_prior(self):
         # TODO: are we missing adding the uncertainty in the prior mu0? 
         # to make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
-        m_prior, not_m_prior, v_prior = self._post_rough(self.mu0, self.rate_s0/self.shape_s0, self.pref_v, self.pref_u)
-
+        if self.use_svi:
+            Kstar = self.K_nm
+            Ks_starstar = self.K_nm.dot(self.K_nm.T) * self.rate_s0/self.shape_s0
+        else:
+            Kstar = self.K
+            Ks_starstar = self.K * self.rate_s0/self.shape_s0
+            
+        samples = norm.rvs(loc=self.mu0, scale=np.sqrt(self.rate_s0/self.shape_s0), size=(self.mu0.shape[0], 1000))
+        samples = self.forward_model(samples, v=self.pref_v, u=self.pref_u, return_g_f=False)
+        v_post = np.var(samples, axis=1)[:, np.newaxis]
+        v_post = temper_extreme_probs(v_post, zero_only=True)            
+            
+        _, _, v_prior = self._post_sample(self.mu0, Kstar, False, self.mu0, self.pref_v, self.pref_u)
+        # since the sampling method uses a small sample size, the mean can be a little wrong, e.g. not 0.5 when mu0 is 
+        # 0. This is okay for the variance but use the method below to correct the mean. 
+        m_prior, not_m_prior = self._post_rough(self.mu0, Ks_starstar, self.pref_v, self.pref_u)
+        
+        v_post[m_prior * (1 - not_m_prior) <= 1e-7] = 1e-8
+        
         # find the beta parameters
         a_plus_b = 1.0 / (v_prior / (m_prior*not_m_prior)) - 1
         a = (a_plus_b * m_prior)
@@ -159,7 +184,6 @@ class GPPrefLearning(GPClassifierSVI):
     def _init_obs_f(self):
         # Mean probability at observed points given local observations
         self.obs_f = np.zeros((self.n_locs, 1)) + self.mu0
-        self.Ntrain = self.pref_u.size 
         
     def _init_obs_mu0(self, mu0):
         if mu0 is None or not len(mu0):
@@ -169,9 +193,11 @@ class GPPrefLearning(GPClassifierSVI):
             self.mu0_1 = self.mu0[self.pref_v, :]
             self.mu0_2 = self.mu0[self.pref_u, :]
             
+        self.Ntrain = self.pref_u.size 
+            
     # Input data handling ---------------------------------------------------------------------------------------------
 
-    def _count_observations(self, obs_coords, n_obs, poscounts, totals):
+    def _count_observations(self, obs_coords, _, poscounts, totals):
         '''
         obs_coords - a tuple with two elements, the first containing the list of coordinates for the first items in each
         pair, and the second containing the coordinates of the second item in the pair.
@@ -239,7 +265,7 @@ class GPPrefLearning(GPClassifierSVI):
             
     # Mapping between latent and observation spaces -------------------------------------------------------------------
               
-    def forward_model(self, f=[], subset_idxs=[], v=[], u=[], return_g_f=False):
+    def forward_model(self, fmean=None, fvar=None, subset_idxs=[], v=[], u=[], return_g_f=False):
         '''
         f - should be of shape nobs x 1
         
@@ -248,14 +274,14 @@ class GPPrefLearning(GPClassifierSVI):
         In this work, we use z to refer to the observations, i.e. the fraction of comparisons of a given pair with 
         value 1, so use a different label here.
         '''        
-        if len(f) == 0:
-            f = self.obs_f            
+        if fmean is None:
+            fmean = self.obs_f
         if len(v) == 0:
             v = self.pref_v
         if len(u) == 0:
             u = self.pref_u
             
-        return pref_likelihood(f, subset_idxs, v, u, return_g_f)
+        return pref_likelihood(fmean, fvar, subset_idxs, v, u, return_g_f)
     
     def _compute_jacobian(self, data_idx_i=None):
         phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
@@ -271,7 +297,7 @@ class GPPrefLearning(GPClassifierSVI):
         else:    
             s = (self.pref_v[:, np.newaxis]==obs_idxs).astype(int) - (self.pref_u[:, np.newaxis]==obs_idxs).astype(int)
             
-        J = J * s         
+        J = J * s
         
         return phi, J
     
@@ -289,13 +315,12 @@ class GPPrefLearning(GPClassifierSVI):
     # Log Likelihood Computation ------------------------------------------------------------------------------------- 
         
     def _logpt(self):
-        rho = self.forward_model(self.obs_f)
+        rho = self.forward_model(self.obs_f, None, v=self.pref_v, u=self.pref_u, return_g_f=False)
         rho = temper_extreme_probs(rho)
-        logrho_rough = np.log(rho)
-        lognotrho_rough = np.log(1 - rho)   
-        #logging.debug("Approximation error in rho =%.4f" % np.max(np.abs(logrho - logrho_rough)))
-        #logging.debug("Approximation error in notrho =%.4f" % np.max(np.abs(lognotrho - lognotrho_rough)))
-        return logrho_rough, lognotrho_rough  
+        logrho = np.log(rho)
+        lognotrho = np.log(1 - rho)
+        
+        return logrho, lognotrho  
     
     # Training methods ------------------------------------------------------------------------------------------------  
             
@@ -341,7 +366,7 @@ class GPPrefLearning(GPClassifierSVI):
             
     # Prediction methods ---------------------------------------------------------------------------------------------
     def predict(self, out_feats=None, item_0_idxs=None, item_1_idxs=None, out_1_feats=None, K_star=None, K_starstar=None,  
-                max_block_size=1e4, expectedlog=False, return_not=False, mu0_out=None, mu0_out_1=None,
+                expectedlog=False, return_not=False, mu0_out=None, mu0_out_1=None,
                 reuse_output_kernel=False, return_var=True):
         '''
         Evaluate the function posterior mean and variance at the given co-ordinates using the 2D squared exponential 
@@ -359,20 +384,17 @@ class GPPrefLearning(GPClassifierSVI):
             items_1_idxs AND K_star AND K_starstar) OR (out_feats AND out_1_feats)')
             return
 
-        # predict f for all the rows in out_feats or K_star if these variables are not None, otherwise error.
-        f, v = self.predict_f(out_feats, None, K_star, K_starstar, max_block_size, mu0_out, reuse_output_kernel)
-
         if item_0_idxs is not None and item_1_idxs is not None and out_1_feats is not None and out_feats is not None:
-            # in this case, out_1_feats specifies a different set of points to out_feats
-            f1, v1 = self.predict_f(None, out_1_feats, K_star, K_starstar, max_block_size, mu0_out_1, reuse_output_kernel)
-            item_1_idxs = item_1_idxs + f.shape[0]
-            f = np.concatenate((f, f1), axis=0)
-            v = np.concatenate((v, v1), axis=0)
-                
+            out_feats = np.concatenate((out_feats, out_1_feats), axis=0)
+            mu0_out = np.concatenate((mu0_out, mu0_out_1))
+
+        # predict f for all the rows in out_feats or K_star if these variables are not None, otherwise error.
+        f, C = self.predict_f(out_feats, None, K_star, K_starstar, mu0_out, reuse_output_kernel, 
+                              full_cov=True)
+
+        m_post, not_m_post = self._post_rough(f, C, item_0_idxs, item_1_idxs)
         if return_var:
-            m_post, not_m_post, v_post = self._post_rough(f, v, item_0_idxs, item_1_idxs)
-        else:
-            m_post, not_m_post = self._post_rough(f, None, item_0_idxs, item_1_idxs)
+            _, _, v_post = self._post_sample(f, self.K_star, False, mu0_out, item_0_idxs, item_1_idxs)
         
         if expectedlog:
             m_post = np.log(m_post)
@@ -388,7 +410,44 @@ class GPPrefLearning(GPClassifierSVI):
         else:
             return m_post
             
-    def _post_rough(self, f_mean, f_var=None, pref_v=None, pref_u=None):
+    def _post_sample(self, f_mean, f_cov, expectedlog, mu=0, v=None, u=None):
+        if v is None:
+            v = self.pref_v
+        if u is None:
+            u = self.pref_u
+        if mu is None:
+            mu = 0
+            
+        if len(f_mean) == 0:
+            f_mean = self.obs_f
+            f_cov = self.obs_C
+            
+        # since we don't have f_cov
+        if self.use_svi:
+            #sample the inducing points because we don't have full covariance matrix. In this case, f_cov should be Ks_nm
+            f_samples = mvn.rvs(mean=self.um_minus_mu0.flatten(), cov=self.uS, size=1000).T
+            f_samples = f_cov.dot(self.invK_mm).dot(f_samples) + mu
+        else:
+            f_samples = mvn.rvs(mean=f_mean.flatten(), cov=f_cov, size=1000).T
+             
+        g_f = (f_samples[v, :] - f_samples[u, :])  / np.sqrt(2)
+        phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the 
+        phi = temper_extreme_probs(phi)
+        if expectedlog:
+            phi = np.log(phi)
+            notphi = np.log(1-phi)
+        else:
+            notphi = 1 - phi
+        
+        m_post = np.mean(phi, axis=1)[:, np.newaxis]
+        not_m_post = np.mean(notphi, axis=1)[:, np.newaxis]
+        v_post = np.var(phi, axis=1)[:, np.newaxis]
+        v_post = temper_extreme_probs(v_post, zero_only=True)
+        v_post[m_post * (1 - not_m_post) <= 1e-7] = 1e-8 # fixes extreme values to sensible values. Don't think this is needed and can lower variance?
+
+        return m_post, not_m_post, v_post 
+
+    def _post_rough(self, f_mean, f_cov, pref_v=None, pref_u=None):
         ''' 
         When making predictions, we want to predict the probability of each listed preference pair.
         Use a solution given by applying the forward model to the mean of the latent function -- 
@@ -399,26 +458,10 @@ class GPPrefLearning(GPClassifierSVI):
         if pref_u is None:
             pref_u = self.pref_u
         
-        if f_var is not None and not np.any(f_var <= 0):
-            samples = norm.rvs(loc=f_mean, scale=np.sqrt(f_var), size=(f_mean.shape[0], 1000))
-            samples = self.forward_model(samples, v=pref_v, u=pref_u, return_g_f=False)
+        # TODO: since we introduced the softening using f_cov, m_post is too uncertain. Perhaps try increasing rate_s to remedy this.
+        m_post = self.forward_model(f_mean, f_cov[pref_v, pref_v] + f_cov[pref_u, pref_u] + f_cov[pref_v, pref_u] 
+                                    + f_cov[pref_u, pref_v], v=pref_v, u=pref_u, return_g_f=False)
+        m_post = temper_extreme_probs(m_post)
+        not_m_post = 1 - m_post
             
-            samples[samples <= 1e-7] = 1e-7
-            samples[samples >= 1-1e-7] = 1-1e-7 # zeros are bad at this point, leads to zero variance
-            
-            m_post = np.mean(samples, axis=1)[:, np.newaxis]
-            not_m_post = 1 - m_post
-            v_post = np.var(samples, axis=1)[:, np.newaxis]
-            #v_post = temper_extreme_probs(v_post, zero_only=True) # causes errors when m_post is close to 0 or 1 
-            # v_post[m_post * (1 - m_post) <= 1e-7] = 1e-8 # important to make sure our fixes for extreme values lead
-            # to sensible values
-            return m_post, not_m_post, v_post            
-        else:        
-            m_post = self.forward_model(f_mean, v=pref_v, u=pref_u, return_g_f=False)
-            m_post = temper_extreme_probs(m_post)
-            not_m_post = 1 - m_post
-            
-            if f_var is not None:
-                return m_post, not_m_post, np.zeros(m_post.shape)
-            else:
-                return m_post, not_m_post
+        return m_post, not_m_post

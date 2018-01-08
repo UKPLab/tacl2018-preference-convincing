@@ -45,10 +45,10 @@ if __name__ == '__main__':
     methods = ['BI-LSTM']#['SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
     # shouldn't need this any more because we look for the file automatically 
     #expt_settings['foldorderfile'] = "~/Dropbox/titanx_foldorder.txt" # change this depending on where we ran the tests... None if no file available.
-    datasets = ['UKPConvArgCrowdSample_evalMACE']#['UKPConvArgStrict']
-    feature_types = ['embeddings']
+    datasets = ['UKPConvArgCrowdSample_evalMACE_noranking']#['UKPConvArgStrict']
+    feature_types = ['both']
     embeddings_types = ['word_mean']#'skipthoughts']
-    npairs = 200#11126
+    npairs = 400#11126
     di = 2#1000
     max_no_folds = 32
     compute_metrics.max_no_folds = max_no_folds
@@ -74,11 +74,11 @@ if __name__ == '__main__':
     expt_settings['foldorderfile'] = None
     expt_settings['fold_order'] = None
    
-    methods = ['SinglePrefGP_noOpt_weaksprior_smalldata']#['SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
-    datasets = ['UKPConvArgCrowdSample_evalMACE']#['UKPConvArgStrict']
+    methods = ['SinglePrefGP_noOpt_weaksprior']#['SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
+    datasets = ['UKPConvArgCrowdSample_evalMACE_noranking']#['UKPConvArgStrict']
     feature_types = ['both']
     embeddings_types = ['word_mean']#'skipthoughts']
-    npairs = 200#11126
+    npairs = 400#11126
     di = 2#1000
     max_no_folds = 32
        
@@ -101,10 +101,10 @@ if __name__ == '__main__':
     ax7 = plot_active_learning_results(mean_results[6], "Kendall's Tau", 'Mean over test topics', ax7, style=styles[1])
     
     methods = ['SVM']#['SinglePrefGP_weaksprior']#, 'SinglePrefGP_noOpt_weaksprior'] # 'SVM',
-    datasets = ['UKPConvArgCrowdSample_evalMACE']#['UKPConvArgStrict']
-    feature_types = ['ling']
-    embeddings_types = ['']#'skipthoughts']
-    npairs = 200#11126
+    datasets = ['UKPConvArgCrowdSample_evalMACE_noranking']#['UKPConvArgStrict']
+    feature_types = ['both']
+    embeddings_types = ['word_mean']#'skipthoughts']
+    npairs = 400#11126
     di = 2#1000
     max_no_folds = 32
     

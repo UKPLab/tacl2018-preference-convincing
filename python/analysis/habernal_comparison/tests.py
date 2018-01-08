@@ -63,6 +63,8 @@ from data_loading import load_train_test_data, load_embeddings, load_ling_featur
     combine_into_libsvm_files, load_siamese_cbow_embeddings, load_skipthoughts_embeddings
 import numpy as np
     
+ndebug_features = 10
+    
 def save_fold_order(resultsdir, folds=None, dataset=None):
     if folds is None and dataset is not None:
         folds, _, _, _, _ = load_train_test_data(dataset)        
@@ -113,7 +115,7 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
         items_feat = ling_feat_spmatrix.toarray()
     
     if feature_type == 'debug':
-        items_feat = items_feat[:, :3]
+        items_feat = items_feat[:, :ndebug_features]
     
     starttime = time.time()
                                 
@@ -259,17 +261,26 @@ def get_fold_regression_data(folds_regression, fold, docids):
            item_idx_ranktest, scores_rank_test, argids_rank_test, personIDs_rank_test
     
     
-def subsample_tr_data(subsample_amount, items_feat, a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, 
-                      prefs_test, person_test):
+def subsample_tr_data(subsample_amount, a1_train, a2_train):
             
-    pair_subsample_idxs = np.random.choice(len(a1_train), subsample_amount, replace=False)
+    item_subsample_ids = []
+    nselected = 0
+    while nselected < subsample_amount:
+        idx = np.random.choice(len(a1_train), 1)
+        
+        if a1_train[idx] not in item_subsample_ids:
+            item_subsample_ids.append(a1_train[idx])
     
-    a1_train = a1_train[pair_subsample_idxs]
-    a2_train = a2_train[pair_subsample_idxs]
-    prefs_train = prefs_train[pair_subsample_idxs]
-    person_train = person_train[pair_subsample_idxs]
-            
-    return items_feat, a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test 
+        if a2_train[idx] not in item_subsample_ids:
+            item_subsample_ids.append(a2_train[idx])
+
+        nselected = len(item_subsample_ids)
+    
+    pair_subsample_idxs = np.in1d(a1_train, item_subsample_ids) & np.in1d(a2_train, item_subsample_ids)
+    
+    #    pair_subsample_idxs = np.random.choice(len(a1_train), subsample_amount, replace=False)
+    
+    return pair_subsample_idxs
     
 class TestRunner:    
     
@@ -330,8 +341,8 @@ class TestRunner:
             valid_feats = np.concatenate((valid_feats, valid_feats_ling))
             
         if feature_type=='debug':
-            items_feat = items_feat[:, :10] #use only three features for faster debugging
-            valid_feats = valid_feats[:10]
+            items_feat = items_feat[:, :ndebug_features] #use only three features for faster debugging
+            valid_feats = valid_feats[:ndebug_features]
             self.ling_items_feat = items_feat
             self.embeddings_items_feat = items_feat
             
@@ -341,6 +352,16 @@ class TestRunner:
     
     # Methods for running the prediction methods --------------------------------------------------------------------------
     def run_gppl(self):
+        # TODO: Find out why updates to preference learning code or the test framework seem to have reduced accuracy.
+        #   - Convergence taking longer, method runs for 200 iterations without completing. Maybe step size in the SVI 
+        # updates should be increased, but this does not explain the change. ***Caused by change to logpt?*** 
+        # ***Covariance means we can't treat f_var in same way as noise! Was there some reason we previously thought the var cancelled out?***
+        #   - Delay changed from 1 to 10. This may mean it doesn't converge in the permitted no. iterations. ***Testing again with delay of 1 didn't change result much***
+        #   - Lengthscale median heuristic should be the same. 
+        #   - Changes to the way the output is computed to account for uncertainty in f might be responsible? This 
+        # could be making data points with higher mean phi but greater uncertainty have same predictions as those with 
+        # lower mean phi and greater certainty. 
+        
         if 'additive' in self.method:
             kernel_combination = '+'
         else:
@@ -354,18 +375,40 @@ class TestRunner:
         if 'weaksprior' in self.method:
             shape_s0 = 2.0
             rate_s0 = 200.0
-        elif 'lowsprior':
+        elif 'lowsprior' in self.method:
             shape_s0 = 1.0
             rate_s0 = 1.0
+        elif 'weakersprior' in self.method:
+            shape_s0 = 2.0
+            rate_s0 = 2000.0
         else:
             shape_s0 = 200.0
             rate_s0 = 20000.0
+            
+        if '_M' in self.method:
+            validx = self.method.find('_M') + 2
+            M = int(self.method[validx:])
+        else:
+            M = 500
+            
+        if '_SS' in self.method:
+            validx = self.method.find('_SS') + 3
+            SS = int(self.method[validx:])
+        else:
+            SS = 200        
         
         if self.model is None:
+            
+            if M == 0:
+                use_svi = False
+            else:
+                use_svi = True
+            
             self.model = GPPrefLearning(ninput_features=self.ndims, ls_initial=ls_initial, verbose=self.verbose, 
-                    shape_s0=shape_s0, rate_s0=rate_s0, rate_ls = 1.0 / np.mean(ls_initial), use_svi=True, 
-                    ninducing=500, max_update_size=200, kernel_combination=kernel_combination, forgetting_rate=0.7)
-            self.model.max_iter_VB = 200
+                    shape_s0=shape_s0, rate_s0=rate_s0, rate_ls = 1.0 / np.mean(ls_initial), use_svi=use_svi, 
+                    ninducing=M, max_update_size=SS, kernel_combination=kernel_combination, forgetting_rate=0.7, 
+                    delay=1.0)
+            self.model.max_iter_VB = 2000
             new_items_feat = self.items_feat # pass only when initialising
         else:
             new_items_feat = None
@@ -373,7 +416,7 @@ class TestRunner:
         self.model.fit(self.a1_train, self.a2_train, new_items_feat, np.array(self.prefs_train, dtype=float)-1, 
                   optimize=self.optimize_hyper, input_type='zero-centered')            
     
-        proba, _ = self.model.predict(None, self.a1_test, self.a2_test, reuse_output_kernel=True)
+        proba = self.model.predict(None, self.a1_test, self.a2_test, reuse_output_kernel=True, return_var=False)
     
         if self.a1_unseen is not None and len(self.a1_unseen):
             tr_proba, _ = self.model.predict(None, self.a1_unseen, self.a2_unseen, reuse_output_kernel=True)
@@ -857,14 +900,9 @@ class TestRunner:
                                                         get_fold_regression_data(self.folds_r, self.fold, self.docids)
             
             self.load_features(feature_type, embeddings_type, a1_train, a2_train, uids, utexts)
-            #items_feat = items_feat[:, :10]     
+            #items_feat = items_feat[:, :ndebug_features]     
     
-            # Subsample training data --------------------------------------------------------------------------------------
-            if subsample_amount > 0:
-                self.items_feat, a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, \
-                = subsample_tr_data(subsample_amount, self.items_feat, a1_train, a2_train, prefs_train, person_train, 
-                                    a1_test, a2_test, prefs_test, person_test)
-    
+            # Subsample training data --------------------------------------------------------------------------------------    
             if npairs == 0:
                 npairs_f = len(a1_train)
             else:
@@ -883,7 +921,9 @@ class TestRunner:
             if self.fold in self.initial_pair_subset:    
                 pair_subset = self.initial_pair_subset[self.fold]
             elif  dataset_increment != 0:
-                pair_subset = np.random.choice(len(a1_train), nnew_pairs, replace=False)                                     
+                pair_subset = np.random.choice(len(a1_train), nnew_pairs, replace=False)
+            elif subsample_amount > 0:
+                pair_subset = subsample_tr_data(subsample_amount, a1_train, a2_train)                     
             else:
                 pair_subset = np.arange(npairs_f)
             # save so we can reuse for another method
@@ -1039,8 +1079,9 @@ class TestRunner:
                 # Save the time taken
                 times[foldidx] = endtime-starttime                
     
-                results = (all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],\
-                   all_target_rankscores[foldidx], self.ls_initial, times[foldidx], final_ls[foldidx], all_tr_proba[foldidx])
+                results = (all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],
+                   all_target_rankscores[foldidx], self.ls_initial, times[foldidx], final_ls[foldidx], 
+                   all_tr_proba[foldidx], len(self.a1_train))
                 with open(foldresultsfile, 'w') as fh:
                     pickle.dump(results, fh)
     
@@ -1086,12 +1127,12 @@ if __name__ == '__main__':
 #     # active learning, set dataset_increment to 0 to use all data
 #     acc = 1.0
 #     dataset_increment = 2
-#           
+#            
 #     datasets = ['UKPConvArgCrowdSample_evalMACE_noranking']
 #     methods = ['SinglePrefGP_noOpt_weaksprior']#['SVM']#, 'SinglePrefGP_noOpt_weaksprior']#
 #     feature_types = ['both']
 #     embeddings_types = ['word_mean']
-#    
+#     
 #     #if not 'runner' in globals():
 #     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
 #                             dataset_increment)
@@ -1099,14 +1140,77 @@ if __name__ == '__main__':
  
     acc = 1.0
     dataset_increment = 0
-        
-    datasets = ['UKPConvArgCrowdSample_evalMACE', 'UKPConvArgStrict'] #
+         
+    #datasets = ['UKPConvArgStrict'] # 'UKPConvArgCrowdSample_evalMACE', 
     #methods = ['BI-LSTM']
-    methods = ['SVM']
-    feature_types = ['both']
-    embeddings_types = ['word_mean']
-    
+    #methods = ['SVM']
+    #methods = ['SinglePrefGP_noOpt_weaksprior_M2', 'SinglePrefGP_noOpt_weaksprior_M10', 
+    #           'SinglePrefGP_noOpt_weaksprior_M100', 'SinglePrefGP_noOpt_weaksprior_M300', 
+    #           'SinglePrefGP_noOpt_weaksprior_M600', # leave out 'SinglePrefGP_noOpt_weakersprior_M500' because we've already done it 
+    #           ]
+    #feature_types = ['both', 'embeddings']
+    #embeddings_types = ['word_mean']
+      
     #if not 'runner' in globals():
-    runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
+    #runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
+    #                        dataset_increment)
+    #runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)
+
+#     # scaling with N_tr
+#     datasets = ['UKPConvArgStrict'] 
+#     methods = ['SinglePrefGP_noOpt_weaksprior_M0', 'SinglePrefGP_noOpt_weaksprior_M100'] # M0 will mean no SVI
+#     feature_types = ['embeddings']
+#     embeddings_types = ['word_mean']
+#      
+# #     runner = TestRunner('crowdsourcing_argumentation_expts_50', datasets, feature_types, embeddings_types, methods, 
+# #                             dataset_increment)
+# #     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=50)
+#     
+#     runner = TestRunner('crowdsourcing_argumentation_expts_100', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=100)
+#     
+#     runner = TestRunner('crowdsourcing_argumentation_expts_200', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=200)        
+# 
+#     runner = TestRunner('crowdsourcing_argumentation_expts_300', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=300)
+#     
+#     runner = TestRunner('crowdsourcing_argumentation_expts_400', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=400)
+#     
+#     runner = TestRunner('crowdsourcing_argumentation_expts_500', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=500)   
+    
+    datasets = ['UKPConvArgStrict'] 
+    methods = ['SVM']#, 'BI-LSTM'] # M0 will mean no SVI
+    feature_types = ['embeddings']
+    embeddings_types = ['word_mean']
+     
+    runner = TestRunner('crowdsourcing_argumentation_expts_50', datasets, feature_types, embeddings_types, methods, 
                             dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=50)
+    
+    runner = TestRunner('crowdsourcing_argumentation_expts_100', datasets, feature_types, embeddings_types, methods, 
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=100)
+    
+    runner = TestRunner('crowdsourcing_argumentation_expts_200', datasets, feature_types, embeddings_types, methods, 
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=200)        
+
+    runner = TestRunner('crowdsourcing_argumentation_expts_300', datasets, feature_types, embeddings_types, methods, 
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=300)
+    
+    runner = TestRunner('crowdsourcing_argumentation_expts_400', datasets, feature_types, embeddings_types, methods, 
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=400)
+    
+    runner = TestRunner('crowdsourcing_argumentation_expts_500', datasets, feature_types, embeddings_types, methods, 
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=500)
