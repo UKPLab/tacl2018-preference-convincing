@@ -276,7 +276,7 @@ def subsample_tr_data(subsample_amount, a1_train, a2_train):
 
         nselected = len(item_subsample_ids)
     
-    pair_subsample_idxs = np.argwhere(np.in1d(a1_train, item_subsample_ids) & np.in1d(a2_train, item_subsample_ids))
+    pair_subsample_idxs = np.argwhere(np.in1d(a1_train, item_subsample_ids) & np.in1d(a2_train, item_subsample_ids)).flatten()
     
     #    pair_subsample_idxs = np.random.choice(len(a1_train), subsample_amount, replace=False)
     
