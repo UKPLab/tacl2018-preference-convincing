@@ -1138,20 +1138,20 @@ if __name__ == '__main__':
     acc = 1.0
     dataset_increment = 0
          
-    datasets = ['UKPConvArgStrict'] # 'UKPConvArgCrowdSample_evalMACE', 
-#     #methods = ['BI-LSTM']
-    methods = ['SVM']
-#     methods = [#'SinglePrefGP_noOpt_weaksprior_M2', 'SinglePrefGP_noOpt_weaksprior_M10', 
-#                #'SinglePrefGP_noOpt_weaksprior_M100', 'SinglePrefGP_noOpt_weaksprior_M300', 
-#                #'SinglePrefGP_noOpt_weaksprior_M600', # leave out 'SinglePrefGP_noOpt_weakersprior_M500' because we've already done it 
-#                'SinglePrefGP_noOpt_weaksprior_M400', 'SinglePrefGP_noOpt_weaksprior_M500', 'SinglePrefGP_noOpt_weaksprior_M700'
-#                ]
-    feature_types = ['embeddings'] # 'both', 
-    embeddings_types = ['word_mean']
-         
-    runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
-                            dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0)
+#     datasets = ['UKPConvArgStrict'] # 'UKPConvArgCrowdSample_evalMACE', 
+# #     #methods = ['BI-LSTM']
+#     methods = ['SVM']
+# #     methods = [#'SinglePrefGP_noOpt_weaksprior_M2', 'SinglePrefGP_noOpt_weaksprior_M10', 
+# #                #'SinglePrefGP_noOpt_weaksprior_M100', 'SinglePrefGP_noOpt_weaksprior_M300', 
+# #                #'SinglePrefGP_noOpt_weaksprior_M600', # leave out 'SinglePrefGP_noOpt_weakersprior_M500' because we've already done it 
+# #                'SinglePrefGP_noOpt_weaksprior_M400', 'SinglePrefGP_noOpt_weaksprior_M500', 'SinglePrefGP_noOpt_weaksprior_M700'
+# #                ]
+#     feature_types = ['embeddings'] # 'both', 
+#     embeddings_types = ['word_mean']
+#          
+#     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0)
 
 #     methods = ['SinglePrefGP_noOpt_weaksprior_M200']
 #     feature_types = ['embeddings', 'both'] 
@@ -1181,7 +1181,7 @@ if __name__ == '__main__':
     #if not 'runner' in globals():
     runner = TestRunner('crowdsourcing_argumentation_expts_10000feats', datasets, feature_types, embeddings_types, methods, 
                             dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)
+    runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0)
 
 #     datasets = ['UKPConvArgStrict'] 
 #     methods = ['SVM'] # 'BI-LSTM'] 
