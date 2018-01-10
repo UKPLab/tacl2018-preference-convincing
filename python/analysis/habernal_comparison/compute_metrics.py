@@ -156,8 +156,8 @@ def collate_AL_results(AL_rounds, results, combined_labels, label):
         
     return mean_results
 
-def get_results_dir(data_root_dir, resultsfile_template, expt_settings):
-    resultsdir = data_root_dir + 'outputdata/crowdsourcing_argumentation_expts/' + \
+def get_results_dir(data_root_dir, resultsfile_template, expt_settings, foldername='crowdsourcing_argumentation_expts/'):
+    resultsdir = data_root_dir + 'outputdata/%s' % foldername + \
             resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
                 expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
                 expt_settings['di'])
@@ -180,7 +180,7 @@ def load_results_data(data_root_dir, resultsfile_template, expt_settings, folder
                 expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
                 expt_settings['di']) + '_test.pkl'
     
-    resultsdir = get_results_dir(data_root_dir, resultsfile_template, expt_settings)                       
+    resultsdir = get_results_dir(data_root_dir, resultsfile_template, expt_settings, foldername)                       
     
     nFolds = max_no_folds
     if os.path.isfile(resultsfile): 
