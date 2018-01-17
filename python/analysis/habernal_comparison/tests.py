@@ -31,7 +31,7 @@ Created on 20 Mar 2017
 
 import logging
 from scipy.stats.stats import pearsonr
-from sklearn.svm.classes import NuSVR
+from sklearn.svm.classes import NuSVR, SVC
 logging.basicConfig(level=logging.DEBUG)
 
 import sys
@@ -108,14 +108,14 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
         else:
             logging.info("invalid embeddings type! %s" % embeddings_type)
         
-    if feature_type == 'both':
+    if feature_type == 'both' or feature_type == 'debug':
         items_feat = np.concatenate((items_feat, ling_feat_spmatrix.toarray()), axis=1)
         
     if feature_type == 'ling':
         items_feat = ling_feat_spmatrix.toarray()
     
-    if feature_type == 'debug':
-        items_feat = items_feat[:, :ndebug_features]
+#     if feature_type == 'debug':
+#         items_feat = items_feat[:, :ndebug_features]
     
     starttime = time.time()
                                 
@@ -329,7 +329,7 @@ class TestRunner:
             valid_feats = np.zeros(0)
             self.embeddings_items_feat = None
             
-        if feature_type == 'both' or feature_type == 'ling':
+        if feature_type == 'both' or feature_type == 'ling' or feature_type == 'debug':
             logging.info("Obtaining linguistic features for argument texts.")
             # trim the features that are not used in training
             valid_feats_ling = np.sum( (self.ling_feat_spmatrix[a1_train, :] != 0) + 
@@ -340,9 +340,10 @@ class TestRunner:
             logging.info("...loaded all linguistic features for training and test data.")
             valid_feats = np.concatenate((valid_feats, valid_feats_ling))
             
+        print 'Found %i features.' % items_feat.shape[1]
+            
         if feature_type=='debug':
             items_feat = items_feat[:, :ndebug_features] #use only n features for faster debugging
-            valid_feats = valid_feats[:ndebug_features]
             self.ling_items_feat = items_feat
             self.embeddings_items_feat = items_feat
             
@@ -413,6 +414,7 @@ class TestRunner:
         else:
             new_items_feat = None
         
+        print "no. features: %i" % new_items_feat.shape[1]
         self.model.fit(self.a1_train, self.a2_train, new_items_feat, np.array(self.prefs_train, dtype=float)-1, 
                   optimize=self.optimize_hyper, input_type='zero-centered')            
     
@@ -513,34 +515,44 @@ class TestRunner:
         return proba, predicted_f, tr_proba      
     
     def run_svm(self, feature_type):
-        from svmutil import svm_train, svm_predict, svm_read_problem
-         
-        if feature_type == 'embeddings' or feature_type == 'both' or feature_type == 'debug':
-            embeddings = self.embeddings_items_feat
-        else:
-            embeddings = None
+#         from svmutil import svm_train, svm_predict, svm_read_problem
+#          
+#         if feature_type == 'embeddings' or feature_type == 'both' or feature_type == 'debug':
+#             embeddings = self.embeddings_items_feat
+#         else:
+#             embeddings = None
          
         prefs_train_fl = np.array(self.prefs_train, dtype=float)
         svc_labels = np.concatenate((prefs_train_fl * 0.5, 1 - prefs_train_fl * 0.5))
-                                            
-        filetemplate = data_root_dir + '/libsvmdata/%s-%s-%s-libsvm.txt'
-        nfeats = self.ling_feat_spmatrix.shape[1]
-          
-        #if not os.path.isfile(trainfile):
-        trainfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_train], self.docids[self.a2_train], 
-            svc_labels, 'training', self.fold, nfeats, outputfile=filetemplate, reverse_pairs=True, embeddings=embeddings, 
-            a1=self.a1_train, a2=self.a2_train, embeddings_only=feature_type=='embeddings')
-          
-        problem = svm_read_problem(trainfile) 
-        self.model = svm_train(problem[0], problem[1], '-b 1')
-      
-        #if not os.path.isfile(testfile):
-        testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_test], self.docids[self.a2_test], 
-            np.ones(len(self.a1_test)), 'test', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings, 
-            a1=self.a1_test, a2=self.a2_test, embeddings_only=feature_type=='embeddings')
-             
-        problem = svm_read_problem(testfile)        
-        _, _, proba = svm_predict(problem[0], problem[1], self.model, '-b 1')
+#                                             
+#         filetemplate = data_root_dir + '/libsvmdata/%s-%s-%s-libsvm.txt'
+#         nfeats = self.ling_feat_spmatrix.shape[1]
+#           
+#         #if not os.path.isfile(trainfile):
+#         trainfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_train], self.docids[self.a2_train], 
+#             svc_labels, 'training', self.fold, nfeats, outputfile=filetemplate, reverse_pairs=True, embeddings=embeddings, 
+#             a1=self.a1_train, a2=self.a2_train, embeddings_only=feature_type=='embeddings')
+#           
+#         problem = svm_read_problem(trainfile) 
+#         self.model = svm_train(problem[0], problem[1], '-b 1')
+#       
+#         #if not os.path.isfile(testfile):
+#         testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_test], self.docids[self.a2_test], 
+#             np.ones(len(self.a1_test)), 'test', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings, 
+#             a1=self.a1_test, a2=self.a2_test, embeddings_only=feature_type=='embeddings')
+#              
+#         problem = svm_read_problem(testfile)        
+#         _, _, proba = svm_predict(problem[0], problem[1], self.model, '-b 1')
+
+        svc = SVC(probability=True)
+        trainfeats = np.concatenate((np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1),
+                               np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1)),
+                               axis=0)
+        print "no. features: %i" % trainfeats.shape[1]
+        print "no. pairs: %i" % trainfeats.shape[0]
+        svc.fit(trainfeats, svc_labels)
+        proba = svc.predict_proba(np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1))
+
         # libSVM flips the labels if the first one it sees is positive
         if svc_labels[0] == 1:
             proba = 1 - np.array(proba)
@@ -554,20 +566,23 @@ class TestRunner:
             predicted_f = None
     
         if self.a1_unseen is not None and len(self.a1_unseen):
-            testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_unseen], 
-                                                       self.docids[self.a2_unseen], np.ones(len(self.a1_unseen)), 
-                                           'unseen', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings,
-                                           a1=self.a1_unseen, a2=self.a2_unseen, embeddings_only=feature_type=='embeddings')
-            
-            problem = svm_read_problem(testfile)
-            _, _, tr_proba = svm_predict(problem[0], problem[1], self.model, '-b 1')
+#             testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_unseen], 
+#                                                        self.docids[self.a2_unseen], np.ones(len(self.a1_unseen)), 
+#                                            'unseen', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings,
+#                                            a1=self.a1_unseen, a2=self.a2_unseen, embeddings_only=feature_type=='embeddings')
+#             
+#             problem = svm_read_problem(testfile)
+#             _, _, tr_proba = svm_predict(problem[0], problem[1], self.model, '-b 1')
+
+            tr_proba = svc.predict_proba(np.concatenate((self.items_feat[self.a1_unseen], self.items_feat[self.a2_unseen]), axis=1))
+
             # libSVM flips the labels if the first one it sees is positive
             if svc_labels[0] == 1:
                 tr_proba = 1 - np.array(tr_proba)
         else:
             tr_proba = None
     
-        return proba, predicted_f, tr_proba 
+        return proba[:, None], predicted_f, tr_proba[:, None] 
      
     def run_bilstm(self, feature_type):     
         from keras.preprocessing import sequence
@@ -935,7 +950,7 @@ class TestRunner:
             self.model = None # initial value
             
             if len(self.default_ls) > 1:
-                self.ls_initial = self.default_ls[self.valid_feats]
+                self.ls_initial = self.default_ls
             elif '_oneLS' in self.method:
                 self.ls_initial = np.median(self.default_ls)
                 logging.info("Selecting a single LS for all features: %f" % self.ls_initial)
@@ -1162,38 +1177,38 @@ if __name__ == '__main__':
 #     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)
     
 #     datasets = ['UKPConvArgStrict'] 
-#     methods = ['SinglePrefGP_noOpt_weaksprior_M500'] # 'BI-LSTM', 'SVM', ]
-#     feature_types = ['debug']
-#     ndebug_features = 3000
-#     embeddings_types = ['word_mean']
-#         
-#     #if not 'runner' in globals():
-#     runner = TestRunner('crowdsourcing_argumentation_expts_3000feats', datasets, feature_types, embeddings_types, methods, 
-#                             dataset_increment)
-#     runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0)
-
-    datasets = ['UKPConvArgStrict'] 
-    methods = ['BI-LSTM']#, 'SinglePrefGP_noOpt_weaksprior_M500', 'SVM']
-    feature_types = ['debug']
-    ndebug_features = 10000
-    embeddings_types = ['word_mean']
-         
-    #if not 'runner' in globals():
-    runner = TestRunner('crowdsourcing_argumentation_expts_10000feats', datasets, feature_types, embeddings_types, methods, 
-                            dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0)
-
-#     datasets = ['UKPConvArgStrict'] 
 #     methods = ['SVM'] # 'BI-LSTM'] 
 #     feature_types = ['debug']
 #     ndebug_features = 30
 #     embeddings_types = ['word_mean']
-#         
+#          
 #     #if not 'runner' in globals():
 #     runner = TestRunner('crowdsourcing_argumentation_expts_30feats', datasets, feature_types, embeddings_types, methods, 
 #                             dataset_increment)
-#     runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0) 
-#      
+#     runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0)     
+#     
+    datasets = ['UKPConvArgStrict'] 
+    methods = ['SinglePrefGP_noOpt_weaksprior_M500', 'SVM'] # 'BI-LSTM', , ] , 
+    feature_types = ['embeddings']
+    ndebug_features = 3000
+    embeddings_types = ['siamese-cbow']
+          
+    #if not 'runner' in globals():
+    runner = TestRunner('crowdsourcing_argumentation_expts_3000feats', datasets, feature_types, embeddings_types, methods, 
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0)
+
+#     datasets = ['UKPConvArgStrict'] 
+#     methods = ['SinglePrefGP_noOpt_weaksprior_M500']#'SVM'] # 'BI-LSTM']#, ,  
+#     feature_types = ['debug']
+#     ndebug_features = 20000
+#     embeddings_types = ['word_mean']
+#          
+#     #if not 'runner' in globals():
+#     runner = TestRunner('crowdsourcing_argumentation_expts_10000feats', datasets, feature_types, embeddings_types, methods, 
+#                             dataset_increment)
+#     runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0)
+      
 #     datasets = ['UKPConvArgStrict'] 
 #     methods = ['SinglePrefGP_noOpt_weaksprior_M500'] # 'BI-LSTM'] 
 #     feature_types = ['debug']

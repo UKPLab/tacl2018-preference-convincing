@@ -5,11 +5,12 @@ Gaussian process preference learning (GPPL).
 Using recent advances in approximate inference, we developed a scalable algorithm for GPPL 
 that is suitable for large NLP datasets.
 Our experiments demonstrated that our method significantly outperforms the state-of-the-art
-on a benchmark dataset for argument convincingness.
-We showed that the method performs well with noisy training data, 
-reducing dependence on a quality control pipeline for crowdsourced data. 
+on a benchmark dataset for argument convincingness, 
+particularly when noisy and conflicting pairwise labels are used in training.
+%reducing dependence on a quality control pipeline for crowdsourced data. 
 The active learning results show that GPPL is an effective model 
-for cold-start situations with minimal training data.
+for cold-start situations 
+and that the convincingness of Internet arguments can be predicted reasonably well given only a small number of samples.
 %or for learning from implicit user feedback.
 The results also showed that linguistic features and word embeddings provide complementary information,
 and that GPPL can be used to automatically identify relevant features.
@@ -18,4 +19,4 @@ Future work will evaluate our approach on other NLP tasks
 where reliable classifications may be difficult to obtain, 
 such as learning to classifiy text from implicit user feedback~\cite{joachims2002optimizing}.
 We also plan to investigate whether the GP can be trained 
-using a combination of classifications and absolute scores as well as pairwise labels.
+using absolute scores in combination with pairwise labels.

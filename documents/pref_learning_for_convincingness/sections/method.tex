@@ -1,56 +1,136 @@
 \section{Scalable Bayesian Preference Learning}\label{sec:model}
 
-Following Chu and Ghahramani~\shortcite{chu2005preference}, 
-we model the relationship between a latent convincingness function, $f$,
-and each observed pairwise label, $v_k \succ u_k$, where $k$ is an index into a list of 
-$P$ pairs, as follows:
+First, we define a probabilistic model for preference learning~\cite{chu2005preference}.
+We observe preference pairs, each consisting of a pair of feature vectors $\mathbf x_i$ and $\mathbf x_j$, for arguments $i$ and $j$,
+%the $k$th pair refers to arguments $i$ and $j$ $x_i$ and $x_j$ and its label may 
+and a label $y \in \{i \succ j, j \succ i\}$, where $i \succ j$ indicates that $i$ is more convincing than
+$j$, and $j \succ i$ means the opposite.
+We assume that the likelihood of $y$ depends on the latent convincingness, $f(\mathbf{x_i})$ and 
+$f(\mathbf x_j)$, of the arguments in the pair. 
+Our goals is to predict $y$ for pairs that have not been observed, 
+%as well as to predict the convincingness, 
+and $f(\mathbf x_i)$, which may be used to rank arguments.
+
+The relationship between convincingness and pairwise labels is described by the following:% \emph{preference likelihood}:
 \begin{flalign}
-& p( v_k \succ u_k | f(v_k), f(u_k), \delta_{v_k}, \delta_{u_k} ) & \nonumber\\
+& p( x_i \succ x_j | f(x_i), f(x_j), \delta_{i}, \delta_{j} ) & \nonumber\\
 & \hspace{0.9cm} = \begin{cases}
- 1 & \text{if }f(v_k) + \delta_{v_k} \geq f(u_k) + \delta_{u_k} \\
+ 1 & \text{if }f(x_i) + \delta_{i} \geq f(j) + \delta_{j} \\
  0 & \text{otherwise,}
  \end{cases} &
  \label{eq:pl}
 \end{flalign}
-where $\delta_i \sim \mathcal{N}(0, 1)$ is Gaussian-distributed noise. 
-The noise term allows for variations in the observed preferences, which may occur if 
-different annotators disagree or change their minds, or if
-the preferences are derived from noisy implicit data such as clicks streams.
-We assume a Gaussian process prior, $f \sim \mathcal{GP}(0, k_{\theta}/s)$, where 
-$k_{\theta}$ is a kernel function with hyper-parameters $\theta$, 
-and $s \sim \mathcal{G}(a_0, b_0)$ is an inverse scale parameter 
-drawn from a gamma prior with shape $a_0$ and scale $b_0$.
-%The kernel function controls the smoothness of $f$ over the feature space.
+where $\delta \sim \mathcal{N}(0, 1)$ is Gaussian-distributed noise. 
+If the convincingness $f(x_i)$ is higher than the convincingness $f(x_j)$, 
+the preference label $i \succ j$ is more likely to be true.
+However, the label also depends on the noise terms, $\delta_{i}$ and $\delta_{j}$,
+to allow for 
+%the possibility that observed pairwise labels  
+%not always reflect the underlying convincingness values,
+%since they may 
+%contain 
+errors caused by, for example, disagreement between human annotators.
+%, or interpreting clicks in a user interface as preferences between the items displayed.
+%Errors may also occur if pairwise labels are derived from implicit data such as clicks streams. For example,  
+%a user selecting one argument from a list rather than another may be treated as a pairwise preference label that gives a 
+%weak indication of that user's preferences between the two arguments.
+%To obtain the likelihood of a pairwise label given only $f(x_i)$ and $f(x_j)$, 
+We simplify Equation \ref{eq:pl} by integrating out $\delta_{i}$ and $\delta_{j}$ to obtain the \emph{preference likelihood}:
+\begin{flalign}
+& p( x_i \succ x_j | f(x_i), f(x_j) ) & \nonumber\\
+& = \int\int p( x_i \succ x_j | f(x_i), f(x_j), \delta_{i}, \delta_{j} ) &\nonumber\\
+& \hspace{3cm}\mathcal{N}(\delta_{i}; 0, 1)\mathcal{N}(\delta_{j}; 0, 1) d\delta_{i} d\delta_{j} &\nonumber\\
+& = \Phi\left( z \right),
+\label{eq:plphi}
+\end{flalign}
+where $z = (f(x_i) - f(x_j) ) / \sqrt{2}$ and $\Phi$ %(z)$  = \int_{-\infty}^z \mathcal{N}(\gamma; 0, 1) d\gamma$ 
+ is the cumulative distribution function of the standard normal distribution. 
 
-The inference goal is to learn the posterior distribution over the function values $f(\mathbf{x})$ for each 
-argument feature vector $\mathbf{x}$.
+We assume that convincingness is a function, $f$, of argument features, 
+drawn from a Gaussian process prior: $f \sim \mathcal{GP}(0, k_{\theta}s)$, where 
+$k_{\theta}$ is a kernel function with hyper-parameters $\theta$, 
+and $s$ is a scale parameter.
+%A Gaussian process (GP) is a nonparametric distribution over functions, meaning  
+%it does not assume a fixed number of parameters \textit{a priori} and instead allows the model complexity to grow to fit the data.  
+%that determine the complexity of the function,
+%and can instead describe complex, nonlinear relationships between feature vectors and convincingness. 
+% point about regularising needs to come when we discuss inference.
+The kernel function controls the smoothness of $f$ over the feature space,
+while $s$ controls the variance of $f$. 
+Increasing $s$ means that, on average, the magnitude of $f(x_i)-f(x_j)$ increases  
+so that $\Phi(z)$ is closer to $0$ or $1$, and erroneous pairwise labels are less likely.
+Therefore, larger values of $s$ correspond to lower noise levels.
+We place a Gamma distribution over $1/s$ with shape $a_0$ and scale $b_0$,
+as this is a conjugate prior:
+%, which makes the form of posterior easier to work with: 
+$1/s \sim \mathcal{G}(a_0, b_0)$.
+
+% should we just write the posterior in here? If so, need to index y by k, and therefore i and j by k. 
+%It depends on whether the following section makes any sense without it.
+Given a set of $N$ arguments and $P$ labelled preference pairs, $\mathbf y=\{y_1,...,y_P\}$,
+we can make predictions by finding the posterior distribution over the argument convincingness values, 
+$\mathbf f = \{f(\mathbf{x}_1),...,f(\mathbf{x}_N))$, given by:
+\begin{flalign}
+& p\left(\mathbf f | \mathbf{y}, k_{\theta}, a_0, b_0 \right) & = \frac{1}{Z} \int \prod_{k=1}^P \Phi\!\left( z_k \right) 
+\mathcal{N}(\bs f; \bs 0, & \bs K_{\theta}s) & \nonumber \\
+& & \mathcal{G}(s; a_0, b_0) ds, 
+\label{eq:post}
+\end{flalign}
+where $Z = p\left(\mathbf{y} | k_{\theta}, a_0, b_0 \right)$ is the normalization constant.
+Unfortunately, neither $Z$ nor the integral over $s$ 
+can be computed analytically, so we must turn to approximations.
+
 Chu and Ghahramani~\shortcite{chu2005preference}
-used a Laplace approximation, which finds a maximum a-posteriori (MAP) solution
+used a Laplace approximation for GPPL, which finds a maximum a-posteriori (MAP) solution
 that has been shown to perform poorly in many cases
 ~\cite{nickisch2008approximations}. 
-Instead, we use a variational approximation to a fully Bayesian approach
-~\cite{reece2011determining,steinberg2014extended} and adapt this method
-to the preference likelihood given by Equation \ref{eq:pl}.
-Given a set of observed preference pairs, $\bs y$,
-we assume an approximation, $q(f,s)$,  to the true posterior distribution, $p(f,s|\bs y, \theta, a_0, b_0)$.
-We then update $q(f,s)$ iteratively to maximise a lower bound on the log marginal likelihood, 
-$\mathcal{L} \leq \log p(\bs y | \theta, a_0, b_0)$.
-This optimisation procedure minimises the Kullback-Leibler divergence of $p(f,s|\bs y, \theta, a_0, b_0)$ from $q(f,s)$,
-meaning that $q(f,s)$ converges to an approximate posterior. 
+More accurate estimates of the posterior could be obtained using Markov chain Monte Carlo sampling (MCMC),
+but this is very computationally expensive ~\cite{nickisch2008approximations}. 
+Instead, we use a faster \emph{variational} method that maintains the benefits of the Bayesian approach
+~\cite{reece2011determining,steinberg2014extended} and adapt this method 
+to the preference likelihood given by Equation \ref{eq:plphi}.
 
-The variational approach still requires an $\mathcal{O}(N^3)$ matrix inversion,
-which is impractical with more than a few hundred data points. 
-However, we apply a recently introduced technique, stochastic variational inference (SVI) 
+To apply the variational approach, we define an approximation $q(\mathbf f)$ to Equation \ref{eq:post}. 
+First, we approximate the preference likelihood with a Gaussian, $\prod_{k=1}^P \Phi\left( z_k \right) \approx \mathcal{N}(\mathbf y; \mathbf G\hat{\mathbf f}, \mathbf Q)$. This allows us to avoid the intractable integral in $Z$ and obtain another Gaussian, $q(\bs f) = \mathcal{N}(\mathbf f; \hat{\mathbf f}, \mathbf C)$. 
+The parameters $\hat{\mathbf f}$ and $\mathbf C$ 
+depend on the approximate preference likelihood 
+and an approximate distribution over $s$: $q(s) = \mathcal{G}(s; a, b)$. 
+The variational inference algorithm begins by initialising the parameters $\mathbf G$, $ \hat{\mathbf f}$, $\mathbf C$, $a$ and $b$ at random. Then, the  algorithm proceeds iteratively updating each parameter in turn, given the current values for the other parameters. 
+This optimisation procedure minimises the Kullback-Leibler (KL) divergence of $p(\mathbf f |\mathbf y, k_{\theta}, a_0, b_0)$ from $q(f)$, causing $q(f)$ to converge to an approximate posterior. 
+
+The update equations for the mean $\hat{\mathbf f}$ and covariance $\mathbf C$ require inverting the covariance matrix, $K_{\theta}$, at a computational cost of $\mathcal{O}(N^3)$, which is impractical with more than a few hundred data points. 
+Furthermore, the updates also require $\mathcal{O}(NP)$ computations and
+have $\mathcal{O}(N^2 + NP + P^2)$ memory complexity.
+To resolve this, 
+%Starting from random initial values, we update $q(f,s)$ iteratively to maximise a lower bound on the log marginal likelihood, 
+%$\mathcal{L} \leq \log p(\mathbf y | \theta, a_0, b_0)$.
+%This optimisation procedure minimises the Kullback-Leibler divergence of $p(f,s|\mathbf y, \theta, a_0, b_0)$ from $q(f,s)$,
+%meaning that $q(f,s)$ converges to an approximate posterior. 
+we apply a recently introduced technique, stochastic variational inference (SVI) 
 \cite{hoffman2013stochastic,hensman_scalable_2015},
- to adapt our variational inference method
-to scale to datasets containing at least tens of thousands of 
-arguments and pairwise labels.
+%to enable variational inference 
+to scale to datasets containing at least tens of thousands of arguments and pairwise labels.
 
-SVI assumes $M$ \emph{inducing points},
-which act as a substitute for the observed arguments,
-and considers only a random subset of the data containing $P_n$ pairs at each iteration. 
+SVI makes two approximations: it assumes $M$ \emph{inducing points},
+which act as a substitute for the observed arguments;
+it uses only a random subset of the data containing $P_n$ pairs at each iteration. 
+At each iteration, $t$, rather than updates to $\hat{\mathbf{f}}$ and $\bs C$ directly, 
+we update the mean $\hat{\mathbf{f}_m}$ and covariance $\bs C_m$ for the inducing
+points. The updates for each parameter $\lambda \in \{\hat{\mathbf{f}_m}, \bs C_m\}$ takes the form of a weighted average between the previous estimate and a new estimate computed from only a subset of observations:
+\begin{flalign}
+\lambda^{(t)} = (1 - \rho_t) \lambda ^ {(t-1)} + \rho_t \hat{\lambda}_t P/P_n,
+\end{flalign}
+where $\rho=t^{-u}$ is the step size, $u$ is a forgetting rate,% for previous values,
+and $\hat{\lambda}_t$ is the new estimate computed from $P_n$ out of $P$ observations.
+The values of $\hat{\mathbf{f}}$ and $\bs C$ can be estimated from 
+the inducing point distribution.
+% according to:
+%\begin{flalign}
+%& \hat{\mathbf{f}} \approx \bs K_{nm} \bs K_{mm}^{-1} \hat{\mathbf{f}_m} & \nonumber\\
+%& \bs C \approx \bs K_{nm} \bs K_{mm}^{-1} (\bs C_m - \bs K_{mm}s) \bs K_{mm}^{-1} \bs K_{nm}^{T}. & 
+%\end{flalign}
 By choosing $M << N$ and $P_n << P$, we limit the computational
-complexity to $\mathcal{O}(M^3 + MP_n)$ and the 
+complexity of each SVI iteration to $\mathcal{O}(M^3 + MP_n)$ and the 
 memory complexity $\mathcal{O}(M^2 + MP_n + P_n^2)$.
 To choose representative inducing points, 
 we use K-means with $K=M$ to rapidly cluster the feature vectors, 
@@ -59,15 +139,14 @@ then take the cluster centres as inducing points.
 A further benefit of GPs is that they enable automatic relevance determination (ARD)
 to identify informative features, which works as follows.
 The prior covariance of $f$ is defined by a kernel function of the form 
-$k_{\theta}(\bs x, \bs x') = \prod_{d=1}^D k_d(|x_d - x_d'| / l_d)$, 
+$k_{\theta}(\mathbf x, \mathbf x') = \prod_{d=1}^D k_d(|x_d - x_d'| / l_d)$, 
 where $k_d$ is a function of the distance between the values of feature $d$ 
 for items $x$ and $x'$, and a length-scale hyper-parameter, $l_d$.
 The length-scale controls the smoothness of the function across the feature space,
-and can be optimised by choosing the value of $l_d$ that maximises the lower bound on 
-the log marginal likelihood, $\mathcal{L}$. 
-This process is known as maximum likelihood II~\cite{rasmussen_gaussian_2006}.
+and can be optimised by choosing the value of $l_d$ that maximises the approximate log marginal likelihood, $\mathcal{L} \approx \log p(\bs y)$. 
+This process is known as \emph{maximum likelihood II}~\cite{rasmussen_gaussian_2006}.
 Features with larger length-scales after optimisation are less relevant because their values
-have less effect on $k_{\theta}(\bs x, \bs x') $.
+have less effect on $k_{\theta}(\mathbf x, \mathbf x') $.
 To cut out the cost of optimising the length-scales, we can alternatively set them using a median heuristic,
 which has been shown to perform well in practice~\cite{gretton2012optimal}: 
 $ l_{d,MH} = \frac{1}{D} \mathrm{median}( \{ |x_{i,d} - x_{j,d}| \forall i=1,..,N, \forall j=1,...,N\} ) $.

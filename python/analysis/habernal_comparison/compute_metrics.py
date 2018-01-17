@@ -162,6 +162,8 @@ def get_results_dir(data_root_dir, resultsfile_template, expt_settings, folderna
                 expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
                 expt_settings['di'])
             
+    print expt_settings['foldorderfile']
+            
     if expt_settings['foldorderfile'] is not None:
         expt_settings['fold_order'] = np.genfromtxt(os.path.expanduser(expt_settings['foldorderfile']), 
                                                     dtype=str)
@@ -169,8 +171,8 @@ def get_results_dir(data_root_dir, resultsfile_template, expt_settings, folderna
         expt_settings['fold_order'] = np.genfromtxt(os.path.expanduser(resultsdir + '/foldorder.txt'), 
                                                     dtype=str)
     else:
-        expt_settings['fold_order'] = None             
-            
+        expt_settings['fold_order'] = None
+        
     return resultsdir    
 
 def load_results_data(data_root_dir, resultsfile_template, expt_settings, foldername='crowdsourcing_argumentation_expts/'):

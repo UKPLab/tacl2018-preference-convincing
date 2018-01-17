@@ -70,17 +70,16 @@ Finding Convincing Arguments using Scalable Bayesian Preference Learning
 We introduce a scalable Bayesian preference learning method for identifying
 convincing arguments in the absence of gold-standard ratings or rankings.
 In contrast to previous work, we avoid the need for separate methods
-to produce training data, predict rankings and perform pairwise classification.
+to perform quality control on training data, predict rankings and perform pairwise classification.
 Bayesian approaches are an effective solution when faced with sparse or noisy training data, 
 but have not previously been used to identify convincing arguments.
 One issue is scalability, which we address by developing a 
 stochastic variational inference method for Gaussian process (GP) preference learning.
 We show how our method can be applied to predict argument convincingness from crowdsourced data, 
-outperforming state-of-the-art methods, particularly with small amounts of unreliable training data.  
-We demonstrate how our Bayesian approach enables more effective active learning,
+outperforming the previous state-of-the-art, particularly when trained with small amounts of unreliable data.  
+We demonstrate how the Bayesian approach enables more effective active learning,
 thereby reducing the amount of data required to identify convincing arguments for new users and domains.
-While word embeddings are principally used with neural networks, our results show that word embeddings in combination with linguistic features also benefit GPs when predicting
-argument convincingness.
+While word embeddings are principally used with neural networks, our results show that word embeddings in combination with linguistic features also benefit GPs when predicting argument convincingness.
 \end{abstract}
 
 % For peer review papers, you can put extra information on the cover

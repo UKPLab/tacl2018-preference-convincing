@@ -1,0 +1,9 @@
+
+
+Dear editors, reviewers,
+
+Thank you for your insightful feedback for our submission number 1304. The reviews were very helpful in improving the quality of our paper. We have addressed the changes as follows:
+- The SVM and BiLSTM methods were run with the combined feature set, ‘ling+Glove’, to enable a more direct comparison between methods. This required extending the BiLSTM model to accept document-level features. The new results support our proposed method as well as our claim that the combined feature set is effective for predicting convincingness.
+- We analysed the scalability of our proposed method, with results for several tests shown in the section “Experiment 2: Scalability”. This shows the effect of varying a key SVI hyperparameter, ‘M’, as well as the effect of data set size and number of features on runtimes. We compare the runtime scalability of our proposed inference method for GPPL (SVI) against a less scalable inference method as well as BiLSTM and SVM. 
+- We added a more detailed explanation of the GPPL model, as well as how SVI can be applied to this model to enable scalable inference. We have not included all of the equations for the complete SVI method as this would require too much space, but have aimed to give a complete and intuitive explanation of the method. 
+- We have made further minor changes to address as many of the reviewers’ comments as possible, including clarifying some of our claims, modifying wording and typos.
