@@ -39,7 +39,7 @@ def run_pagerank(trainids_a1, trainids_a2, prefs_train):
             
     rank_dict = nx.pagerank_numpy(G)
     rankscores = np.zeros(len(rank_dict))
-    rankscores[rank_dict.keys()] = rank_dict.values()
+    rankscores[list(rank_dict.keys())] = list(rank_dict.values())
     return rankscores
     
 def run_svm(trainids_a1, trainids_a2, prefs_train, items_feat, testids_a1, testids_a2):    
@@ -74,8 +74,8 @@ def plot_probas(total_p, label, outputdir, N, vmin=0, vmax=1):
     plt.title('%s -- Predicted Preferences: p(arg_x > arg_y)' % label)
     plt.xlabel('ID of arg_x')
     plt.ylabel('ID of arg_y')
-    plt.xticks(range(N))
-    plt.yticks(range(N))
+    plt.xticks(list(range(N)))
+    plt.yticks(list(range(N)))
     plt.colorbar(im, fraction=0.046, pad=0.04, shrink=0.9)  
     
     plt.savefig(outputdir + '/' + label + '_probas.pdf')  
@@ -186,7 +186,7 @@ def run_test(label, trainids_a1, trainids_a2, prefs_train, nrepeats):
         os.mkdir(output_dir)    
     
     for r in range(nrepeats):
-        print('*** Running repeat %i ***' % r)
+        print(('*** Running repeat %i ***' % r))
         sample_objs = np.sort(np.unique(np.concatenate((trainids_a1, trainids_a2))))
         obj_labels = []
         for arg in sample_objs:
@@ -221,7 +221,7 @@ def run_test(label, trainids_a1, trainids_a2, prefs_train, nrepeats):
         proba_svm = run_svm(trainids_a1, trainids_a2, prefs_train, items_feat, testids_a1, testids_a2)
         total_p_svm += proba_svm
         
-        print 'agreement SVM and GPPL: %f' % (1 - np.sum(np.abs(np.round(proba_svm) - np.round(proba.flatten()))) / float(proba.size))
+        print('agreement SVM and GPPL: %f' % (1 - np.sum(np.abs(np.round(proba_svm) - np.round(proba.flatten()))) / float(proba.size)))
         
         # Run PageRank        
         pagerank_f = run_pagerank(trainids_a1, trainids_a2, prefs_train)      
@@ -270,8 +270,8 @@ if __name__ == '__main__':
     else:
         default_ls_value = []
 
-    fold = folds.keys()[0]
-    print("Fold name ", fold)
+    fold = list(folds.keys())[0]
+    print(("Fold name ", fold))
     trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test,\
                         X, uids, utexts = get_noisy_fold_data(folds, fold, docids, 1.0)                            
         

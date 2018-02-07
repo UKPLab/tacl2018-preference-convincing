@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
     scores_rank_test = problem[0][-100:]
 
-    print("Pearson correlation for fold = %f" % pearsonr(scores_rank_test, predicted_f)[0])
+    print(("Pearson correlation for fold = %f" % pearsonr(scores_rank_test, predicted_f)[0]))
     
     svr = NuSVR()
     
@@ -29,5 +29,5 @@ if __name__ == '__main__':
     svr.fit(lingfeat[:-100], y[:-100])
     y_pred = svr.predict(lingfeat[-100:])
     
-    print("Pearson correlation for fold = %f" % pearsonr(scores_rank_test, y_pred)[0])
+    print(("Pearson correlation for fold = %f" % pearsonr(scores_rank_test, y_pred)[0]))
     

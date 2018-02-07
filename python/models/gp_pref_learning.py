@@ -10,13 +10,13 @@ import logging
 from gp_classifier_vb import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
 from gp_classifier_svi import GPClassifierSVI
 
-def get_unique_locations(obs_coords_0, obs_coords_1, mu_0, mu_1):
+def get_unique_locations(obs_coords_0, obs_coords_1, mu_0=None, mu_1=None):
     if issparse(obs_coords_0) or issparse(obs_coords_1):
         uidxs_0 = []
         pref_vu = []
         
         for r, row in enumerate(obs_coords_0):
-            print "%i out of %i" % (r, obs_coords_0.shape[0])
+            print("%i out of %i" % (r, obs_coords_0.shape[0]))
             idx = row == obs_coords_0[uidxs_0]
             if not np.sum(idx):
                 uidxs_0.append(r)
@@ -27,7 +27,7 @@ def get_unique_locations(obs_coords_0, obs_coords_1, mu_0, mu_1):
         len_0 = obs_coords_0.shape[0]
         uidxs_1 = []
         for r, row in enumerate(obs_coords_1):
-            print "%i out of %i" % (r, obs_coords_0.shape[0])
+            print("%i out of %i" % (r, obs_coords_0.shape[0]))
             idx = row == obs_coords_0[uidxs_0]
             if not np.sum(idx):
                 idx = row == obs_coords_1[uidxs_1]
@@ -54,10 +54,12 @@ def get_unique_locations(obs_coords_0, obs_coords_1, mu_0, mu_1):
     # Record the indexes into the list of coordinates for the pairs that were compared 
     pref_v = pref_vu[:obs_coords_0.shape[0]]
     pref_u = pref_vu[obs_coords_0.shape[0]:]
-    
-    mu_vu = np.concatenate((mu_0, mu_1), axis=0)[uidxs]
-    
-    return obs_coords, pref_v, pref_u, mu_vu
+
+    if mu_0 is not None and mu_1 is not None:
+        mu_vu = np.concatenate((mu_0, mu_1), axis=0)[uidxs]
+        return obs_coords, pref_v, pref_u, mu_vu
+    else:
+        return obs_coords, pref_v, pref_u
 
 def pref_likelihood(fmean, fvar=None, subset_idxs=[], v=[], u=[], return_g_f=False):
     '''
@@ -87,7 +89,6 @@ def pref_likelihood(fmean, fvar=None, subset_idxs=[], v=[], u=[], return_g_f=Fal
             fvar = fvar[:, np.newaxis]        
         fvar += 2.0
     
-    # TODO: should we include posterior covariance of f? Would this mean replacing 2 with 2 + var(u) + var(v) - cov(uv)?
     if len(v) and len(u):
         g_f = (fmean[v, :] - fmean[u, :]) / np.sqrt(fvar) # / np.sqrt(self.s)) # gives an NobsxNobs matrix
     else: # provide the complete set of pairs
@@ -155,23 +156,17 @@ class GPPrefLearning(GPClassifierSVI):
         # to make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
         if self.use_svi:
             Kstar = self.K_nm
+            f_prior_var = None
             Ks_starstar = self.K_nm.dot(self.K_nm.T) * self.rate_s0/self.shape_s0
         else:
-            Kstar = self.K
+            Kstar = self.K * self.rate_s0/self.shape_s0
+            f_prior_var = self.rate_s0/self.shape_s0
             Ks_starstar = self.K * self.rate_s0/self.shape_s0
-            
-        samples = norm.rvs(loc=self.mu0, scale=np.sqrt(self.rate_s0/self.shape_s0), size=(self.mu0.shape[0], 1000))
-        samples = self.forward_model(samples, v=self.pref_v, u=self.pref_u, return_g_f=False)
-        v_post = np.var(samples, axis=1)[:, np.newaxis]
-        v_post = temper_extreme_probs(v_post, zero_only=True)            
-            
-        _, _, v_prior = self._post_sample(self.mu0, Kstar, False, self.mu0, self.pref_v, self.pref_u)
-        # since the sampling method uses a small sample size, the mean can be a little wrong, e.g. not 0.5 when mu0 is 
-        # 0. This is okay for the variance but use the method below to correct the mean. 
+
+        _, _, v_prior = self._post_sample(self.mu0, f_prior_var, False, Kstar, self.pref_v, self.pref_u)
+
         m_prior, not_m_prior = self._post_rough(self.mu0, Ks_starstar, self.pref_v, self.pref_u)
-        
-        v_post[m_prior * (1 - not_m_prior) <= 1e-7] = 1e-8
-        
+
         # find the beta parameters
         a_plus_b = 1.0 / (v_prior / (m_prior*not_m_prior)) - 1
         a = (a_plus_b * m_prior)
@@ -218,7 +213,6 @@ class GPPrefLearning(GPClassifierSVI):
             self.pref_v = obs_coords_0.flatten()
             self.pref_u = obs_coords_1.flatten()
             self.obs_coords = self.item_features
-            self.obs_uidxs = np.arange(self.item_features.shape[0])
             return poscounts, totals             
         else:
             # TODO: This code could be merged with get_unique_locations()
@@ -283,8 +277,12 @@ class GPPrefLearning(GPClassifierSVI):
             
         return pref_likelihood(fmean, fvar, subset_idxs, v, u, return_g_f)
     
-    def _compute_jacobian(self, data_idx_i=None):
-        phi, g_mean_f = self.forward_model(return_g_f=True) # first order Taylor series approximation
+    def _compute_jacobian(self, f=None, data_idx_i=None):
+
+        if f is None:
+            f = self.obs_f
+
+        phi, g_mean_f = self.forward_model(f, return_g_f=True) # first order Taylor series approximation
         J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * np.sqrt(0.5)
         
         obs_idxs = np.arange(self.n_locs)[np.newaxis, :]
@@ -302,7 +300,7 @@ class GPPrefLearning(GPClassifierSVI):
         return phi, J
     
     def _update_jacobian(self, G_update_rate=1.0):            
-        phi, J = self._compute_jacobian(self.data_idx_i)
+        phi, J = self._compute_jacobian(data_idx_i=self.data_idx_i)
         
         if self.G is None or not np.any(self.G) or self.G.shape != J.shape: 
             # either G has not been initialised, or is from different observations:
@@ -311,17 +309,7 @@ class GPPrefLearning(GPClassifierSVI):
             self.G = G_update_rate * J + (1 - G_update_rate) * self.G
             
         return phi
-    
-    # Log Likelihood Computation ------------------------------------------------------------------------------------- 
-        
-    def _logpt(self):
-        rho = self.forward_model(self.obs_f, None, v=self.pref_v, u=self.pref_u, return_g_f=False)
-        rho = temper_extreme_probs(rho)
-        logrho = np.log(rho)
-        lognotrho = np.log(1 - rho)
-        
-        return logrho, lognotrho  
-    
+
     # Training methods ------------------------------------------------------------------------------------------------  
             
     def fit(self, items1_coords=None, items2_coords=None, item_features=None, preferences=None, totals=None, 
@@ -350,8 +338,39 @@ class GPPrefLearning(GPClassifierSVI):
             self.item_features = item_features
             
         super(GPPrefLearning, self).fit((items1_coords, items2_coords), preferences, totals, process_obs, 
-                                        mu0=mu0, K=K, optimize=optimize)  
-        
+                                        mu0=mu0, K=K, optimize=optimize)
+
+    def set_training_data(self, items1_coords=None, items2_coords=None, item_features=None, preferences=None, totals=None,
+            process_obs=True, mu0=None, K=None, optimize=False, input_type='binary'):
+        '''
+        preferences -- Preferences by default can be 1 = item 1 is preferred to item 2,
+        or 0 = item 2 is preferred to item 1, 0.5 = no preference, or values in between.
+        For preferences that are not normalised to between 0 and 1, the value of input_type needs to be set.
+        input_type -- can be 'binary', meaning preferences must be [0,1], or 'zero-centered' meaning that value 1
+        indicates item 1 is preferred, value -1 indicates item 2 is preferred, and 0 indicates no preference. The value
+        are converted internally to [0,1].
+        '''
+        pref_values_in_input = np.unique(preferences)
+        if process_obs and input_type == 'binary' and np.sum((pref_values_in_input < 0) | (pref_values_in_input > 1)):
+            raise ValueError(
+                'Binary input preferences specified but the data contained the values %s' % pref_values_in_input)
+        elif process_obs and input_type == 'zero-centered' and np.sum(
+                (pref_values_in_input < -1) | (pref_values_in_input > 1)):
+            raise ValueError(
+                'Zero-centered input preferences specified but the data contained the values %s' % pref_values_in_input)
+        elif process_obs and input_type == 'zero-centered':
+            # convert them to [0,1]
+            preferences += 1
+            preferences /= 2.0
+        elif process_obs and input_type != 'binary':
+            raise ValueError('input_type for preference labels must be either "binary" or "zero-centered"')
+
+        if item_features is not None:  # keep the old item features if we pass in none
+            self.item_features = item_features
+
+        super(GPPrefLearning, self).set_training_data((items1_coords, items2_coords), preferences, totals, process_obs,
+                                        mu0=mu0, K=K, optimize=optimize)
+
     def _update_sample_idxs(self):
         nobs = self.obs_f.shape[0]
         
@@ -365,42 +384,35 @@ class GPPrefLearning(GPClassifierSVI):
             self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)                            
             
     # Prediction methods ---------------------------------------------------------------------------------------------
-    def predict(self, out_feats=None, item_0_idxs=None, item_1_idxs=None, out_1_feats=None, K_star=None, K_starstar=None,  
-                expectedlog=False, return_not=False, mu0_out=None, mu0_out_1=None,
-                reuse_output_kernel=False, return_var=True):
-        '''
-        Evaluate the function posterior mean and variance at the given co-ordinates using the 2D squared exponential 
-        kernel
-        
-        If using items_0_idxs and items_1_idxs, out_1_feats can be set to None so that both sets of indexes look up values in out_feats 
-        '''
-        if item_0_idxs is None and item_1_idxs is None and out_1_feats is not None and out_feats is not None:
-            out_feats, item_0_idxs, item_1_idxs, mu0_out = get_unique_locations(out_feats, out_1_feats, mu0_out, mu0_out_1)
-            out_1_feats = None # the object is no longer needed.
-        elif item_0_idxs is None and item_1_idxs is None and out_1_feats is None and out_feats is not None:
-            # other combinations are invalid
-            logging.error('Invalid combination of parameters for predict(): please supply either (items_0_idxs AND \
-            items_1_idxs AND out_feats) OR (items_0_idxs AND \
-            items_1_idxs AND K_star AND K_starstar) OR (out_feats AND out_1_feats)')
-            return
-
-        if item_0_idxs is not None and item_1_idxs is not None and out_1_feats is not None and out_feats is not None:
-            out_feats = np.concatenate((out_feats, out_1_feats), axis=0)
-            mu0_out = np.concatenate((mu0_out, mu0_out_1))
+    def predict(self, out_feats=None, item_0_idxs=None, item_1_idxs=None, K_star=None, K_starstar=None,
+                expectedlog=False, mu0_out=None, reuse_output_kernel=False, return_var=True):
+        """
+        Predict pairwise labels for pairs of items specified by their indices into a list of feature vectors.
+        :param item_0_idxs: A list of item indices for the first items in the pairs.
+        :param item_1_idxs: A list of item indices for the second items in the pairs.
+        :param out_feats: A list of feature vectors for the items. If set to None, the feature vectors passed in using fit() will be used.
+        :param K_star: A pre-computed covariance matrix between the test and training items. If set to None, it will be computed automatically if required.
+        :param K_starstar: A pre-computed covariance matrix for the predicted items.
+        :param expectedlog: return the expected log probability instead of the marginal probability
+        :param mu0_out: prior mean preference function values.
+        :param reuse_output_kernel: set to True if out_feats does not change between calls to predict(). This will avoid re-computing the covariance matrix in each call to predict().
+        :param return_var: return the second-order variance in the prediction probability
+        :return p [, var]: probability that first item in pair is preferred to second item [, variance in the probability]
+        """
 
         # predict f for all the rows in out_feats or K_star if these variables are not None, otherwise error.
-        f, C = self.predict_f(out_feats, None, K_star, K_starstar, mu0_out, reuse_output_kernel, 
-                              full_cov=True)
+        f, C = self.predict_f(out_feats, None, K_star, K_starstar, mu0_out, reuse_output_kernel, full_cov=True)
 
         m_post, not_m_post = self._post_rough(f, C, item_0_idxs, item_1_idxs)
         if return_var:
-            _, _, v_post = self._post_sample(f, self.K_star, False, mu0_out, item_0_idxs, item_1_idxs)
-        
+            if self.use_svi:
+                _, _, v_post = self._post_sample(self.mu0_output, K_star=self.K_star, v=item_0_idxs, u=item_1_idxs)
+            else:
+                _, _, v_post = self._post_sample(f, f_var=np.diag(C)[:, None], v=item_0_idxs, u=item_1_idxs)
+
         if expectedlog:
             m_post = np.log(m_post)
             not_m_post = np.log(not_m_post)
-            
-        if return_not:
             if return_var:
                 return m_post, not_m_post, v_post
             else:
@@ -409,26 +421,42 @@ class GPPrefLearning(GPClassifierSVI):
             return m_post, v_post
         else:
             return m_post
-            
-    def _post_sample(self, f_mean, f_cov, expectedlog, mu=0, v=None, u=None):
+
+        return return_vals
+
+    def predict_pairs_from_features(self, out_feats=None, out_1_feats=None, mu0_out=None, mu0_out_1=None,
+                                    expectedlog=False, return_var=True):
+        """
+        Predict pairwise labels by passing in two lists of feature vectors for the first and second items in the pairs.
+        This is different to the usual predict() method, which predicts pairwise labels given the indices of items into
+        a set of features.
+
+        :param out_feats: list of feature vectors of the first items in the pairs
+        :param out_1_feats: list of feature vectors of the second items in the pairs
+        :param mu0_out: prior mean preference function values for the first items in the pairs
+        :param mu0_out_1: prior mean preference function values for the second items in the pairs
+        :param expectedlog: return the expected log probability instead of the marginal probability
+        :param return_var: return the second-order variance in the prediction probability
+        :return p [, var]: probability that first item in pair is preferred to second item [, variance in the probability]
+        """
+        out_feats, item_0_idxs, item_1_idxs, mu0_out = get_unique_locations(out_feats, out_1_feats, mu0_out, mu0_out_1)
+        return self.predict(out_feats, item_0_idxs, item_1_idxs, mu0_out)
+
+    def _post_sample(self, f_mean, f_var=None, expectedlog=False, K_star=None, v=None, u=None):
         if v is None:
             v = self.pref_v
         if u is None:
             u = self.pref_u
-        if mu is None:
-            mu = 0
-            
-        if len(f_mean) == 0:
-            f_mean = self.obs_f
-            f_cov = self.obs_C
-            
+
         # since we don't have f_cov
-        if self.use_svi:
+        if K_star is not None and self.use_svi:
             #sample the inducing points because we don't have full covariance matrix. In this case, f_cov should be Ks_nm
             f_samples = mvn.rvs(mean=self.um_minus_mu0.flatten(), cov=self.uS, size=1000).T
-            f_samples = f_cov.dot(self.invK_mm).dot(f_samples) + mu
+            f_samples = K_star.dot(self.invK_mm).dot(f_samples) + f_mean
+        elif K_star is not None:
+            f_samples = mvn.rvs(mean=f_mean.flatten(), cov=K_star, size=1000).T
         else:
-            f_samples = mvn.rvs(mean=f_mean.flatten(), cov=f_cov, size=1000).T
+            f_samples = np.random.normal(loc=f_mean, scale=np.sqrt(f_var), size=(f_mean.shape[0], 1000))
              
         g_f = (f_samples[v, :] - f_samples[u, :])  / np.sqrt(2)
         phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the 
@@ -458,9 +486,14 @@ class GPPrefLearning(GPClassifierSVI):
         if pref_u is None:
             pref_u = self.pref_u
         
-        # TODO: since we introduced the softening using f_cov, m_post is too uncertain. Perhaps try increasing rate_s to remedy this.
-        m_post = self.forward_model(f_mean, f_cov[pref_v, pref_v] + f_cov[pref_u, pref_u] + f_cov[pref_v, pref_u] 
-                                    + f_cov[pref_u, pref_v], v=pref_v, u=pref_u, return_g_f=False)
+        # to remedy this. However, previously the maths seemed to show it wasn't needed at all?
+        if f_cov is None:
+            m_post = self.forward_model(f_mean, None, v=pref_v, u=pref_u, return_g_f=False)            
+        else:
+            # since we subtract the two f-values, the correlations between them are flipped, hence the '-' in the last
+            # two covariance terms here.
+            m_post = self.forward_model(f_mean, f_cov[pref_v, pref_v] + f_cov[pref_u, pref_u] - f_cov[pref_v, pref_u]
+                                    - f_cov[pref_u, pref_v], v=pref_v, u=pref_u, return_g_f=False)
         m_post = temper_extreme_probs(m_post)
         not_m_post = 1 - m_post
             

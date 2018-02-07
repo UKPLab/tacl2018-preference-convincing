@@ -43,8 +43,8 @@ def compute_metrics(nmethods, gold_prefs, predictions, metrics = {}, nruns=1, r=
                                            gold_prefs[:, np.newaxis] == 1 ), axis=1)
         
         mistakes = np.round(ind_array) != ind_array_gold
-        print ind_array[np.sum(mistakes, axis=1), :]
-        print ind_array_gold[np.sum(mistakes, axis=1), :]
+        print(ind_array[np.sum(mistakes, axis=1), :])
+        print(ind_array_gold[np.sum(mistakes, axis=1), :])
         
         metrics['acc'][i,r] = accuracy_score(ind_array_gold, ind_array)
         metrics['f1'][i,r] = f1_score(ind_array_gold, ind_array, average='weighted')

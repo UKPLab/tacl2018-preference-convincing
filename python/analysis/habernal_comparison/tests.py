@@ -69,9 +69,9 @@ def save_fold_order(resultsdir, folds=None, dataset=None):
     if folds is None and dataset is not None:
         folds, _, _, _, _ = load_train_test_data(dataset)        
     elif folds is None:
-        print "Need to provide a dataset label or a set of fold data..."
+        print("Need to provide a dataset label or a set of fold data...")
         return 
-    np.savetxt(resultsdir + "/foldorder.txt", np.array(folds.keys())[:, None], fmt="%s")
+    np.savetxt(resultsdir + "/foldorder.txt", np.array(list(folds.keys()))[:, None], fmt="%s")
     
 # Lengthscale initialisation -------------------------------------------------------------------------------------------
 # use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.
@@ -195,8 +195,8 @@ def get_fold_data(folds, fold, docids):
     X, uids, utexts = get_doc_token_seqs((a1_train, a2_train, a1_test, a2_test), 
                            [X_train_a1, X_train_a2, X_test_a1, X_test_a2], (tr_a1, tr_a2, test_a1, test_a2))
         
-    print("Training instances ", len(X_train_a1), " training labels ", len(prefs_train))
-    print("Test instances ", len(X_test_a1), " test labels ", len(prefs_test))
+    print(("Training instances ", len(X_train_a1), " training labels ", len(prefs_train)))
+    print(("Test instances ", len(X_test_a1), " test labels ", len(prefs_test)))
     
     prefs_train = np.array(prefs_train) 
     prefs_test = np.array(prefs_test)     
@@ -340,7 +340,7 @@ class TestRunner:
             logging.info("...loaded all linguistic features for training and test data.")
             valid_feats = np.concatenate((valid_feats, valid_feats_ling))
             
-        print 'Found %i features.' % items_feat.shape[1]
+        print('Found %i features.' % items_feat.shape[1])
             
         if feature_type=='debug':
             items_feat = items_feat[:, :ndebug_features] #use only n features for faster debugging
@@ -414,14 +414,14 @@ class TestRunner:
         else:
             new_items_feat = None
         
-        print "no. features: %i" % new_items_feat.shape[1]
+        print("no. features: %i" % new_items_feat.shape[1])
         self.model.fit(self.a1_train, self.a2_train, new_items_feat, np.array(self.prefs_train, dtype=float)-1, 
                   optimize=self.optimize_hyper, input_type='zero-centered')            
     
-        proba = self.model.predict(None, self.a1_test, self.a2_test, reuse_output_kernel=True, return_var=False)
+        proba = self.model.predict(self.a1_test, self.a2_test, reuse_output_kernel=True, return_var=False)
     
         if self.a1_unseen is not None and len(self.a1_unseen):
-            tr_proba, _ = self.model.predict(None, self.a1_unseen, self.a2_unseen, reuse_output_kernel=True)
+            tr_proba, _ = self.model.predict(self.a1_unseen, self.a2_unseen, reuse_output_kernel=True)
         else:
             tr_proba = None
         
@@ -548,8 +548,8 @@ class TestRunner:
         trainfeats = np.concatenate((np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1),
                                np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1)),
                                axis=0)
-        print "no. features: %i" % trainfeats.shape[1]
-        print "no. pairs: %i" % trainfeats.shape[0]
+        print("no. features: %i" % trainfeats.shape[1])
+        print("no. pairs: %i" % trainfeats.shape[0])
         svc.fit(trainfeats, svc_labels)
         proba = svc.predict_proba(np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1))
 
@@ -605,7 +605,7 @@ class TestRunner:
         batch_size = 32
         nb_epoch = 5  # 5 epochs are meaningful to prevent over-fitting...
      
-        print len(self.folds.get(self.fold)["training"])
+        print(len(self.folds.get(self.fold)["training"]))
         X_train1 = self.X[self.a1_train]
         X_train2 = self.X[self.a2_train]
         y_train = self.prefs_train.tolist()
@@ -621,19 +621,19 @@ class TestRunner:
         print("Pad sequences (samples x time)")
         X_train = sequence.pad_sequences(X_train, maxlen=max_len)
         X_test = sequence.pad_sequences(X_test, maxlen=max_len)
-        print('X_train shape:', X_train.shape)
-        print('X_test shape:', X_test.shape)
+        print(('X_train shape:', X_train.shape))
+        print(('X_test shape:', X_test.shape))
         y_train = np.array(y_train) / 2.0
-        print('y_train values: ', np.unique(y_train))
+        print(('y_train values: ', np.unique(y_train)))
      
         print('Training data sizes:')
-        print(X_train.shape)
-        print(y_train.shape)
+        print((X_train.shape))
+        print((y_train.shape))
         if use_doc_level_features:
             pair_doc_feats_tr = np.concatenate((self.ling_items_feat[self.a1_train, :], 
                                                   self.ling_items_feat[self.a2_train, :]), axis=1)         
-            print(pair_doc_feats_tr.shape)
-            print n_doc_level_feats * 2
+            print((pair_doc_feats_tr.shape))
+            print(n_doc_level_feats * 2)
             
             pair_doc_feats_test = np.concatenate((self.ling_items_feat[self.a1_test, :], 
                                                   self.ling_items_feat[self.a2_test, :]), axis=1)
@@ -682,14 +682,14 @@ class TestRunner:
             X_train = self.X[self.a_rank_train]
             X_test = self.X[self.a_rank_test]
          
-            print(len(X_train), 'train sequences')
-            print(len(X_test), 'test sequences')
+            print((len(X_train), 'train sequences'))
+            print((len(X_test), 'test sequences'))
          
             print("Pad sequences (samples x time)")
             X_train = sequence.pad_sequences(X_train, maxlen=max_len)
             X_test = sequence.pad_sequences(X_test, maxlen=max_len)
-            print('X_train shape:', X_train.shape)
-            print('X_test shape:', X_test.shape)
+            print(('X_train shape:', X_train.shape))
+            print(('X_test shape:', X_test.shape))
          
             print('Build model...')
             rank_model = Graph()
@@ -730,7 +730,7 @@ class TestRunner:
                 model_predict = rank_model.predict({'input': X_test}, batch_size=batch_size)
             predicted_f = np.asarray(model_predict['output']).flatten()                
      
-            print('Unique regression predictions: ', np.unique(predicted_f))
+            print(('Unique regression predictions: ', np.unique(predicted_f)))
         else:
             predicted_f = None
     
@@ -883,18 +883,18 @@ class TestRunner:
                 
         np.random.seed(111) # allows us to get the same initialisation for all methods/feature types/embeddings
     
-        fold_keys = self.folds.keys()
+        fold_keys = list(self.folds.keys())
         for foldidx, self.fold in enumerate(fold_keys):
             if foldidx in all_proba and dataset_increment==0:
-                print("Skipping fold %i, %s" % (foldidx, self.fold))
+                print(("Skipping fold %i, %s" % (foldidx, self.fold)))
                 continue
             if foldidx >= max_no_folds or foldidx < min_no_folds:
-                print("Already completed maximum no. folds. Skipping fold %i, %s" % (foldidx, self.fold))
+                print(("Already completed maximum no. folds. Skipping fold %i, %s" % (foldidx, self.fold)))
                 continue
             foldresultsfile = results_stem + '/fold%i.pkl' % foldidx
             if foldidx not in all_proba and os.path.isfile(foldresultsfile): 
                 if dataset_increment == 0:
-                    print("Skipping fold %i, %s" % (foldidx, self.fold))
+                    print(("Skipping fold %i, %s" % (foldidx, self.fold)))
                     continue
                 
                 with open(foldresultsfile, 'r') as fh:
@@ -903,7 +903,7 @@ class TestRunner:
                                 pickle.load(fh)
     
             # Get data for this fold --------------------------------------------------------------------------------------
-            print("Fold name ", self.fold)
+            print(("Fold name ", self.fold))
             a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test,\
                                 self.X, uids, utexts = get_noisy_fold_data(self.folds, self.fold, self.docids, acc)                            
             
@@ -923,7 +923,7 @@ class TestRunner:
                               
             if dataset_increment != 0:
                 if foldidx in all_proba and all_proba[foldidx].shape[1] >= float(npairs_f) / dataset_increment:
-                    print("Skipping fold %i, %s" % (foldidx, self.fold))
+                    print(("Skipping fold %i, %s" % (foldidx, self.fold)))
                     continue
                 nnew_pairs = dataset_increment
             else:

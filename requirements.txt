@@ -1,3 +1,4 @@
+matplotlib
 appdirs==1.4.3
 boto==2.47.0
 bz2file==0.98

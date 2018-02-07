@@ -313,9 +313,9 @@ def bar_IAA_by_cluster(plotdir, ncomponents, data, cluster_labels, label, ntexts
             # use a set of samples from the mixture distribution to approximate the mean.
             kpersonidxs = np.argwhere(cluster_labels[c]==k)
             if not len(kpersonidxs):
-                print 'No people were assigned to cluster %i' % k
+                print('No people were assigned to cluster %i' % k)
             elif len(kpersonidxs) == 1:
-                print 'Singleton cluster %i ' % k
+                print('Singleton cluster %i ' % k)
             else:
                 kidxs = np.in1d(data[:, 0], kpersonidxs)
                 Uk = data[kidxs, 1] * ntexts + data[kidxs, 2] # translate the IDs for the arguments in a pairwise comparison to a single ID

@@ -157,7 +157,7 @@ def generate_gold_CSV(datadir, outputdir):
     for i, f in enumerate(datafiles):
         if f.split('.')[-1] != 'xml':
             continue        
-        print "Processing file %i of %i, filename=%s" % (i, len(datafiles), f)
+        print("Processing file %i of %i, filename=%s" % (i, len(datafiles), f))
         with open(datadir + f) as ffile:
             doc = xmltodict.parse(ffile.read())
             pairlist = doc['list']
@@ -170,7 +170,7 @@ def generate_turker_CSV(datadir, outputdir):
     for i, f in enumerate(datafiles):
         if f.split('.')[-1] != 'xml':
             continue        
-        print "Processing file %i of %i, filename=%s" % (i, len(datafiles), f)
+        print("Processing file %i of %i, filename=%s" % (i, len(datafiles), f))
         with open(datadir + f) as ffile:
             doc = xmltodict.parse(ffile.read())
             pairlist = doc['list']
@@ -192,7 +192,7 @@ if __name__ == '__main__':
     all_labels = np.empty((0, 4))
     
     for i, f in enumerate(datafiles):
-        print "Processing file %i of %i, filename=%s" % (i, len(datafiles), f)
+        print("Processing file %i of %i, filename=%s" % (i, len(datafiles), f))
         with open(datadir + f) as ffile:
             doc = xmltodict.parse(ffile.read())
             pairlist = doc['list']

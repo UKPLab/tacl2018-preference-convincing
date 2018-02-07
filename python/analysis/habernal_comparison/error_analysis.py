@@ -85,7 +85,7 @@ def print_where_one_right_two_wrong(expt_settings, feature_type_one, feature_typ
         expt_settings_2['method'] = method2
     resultsdir_2 = get_results_dir(data_root_dir, resultsfile_template, expt_settings_2)
 
-    nFolds = len(folds.keys())
+    nFolds = len(list(folds.keys()))
 
     allcounts_1 = np.zeros(0)
     alltexts_1 = np.zeros(0)
@@ -97,7 +97,7 @@ def print_where_one_right_two_wrong(expt_settings, feature_type_one, feature_typ
     errorcounts_1 = np.zeros((0, 2)) # first column for +1s and second column for -1s
 
     for f in range(nFolds):
-        fold = folds.keys()[f]
+        fold = list(folds.keys())[f]
 
         if 'fold_order' in expt_settings_1 and expt_settings_1['fold_order'] is not None:
             f1 = np.argwhere(np.array(expt_settings_1['fold_order']) == fold)[0][0]
@@ -145,10 +145,10 @@ def print_where_one_right_two_wrong(expt_settings, feature_type_one, feature_typ
 
         # pairs falsely classified by one and not the other
         if len(false_pairs_1) != len(false_pairs_2):
-            print "mismatched fold %i: " % f
-            print "word mean: " + str(len(false_pairs_1))
-            print "ling: " + str(len(false_pairs_2))
-            print len(folds[fold]['test'][0])
+            print("mismatched fold %i: " % f)
+            print("word mean: " + str(len(false_pairs_1)))
+            print("ling: " + str(len(false_pairs_2)))
+            print(len(folds[fold]['test'][0]))
             continue
 
         # cases where 1 is wrong and 2 is right
@@ -188,10 +188,10 @@ def print_where_one_right_two_wrong(expt_settings, feature_type_one, feature_typ
     top_texts_1 = alltexts_1[top_ids]
 
     # Get the original argument text. Print it with the mis-classification label and score.
-    print "Showing the top 25 most incorrectly labelled arguments for %s: " % expt_settings_1['feature_type']
-    print "No. times underrated; no.times overrated; argument text"
+    print("Showing the top 25 most incorrectly labelled arguments for %s: " % expt_settings_1['feature_type'])
+    print("No. times underrated; no.times overrated; argument text")
     for i, text in enumerate(top_texts_1):
-        print "\t %i %i %s \n" % (errorcounts_1[i, 0], errorcounts_1[i, 1], text)
+        print("\t %i %i %s \n" % (errorcounts_1[i, 0], errorcounts_1[i, 1], text))
 
 def compute_max_train_similarity(expt_settings, method, ls, docids, items_feat, similarities_all=None):
     '''
@@ -212,7 +212,7 @@ def compute_max_train_similarity(expt_settings, method, ls, docids, items_feat, 
 
     # Load the results for GPPL with Glove.
 
-    nFolds = len(folds.keys())
+    nFolds = len(list(folds.keys()))
 
     mean_false = 0
     mean_true = 0
@@ -227,7 +227,7 @@ def compute_max_train_similarity(expt_settings, method, ls, docids, items_feat, 
     total_count_false = 0
 
     for f in range(nFolds):
-        fold = folds.keys()[f]
+        fold = list(folds.keys())[f]
 
         if 'fold_order' in expt_settings_1 and expt_settings_1['fold_order'] is not None:
             f1 = np.argwhere(np.array(expt_settings_1['fold_order']) == fold)[0][0]
@@ -308,10 +308,10 @@ def compute_max_train_similarity(expt_settings, method, ls, docids, items_feat, 
     var_true /= nFolds
     var_true = np.sqrt(var_true)
 
-    print "For all folds: mean total_sim for correctly classified pairs: %f (STD %f)" % (mean_true,
-                                                                                          np.sqrt(var_true))
-    print "For all folds: mean total_sim for incorrectly classified pairs: %f (STD %f)" % (mean_false,
-                                                                                        np.sqrt(var_false))
+    print("For all folds: mean total_sim for correctly classified pairs: %f (STD %f)" % (mean_true,
+                                                                                          np.sqrt(var_true)))
+    print("For all folds: mean total_sim for incorrectly classified pairs: %f (STD %f)" % (mean_false,
+                                                                                        np.sqrt(var_false)))
 
     return similarities_all
 
@@ -326,13 +326,13 @@ def compute_entropies(expt_settings, method, feature_type, embeddings_type):
 
     resultsdir_1 = get_results_dir(data_root_dir, resultsfile_template, expt_settings_1)
 
-    nFolds = len(folds.keys())
+    nFolds = len(list(folds.keys()))
 
     true_entropy = np.zeros(0)
     false_entropy = np.zeros(0)
 
     for f in range(nFolds):
-        fold = folds.keys()[f]
+        fold = list(folds.keys())[f]
 
         if 'fold_order' in expt_settings_1 and expt_settings_1['fold_order'] is not None:
             f1 = np.argwhere(np.array(expt_settings_1['fold_order']) == fold)[0][0]
@@ -344,7 +344,7 @@ def compute_entropies(expt_settings, method, feature_type, embeddings_type):
             with open(foldfile, 'r') as fh:
                 data_1 = pickle.load(fh)
         else:
-            print "Error -- data not found at %s" % foldfile
+            print("Error -- data not found at %s" % foldfile)
 
         gold_disc_1, pred_disc_1, gold_prob, pred_prob, _, _, _, _, _ = get_fold_data(data_1, f1, expt_settings_1)
         if expt_settings_1['method'] == 'SVM':
@@ -388,12 +388,12 @@ def compute_errors_in_training(expt_settings, method, feature_type, embeddings_t
 
     resultsdir_1 = get_results_dir(data_root_dir, resultsfile_template, expt_settings_1)
 
-    nFolds = len(folds_noisy.keys())
+    nFolds = len(list(folds_noisy.keys()))
 
     correct_given_trerror = np.zeros((2, 2)) # correct/incorrect answers (cols) given training label errors (rows)
 
     for f in range(nFolds):
-        fold = folds_noisy.keys()[f]
+        fold = list(folds_noisy.keys())[f]
 
         if 'fold_order' in expt_settings_1 and expt_settings_1['fold_order'] is not None:
             f1 = np.argwhere(np.array(expt_settings_1['fold_order']) == fold)[0][0]
@@ -405,7 +405,7 @@ def compute_errors_in_training(expt_settings, method, feature_type, embeddings_t
             with open(foldfile, 'r') as fh:
                 data_1 = pickle.load(fh)
         else:
-            print "Error -- data not found at %s" % foldfile
+            print("Error -- data not found at %s" % foldfile)
 
         _, _, _, _, _, _, pred_tr, _, _ = get_fold_data(data_1, f1, expt_settings_1)
         if expt_settings_1['method'] == 'SVM':
@@ -428,8 +428,8 @@ def compute_errors_in_training(expt_settings, method, feature_type, embeddings_t
         correct_given_trerror[1, 0] += np.sum(pred_correct & trerrors) # training error, correct prediction
         correct_given_trerror[1, 1] += np.sum(pred_errors & trerrors) # training error, incorrect prediction
 
-    print "Matrix of counts of correct predictions given training data errors:"
-    print correct_given_trerror
+    print("Matrix of counts of correct predictions given training data errors:")
+    print(correct_given_trerror)
 
     return correct_given_trerror
 
@@ -445,10 +445,10 @@ def print_best_worst(expt_settings, method, feature_type, embeddings_type, folds
 
     resultsdir_1 = get_results_dir(data_root_dir, resultsfile_template, expt_settings_1)
 
-    nFolds = len(folds.keys())
+    nFolds = len(list(folds.keys()))
 
     for f in range(nFolds):
-        fold = folds.keys()[f]
+        fold = list(folds.keys())[f]
 
         if 'fold_order' in expt_settings_1 and expt_settings_1['fold_order'] is not None:
             f1 = np.argwhere(np.array(expt_settings_1['fold_order']) == fold)[0][0]
@@ -460,7 +460,7 @@ def print_best_worst(expt_settings, method, feature_type, embeddings_type, folds
             with open(foldfile, 'r') as fh:
                 data_1 = pickle.load(fh)
         else:
-            print "Error -- data not found at %s" % foldfile
+            print("Error -- data not found at %s" % foldfile)
 
         # Load the ground truth classifications
         _, _, _, _, gold_score, _, _, _, _ = get_fold_data(data_1, f1, expt_settings_1)
@@ -476,10 +476,10 @@ def print_best_worst(expt_settings, method, feature_type, embeddings_type, folds
         bottomargs = gold_ranked_idxs[:10]
 
         for arg in topargs:
-            print utexts_f[arg]
+            print(utexts_f[arg])
 
         for arg in bottomargs:
-            print utexts_f[arg]
+            print(utexts_f[arg])
 
 def get_rank_deviations(expt_settings, method, feature_type, embeddings_type, folds_r):
     # Load the results for GPPL with Ling.
@@ -496,10 +496,10 @@ def get_rank_deviations(expt_settings, method, feature_type, embeddings_type, fo
     deviations = np.zeros(0)
     utexts = np.zeros(0)
 
-    nFolds = len(folds.keys())
+    nFolds = len(list(folds.keys()))
 
     for f in range(nFolds):
-        fold = folds.keys()[f]
+        fold = list(folds.keys())[f]
 
         if 'fold_order' in expt_settings_1 and expt_settings_1['fold_order'] is not None:
             f1 = np.argwhere(np.array(expt_settings_1['fold_order']) == fold)[0][0]
@@ -511,7 +511,7 @@ def get_rank_deviations(expt_settings, method, feature_type, embeddings_type, fo
             with open(foldfile, 'r') as fh:
                 data_1 = pickle.load(fh)
         else:
-            print "Error -- data not found at %s" % foldfile
+            print("Error -- data not found at %s" % foldfile)
 
         # Load the ground truth classifications
         _, _, _, _, gold_score, pred_score, _, _, _ = get_fold_data(data_1, f1, expt_settings_1)
@@ -535,7 +535,7 @@ def get_rank_deviations(expt_settings, method, feature_type, embeddings_type, fo
 
 def print_arg_text(errors_1, errors_2, top_texts):
     for i, text in enumerate(top_texts):
-        print "\t %i %i %s \n" % (errors_1[i], errors_2[i], text)
+        print("\t %i %i %s \n" % (errors_1[i], errors_2[i], text))
 
 if __name__ == '__main__':
     # Step 1. Inspecting arguments in fifty pairs falsely classified by GPPL using only Glove or only ling features.
@@ -592,9 +592,9 @@ if __name__ == '__main__':
     expt_settings['folds'] = folds
     expt_settings['folds_regression'] = folds_regression
 
-    print "Best and worst args from each topic: "
+    print("Best and worst args from each topic: ")
     print_best_worst(expt_settings, 'SinglePrefGP_weaksprior', 'both', 'word_mean', folds_regression)
-    print "--------"
+    print("--------")
 
     # deviations_gppl, utexts_gppl = get_rank_deviations(expt_settings, 'SinglePrefGP_weaksprior', 'both', 'word_mean',
     #                                                    folds_regression)

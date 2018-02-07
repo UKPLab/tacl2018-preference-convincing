@@ -949,7 +949,7 @@ class PreferenceComponents(object):
             self._expec_f_p(p, mu0_output)
                 
             if self.verbose:    
-                logging.debug( "Expec_f for person %i out of %i. s=%.3f" % (p, len(self.pref_gp.keys()), self.pref_gp[p].s) )
+                logging.debug( "Expec_f for person %i out of %i. s=%.3f" % (p, len(list(self.pref_gp.keys())), self.pref_gp[p].s) )
                 
         self.new_obs = False # don't process the observations again unless fit() is called
 
@@ -963,7 +963,7 @@ class PreferenceComponents(object):
             Sigma_yscaling = y_p.dot(y_p.T) + self.y_cov[yidxs, :][:, yidxs] # covariance between people?
         else:
             Sigma_yscaling = y_p.dot(y_p.T)
-            Sigma_yscaling[range(self.Nfactors), range(self.Nfactors)] += self.y_cov # covariance between people?
+            Sigma_yscaling[list(range(self.Nfactors)), list(range(self.Nfactors))] += self.y_cov # covariance between people?
         
         Sigma_w = np.zeros((N, N, self.Nfactors))
         

@@ -240,7 +240,7 @@ class PredictionTester(object):
         model.fit(pair1coords_train, pair2coords_train, prefs) # ignores any user ids
         logging.info('Fitted. Predicting from GP...')
         # does model.f cover all the data points? If not, we should be able to pass that in
-        results, _ = model.predict(pair1coords_test, pair2coords_test)
+        results, _ = model.predict_pairs_from_features(pair1coords_test, pair2coords_test)
         logging.info('Predicted.')
         if return_latent_f:
             return results.flatten(), model.f.flatten()

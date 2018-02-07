@@ -108,7 +108,7 @@ def combine_into_libsvm_files(dataset, ids1, ids2, labels, dataset_type, fold, n
                     outputline += str(int(feat.split(':')[0]) + nfeats)
                     outputline += ':' + feat.split(':')[1] + '\t'
                     if int(feat.split(':')[0]) + nfeats < largestsofar:
-                        print 'Parsing error...'
+                        print('Parsing error...')
                     largestsofar = int(feat.split(':')[0]) + nfeats
                     
                 if embeddings is not None:
@@ -138,7 +138,7 @@ def combine_lines_into_one_file(dataset, dirname=data_root_dir + '/lingdata/UKPC
     with open(outputfile, 'a') as ofh: 
         for filename in os.listdir(dirname):
             fid = filename.split('.')[0]
-            print("writing from file %s with row ID %s" % (filename, fid))
+            print(("writing from file %s with row ID %s" % (filename, fid)))
             with open(dirname + "/" + filename) as fh:
                 lines = fh.readlines()
             for line in lines:
@@ -200,7 +200,7 @@ def load_train_test_data(dataset):
         ranking_csvdirname = None
         folds_regression_test = None
     
-    print("Data directory = %s, dataset=%s" % (dirname, dataset))
+    print(("Data directory = %s, dataset=%s" % (dirname, dataset)))
     csvdirname = data_root_dir + 'argument_data/%s-new-CSV/' % dataset
     # Generate the CSV files from the XML files. These are easier to work with! The CSV files from Habernal do not 
     # contain all turker info that we need, so we generate them afresh here.
@@ -213,18 +213,18 @@ def load_train_test_data(dataset):
             generate_gold_CSV(dirname, csvdirname) # select only the gold labels
                 
     embeddings_dir = data_root_dir + '/embeddings/'
-    print("Embeddings directory: %s" % embeddings_dir)
+    print(("Embeddings directory: %s" % embeddings_dir))
     
     # Load the train/test data into a folds object. -------------------------------------------------------------------
     # Here we keep each the features of each argument in a pair separate, rather than concatenating them.
-    print('Loading train/test data from %s...' % csvdirname)
+    print(('Loading train/test data from %s...' % csvdirname))
     folds, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = load_my_data_separate_args(csvdirname, 
                                                                                           embeddings_dir=embeddings_dir)
-    print folds.keys()[0]
-    print folds[folds.keys()[0]]["training"][0][:20][:10]
-    print folds[folds.keys()[0]]["training"][1][:20][:10]
-    print folds[folds.keys()[0]]["training"][2][:10]
-    print folds[folds.keys()[0]]["training"][3][:20]
+    print(list(folds.keys())[0])
+    print(folds[list(folds.keys())[0]]["training"][0][:20][:10])
+    print(folds[list(folds.keys())[0]]["training"][1][:20][:10])
+    print(folds[list(folds.keys())[0]]["training"][2][:10])
+    print(folds[list(folds.keys())[0]]["training"][3][:20])
     if ranking_csvdirname is not None:             
         folds_regression, _ = load_my_data_regression(ranking_csvdirname, embeddings_dir=embeddings_dir, 
                                                       load_embeddings=True)
@@ -241,8 +241,8 @@ def load_train_test_data(dataset):
 def load_embeddings(word_index_to_embeddings_map):
     print('Loading embeddings')
     # converting embeddings to numpy 2d array: shape = (vocabulary_size, 300)
-    embeddings = np.zeros((1 + np.max(word_index_to_embeddings_map.keys()), len(word_index_to_embeddings_map.values()[0])))
-    embeddings[word_index_to_embeddings_map.keys()] = word_index_to_embeddings_map.values()
+    embeddings = np.zeros((1 + np.max(list(word_index_to_embeddings_map.keys())), len(list(word_index_to_embeddings_map.values())[0])))
+    embeddings[list(word_index_to_embeddings_map.keys())] = list(word_index_to_embeddings_map.values())
     #embeddings = np.asarray([np.array(x, dtype=np.float32) for x in word_index_to_embeddings_map.values()])
     return embeddings
 
@@ -261,7 +261,7 @@ def load_siamese_cbow_embeddings(word_to_indices_map):
      
 def load_ling_features(dataset):
     ling_dir = data_root_dir + 'lingdata/'
-    print("Looking for linguistic features in directory %s" % ling_dir) 
+    print(("Looking for linguistic features in directory %s" % ling_dir)) 
     print('Loading linguistic features')
     ling_file = ling_dir + "/%s-libsvm.txt" % dataset
     argids_file = ling_dir + "/%s-libsvm.txt" % ("argids_%s" % dataset)

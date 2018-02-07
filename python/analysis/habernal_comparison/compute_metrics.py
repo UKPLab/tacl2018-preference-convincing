@@ -125,12 +125,12 @@ def get_fold_data(data, f, expt_settings):
             if expt_settings['fold_order'] is not None:
                 fold = expt_settings['fold_order'][f]
             else:
-                fold = expt_settings['folds'].keys()[f]
+                fold = list(expt_settings['folds'].keys())[f]
             _, docids = load_ling_features(expt_settings['dataset'])
             _, _, _, item_idx_ranktest, _, _ = get_fold_regression_data(expt_settings['folds_regression'], fold, docids)
             pred_rank = pred_rank[item_idx_ranktest, :]
             postprocced = True
-            print "Postprocessed: %i, %i" % (pred_rank.shape[0], gold_rank.shape[0])
+            print("Postprocessed: %i, %i" % (pred_rank.shape[0], gold_rank.shape[0]))
         
     # Considering only the labels where a confident prediction has been made... In this case the metrics should be 
     # shown alongside coverage.
@@ -151,8 +151,8 @@ def collate_AL_results(AL_rounds, results, combined_labels, label):
         else:
             mean_results = mean_results.append(mean_results_round)
             
-    print label
-    print mean_results 
+    print(label)
+    print(mean_results) 
         
     return mean_results
 
@@ -162,7 +162,7 @@ def get_results_dir(data_root_dir, resultsfile_template, expt_settings, folderna
                 expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
                 expt_settings['di'])
             
-    print expt_settings['foldorderfile']
+    print(expt_settings['foldorderfile'])
             
     if expt_settings['foldorderfile'] is not None:
         expt_settings['fold_order'] = np.genfromtxt(os.path.expanduser(expt_settings['foldorderfile']), 
@@ -270,9 +270,9 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                     min_folds = min_folds_desired
 
                     for f in range(nFolds):
-                        print "Processing fold %i" % f
+                        print("Processing fold %i" % f)
                         if expt_settings['fold_order'] is None: # fall back to the order on the current machine
-                            fold = expt_settings['folds'].keys()[f]
+                            fold = list(expt_settings['folds'].keys())[f]
                         else:
                             fold = expt_settings['fold_order'][f] 
                             if fold[-2] == "'" and fold[0] == "'":
@@ -289,13 +289,13 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                         else: # convert the old stuff to new stuff
                             if data is None:
                                 min_folds = f+1
-                                print 'Skipping fold with no data %i' % f
-                                print "Skipping results for %s, %s, %s, %s" % (expt_settings['method'], 
+                                print('Skipping fold with no data %i' % f)
+                                print("Skipping results for %s, %s, %s, %s" % (expt_settings['method'], 
                                                                                expt_settings['dataset'], 
                                                                                expt_settings['feature_type'], 
-                                                                               expt_settings['embeddings_type'])
-                                print "Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
-                                                                                                        resultsfile)
+                                                                               expt_settings['embeddings_type']))
+                                print("Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
+                                                                                                        resultsfile))
                                 continue
                             
                             if not os.path.isdir(resultsdir):
@@ -315,8 +315,8 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             with open(foldfile, 'w') as fh:
                                 pickle.dump(data_f, fh)
                         if pred_tr_disc is not None:                                                                         
-                            print str(pred_tr_disc.shape) + ', ' + str(pred_prob.shape) + ', ' + str(
-                                                                    pred_tr_disc.shape[0]+pred_prob.shape[0])                 
+                            print(str(pred_tr_disc.shape) + ', ' + str(pred_prob.shape) + ', ' + str(
+                                                                    pred_tr_disc.shape[0]+pred_prob.shape[0]))                 
                             
                         for AL_round, _ in enumerate(AL_rounds):
                             #print "fold %i " % f
@@ -366,7 +366,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                 gold_tr = np.array(gold_tr)
 
                                 if (gold_tr!=1).shape[0] != pred_tr_disc.shape[0]:
-                                    print "Mismatch in fold %s! %i, %i" % (fold, (gold_tr!=1).shape[0], pred_tr_disc.shape[0])
+                                    print("Mismatch in fold %s! %i, %i" % (fold, (gold_tr!=1).shape[0], pred_tr_disc.shape[0]))
                                 
                                 gold_tr_prob = gold_tr / 2.0
 
@@ -409,22 +409,22 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             tr_results_logloss[row, col, -1, AL_round] = np.mean(tr_results_logloss[row, col, foldrange, AL_round], axis=0)
                             tr_results_auc[row, col, -1, AL_round] = np.mean(tr_results_auc[row, col, foldrange, AL_round], axis=0)
                         
-                    print 'p-values for %s, %s, %s, %s:' % (expt_settings['dataset'], expt_settings['method'], expt_settings['feature_type'], expt_settings['embeddings_type'])
+                    print('p-values for %s, %s, %s, %s:' % (expt_settings['dataset'], expt_settings['method'], expt_settings['feature_type'], expt_settings['embeddings_type']))
                         
-                    print wilcoxon(results_f1[0, 0, foldrange, AL_round], 
-                                                                      results_f1[row, col, foldrange, AL_round])[1]
-                    print wilcoxon(results_acc[0, 0, foldrange, AL_round], 
-                                                                      results_acc[row, col, foldrange, AL_round])[1]
-                    print wilcoxon(results_logloss[0, 0, foldrange, AL_round], 
-                                                                      results_logloss[row, col, foldrange, AL_round])[1]
-                    print wilcoxon(results_auc[0, 0, foldrange, AL_round], 
-                                                                      results_auc[row, col, foldrange, AL_round])[1]
-                    print wilcoxon(results_pearson[0, 0, foldrange, AL_round], 
-                                                                      results_pearson[row, col, foldrange, AL_round])[1]
-                    print wilcoxon(results_spearman[0, 0, foldrange, AL_round], 
-                                                                      results_spearman[row, col, foldrange, AL_round])[1]
-                    print wilcoxon(results_kendall[0, 0, foldrange, AL_round], 
-                                                                      results_kendall[row, col, foldrange, AL_round])[1]                                                                                                                                                                        
+                    print(wilcoxon(results_f1[0, 0, foldrange, AL_round], 
+                                                                      results_f1[row, col, foldrange, AL_round])[1])
+                    print(wilcoxon(results_acc[0, 0, foldrange, AL_round], 
+                                                                      results_acc[row, col, foldrange, AL_round])[1])
+                    print(wilcoxon(results_logloss[0, 0, foldrange, AL_round], 
+                                                                      results_logloss[row, col, foldrange, AL_round])[1])
+                    print(wilcoxon(results_auc[0, 0, foldrange, AL_round], 
+                                                                      results_auc[row, col, foldrange, AL_round])[1])
+                    print(wilcoxon(results_pearson[0, 0, foldrange, AL_round], 
+                                                                      results_pearson[row, col, foldrange, AL_round])[1])
+                    print(wilcoxon(results_spearman[0, 0, foldrange, AL_round], 
+                                                                      results_spearman[row, col, foldrange, AL_round])[1])
+                    print(wilcoxon(results_kendall[0, 0, foldrange, AL_round], 
+                                                                      results_kendall[row, col, foldrange, AL_round])[1])                                                                                                                                                                        
                         
                     if row == 0: # set the column headers    
                         columns[col] = expt_settings['feature_type'] + ', ' + expt_settings['embeddings_type']

@@ -78,7 +78,7 @@ if __name__ == '__main__':
             continue
         
         if fold_order is None: # fall back to the order on the current machine
-            fold = folds.keys()[foldidx]
+            fold = list(folds.keys())[foldidx]
         else:
             fold = fold_order[foldidx] 
             if fold[-2] == "'" and fold[0] == "'":
@@ -95,13 +95,13 @@ if __name__ == '__main__':
         else: # convert the old stuff to new stuff
             if data is None:
                 min_folds = foldidx+1
-                print 'Skipping fold with no data %i' % foldidx
-                print "Skipping results for %s, %s, %s, %s" % (method, 
+                print('Skipping fold with no data %i' % foldidx)
+                print("Skipping results for %s, %s, %s, %s" % (method, 
                                                                dataset, 
                                                                feature_type, 
-                                                               embeddings_type)
-                print "Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
-                                                                                        resultsfile)
+                                                               embeddings_type))
+                print("Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
+                                                                                        resultsfile))
                 continue        
         
             if not os.path.isdir(resultsdir):
@@ -130,7 +130,7 @@ if __name__ == '__main__':
               
         #print "Warning: not computing means."
         mean_ls[valid_feats] += data_f[7] / data_f[5]
-        print "Max normed l: %f" % np.max(data_f[7] / data_f[5])
+        print("Max normed l: %f" % np.max(data_f[7] / data_f[5]))
         totals[valid_feats] += 1
          
     mean_ls = mean_ls[valid_feats]
@@ -174,11 +174,11 @@ if __name__ == '__main__':
             featnames[f] = featnames[f][2:] # skip the a1 bit at the start
             for catname in catnames:
                 if catname in fname:
-                    print "%i, Recognised %s as type %s" % (f, fname, catname)
+                    print("%i, Recognised %s as type %s" % (f, fname, catname))
                     feat_cats[nembeddings + f] = catname
                     break
             if not feat_cats[nembeddings + f]:
-                print "%i, Unrecognised language feature: %s" % (f, fname)
+                print("%i, Unrecognised language feature: %s" % (f, fname))
                 feat_cats[nembeddings + f] = 'unigram'
         
         feat_cats[feat_cats=='_'] = 'bigram'

@@ -98,7 +98,7 @@ if __name__ == '__main__':
     # sanity check: test on the training data
     trpred = model.predict(personIDs_train, trainids_a1, trainids_a2, item_feat, person_feat)
     tracc = accuracy_score(np.round((prefs_train + 1) / 2.0), np.round(trpred))
-    print "The model was trained. Testing on the training data gives an accuracy of %.4f" % tracc
+    print("The model was trained. Testing on the training data gives an accuracy of %.4f" % tracc)
         
     # Get some test data ------------------------------------------------------------------------------------
     
@@ -118,12 +118,12 @@ if __name__ == '__main__':
     
     #for a set of test arguments (for demonstration, we sample pairs randomly from training set), predict latent features
     #w = model.predict_item_feats(testids, item_feat)
-    print np.max(model.w)
-    print np.min(model.w)
-    print np.max(model.y)
-    print np.min(model.y)
-    print np.max(model.t)
-    print np.min(model.t)
+    print(np.max(model.w))
+    print(np.min(model.w))
+    print(np.max(model.y))
+    print(np.min(model.y))
+    print(np.max(model.t))
+    print(np.min(model.t))
 
     # Generate test people with all combinations of values at discrete points -----------------------------------------
      
@@ -175,16 +175,16 @@ if __name__ == '__main__':
     nbatches = int(np.ceil(npairs / float(batchsize)))
     
     for b in range(nbatches):
-        print "Predicting simulated users in batch %i of %i" % (b, nbatches)
+        print("Predicting simulated users in batch %i of %i" % (b, nbatches))
         start = batchsize * b
         fin = batchsize * (b + 1)
         if fin > npairs:
             fin = npairs
             
         rows, cols = np.unravel_index(np.arange(start, fin), dims=(Ntest, Npeople))
-        predicted_f[rows, cols] = model.predict_f(test_people[rows, cols], 
+        predicted_f[rows, cols] = model.predict_f_item_person(test_people[rows, cols],
                                                  testids[rows, cols], 
-                                                 test_item_feat, test_person_feat) 
+                                                 test_item_feat, test_person_feat)
     
     # who had the highest preference?
     max_people_idx = np.argmax(predicted_f, axis=1)

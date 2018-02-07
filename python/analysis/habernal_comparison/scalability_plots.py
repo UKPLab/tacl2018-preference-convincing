@@ -50,7 +50,7 @@ if __name__ == '__main__':
     acc_both = np.zeros(len(methods))
     
     for m, expt_settings['method'] in enumerate(methods): 
-        print "Processing method %s" % expt_settings['method']
+        print("Processing method %s" % expt_settings['method'])
 
         data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template, 
                                                                           expt_settings)
@@ -59,11 +59,11 @@ if __name__ == '__main__':
         runtimes_m = np.zeros(nFolds)
         
         for f in range(nFolds):
-            print "Processing fold %i" % f
+            print("Processing fold %i" % f)
             if expt_settings['fold_order'] is None: # fall back to the order on the current machine
                 if expt_settings['folds'] is None:
                     continue
-                fold = expt_settings['folds'].keys()[f]
+                fold = list(expt_settings['folds'].keys())[f]
             else:
                 fold = expt_settings['fold_order'][f] 
                 if fold[-2] == "'" and fold[0] == "'":
@@ -80,13 +80,13 @@ if __name__ == '__main__':
             else: # convert the old stuff to new stuff
                 if data is None:
                     min_folds = f+1
-                    print 'Skipping fold with no data %i' % f
-                    print "Skipping results for %s, %s, %s, %s" % (expt_settings['method'], 
+                    print('Skipping fold with no data %i' % f)
+                    print("Skipping results for %s, %s, %s, %s" % (expt_settings['method'], 
                                                                    expt_settings['dataset'], 
                                                                    expt_settings['feature_type'], 
-                                                                   expt_settings['embeddings_type'])
-                    print "Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
-                                                                                            resultsfile)
+                                                                   expt_settings['embeddings_type']))
+                    print("Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
+                                                                                            resultsfile))
                     continue
                 
                 if not os.path.isdir(resultsdir):
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     acc_emb = np.zeros(len(methods))
     
     for m, expt_settings['method'] in enumerate(methods): 
-        print "Processing method %s" % expt_settings['method']
+        print("Processing method %s" % expt_settings['method'])
 
         data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template, 
                                                                           expt_settings)
@@ -131,11 +131,11 @@ if __name__ == '__main__':
         runtimes_m = np.zeros(nFolds)
         
         for f in range(nFolds):
-            print "Processing fold %i" % f
+            print("Processing fold %i" % f)
             if expt_settings['fold_order'] is None: # fall back to the order on the current machine
                 if expt_settings['folds'] is None:
                     continue
-                fold = expt_settings['folds'].keys()[f]
+                fold = list(expt_settings['folds'].keys())[f]
             else:
                 fold = expt_settings['fold_order'][f] 
                 if fold[-2] == "'" and fold[0] == "'":
@@ -152,13 +152,13 @@ if __name__ == '__main__':
             else: # convert the old stuff to new stuff
                 if data is None:
                     min_folds = f+1
-                    print 'Skipping fold with no data %i' % f
-                    print "Skipping results for %s, %s, %s, %s" % (expt_settings['method'], 
+                    print('Skipping fold with no data %i' % f)
+                    print("Skipping results for %s, %s, %s, %s" % (expt_settings['method'], 
                                                                    expt_settings['dataset'], 
                                                                    expt_settings['feature_type'], 
-                                                                   expt_settings['embeddings_type'])
-                    print "Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
-                                                                                            resultsfile)
+                                                                   expt_settings['embeddings_type']))
+                    print("Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
+                                                                                            resultsfile))
                     continue
                 
                 if not os.path.isdir(resultsdir):
@@ -253,7 +253,7 @@ if __name__ == '__main__':
         foldername = 'crowdsourcing_argumentation_expts_%i/' % N
         
         for m, expt_settings['method'] in enumerate(methods): 
-            print "Processing method %s" % expt_settings['method']
+            print("Processing method %s" % expt_settings['method'])
     
             data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, 
                                           resultsfile_template, expt_settings, foldername)
@@ -261,7 +261,7 @@ if __name__ == '__main__':
             runtimes_m = np.zeros(nFolds)
             
             for f in range(nFolds):
-                print "Processing fold %i" % f
+                print("Processing fold %i" % f)
                 fold = expt_settings['fold_order'][f] 
                 if fold[-2] == "'" and fold[0] == "'":
                     fold = fold[1:-2]
@@ -277,13 +277,13 @@ if __name__ == '__main__':
                 else: # convert the old stuff to new stuff
                     if data is None:
                         min_folds = f+1
-                        print 'Skipping fold with no data %i' % f
-                        print "Skipping results for %s, %s, %s, %s" % (expt_settings['method'], 
+                        print('Skipping fold with no data %i' % f)
+                        print("Skipping results for %s, %s, %s, %s" % (expt_settings['method'], 
                                                                        expt_settings['dataset'], 
                                                                        expt_settings['feature_type'], 
-                                                                       expt_settings['embeddings_type'])
-                        print "Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
-                                                                                                resultsfile)
+                                                                       expt_settings['embeddings_type']))
+                        print("Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
+                                                                                                resultsfile))
                         continue
                     
                     if not os.path.isdir(resultsdir):
@@ -322,9 +322,9 @@ if __name__ == '__main__':
     expt_settings['feature_type'] = 'debug'
     for n, dim in enumerate(['30feats', '', '3000feats']):
         foldername = 'crowdsourcing_argumentation_expts_%s/' % dim
-        print "Processing %s" % dim
+        print("Processing %s" % dim)
         for m, expt_settings['method'] in enumerate(dims_methods): 
-            print "Processing method %s" % expt_settings['method']
+            print("Processing method %s" % expt_settings['method'])
     
             if m == 3 and (n == 1 or n==2):
                 foldername_tmp = 'crowdsourcing_argumentation_expts_first_submission/'
@@ -339,8 +339,8 @@ if __name__ == '__main__':
                 
                 data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, 
                                           resultsfile_template, expt_settings_tmp, foldername_tmp)
-                print '***********'
-                print resultsfile
+                print('***********')
+                print(resultsfile)
                 
                 expt_settings_master = expt_settings
                 expt_settings = expt_settings_tmp
@@ -351,14 +351,14 @@ if __name__ == '__main__':
                                           resultsfile_template, expt_settings, foldername)
                 expt_settings_master = expt_settings
             runtimes_m = np.zeros(nFolds)
-            print resultsdir
+            print(resultsdir)
             for f in range(nFolds):
-                print "Processing fold %i" % f
+                print("Processing fold %i" % f)
                 if expt_settings['fold_order'] is None: # fall back to the order on the current machine
                     if expt_settings['folds'] is None:
-                        print "Skipping fold %i because no fold order file" % f
+                        print("Skipping fold %i because no fold order file" % f)
                         continue
-                    fold = expt_settings['folds'].keys()[f]
+                    fold = list(expt_settings['folds'].keys())[f]
                 else:
                     fold = expt_settings['fold_order'][f] 
                     if fold[-2] == "'" and fold[0] == "'":
@@ -375,13 +375,13 @@ if __name__ == '__main__':
                 else: # convert the old stuff to new stuff
                     if data is None:
                         min_folds = f+1
-                        print 'Skipping fold with no data %i' % f
-                        print "Skipping results for %s, %s, %s, %s" % (expt_settings['method'], 
+                        print('Skipping fold with no data %i' % f)
+                        print("Skipping results for %s, %s, %s, %s" % (expt_settings['method'], 
                                                                        expt_settings['dataset'], 
                                                                        expt_settings['feature_type'], 
-                                                                       expt_settings['embeddings_type'])
-                        print "Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
-                                                                                                resultsfile)
+                                                                       expt_settings['embeddings_type']))
+                        print("Skipped filename was: %s, old-style results file would be %s" % (foldfile, 
+                                                                                                resultsfile))
                         continue
                     
                     if not os.path.isdir(resultsdir):
@@ -424,7 +424,7 @@ if __name__ == '__main__':
                    clip_on=False, linewidth=2, markersize=8)
     # this is too big
     vals = runtimes_dims[3][1:]
-    print vals
+    print(vals)
     #vals = vals - 9800 + 3500 + 200
     h3, = ax4.plot(x_dims[1:], vals, marker='s', color='goldenrod', 
                    label='GPPL opt.', clip_on=False, linewidth=2, markersize=8)
@@ -463,8 +463,8 @@ if __name__ == '__main__':
     ax4.yaxis.grid('on')
     plt.savefig(figure_save_path + '/num_features_others.pdf')
     
-    print "Runtimes for varying features GPPL medi: " 
-    print runtimes_dims[0]
+    print("Runtimes for varying features GPPL medi: ") 
+    print(runtimes_dims[0])
     
     fig5, ax5 = plt.subplots(figsize=(5,4))
     h4, = plt.plot(x_dims, runtimes_dims[0], label='GPPL medi.', marker='o', color='blue', 

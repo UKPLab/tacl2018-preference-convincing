@@ -54,7 +54,7 @@ class PersonalisedTestRunner(TestRunner):
         
         proba = self.model.predict(self.person_test, self.a1_test, self.a2_test, self.items_feat)
         if self.a_rank_test is not None:
-            predicted_f = self.model.predict_f(self.person_rank_test, self.a_rank_test, self.items_feat) 
+            predicted_f = self.model.predict_f_item_person(self.person_rank_test, self.a_rank_test, self.items_feat)
     
         return proba, predicted_f, None
 
