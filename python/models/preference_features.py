@@ -287,18 +287,8 @@ class PreferenceComponents(object):
 
         for f in range(self.Nfactors):
             fidxs = np.arange(self.Npeople) + f * self.Npeople
-            # I think the y_cov term here may cancel out?
-            # Makes no sense to have posterior estimates here for y and priors for w? Perhaps we need the thing above, but with priors? Check the maths.
-            # Another possibility: we do need separate GP estimates for y and w, but we did it wrong before. The code below has changed the scaling since our last try to reflect this, but we haven't tested with y_gp.
-
-            #yscaling = np.diag(self.y[f, :] ** 2)# + np.diag(self.y_cov[fidxs, :][:, fidxs]))
             yscaling = y[f:f+1, :].T.dot(y[f:f+1, :]) + y_cov[fidxs, :][:, fidxs]
 
-            # yscaling = np.diag(yscaling)
-            #
-            # blocks = [self.K * yscaling[p] for p in range(self.Npeople)]
-            # Kw_f = block_diag(*blocks)
-            #
             yscaling = yscaling[None, :, :, None]
             Kw_f = self.K[:, None, None, :] * yscaling
             Kw_f = Kw_f.reshape(self.N, self.Npeople, self.N * self.Npeople)
@@ -307,7 +297,7 @@ class PreferenceComponents(object):
 
             Kw_f /= inv_scale[f]
 
-            Kw += Kw_f  # Kjoint_f
+            Kw += Kw_f
 
         Kw += np.eye(Kw.shape[0]) * 1e-6
 
@@ -357,7 +347,8 @@ class PreferenceComponents(object):
         self.w_gp.min_iter_VB = 1
         self.w_gp.max_iter_G = self.max_iter_G # G needs to converge within each VB iteration otherwise q(w) is very poor and crashes
         self.w_gp.verbose = self.verbose
-        self.w_gp.conv_threshold = 1e-5
+        self.w_gp.conv_threshold = 1e-3
+        self.w_gp.conv_threshold_G = 1e-3
         self.w_gp.conv_check_freq = 1
 
         # intialise Q using the prior covariance
@@ -381,7 +372,8 @@ class PreferenceComponents(object):
         self.t_gp.min_iter_VB = 1
         self.t_gp.max_iter_G = self.max_iter_G # G needs to converge within each VB iteration otherwise q(w) is very poor and crashes
         self.t_gp.verbose = self.verbose
-        self.t_gp.conv_threshold = 1e-5
+        self.t_gp.conv_threshold = 1e-3
+        self.t_gp.conv_threshold_G = 1e-3
         self.t_gp.conv_check_freq = 1
 
     def _scaled_Ky(self, w, w_cov, inv_scale):
@@ -395,26 +387,13 @@ class PreferenceComponents(object):
             wscaling = wscaling[:, None, None, :]
             Ky_f = self.Ky_block[None, :, :, None] * wscaling
 
-            # wscaling = np.diag(wscaling)
-
-            # blocks = [self.Ky_block * wscaling[n] for n in range(self.N)]
-            # Ky_f = block_diag(*blocks)
-            # Ky_f = Ky_f.reshape(self.N * self.Npeople, self.N, self.Npeople)
-            # Ky_f = np.swapaxes(Ky_f, 0, 2)
-            # Ky_f = Ky_f.reshape(self.Npeople, self.N, self.N, self.Npeople)
-            # Ky_f = np.swapaxes(Ky_f, 2, 3)
-            # Ky_f = Ky_f.reshape(self.Npeople, self.N, self.N * self.Npeople)
-            # Ky_f = np.swapaxes(Ky_f, 0, 2)
-            # Ky_f = np.swapaxes(Ky_f, 1, 2)
-            # Ky_f = Ky_f.reshape(self.Npeople * self.N, self.N * self.Npeople)
-            #
             Ky_f = Ky_f.reshape(self.N, self.Npeople, self.N * self.Npeople)
             Ky_f = np.swapaxes(Ky_f, 0, 2)
             Ky_f = Ky_f.reshape(self.N * self.Npeople, self.N * self.Npeople)
 
             Ky_f /= inv_scale[f]
 
-            Ky += Ky_f  # Kjoint_f
+            Ky += Ky_f
         Ky += np.eye(Ky.shape[0]) * 1e-6
 
         return Ky
@@ -435,7 +414,8 @@ class PreferenceComponents(object):
         self.y_gp.min_iter_VB = 1
         self.y_gp.max_iter_G = self.max_iter_G # G needs to converge within each VB iteration otherwise q(y) is very poor and crashes
         self.y_gp.verbose = self.verbose
-        self.y_gp.conv_threshold = 1e-5
+        self.y_gp.conv_threshold = 1e-3
+        self.y_gp.conv_threshold_G = 1e-3
         self.y_gp.conv_check_freq = 1
 
         Ky = self._scaled_Ky(np.zeros((self.N, self.Nfactors)), self.Kw / self.shape_sw0 * self.rate_sw0,
@@ -613,6 +593,7 @@ class PreferenceComponents(object):
         self.shape_st, self.rate_st = expec_output_scale(self.shape_st0, self.rate_st0, self.N,
                                                          self.invK, self.t, np.zeros((self.N, 1)),
                                                          f_cov=self.t_cov)
+        self.st = self.shape_st / self.rate_st
 
     def _expec_w(self):
         """
@@ -620,33 +601,7 @@ class PreferenceComponents(object):
         :return:
         """
 
-        Kw = np.zeros((self.N * self.Npeople, self.N * self.Npeople))
-
-        for f in range(self.Nfactors):
-            fidxs = np.arange(self.Npeople) + f * self.Npeople
-            # I think the y_cov term here may cancel out?
-            # Makes no sense to have posterior estimates here for y and priors for w? Perhaps we need the thing above, but with priors? Check the maths.
-            # Another possibility: we do need separate GP estimates for y and w, but we did it wrong before. The code below has changed the scaling since our last try to reflect this, but we haven't tested with y_gp.
-
-            #yscaling = np.diag(self.y[f, :] ** 2)# + np.diag(self.y_cov[fidxs, :][:, fidxs]))
-            yscaling = self.y[f:f+1, :].T.dot(self.y[f:f+1, :]) + self.y_cov[fidxs, :][:, fidxs]
-
-            # yscaling = np.diag(yscaling)
-            #
-            # blocks = [self.K * yscaling[p] for p in range(self.Npeople)]
-            # Kw_f = block_diag(*blocks)
-            #
-            yscaling = yscaling[None, :, :, None]
-            Kw_f = self.K[:, None, None, :] * yscaling
-            Kw_f = Kw_f.reshape(self.N, self.Npeople, self.N * self.Npeople)
-            Kw_f = np.swapaxes(Kw_f, 0, 2)
-            Kw_f = Kw_f.reshape(self.N * self.Npeople, self.N * self.Npeople)
-
-            Kw_f /= (self.shape_sw[f] / self.rate_sw[f])
-
-            Kw += Kw_f  # Kjoint_f
-
-        Kw += np.eye(Kw.shape[0]) * 1e-6
+        Kw = self._scaled_Kw(self.y, self.y_cov, self.shape_sw / self.rate_sw)
 
         t = np.tile(self.t, (self.Npeople, 1))
 
@@ -709,37 +664,7 @@ class PreferenceComponents(object):
         :return:
         """
 
-        # Ky uses same layout as Kw
-        Ky = np.zeros((self.N * self.Npeople, self.N * self.Npeople))
-
-        for f in range(self.Nfactors):
-            fidxs = np.arange(self.N) + f * self.N
-            #wscaling = np.diag(self.w[:, f]**2)# + np.diag(self.w_cov[fidxs, :][:, fidxs]))#
-            wscaling = self.w[:, f:f+1].dot(self.w[:, f:f+1].T) + self.w_cov[fidxs, :][:, fidxs]
-            wscaling = wscaling[:, None, None, :]
-            Ky_f = self.Ky_block[None, :, :, None] * wscaling
-
-            # wscaling = np.diag(wscaling)
-
-            # blocks = [self.Ky_block * wscaling[n] for n in range(self.N)]
-            # Ky_f = block_diag(*blocks)
-            # Ky_f = Ky_f.reshape(self.N * self.Npeople, self.N, self.Npeople)
-            # Ky_f = np.swapaxes(Ky_f, 0, 2)
-            # Ky_f = Ky_f.reshape(self.Npeople, self.N, self.N, self.Npeople)
-            # Ky_f = np.swapaxes(Ky_f, 2, 3)
-            # Ky_f = Ky_f.reshape(self.Npeople, self.N, self.N * self.Npeople)
-            # Ky_f = np.swapaxes(Ky_f, 0, 2)
-            # Ky_f = np.swapaxes(Ky_f, 1, 2)
-            # Ky_f = Ky_f.reshape(self.Npeople * self.N, self.N * self.Npeople)
-            #
-            Ky_f = Ky_f.reshape(self.N, self.Npeople, self.N * self.Npeople)
-            Ky_f = np.swapaxes(Ky_f, 0, 2)
-            Ky_f = Ky_f.reshape(self.N * self.Npeople, self.N * self.Npeople)
-
-            Ky_f /= (self.shape_sy[f] / self.rate_sy[f])
-
-            Ky += Ky_f  # Kjoint_f
-        Ky += np.eye(Ky.shape[0]) * 1e-6
+        Ky = self._scaled_Ky(self.w, self.w_cov, self.shape_sy / self.rate_sy)
 
         t = np.tile(self.t, (self.Npeople, 1))
 

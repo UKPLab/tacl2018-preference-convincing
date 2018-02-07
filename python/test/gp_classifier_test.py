@@ -10,6 +10,7 @@ from gp_classifier_vb import matern_3_2_from_raw_vals, coord_arr_to_1d, sigmoid,
 from gp_classifier_svi import GPClassifierSVI
 from scipy.stats import norm
 from scipy.stats import multivariate_normal as mvn
+from scipy.stats import kendalltau
 
 def gen_synthetic_classifications(f_prior_mean=None, nx=100, ny=100):
     # f_prior_mean should contain the means for all the grid squares
@@ -45,10 +46,6 @@ def gen_synthetic_classifications(f_prior_mean=None, nx=100, ny=100):
     return N, nx, ny, labels, xvals, yvals, f, K
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)    
-    
-    from scipy.stats import kendalltau
-    
     fix_seeds = True
     
     # make sure the simulation is repeatable
@@ -85,14 +82,11 @@ if __name__ == '__main__':
     #model.conv_threshold_G = 1e-8
     #model.conv_check_freq = 1
     #model.conv_threshold = 1e-3 # the difference must be less than 1% of the value of the lower bound
-    
+
     #models['VB'] = model
 
-    # TODO: why is the SVI test now giving me errors in the LB but the standard VB one is not? Jumps in s?
-    # TODO: next, test preference learning with and without SVI, then preference components.
-
     model = GPClassifierSVI(2, z0=0.5, shape_s0=1, rate_s0=1, ls_initial=ls_initial, use_svi=True)
-    # model.verbose = True
+    model.verbose = True
     model.max_iter_VB = 1000
     model.min_iter_VB = 5
     model.uselowerbound = True
@@ -124,7 +118,7 @@ if __name__ == '__main__':
         print("--- Running model %s ---" % modelkey)
         
         model = models[modelkey]
-    
+
         model.fit(obs_coords[trainidxs, :], labels[trainidxs], optimize=False)
         print("Final lower bound: %f" % model.lowerbound())
         

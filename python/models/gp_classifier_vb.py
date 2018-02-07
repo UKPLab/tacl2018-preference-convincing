@@ -751,7 +751,7 @@ class GPClassifierVB(object):
 
         # make sure we start again
         # Sets the value of parameters back to the initial guess
-        self._init_params(0, True, None)
+        self._init_params(None, True, None)
         self.fit(process_obs=False, optimize=False)
         if self.verbose:
             logging.debug("Inverse output scale: %f" % self.s)

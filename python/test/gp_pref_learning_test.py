@@ -94,16 +94,17 @@ if __name__ == '__main__':
         np.random.seed() # do this if we want to use a different seed each time to test the variation in results
 
     # # Create a GPPrefLearning model
-    model = GPPrefLearning(2, mu0=0, shape_s0=1000, rate_s0=100, ls_initial=initial_ls, use_svi=True, ninducing=100, max_update_size=60)
-    #model.verbose = True
+    model = GPPrefLearning(2, mu0=0, shape_s0=1000, rate_s0=100, ls_initial=initial_ls, use_svi=True, ninducing=100,
+                           max_update_size=60)
+    model.verbose = True
 
-    models['SVI'] = model
+    #models['SVI'] = model
     
     # Create a GPPrefLearning model
     model = GPPrefLearning(2, mu0=0, shape_s0=1000, rate_s0=100, ls_initial=initial_ls, use_svi=False)
-    #model.verbose = True
+    model.verbose = True
 
-    # models['VB'] = model
+    models['VB'] = model
 
     f_means = {}
     
