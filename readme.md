@@ -43,12 +43,13 @@ items_2_idxs = np.array([np.argwhere(item_ids==iid)[0][0] for iid in pair_data[:
 prefs = pair_data[:, 2] 
 ~~~
 
-Construct a GPPrefLearning object:
+Construct a GPPrefLearning object. The following values are reasonable defaults
+for the applications we have tried so far:
 ~~~
 from gp_pref_learning import *
 from gp_classifier_vb import compute_median_lengthscales # use this function to set sensible values for the lengthscale hyperparameters
-model = GPPrefLearning(len(full_vector_list[0]), shape_s0=shape_s0, rate_s0=rate_s0
-                            ,ls_initial=compute_median_lengthscales(summary_matrix) )
+model = GPPrefLearning(item_feats.shape[1], shape_s0=2, rate_s0=200, 
+                        ls_initial=compute_median_lengthscales(summary_matrix) )
 ~~~
 
 Now train the object given the data:
