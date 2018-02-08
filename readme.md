@@ -29,7 +29,7 @@ Start by loading in some data from a CSV file using numpy:
 ~~~
 item_data = np.genfromtxt('./data/items.csv', dtype=float, delimiter=',', skip_header=1)
 item_ids = item_data[:, 0].astype(int) # the first column contains item IDs
-item_feat = item_data[:, 1:] # the remaining columns contain item features
+item_feats = item_data[:, 1:] # the remaining columns contain item features
 ~~~
 
 Now, load the pairwise preference data:
@@ -42,6 +42,36 @@ items_2_idxs = np.array([np.argwhere(item_ids==iid)[0][0] for iid in pair_data[:
 # third column contains preference labels in binary format (1 indicates the first item is preferred, 0 indicates the second item is preferred)
 prefs = pair_data[:, 2] 
 ~~~
+
+Construct a GPPrefLearning object:
+~~~
+from gp_pref_learning import *
+from gp_classifier_vb import compute_median_lengthscales # use this function to set sensible values for the lengthscale hyperparameters
+model = GPPrefLearning(len(full_vector_list[0]), shape_s0=shape_s0, rate_s0=rate_s0
+                            ,ls_initial=compute_median_lengthscales(summary_matrix) )
+~~~
+
+Now train the object given the data:
+~~~
+model.fit(items_1_idxs, items_2_idxs, item_feats, prefs, optimize=False)
+~~~
+
+Given the fitted model, we can now make predictions about any items given their 
+features. These may be new, previously unseen items, or items that were used in 
+training. To obtain a score for each item, e.g. to be used for ranking items,
+call the following:
+~~~
+model.predict_f(test_item_feats)
+~~~
+
+You can also predict pairwise labels for any items given their features:
+~~~
+model.predict(test_item_feats, test_items_1_idxs, test_items_2_idxs)
+~~~
+Here, the test_item_feats object is a matrix where each row is a feature vector
+of an item. The test_items_1_idxs and test_items_2_idxs objects are vectors 
+(lists or 1-dimensional numpy arrays) containing indices into test_item_feats
+of items you wish to compare.
 
 ## Setting priors
 
