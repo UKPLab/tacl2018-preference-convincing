@@ -1,4 +1,4 @@
----+ Dependencies
+## Dependencies
 
 Dependencies for running gp_pref_learning model:
 
@@ -8,7 +8,7 @@ Dependencies for running gp_pref_learning model:
 
 For running the experiments, please see the requirements.txt for further dependencies. 
 
----+ How to run
+## How to run
 
 To run preference learning, see gp_pref_learning class in 
 python/models/gp_pref_learning.py. You can run a simple example that generates
@@ -22,8 +22,28 @@ docstrings for these methods for more details:
    * fit(): train the model
    * predict(): predict pairwise labels for new pairs 
    * predict_f(): predict rankings for a set of items given their features.
+   
+## Example usage
 
----+ Setting priors
+Start by loading in some data from a CSV file using numpy:
+~~~
+item_data = np.genfromtxt('./data/items.csv', dtype=float, delimiter=',', skip_header=1)
+item_ids = item_data[:, 0].astype(int) # the first column contains item IDs
+item_feat = item_data[:, 1:] # the remaining columns contain item features
+~~~
+
+Now, load the pairwise preference data:
+~~~
+pair_data = np.genfromtxt('./data/pairwise_prefs.csv', dtype=float, delimiter=',', skip_header=1)
+# the first column contains IDs of the first items in the pairs. Map these to indices into the item_ids matrix.
+items_1_idxs = np.array([np.argwhere(item_ids==iid)[0][0] for iid in pair_data[:, 1].astype(int)])
+# the second column contains IDs of the second items in the pairs. Map these to indices into the item_ids matrix.
+items_2_idxs = np.array([np.argwhere(item_ids==iid)[0][0] for iid in pair_data[:, 1].astype(int)])
+# third column contains preference labels in binary format (1 indicates the first item is preferred, 0 indicates the second item is preferred)
+prefs = pair_data[:, 2] 
+~~~
+
+## Setting priors
 
 For setting the prior mean function:
    * when calling fit(), pass in a vector mu0 that is the same size as item_features. Each entry of mu0 is the prior
