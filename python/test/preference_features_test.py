@@ -21,7 +21,7 @@ from gp_classifier_vb import matern_3_2_from_raw_vals, coord_arr_to_1d
 from scipy.stats import multivariate_normal as mvn
 from scipy.linalg import block_diag
 from gp_pref_learning_test import gen_synthetic_prefs
-from preference_features import PreferenceComponents
+from preference_features import PreferenceComponents, PreferenceComponentsSVI
 
 
 def gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, s, lsy, Npeoplefeatures=4):
@@ -135,16 +135,29 @@ if __name__ == '__main__':
         
     # Model initialisation --------------------------------------------------------------------------------------------
     use_svi = True
+    use_t = True
+    use_person_features = False
     ls_initial = np.array(ls)# + 5
     print(("Initial guess of length scale for items: %s, true length scale is %s" % (ls_initial, ls)))
     lsy_initial = np.array(lsy)# + 7
     print(("Initial guess of length scale for people: %s, true length scale is %s" % (lsy_initial, lsy)))
-    model = PreferenceComponents(2, Npeoplefeatures, ls=ls_initial, lsy=lsy_initial, use_common_mean_t=True, nfactors=7)
+    if use_svi:
+        model = PreferenceComponentsSVI(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial,
+                                        lsy=lsy_initial, use_common_mean_t=use_t,
+                                        nfactors=7, forgetting_rate=0.9, ninducing=8, max_update_size=100)
+        model.n_converged = 10
+    else:
+        model = PreferenceComponents(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial, lsy=lsy_initial,
+                                     use_common_mean_t=use_t, nfactors=7)
+
+    if fix_seeds:
+        np.random.seed(22)
+
     model.verbose = True
     model.min_iter = 1
     model.max_iter = 200
     model.fit(personids[trainidxs], pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], 
-              person_features.T, optimize=False)
+              person_features.T if use_person_features else None, optimize=False)
 #               None, optimize=True)    
     print(("Difference between true item length scale and inferred item length scale = %s" % (ls - model.ls)))
     print(("Difference between true person length scale and inferred person length scale = %s" % (lsy - model.lsy)))
@@ -204,29 +217,29 @@ if __name__ == '__main__':
     chosen_features = np.argsort(wvar)[-w.shape[1]:]
     w_pred = model.w[:, chosen_features].T.reshape(w.shape[1] * N)
 
-    w_pred_cov = model.w_cov.reshape(model.Nfactors * N, model.Nfactors, N)
-    w_pred_cov = np.swapaxes(w_pred_cov, 0, 2).reshape(N, model.Nfactors, model.Nfactors, N)
-    w_pred_cov = w_pred_cov[:, chosen_features, :, :][:, :, chosen_features, :]
-    w_pred_cov = w_pred_cov.reshape(N, w.shape[1], w.shape[1] * N)
-    w_pred_cov = np.swapaxes(w_pred_cov, 0, 2).reshape(w.shape[1] * N, w.shape[1] * N)
-
-    print("w: RMSE of %.3f" % np.sqrt(np.mean((w.T.reshape(N * w.shape[1])-w_pred)**2)))
-    print("w: NLPD error of %.3f" % -mvn.logpdf(w.T.reshape(N * w.shape[1]), mean=w_pred, cov=w_pred_cov))
-            
-    print(" --- Latent person feature prediction metrics --- ")
-
-    yvar = np.var(model.y, axis=1)
-    chosen_features = np.argsort(yvar)[-y.shape[0]:]
-    y_pred = model.y[chosen_features, :].reshape(y.shape[0] * Npeople)
-
-    y_pred_cov = model.y_cov.reshape(model.Nfactors * Npeople, model.Nfactors, Npeople)
-    y_pred_cov = np.swapaxes(y_pred_cov, 0, 2).reshape(Npeople, model.Nfactors, model.Nfactors, Npeople)
-    y_pred_cov = y_pred_cov[:, chosen_features, :, :][:, :, chosen_features, :]
-    y_pred_cov = y_pred_cov.reshape(Npeople, w.shape[1], w.shape[1] * Npeople)
-    y_pred_cov = np.swapaxes(y_pred_cov, 0, 2).reshape(w.shape[1] * Npeople, w.shape[1] * Npeople)
-
-    print("y: RMSE of %.3f" % np.sqrt(np.mean((y.reshape(Npeople * w.shape[1])-y_pred)**2)))
-    print("y: NLPD error of %.3f" % -mvn.logpdf(y.reshape(Npeople * w.shape[1]), mean=y_pred, cov=y_pred_cov))
+    # w_pred_cov = model.w_cov.reshape(model.Nfactors * N, model.Nfactors, N)
+    # w_pred_cov = np.swapaxes(w_pred_cov, 0, 2).reshape(N, model.Nfactors, model.Nfactors, N)
+    # w_pred_cov = w_pred_cov[:, chosen_features, :, :][:, :, chosen_features, :]
+    # w_pred_cov = w_pred_cov.reshape(N, w.shape[1], w.shape[1] * N)
+    # w_pred_cov = np.swapaxes(w_pred_cov, 0, 2).reshape(w.shape[1] * N, w.shape[1] * N)
+    #
+    # print("w: RMSE of %.3f" % np.sqrt(np.mean((w.T.reshape(N * w.shape[1])-w_pred)**2)))
+    # print("w: NLPD error of %.3f" % -mvn.logpdf(w.T.reshape(N * w.shape[1]), mean=w_pred, cov=w_pred_cov))
+    #
+    # print(" --- Latent person feature prediction metrics --- ")
+    #
+    # yvar = np.var(model.y, axis=1)
+    # chosen_features = np.argsort(yvar)[-y.shape[0]:]
+    # y_pred = model.y[chosen_features, :].reshape(y.shape[0] * Npeople)
+    #
+    # y_pred_cov = model.y_cov.reshape(model.Nfactors * Npeople, model.Nfactors, Npeople)
+    # y_pred_cov = np.swapaxes(y_pred_cov, 0, 2).reshape(Npeople, model.Nfactors, model.Nfactors, Npeople)
+    # y_pred_cov = y_pred_cov[:, chosen_features, :, :][:, :, chosen_features, :]
+    # y_pred_cov = y_pred_cov.reshape(Npeople, w.shape[1], w.shape[1] * Npeople)
+    # y_pred_cov = np.swapaxes(y_pred_cov, 0, 2).reshape(w.shape[1] * Npeople, w.shape[1] * Npeople)
+    #
+    # print("y: RMSE of %.3f" % np.sqrt(np.mean((y.reshape(Npeople * w.shape[1])-y_pred)**2)))
+    # print("y: NLPD error of %.3f" % -mvn.logpdf(y.reshape(Npeople * w.shape[1]), mean=y_pred, cov=y_pred_cov))
             
 #     from scipy.stats import kendalltau
 #      

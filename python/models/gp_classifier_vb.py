@@ -323,7 +323,8 @@ class GPClassifierVB(object):
     v = []
 
     n_converged = 1  # number of iterations while the algorithm appears to be converged -- in case of local maxima
-    max_iter_VB = 200  # 1000
+    max_iter_VB = 0
+    max_iter_VB_per_fit = 200  # 1000
     min_iter_VB = 5
     max_iter_G = 10
     conv_threshold = 1e-4
@@ -376,6 +377,8 @@ class GPClassifierVB(object):
         # Algorithm configuration
         self._select_covariance_function(kernel_func)
         self.kernel_combination = kernel_combination  #  operator for combining kernels for each feature.
+
+        self.vb_iter = 0
 
     # Initialisation --------------------------------------------------------------------------------------------------
 
@@ -683,24 +686,31 @@ class GPClassifierVB(object):
 
         :return:
         """
-        # _, G = self._compute_jacobian()
-        # diagGTQG = np.diag(G) * self.Q * np.diag(G)  # np.sum(G.T * self.Q[None, :] * G.T, axis=1)
-        # sigma = np.sqrt(diagGTQG)[:, np.newaxis]
+        # sigma = self.obs_variance()
+        #
+        # logrho, lognotrho, _ = self._post_sample(self.obs_f, sigma, True)
 
-        sigma = np.diag(self.obs_C)[:, None]
+        # We avoid the sampling step by using the Gaussian approximation to the likelihood to separate the term
+        # relating to uncertainty in f from the likelihood function given f, then replacing the Gaussian part with
+        # the correct likelihood. This leaves one remaining term, - 0.5 * np.trace(self.u_Lambda.dot(self.uS)), which
+        # simplifies when combined with np.trace(self.invKs_mm_uS) in log p(f) to D because inv(uS) = self.invKs_mm + self.u_Lambda
+        rho, notrho = self._post_rough(self.obs_f)
+        logrho = np.log(rho)
+        lognotrho = np.log(notrho)
 
-        logrho, lognotrho, _ = self._post_sample(self.obs_f, sigma, True)
         logdll = self.data_ll(logrho, lognotrho)
 
         _, logdet_K = np.linalg.slogdet(self.K)
         D = len(self.obs_f)
         logdet_Ks = -D * self.Elns + logdet_K
 
-        invK_expecF = self.invK.dot(self.obs_C) * self.s
+        # term below simplifies
+        # invK_expecF = np.trace(self.invK.dot(self.obs_C) * self.s)
+        invK_expecF = D
 
         m_invK_m = (self.obs_f - self.mu0).T.dot(self.invK*self.s).dot(self.obs_f-self.mu0)
 
-        logpf = 0.5 * (- np.log(2 * np.pi) * D - logdet_Ks - np.trace(invK_expecF) - m_invK_m)
+        logpf = 0.5 * (- np.log(2 * np.pi) * D - logdet_Ks - invK_expecF - m_invK_m)
         return logpf + logdll
 
     def data_ll(self, logrho, lognotrho):
@@ -792,7 +802,7 @@ class GPClassifierVB(object):
 
     # Training methods ------------------------------------------------------------------------------------------------
 
-    def set_training_data(self, obs_coords=None, obs_values=None, totals=None, process_obs=True, mu0=None, K=None, optimize=False,
+    def set_training_data(self, obs_coords=None, obs_values=None, totals=None, process_obs=True, mu0=None, K=None,
             maxfun=20, use_MAP=False, nrestarts=1, features=None):
         """
 
@@ -818,13 +828,11 @@ class GPClassifierVB(object):
 
         self.features = features
 
-        if optimize:
-            return self._optimize(obs_coords, obs_values, totals, process_obs, mu0, K, maxfun, use_MAP, nrestarts)
-
         # Initialise the objects that store the observation data
         if process_obs:
             self._process_observations(obs_coords, obs_values, totals)
             self._init_params(mu0, True, K)
+            self.vb_iter = 0 # don't reset if we don't have new data
         elif mu0 is not None:  # updated mean but not updated observations
             self._init_params(mu0, False, K)  # don't reset the parameters, but make sure mu0 is updated
 
@@ -851,8 +859,11 @@ class GPClassifierVB(object):
         if process_obs:
             self._process_observations(obs_coords, obs_values, totals)
             self._init_params(mu0, True, K)
+            self.vb_iter = 0 # don't reset if we don't have new data
         elif mu0 is not None:  # updated mean but not updated observations
             self._init_params(mu0, False, K)  # don't reset the parameters, but make sure mu0 is updated
+
+        self.max_iter_VB += self.max_iter_VB_per_fit
 
         if not len(self.obs_coords):
             return
@@ -860,9 +871,8 @@ class GPClassifierVB(object):
         if self.verbose:
             logging.debug("GP Classifier VB: training with max length-scale %.3f and smallest %.3f" % (np.max(self.ls),
                                                                                                        np.min(self.ls)))
-
-        self.vb_iter = 0
         converged_count = 0
+        converged = False
         prev_val = -np.inf
         while converged_count < self.n_converged and self.vb_iter < self.max_iter_VB:
             self._expec_f()
@@ -873,9 +883,12 @@ class GPClassifierVB(object):
 
             converged, prev_val = self._check_convergence(prev_val)
             converged_count += converged
+
             self.vb_iter += 1
 
-        self._update_f()  # this is needed so that L and A match s
+        #self.vb_iter -= 1 # the next line repeats the last iteration
+        #self._update_f()  # this is needed so that L and A match s
+        #self.vb_iter += 1
 
         if self.verbose:
             logging.debug("gp grid trained with inverse output scale %.5f" % self.s)
@@ -1031,7 +1044,8 @@ class GPClassifierVB(object):
             # Approximate the expected value of the variable transformed through the sigmoid.
             m_post, not_m_post, v_post = self._post_sample(self.f, self.v, expectedlog)
         elif variance_method == 'rough' and not expectedlog:
-            m_post, _, v_post = self._post_rough(self.f, self.v)
+            m_post, _ = self._post_rough(self.f, self.v)
+            v_post = 0
 
         if expectedlog:
             return m_post, not_m_post, v_post
@@ -1045,7 +1059,8 @@ class GPClassifierVB(object):
         f = self.obs_f
         v = self.obs_variance()
         if variance_method == 'rough' and not expectedlog:
-            m_post, not_m_post, v_post = self._post_rough(f, v)
+            m_post, not_m_post = self._post_rough(f, v)
+            v_post = 0
         else:
             if variance_method == 'rough':
                 logging.warning(
@@ -1154,7 +1169,11 @@ class GPClassifierVB(object):
             C = (Ks_starstar - np.sum(V ** 2, axis=0))[:, None]
         return f, C
 
-    def _post_rough(self, f, v):
+    def _post_rough(self, f, v=None):
+
+        if v is None:
+            v = 0
+
         k = 1.0 / np.sqrt(1 + (np.pi * v / 8.0))
         m_post = sigmoid(k * f)
         not_m_post = sigmoid(-k * f)

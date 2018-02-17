@@ -157,7 +157,7 @@ class GPPrefLearning(GPClassifierSVI):
         if self.use_svi:
             Kstar = self.K_nm
             f_prior_var = None
-            Ks_starstar = self.K_nm.dot(self.K_nm.T) * self.rate_s0/self.shape_s0
+            Ks_starstar = self.K_nm.dot(self.invK_mm).dot(self.K_nm.T) * self.rate_s0/self.shape_s0
         else:
             Kstar = self.K * self.rate_s0/self.shape_s0
             f_prior_var = self.rate_s0/self.shape_s0
@@ -314,14 +314,28 @@ class GPPrefLearning(GPClassifierSVI):
             
     def fit(self, items1_coords=None, items2_coords=None, item_features=None, preferences=None, totals=None, 
             process_obs=True, mu0=None, K=None, optimize=False, input_type='binary'):
-        '''
-        preferences -- Preferences by default can be 1 = item 1 is preferred to item 2, 
+        """
+        Train the model given a set of preference pairs.
+        :param items1_coords: 
+        :param items2_coords: 
+        :param item_features: 
+        :param preferences: Preferences by default can be 1 = item 1 is preferred to item 2, 
         or 0 = item 2 is preferred to item 1, 0.5 = no preference, or values in between.
         For preferences that are not normalised to between 0 and 1, the value of input_type needs to be set. 
-        input_type -- can be 'binary', meaning preferences must be [0,1], or 'zero-centered' meaning that value 1 
-        indicates item 1 is preferred, value -1 indicates item 2 is preferred, and 0 indicates no preference. The value
-        are converted internally to [0,1]. 
-        '''
+        input_type -- c
+        :param totals: 
+        :param process_obs: 
+        :param mu0: the prior mean of the latent preference function. The value should be a vector (ndarray) of the
+        same size as item_features, where each entry of the vector is the prior mean for the corresponding item in
+        item_features.
+        :param K: 
+        :param optimize: set to True to use maximum likelihood 2 optimisation of the length-scales
+        :param input_type: can be 'binary' or 'zero-centered'. Binary preferences must be [0,1],
+        where 0 indicates that item 2 is preferred and 1 indicates that item 1 is preferred.
+        Zero-centered perferences have value 1 to indicate item 1 is preferred, value -1 to indicate item 2 is
+        preferred, and 0 to indicate no preference.
+        :return: 
+        """
         pref_values_in_input = np.unique(preferences)
         if process_obs and input_type == 'binary' and np.sum((pref_values_in_input < 0) | (pref_values_in_input > 1)):
             raise ValueError('Binary input preferences specified but the data contained the values %s' % pref_values_in_input)
@@ -336,12 +350,14 @@ class GPPrefLearning(GPClassifierSVI):
             
         if item_features is not None: # keep the old item features if we pass in none
             self.item_features = item_features
-            
+
+        #TODO: bug fix: if the same object is reused with different set of items, there is a crash because K_nm is not renewed.
+
         super(GPPrefLearning, self).fit((items1_coords, items2_coords), preferences, totals, process_obs, 
                                         mu0=mu0, K=K, optimize=optimize)
 
     def set_training_data(self, items1_coords=None, items2_coords=None, item_features=None, preferences=None, totals=None,
-            process_obs=True, mu0=None, K=None, optimize=False, input_type='binary'):
+            process_obs=True, mu0=None, K=None, input_type='binary'):
         '''
         preferences -- Preferences by default can be 1 = item 1 is preferred to item 2,
         or 0 = item 2 is preferred to item 1, 0.5 = no preference, or values in between.
@@ -369,7 +385,7 @@ class GPPrefLearning(GPClassifierSVI):
             self.item_features = item_features
 
         super(GPPrefLearning, self).set_training_data((items1_coords, items2_coords), preferences, totals, process_obs,
-                                        mu0=mu0, K=K, optimize=optimize)
+                                        mu0=mu0, K=K)
 
     def _update_sample_idxs(self):
         nobs = self.obs_f.shape[0]
@@ -448,6 +464,7 @@ class GPPrefLearning(GPClassifierSVI):
         if u is None:
             u = self.pref_u
 
+        np.random.seed(99)
         # since we don't have f_cov
         if K_star is not None and self.use_svi:
             #sample the inducing points because we don't have full covariance matrix. In this case, f_cov should be Ks_nm
@@ -457,9 +474,11 @@ class GPPrefLearning(GPClassifierSVI):
             f_samples = mvn.rvs(mean=f_mean.flatten(), cov=K_star, size=1000).T
         else:
             f_samples = np.random.normal(loc=f_mean, scale=np.sqrt(f_var), size=(f_mean.shape[0], 1000))
-             
-        g_f = (f_samples[v, :] - f_samples[u, :])  / np.sqrt(2)
-        phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the 
+
+        # g_f = (f_samples[v, :] - f_samples[u, :])  / np.sqrt(2)
+        # phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the
+
+        phi = self.forward_model(f_samples, v=v, u=u)
         phi = temper_extreme_probs(phi)
         if expectedlog:
             phi = np.log(phi)
@@ -475,7 +494,7 @@ class GPPrefLearning(GPClassifierSVI):
 
         return m_post, not_m_post, v_post 
 
-    def _post_rough(self, f_mean, f_cov, pref_v=None, pref_u=None):
+    def _post_rough(self, f_mean, f_cov=None, pref_v=None, pref_u=None):
         ''' 
         When making predictions, we want to predict the probability of each listed preference pair.
         Use a solution given by applying the forward model to the mean of the latent function -- 

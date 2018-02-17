@@ -49,6 +49,7 @@ class GPClassifierSVI(GPClassifierVB):
         self.K_mm = None
         self.invK_mm = None
         self.K_nm = None
+        self.V_nn = None
 
         # if use_svi is switched off, we revert to the standard (parent class) VB implementation
         if use_svi and kernel_func == 'diagonal':
@@ -66,7 +67,7 @@ class GPClassifierSVI(GPClassifierVB):
     # Initialisation --------------------------------------------------------------------------------------------------
 
     def _init_params(self, mu0=None, reinit_params=True, K=None):
-        if self.use_svi:
+        if self.use_svi and self.vb_iter == 0:
             self._choose_inducing_points()
 
         super(GPClassifierSVI, self)._init_params(mu0, reinit_params, K)
@@ -139,10 +140,9 @@ class GPClassifierSVI(GPClassifierVB):
             self.K_nm = self.kernel_func(self.obs_coords, self.ls, self.inducing_coords,
                                          operator=self.kernel_combination)
 
-        self.shape_s = self.shape_s0 + 0.5 * self.ninducing  # update this because we are not using n_locs data points
-
         self.u_invSm = np.zeros((self.ninducing, 1), dtype=float)  # theta_1
         self.u_invS = np.zeros((self.ninducing, self.ninducing), dtype=float)  # theta_2
+        self.u_Lambda = np.zeros((self.ninducing, self.ninducing), dtype=float) # observation precision at inducing points
         self.uS = self.K_mm * self.rate_s0 / self.shape_s0  # initialise properly to prior
         self.um_minus_mu0 = np.zeros((self.ninducing, 1))
         self.invKs_mm_uS = np.eye(self.ninducing)
@@ -194,20 +194,32 @@ class GPClassifierSVI(GPClassifierVB):
         if not self.use_svi:
             return super(GPClassifierSVI, self)._logp_Df()
 
-        sigma = self.obs_variance()
+        # We avoid the sampling step by using the Gaussian approximation to the likelihood to separate the term
+        # relating to uncertainty in f from the likelihood function given f, then replacing the Gaussian part with
+        # the correct likelihood. This leaves one remaining term, - 0.5 * np.trace(self.u_Lambda.dot(self.uS)), which
+        # simplifies when combined with np.trace(self.invKs_mm_uS) in log p(f) to D because inv(uS) = self.invKs_mm + self.u_Lambda
+        # sigma = self.obs_variance()
+        #
+        #logrho, lognotrho, _ = self._post_sample(self.obs_f, sigma, True)
 
-        logrho, lognotrho, _ = self._post_sample(self.obs_f, sigma, True)
+        rho, notrho = self._post_rough(self.obs_f)
+        logrho = np.log(rho)
+        lognotrho = np.log(notrho)
+
+        _, G = self._compute_jacobian()
         logdll = self.data_ll(logrho, lognotrho)
 
         _, logdet_K = np.linalg.slogdet(self.Ks_mm * self.s)
         D = len(self.um_minus_mu0)
         logdet_Ks = - D * self.Elns + logdet_K
 
-        invK_expecF = self.invKs_mm_uS
+        # the terms below simplifies:
+        # invK_expecF = np.trace(self.invKs_mm_uS) + np.trace(self.u_Lambda.dot(self.uS))
+        invK_expecF = D
 
         m_invK_m = (self.um_minus_mu0.T).dot(self.invK_mm * self.s).dot(self.um_minus_mu0)
 
-        logpf = 0.5 * (- np.log(2 * np.pi) * D - logdet_Ks - np.trace(invK_expecF) - m_invK_m)
+        logpf = 0.5 * (- np.log(2 * np.pi) * D - logdet_Ks - invK_expecF - m_invK_m)
         return logpf + logdll
 
     def _logqf(self):
@@ -226,8 +238,13 @@ class GPClassifierSVI(GPClassifierVB):
             return super(GPClassifierSVI, self).get_obs_precision()
         # _, G = self._compute_jacobian()
         # Lambda_factor1 = self.invKs_mm.dot(self.Ks_nm.T).dot(G.T)
-        # return Lambda_factor1.dot(np.diag(1.0 / self.Q)).dot(Lambda_factor1.T)
-        return self.u_invS - (self.invK_mm * self.s)
+        # Lambda_i = (Lambda_factor1 / self.Q[np.newaxis, :]).dot(Lambda_factor1.T)
+        # return Lambda_i
+
+        # this is different from the above because it is a weighted sum of previous values
+        # return self.u_invS - (self.invKs_mm)
+
+        return self.u_Lambda
 
     def lowerbound_gradient(self, dim):
         '''
@@ -315,6 +332,7 @@ class GPClassifierSVI(GPClassifierVB):
         # The variational update to theta_2 is (1-rho)*S^-1 + rho*Lambda. Since Lambda includes a sum of Lambda_i over
         # all data points i, the stochastic update weights a sample sum of Lambda_i over a mini-batch.
         self.u_invS = (1 - rho_i) * self.prev_u_invS + rho_i * (w_i * Lambda_i + self.invKs_mm)
+        self.u_Lambda = (1 - rho_i) * self.prev_u_Lambda + rho_i * w_i * Lambda_i
 
         # use the estimate given by the Taylor series expansion
         z0 = self.forward_model(self.obs_f, subset_idxs=self.data_idx_i) + self.G.dot(self.mu0_i - self.obs_f_i)
@@ -357,8 +375,15 @@ class GPClassifierSVI(GPClassifierVB):
         if not self.use_svi:
             return super(GPClassifierSVI, self).obs_variance()
 
-        return np.diag(self._f_given_u(self.Ks_nm, self.mu0, np.diag(np.ones(self.obs_f.shape[0])) / self.s)[1])[:,
-               np.newaxis]
+        if self.K is None:
+            if self.V_nn is not None:
+                K = self.V_nn
+            else:
+                K = np.diag(np.ones(self.obs_f.shape[0])) / self.s
+        else:
+            K = self.K / self.s
+
+        return np.diag(self._f_given_u(self.Ks_nm, self.mu0, K)[1])[:, np.newaxis]
 
     def _expec_s(self):
         if not self.use_svi:
@@ -382,6 +407,7 @@ class GPClassifierSVI(GPClassifierVB):
         # once the iterations over G are complete, we accept this stochastic VB update
         self.prev_u_invSm = self.u_invSm
         self.prev_u_invS = self.u_invS
+        self.prev_u_Lambda = self.u_Lambda
 
         self._update_sample_idxs()
 
@@ -400,7 +426,7 @@ class GPClassifierSVI(GPClassifierVB):
         self.data_idx_i = data_idx_i
         self.fixed_sample_idxs = True
 
-    def init_inducing_points(self, inducing_coords, K_mm=None, invK_mm=None, K_nm=None):
+    def init_inducing_points(self, inducing_coords, K_mm=None, invK_mm=None, K_nm=None, V_nn=None):
         self.ninducing = inducing_coords.shape[0]
         self.inducing_coords = inducing_coords
         if K_mm is not None:
@@ -409,6 +435,8 @@ class GPClassifierSVI(GPClassifierVB):
             self.invK_mm = invK_mm
         if K_nm is not None:
             self.K_nm = K_nm
+        if V_nn is not None:
+            self.V_nn = V_nn # the prior variance at the observation data points
 
     def _update_sample_idxs(self):
         if not self.fixed_sample_idxs:
