@@ -15,7 +15,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 from tests import TestRunner
 sys.path.append("./python/analysis/habernal_comparison")
-from preference_features import PreferenceComponents, PreferenceComponentsFA, PreferenceComponentsSVI, PreferenceNoComponentFactors
+from collab_pref_learning_vb import CollabPrefLearningVB, PreferenceComponentsFA, PreferenceComponentsSVI, PreferenceNoComponentFactors
 import numpy as np
 
 nfactors = 10
@@ -38,7 +38,7 @@ class PersonalisedTestRunner(TestRunner):
         elif 'IndPrefGP' in self.method:
             model_class = PreferenceNoComponentFactors
         elif '_nofactorsvi' in self.method:
-            model_class = PreferenceComponents
+            model_class = CollabPrefLearningVB
         else:
             model_class = PreferenceComponentsSVI
     

@@ -309,18 +309,18 @@ class GPClassifierVB(object):
     rate_s0 = 1
 
     # save the training points
-    obs_values = []  # value of the positive class at each observations. Any duplicate points will be summed.
-    obs_f = []
-    obs_C = []
+    obs_values = None  # value of the positive class at each observations. Any duplicate points will be summed.
+    obs_f = None
+    obs_C = None
 
     out_feats = None
 
-    G = []
-    z = []
-    K = []
-    Q = []
-    f = []
-    v = []
+    G = None
+    z = None
+    K = None
+    Q = None
+    f = None
+    v = None
 
     n_converged = 1  # number of iterations while the algorithm appears to be converged -- in case of local maxima
     max_iter_VB = 0
@@ -399,7 +399,7 @@ class GPClassifierVB(object):
             # g_obs_f = self._update_jacobian(G_update_rate) # don't do this here otherwise loop below will repeat the
             # same calculation with the same values, meaning that the convergence check will think nothing changes in the
             # first iteration.
-            if self.G is not 0 and not len(self.G):
+            if self.G is None:
                 self.G = 0
 
     def _init_covariance(self):
@@ -438,7 +438,12 @@ class GPClassifierVB(object):
 
     def _init_obs_f(self):
         # Mean probability at observed points given local observations
-        self.obs_f = logit(self.obs_mean)
+        if self.obs_f is None: # don't reset if we are only adding more data
+            self.obs_f = logit(self.obs_mean)
+        elif self.obs_f.shape[0] < self.obs_mean.shape[0]:
+            prev_obs_f = self.obs_f
+            self.obs_f = logit(self.obs_mean)
+            self.obs_f[:prev_obs_f.shape[0], :] = prev_obs_f
 
     def _estimate_obs_noise(self):
         # Noise in observations
@@ -468,8 +473,7 @@ class GPClassifierVB(object):
     def _init_s(self):
         if not self.fixed_s:
             self.shape_s = self.shape_s0 + self.n_locs / 2.0
-            self.rate_s = (self.rate_s0 + 0.5 * np.sum(
-                (self.obs_f - self.mu0) ** 2)) + self.rate_s0 * self.shape_s / self.shape_s0
+            self.rate_s = self.rate_s0 + 0.5 * (np.sum((self.obs_f-self.mu0)**2) + self.n_locs*self.rate_s0/self.shape_s0)
         self.s = self.shape_s / self.rate_s
         self.Elns = psi(self.shape_s) - np.log(self.rate_s)
         self.old_s = self.s
@@ -537,7 +541,7 @@ class GPClassifierVB(object):
         return pos_counts, totals
 
     def _process_observations(self, obs_coords, obs_values, totals=None):
-        if obs_values == []:
+        if obs_values is None:
             return [], []
 
         obs_values = np.array(obs_values)
@@ -587,8 +591,8 @@ class GPClassifierVB(object):
 
     # Mapping between latent and observation spaces -------------------------------------------------------------------
 
-    def forward_model(self, f, subset_idxs=[]):
-        if len(subset_idxs):
+    def forward_model(self, f, subset_idxs=None):
+        if subset_idxs is not None:
             return sigmoid(f[subset_idxs])
         else:
             return sigmoid(f)
@@ -843,7 +847,6 @@ class GPClassifierVB(object):
             logging.debug("GP Classifier VB: prepared for training with max length-scale %.3f and smallest %.3f" % (np.max(self.ls),
                                                                                                        np.min(self.ls)))
 
-
     def fit(self, obs_coords=None, obs_values=None, totals=None, process_obs=True, mu0=None, K=None, optimize=False,
             maxfun=20, use_MAP=False, nrestarts=1, features=None):
         '''
@@ -860,7 +863,7 @@ class GPClassifierVB(object):
             self._process_observations(obs_coords, obs_values, totals)
             self._init_params(mu0, True, K)
             self.vb_iter = 0 # don't reset if we don't have new data
-        elif mu0 is not None:  # updated mean but not updated observations
+        elif mu0 is not None or K is not None:  # updated mean but not updated observations
             self._init_params(mu0, False, K)  # don't reset the parameters, but make sure mu0 is updated
 
         self.max_iter_VB += self.max_iter_VB_per_fit
@@ -982,8 +985,7 @@ class GPClassifierVB(object):
     def _expec_s(self):
         self.old_s = self.s
         invK_expecFF = self.invK.dot(self.obs_C + self.obs_f.dot(self.obs_f.T) \
-                                     - self.mu0.dot(self.obs_f.T) - self.obs_f.dot(self.mu0.T) + self.mu0.dot(
-            self.mu0.T))
+                                 - self.mu0.dot(self.obs_f.T) - self.obs_f.dot(self.mu0.T) + self.mu0.dot(self.mu0.T))
         if not self.fixed_s:
             self.rate_s = self.rate_s0 + 0.5 * np.trace(invK_expecFF)
         # Update expectation of s. See approximations for Binary Gaussian Process Classification, Hannes Nickisch

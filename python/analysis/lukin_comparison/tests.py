@@ -32,7 +32,7 @@ sys.path.append("./python/analysis/lukin_comparison")
 sys.path.append(os.path.expanduser("~/git/HeatMapBCC/python"))
 sys.path.append(os.path.expanduser("~/git/pyIBCC/python"))
 
-from preference_features import PreferenceComponentsSVI, PreferenceComponents
+from collab_pref_learning_vb import PreferenceComponentsSVI, CollabPrefLearningVB
 from gp_classifier_vb import compute_median_lengthscales
 
 use_entrenched = True
@@ -87,9 +87,9 @@ if __name__ == '__main__':
     #if item_feat.shape[0] < person_feat.shape[0]:
     #    nfactors = item_feat.shape[0] # use smallest out of N and Npeople
     nfactors = 10
-    model = PreferenceComponents(nitem_features=ndims, ls=ls_initial, lsy=person_ls_initial, shape_s0=2, 
+    model = CollabPrefLearningVB(nitem_features=ndims, ls=ls_initial, lsy=person_ls_initial, shape_s0=2,
                                  rate_s0=200/float(nfactors),
-                                 verbose=False, nfactors=nfactors, rate_ls = 1.0 / np.mean(ls_initial), 
+                                 verbose=False, nfactors=nfactors, rate_ls = 1.0 / np.mean(ls_initial),
                                  uncorrelated_noise=True, use_common_mean_t=False)
     model.max_iter = 1000
     model.fit(personIDs_train, trainids_a1, trainids_a2, item_feat, prefs_train, person_feat, optimize=False, 

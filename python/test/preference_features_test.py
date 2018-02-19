@@ -21,7 +21,8 @@ from gp_classifier_vb import matern_3_2_from_raw_vals, coord_arr_to_1d
 from scipy.stats import multivariate_normal as mvn
 from scipy.linalg import block_diag
 from gp_pref_learning_test import gen_synthetic_prefs
-from preference_features import PreferenceComponents, PreferenceComponentsSVI
+from collab_pref_learning_vb import CollabPrefLearningVB
+from collab_pref_learning_svi import CollabPrefLearningSVI
 
 
 def gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, s, lsy, Npeoplefeatures=4):
@@ -30,8 +31,6 @@ def gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, s, lsy, Np
     pair2idxs = []
     prefs = []
     personids = []
-    xvals = []
-    yvals = []
 
     # generate a common prior:
     xvals = np.tile(np.arange(nx)[:, np.newaxis], (1, ny)).flatten().astype(float)
@@ -134,30 +133,31 @@ if __name__ == '__main__':
     #     np.random.seed() # do this if we want to use a different seed each time to test the variation in results
         
     # Model initialisation --------------------------------------------------------------------------------------------
-    use_svi = True
+    use_svi = False
     use_t = True
     use_person_features = False
-    ls_initial = np.array(ls)# + 5
+    optimize = True
+
+    ls_initial = np.array(ls + np.random.rand(len(ls)) * 10)
     print(("Initial guess of length scale for items: %s, true length scale is %s" % (ls_initial, ls)))
-    lsy_initial = np.array(lsy)# + 7
+    lsy_initial = np.array(lsy + np.random.rand(len(lsy)) * 10)# + 7
     print(("Initial guess of length scale for people: %s, true length scale is %s" % (lsy_initial, lsy)))
     if use_svi:
-        model = PreferenceComponentsSVI(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial,
-                                        lsy=lsy_initial, use_common_mean_t=use_t,
-                                        nfactors=7, forgetting_rate=0.9, ninducing=8, max_update_size=100)
-        model.n_converged = 10
+        model = CollabPrefLearningSVI(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial,
+                                      lsy=lsy_initial, use_common_mean_t=use_t,
+                                      nfactors=7, forgetting_rate=0.9, ninducing=16, max_update_size=100)
     else:
-        model = PreferenceComponents(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial, lsy=lsy_initial,
+        model = CollabPrefLearningVB(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial, lsy=lsy_initial,
                                      use_common_mean_t=use_t, nfactors=7)
 
     if fix_seeds:
         np.random.seed(22)
 
-    model.verbose = True
+    model.verbose = False#True
     model.min_iter = 1
     model.max_iter = 200
     model.fit(personids[trainidxs], pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], 
-              person_features.T if use_person_features else None, optimize=False)
+              person_features.T if use_person_features else None, optimize=optimize)
 #               None, optimize=True)    
     print(("Difference between true item length scale and inferred item length scale = %s" % (ls - model.ls)))
     print(("Difference between true person length scale and inferred person length scale = %s" % (lsy - model.lsy)))

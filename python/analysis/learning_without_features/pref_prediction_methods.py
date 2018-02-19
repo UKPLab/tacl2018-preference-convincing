@@ -7,7 +7,7 @@ Created on 21 Oct 2016
 
 @author: simpson
 '''
-from preference_features import PreferenceComponents
+from collab_pref_learning_vb import CollabPrefLearningVB
 from gp_pref_learning import GPPrefLearning
 from gp_classifier_vb import coord_arr_to_1d#, coord_arr_from_1d
 import numpy as np
@@ -371,8 +371,8 @@ class PredictionTester(object):
     def run_gpfa_bayes(self, m):
         # Task C1  ------------------------------------------------------------------------------------------------
         def neg_log_likelihood(nfactors):
-            model_gpfa = PreferenceComponents([self.nx, self.ny], mu0=0,shape_s0=1, rate_s0=1, ls_initial=[10, 10], 
-                            verbose=False, nfactors=nfactors)
+            model_gpfa = CollabPrefLearningVB([self.nx, self.ny], mu0=0, shape_s0=1, rate_s0=1, ls_initial=[10, 10],
+                                              verbose=False, nfactors=nfactors)
             #model_gpfa.verbose = False
             model_gpfa.cov_type = 'diagonal'
             model_gpfa.fit(self.personids[self.trainidxs], self.pair1coords[self.trainidxs], 

@@ -438,6 +438,13 @@ class GPClassifierSVI(GPClassifierVB):
         if V_nn is not None:
             self.V_nn = V_nn # the prior variance at the observation data points
 
+        self.u_invSm = np.zeros((self.ninducing, 1), dtype=float)  # theta_1
+        self.u_invS = np.zeros((self.ninducing, self.ninducing), dtype=float)  # theta_2
+        self.u_Lambda = np.zeros((self.ninducing, self.ninducing), dtype=float) # observation precision at inducing points
+        self.uS = self.K_mm * self.rate_s0 / self.shape_s0  # initialise properly to prior
+        self.um_minus_mu0 = np.zeros((self.ninducing, 1))
+        self.invKs_mm_uS = np.eye(self.ninducing)
+
     def _update_sample_idxs(self):
         if not self.fixed_sample_idxs:
             self.data_idx_i = np.sort(np.random.choice(self.n_locs, self.update_size, replace=False))
