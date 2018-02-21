@@ -67,7 +67,7 @@ class GPClassifierSVI(GPClassifierVB):
     # Initialisation --------------------------------------------------------------------------------------------------
 
     def _init_params(self, mu0=None, reinit_params=True, K=None):
-        if self.use_svi and self.vb_iter == 0:
+        if self.use_svi and (self.K_mm is None or self.vb_iter == 0):
             self._choose_inducing_points()
 
         super(GPClassifierSVI, self)._init_params(mu0, reinit_params, K)
@@ -82,8 +82,8 @@ class GPClassifierSVI(GPClassifierVB):
 
         if not self.fixed_s:
             self.shape_s = self.shape_s0 + self.ninducing / 2.0
-            self.rate_s = (self.rate_s0 + 0.5 * np.sum(
-                (self.obs_f - self.mu0) ** 2)) + self.rate_s0 * self.shape_s / self.shape_s0
+            self.rate_s = self.rate_s0 + 0.5 * (np.sum((self.obs_f-self.mu0)**2) + self.ninducing*self.rate_s0/self.shape_s0)
+
         self.s = self.shape_s / self.rate_s
         self.Elns = psi(self.shape_s) - np.log(self.rate_s)
         self.old_s = self.s
@@ -133,7 +133,7 @@ class GPClassifierSVI(GPClassifierVB):
 
         if self.K_mm is None:
             self.K_mm = self.kernel_func(self.inducing_coords, self.ls, operator=self.kernel_combination)
-            self.K_mm += 1e-6 * np.eye(len(self.K_mm))  # jitter
+            # self.K_mm += 1e-6 * np.eye(len(self.K_mm))  # jitter
         if self.invK_mm is None:
             self.invK_mm = np.linalg.inv(self.K_mm)
         if self.K_nm is None:
@@ -209,13 +209,12 @@ class GPClassifierSVI(GPClassifierVB):
         _, G = self._compute_jacobian()
         logdll = self.data_ll(logrho, lognotrho)
 
-        _, logdet_K = np.linalg.slogdet(self.Ks_mm * self.s)
+        _, logdet_K = np.linalg.slogdet(self.Ks_mm)
         D = len(self.um_minus_mu0)
         logdet_Ks = - D * self.Elns + logdet_K
 
-        # the terms below simplifies:
-        # invK_expecF = np.trace(self.invKs_mm_uS) + np.trace(self.u_Lambda.dot(self.uS))
-        invK_expecF = D
+        # the terms below simplify to D only invKs_mm matches uS, which it doesn't because of the stochastic updates
+        invK_expecF = np.trace((self.get_obs_precision() + self.invKs_mm).dot(self.uS))
 
         m_invK_m = (self.um_minus_mu0.T).dot(self.invK_mm * self.s).dot(self.um_minus_mu0)
 
@@ -227,8 +226,7 @@ class GPClassifierSVI(GPClassifierVB):
             return super(GPClassifierSVI, self)._logqf()
 
         # We want to do this, but we can simplify it, since the x and mean values cancel:
-        _, logdet_C = np.linalg.slogdet(self.u_invS)
-        logdet_C = -logdet_C  # because we are using the inverse of the covariance
+        _, logdet_C = np.linalg.slogdet(self.uS)
         D = len(self.um_minus_mu0)
         _logqf = 0.5 * (- np.log(2 * np.pi) * D - logdet_C - D)
         return _logqf
@@ -269,29 +267,16 @@ class GPClassifierSVI(GPClassifierVB):
         if num_jobs > max_no_jobs:
             num_jobs = max_no_jobs
         if len(self.ls) > 1:
-            gradient = Parallel(n_jobs=num_jobs, backend='threading')(delayed(_gradient_terms_for_subset)(self.K_mm,
-                                                                                                          self.kernel_derfactor,
-                                                                                                          self.kernel_combination,
-                                                                                                          invKs_fhat,
-                                                                                                          invKs_mm_uS_sigmasq,
-                                                                                                          self.ls[dim],
-                                                                                                          self.inducing_coords[
-                                                                                                          :,
-                                                                                                          dim:dim + 1],
-                                                                                                          self.s) for
-                                                                      dim in dims)
+            gradient = Parallel(n_jobs=num_jobs, backend='threading')(
+                delayed(_gradient_terms_for_subset)(self.K_mm, self.kernel_derfactor, self.kernel_combination,
+                    invKs_fhat, invKs_mm_uS_sigmasq, self.ls[dim], self.inducing_coords[:, dim:dim + 1], self.s)
+                for dim in dims)
         else:
-            gradient = Parallel(n_jobs=num_jobs, backend='threading')(delayed(_gradient_terms_for_subset)(self.K_mm,
-                                                                                                          self.kernel_derfactor,
-                                                                                                          self.kernel_combination,
-                                                                                                          invKs_fhat,
-                                                                                                          invKs_mm_uS_sigmasq,
-                                                                                                          self.ls[0],
-                                                                                                          self.inducing_coords[
-                                                                                                          :,
-                                                                                                          dim:dim + 1],
-                                                                                                          self.s) for
-                                                                      dim in dims)
+            gradient = Parallel(n_jobs=num_jobs, backend='threading')(
+                delayed(_gradient_terms_for_subset)(self.K_mm, self.kernel_derfactor, self.kernel_combination,
+                    invKs_fhat, invKs_mm_uS_sigmasq, self.ls[0], self.inducing_coords[:, dim:dim + 1], self.s)
+                for dim in dims)
+
         if self.n_lengthscales == 1:
             # sum the partial derivatives over all the dimensions
             gradient = [np.sum(gradient)]

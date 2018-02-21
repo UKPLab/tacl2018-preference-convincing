@@ -1033,6 +1033,7 @@ class CollabPrefLearningVB(object):
                   maxfun=20, use_MAP=False, nrestarts=1, input_type='binary'):
 
         max_iter = self.max_iter
+        self.max_iter = 1
         self.fit(personIDs, items_1_coords, items_2_coords, item_features, preferences, person_features,
                  input_type=input_type)
         self.max_iter = max_iter
@@ -1055,15 +1056,15 @@ class CollabPrefLearningVB(object):
                 initialguess = np.log(self.ls)
                 logging.debug("Initial item length-scale guess in restart %i: %s" % (r, self.ls))
                 res = minimize(self.neg_marginal_likelihood, initialguess, args=('item', -1, use_MAP,),
-                               jac=self.nml_jacobian, method='L-BFGS-B',
-                               options={'maxiter': maxfun, 'gtol': 0.1 / self.nitem_features})
+                               jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter': maxfun, 'ftol' : 1e-3,
+                                                'gtol': 10 ** (-self.nitem_features - 1)})
             else:
                 initialguess = np.append(np.log(self.ls), np.log(self.lsy))
                 logging.debug("Initial item length-scale guess in restart %i: %s" % (r, self.ls))
                 logging.debug("Initial person length-scale guess in restart %i: %s" % (r, self.lsy))
                 res = minimize(self.neg_marginal_likelihood, initialguess, args=('both', -1, use_MAP,),
-                               jac=self.nml_jacobian, method='L-BFGS-B',
-                               options={'maxiter': maxfun, 'gtol': 0.1 / self.nitem_features})
+                               jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter': maxfun, ftol : 1e-3,
+                                                'gtol': 10 ** (-self.nitem_features-self.nperson_features - 1)})
 
             opt_hyperparams = res['x']
             nlml = res['fun']
@@ -1188,10 +1189,10 @@ class CollabPrefLearningVB(object):
                                           np.trace(invKs_Cf.dot(Sigma).dot(dKdls / swf)))
 
             if self.use_t:
-                invKs_t = self.invK.dot(self.t) * self.st
+                invK_t = self.invK.dot(self.t)
                 invKs_C = self.st * self.invK.dot(self.t_cov)
 
-                der_logpt_logqt = 0.5 * (invKs_t.T.dot(dKdls).dot(invKs_t) -
+                der_logpt_logqt = 0.5 * (invK_t.T.dot(dKdls).dot(invK_t) * self.st -
                                          np.trace(invKs_C.dot(self.t_gp.get_obs_precision()).dot(dKdls / self.st)))
 
         elif (lstype == 'person' or (
@@ -1209,7 +1210,7 @@ class CollabPrefLearningVB(object):
                 Sigma = self.Sigma_y[:, :, f]
 
                 der_logpy_logqy += 0.5 * (invK_yf.T.dot(dKdls).dot(invK_yf) * syf -
-                                          np.trace((invKs_Cf * Sigma).dot(dKdls / syf)))
+                                          np.trace((invKs_Cf.dot(Sigma)).dot(dKdls / syf)))
 
         return der_logpw_logqw + der_logpy_logqy + der_logpt_logqt + der_logpf_logqf
 

@@ -133,7 +133,7 @@ if __name__ == '__main__':
     #     np.random.seed() # do this if we want to use a different seed each time to test the variation in results
         
     # Model initialisation --------------------------------------------------------------------------------------------
-    use_svi = False
+    use_svi = True
     use_t = True
     use_person_features = False
     optimize = True

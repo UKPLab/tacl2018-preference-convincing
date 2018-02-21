@@ -798,10 +798,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                                     np.trace(invKs_Cf.dot(Sigma).dot(dKdls / swf)))
 
             if self.use_t:
-                invKs_t = self.invK_mm.dot(self.t_u) * self.st
+                invK_t = self.invK_mm.dot(self.t_u)
                 invKs_C = self.invK_mm.dot(self.tS) * self.st
 
-                der_logpt_logqt = 0.5 * (invKs_t.T.dot(dKdls).dot(invKs_t) -
+                der_logpt_logqt = 0.5 * (invK_t.T.dot(dKdls).dot(invK_t) * self.st -
                             np.trace(invKs_C.dot(self.t_gp.get_obs_precision()).dot(dKdls / self.st)))
 
         elif (lstype == 'person' or (lstype == 'both' and d >= self.nitem_features)) and self.person_features is None:

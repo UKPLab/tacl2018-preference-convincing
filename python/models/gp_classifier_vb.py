@@ -762,7 +762,7 @@ class GPClassifierVB(object):
             return np.inf
 
         self.reset_kernel()  # regenerate kernel with new length-scales
-
+        self.vb_iter = 0
         # make sure we start again
         # Sets the value of parameters back to the initial guess
         self._init_params(None, True, None)
@@ -903,7 +903,10 @@ class GPClassifierVB(object):
             self._process_observations(obs_coords, obs_values,
                                        totals)  # process the data here so we don't repeat each call
             self._init_params(mu0, True, K)
+            max_iter = self.max_iter_VB_per_fit
+            self.max_iter_VB_per_fit = 1
             self.fit(process_obs=False, optimize=False)
+            self.max_iter_VB_per_fit = max_iter
 
         nfits = 0
         min_nlml = np.inf
@@ -919,7 +922,7 @@ class GPClassifierVB(object):
 
             res = minimize(self.neg_marginal_likelihood, initialguess,
                            args=(-1, use_MAP,), jac=self.nml_jacobian, method='L-BFGS-B',
-                           options={'maxiter': maxfun, 'gtol': 10 ** (-self.ninput_features)})
+                           options={'maxiter': maxfun, 'ftol' : 1e-3, 'gtol': 10 ** (- self.ninput_features - 1)})
 
             opt_hyperparams = res['x']
             nlml = res['fun']
@@ -996,11 +999,11 @@ class GPClassifierVB(object):
         self.Ks = self.K / self.s
 
     def _check_convergence(self, prev_val):
-        if self.uselowerbound and np.mod(self.vb_iter, self.conv_check_freq) == self.conv_check_freq - 1:
+        if self.uselowerbound and np.mod(self.vb_iter, self.conv_check_freq) == 0:
             oldL = prev_val
             L = self.lowerbound()
-            converged = fractional_convergence(L, oldL, self.conv_threshold, True, self.vb_iter, self.verbose,
-                                               'GP Classifier VB lower bound')
+            converged = fractional_convergence(L, oldL, self.conv_threshold, True, self.vb_iter,
+                                               self.verbose|(self.vb_iter==0), 'GP Classifier VB lower bound')
             current_value = L
         elif np.mod(self.vb_iter, self.conv_check_freq) == 2:
             diff = np.max([np.max(np.abs(self.g_obs_f - prev_val)),
