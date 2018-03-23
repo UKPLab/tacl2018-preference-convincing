@@ -863,7 +863,7 @@ class GPClassifierVB(object):
                                                                                                        np.min(self.ls)))
 
     def fit(self, obs_coords=None, obs_values=None, totals=None, process_obs=True, mu0=None, K=None, optimize=False,
-            maxfun=20, use_MAP=False, nrestarts=1, features=None):
+            maxfun=20, use_MAP=False, nrestarts=1, features=None, use_median_ls=True):
         '''
         obs_coords -- coordinates of observations as an N x D array, where N is number of observations,
         D is number of dimensions
@@ -876,6 +876,8 @@ class GPClassifierVB(object):
         # Initialise the objects that store the observation data
         if process_obs:
             self._process_observations(obs_coords, obs_values, totals)
+            if use_median_ls:
+                self.ls = compute_median_lengthscales(self.obs_coords)
             self._init_params(mu0, True, K)
             self.vb_iter = 0 # don't reset if we don't have new data
         elif mu0 is not None or K is not None:  # updated mean but not updated observations
