@@ -153,20 +153,15 @@ class GPPrefLearning(GPClassifierSVI):
         self.mu0_default = z0 # for preference learning, we pass in the latent mean directly  
     
     def _init_obs_prior(self):
-        # TODO: are we missing adding the uncertainty in the prior mu0? 
         # to make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
         if self.use_svi:
             Kstar = self.K_nm
             f_prior_var = None
-            Ks_starstar = self.K_nm.dot(self.invK_mm).dot(self.K_nm.T) * self.rate_s0/self.shape_s0
         else:
             Kstar = self.K * self.rate_s0/self.shape_s0
             f_prior_var = self.rate_s0/self.shape_s0
-            Ks_starstar = self.K * self.rate_s0/self.shape_s0
 
-        _, _, v_prior = self._post_sample(self.mu0, f_prior_var, False, Kstar, self.pref_v, self.pref_u)
-
-        m_prior, not_m_prior = self._post_rough(self.mu0, Ks_starstar, self.pref_v, self.pref_u)
+        m_prior, not_m_prior, v_prior = self._post_sample(self.mu0, f_prior_var, False, Kstar, self.pref_v, self.pref_u)
 
         # find the beta parameters
         a_plus_b = 1.0 / (v_prior / (m_prior*not_m_prior)) - 1
@@ -358,7 +353,7 @@ class GPPrefLearning(GPClassifierSVI):
                                         mu0=mu0, K=K, optimize=optimize)
 
     def set_training_data(self, items1_coords=None, items2_coords=None, item_features=None, preferences=None, totals=None,
-            process_obs=True, mu0=None, K=None, input_type='binary'):
+            mu0=None, K=None, input_type='binary', init_Q_only=False):
         '''
         preferences -- Preferences by default can be 1 = item 1 is preferred to item 2,
         or 0 = item 2 is preferred to item 1, 0.5 = no preference, or values in between.
@@ -368,25 +363,25 @@ class GPPrefLearning(GPClassifierSVI):
         are converted internally to [0,1].
         '''
         pref_values_in_input = np.unique(preferences)
-        if process_obs and input_type == 'binary' and np.sum((pref_values_in_input < 0) | (pref_values_in_input > 1)):
+        if input_type == 'binary' and np.sum((pref_values_in_input < 0) | (pref_values_in_input > 1)):
             raise ValueError(
                 'Binary input preferences specified but the data contained the values %s' % pref_values_in_input)
-        elif process_obs and input_type == 'zero-centered' and np.sum(
+        elif input_type == 'zero-centered' and np.sum(
                 (pref_values_in_input < -1) | (pref_values_in_input > 1)):
             raise ValueError(
                 'Zero-centered input preferences specified but the data contained the values %s' % pref_values_in_input)
-        elif process_obs and input_type == 'zero-centered':
+        elif input_type == 'zero-centered':
             # convert them to [0,1]
             preferences += 1
             preferences /= 2.0
-        elif process_obs and input_type != 'binary':
+        elif input_type != 'binary':
             raise ValueError('input_type for preference labels must be either "binary" or "zero-centered"')
 
         if item_features is not None:  # keep the old item features if we pass in none
             self.item_features = item_features
 
-        super(GPPrefLearning, self).set_training_data((items1_coords, items2_coords), preferences, totals, process_obs,
-                                        mu0=mu0, K=K)
+        super(GPPrefLearning, self).set_training_data((items1_coords, items2_coords), preferences, totals,
+                                        mu0=mu0, K=K, init_Q_only=init_Q_only)
 
     def _update_sample_idxs(self):
         nobs = self.obs_f.shape[0]
@@ -465,7 +460,6 @@ class GPPrefLearning(GPClassifierSVI):
         if u is None:
             u = self.pref_u
 
-        np.random.seed(99)
         # since we don't have f_cov
         if K_star is not None and self.use_svi:
             #sample the inducing points because we don't have full covariance matrix. In this case, f_cov should be Ks_nm
@@ -517,4 +511,4 @@ class GPPrefLearning(GPClassifierSVI):
         m_post = temper_extreme_probs(m_post)
         not_m_post = 1 - m_post
             
-        return m_post, not_m_post
+        return m_post, not_m_post,

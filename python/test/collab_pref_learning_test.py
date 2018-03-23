@@ -107,11 +107,11 @@ if __name__ == '__main__':
         #         nx = 5
         #         ny = 5
 
-        Npeople = 10
-        N = 16 # 10
-        P = 500 # 100
-        nx = 4#25
-        ny = 4#25
+        Npeople = 5
+        N = 25
+        P = 10000
+        nx = 5
+        ny = 5
 
         Npeoplefeatures = 4
         ls = [10, 5]
@@ -135,25 +135,25 @@ if __name__ == '__main__':
     # Model initialisation --------------------------------------------------------------------------------------------
     use_svi = True
     use_t = True
-    use_person_features = False
-    optimize = True
+    use_person_features = True
+    optimize = False
 
-    ls_initial = np.array(ls + np.random.rand(len(ls)) * 10)
+    ls_initial = np.array(ls)# + np.random.rand(len(ls)) * 10)
     print(("Initial guess of length scale for items: %s, true length scale is %s" % (ls_initial, ls)))
-    lsy_initial = np.array(lsy + np.random.rand(len(lsy)) * 10)# + 7
+    lsy_initial = np.array(lsy)# + np.random.rand(len(lsy)) * 10)# + 7
     print(("Initial guess of length scale for people: %s, true length scale is %s" % (lsy_initial, lsy)))
     if use_svi:
         model = CollabPrefLearningSVI(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial,
                                       lsy=lsy_initial, use_common_mean_t=use_t,
-                                      nfactors=7, forgetting_rate=0.9, ninducing=16, max_update_size=100)
+                                      nfactors=7, forgetting_rate=0.9, ninducing=16, max_update_size=100, use_lb=False)
     else:
         model = CollabPrefLearningVB(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial, lsy=lsy_initial,
-                                     use_common_mean_t=use_t, nfactors=7)
+                                     use_common_mean_t=use_t, nfactors=7, use_lb=False)
 
     if fix_seeds:
         np.random.seed(22)
 
-    model.verbose = False#True
+    model.verbose = True
     model.min_iter = 1
     model.max_iter = 200
     model.fit(personids[trainidxs], pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], 
@@ -166,10 +166,23 @@ if __name__ == '__main__':
     results = model.predict(personids[testidxs], pair1idxs[testidxs], pair2idxs[testidxs], item_features)
     
     # make the test more difficult: we predict for a person we haven't seen before who has same features as another
-    result_new_person = model.predict([np.max(personids) + 1], pair1idxs[testidxs][0:1], pair2idxs[testidxs][0:1], 
-                      item_features, np.concatenate((person_features.T, person_features[:, personids[0:1]].T), axis=0))
-    print(("Test using new person: %.3f" % result_new_person))
-    print(("Old prediction: %.3f" % results[0]))
+    result_new_person = model.predict(
+        [np.max(personids) + 1], pair1idxs[testidxs][0:1], pair2idxs[testidxs][0:1],
+        item_features,
+        np.concatenate((person_features.T, person_features[:, personids[0:1]].T), axis=0) if use_person_features
+        else None)
+    print("Test using new person: %.3f" % result_new_person)
+    print("Old prediction: %.3f" % results[0])
+
+    print("Testing prediction of new + old people")
+    result_new_old_person = model.predict(
+        np.concatenate((personids[testidxs], [np.max(personids) + 1])),
+        np.concatenate((pair1idxs[testidxs], pair1idxs[testidxs][0:1])),
+        np.concatenate((pair2idxs[testidxs], pair2idxs[testidxs][0:1])),
+        item_features,
+        np.concatenate((person_features.T, person_features[:, personids[0:1]].T), axis=0) if use_person_features
+        else None)
+    print("Test using new person while predicting old people: %.3f" % result_new_old_person[-1])
     #print("Result is correct = " + str(np.abs(results[0] - result_new_person) < 1e-6) 
     
     if do_profiling:

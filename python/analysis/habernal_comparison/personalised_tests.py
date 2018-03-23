@@ -15,7 +15,8 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 from tests import TestRunner
 sys.path.append("./python/analysis/habernal_comparison")
-from collab_pref_learning_vb import CollabPrefLearningVB, PreferenceComponentsFA, PreferenceComponentsSVI, PreferenceNoComponentFactors
+from collab_pref_learning_vb import CollabPrefLearningVB #, PreferenceComponentsFA, CollabPrefLearningSVI, PreferenceNoComponentFactors
+from collab_pref_learning_svi import CollabPrefLearningSVI
 import numpy as np
 
 nfactors = 10
@@ -29,10 +30,6 @@ class PersonalisedTestRunner(TestRunner):
         if '_commonmean' in self.method:
             common_mean = True
             
-        gp_noise = False
-        if '_gpnoise' in self.method:
-            gp_noise = True
-    
         if '_fa' in self.method:
             model_class = PreferenceComponentsFA
         elif 'IndPrefGP' in self.method:
@@ -40,11 +37,11 @@ class PersonalisedTestRunner(TestRunner):
         elif '_nofactorsvi' in self.method:
             model_class = CollabPrefLearningVB
         else:
-            model_class = PreferenceComponentsSVI
+            model_class = CollabPrefLearningSVI
     
         self.model = model_class(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose, 
                      nfactors=nfactors, rate_ls = 1.0 / np.mean(self.ls_initial),
-                     use_common_mean_t=common_mean, uncorrelated_noise=not gp_noise, max_update_size=1000)
+                     use_common_mean_t=common_mean, max_update_size=1000)
         self.model.max_iter = 2
         
         zero_centered_prefs = np.array(self.prefs_train, dtype=float)-1
@@ -70,25 +67,20 @@ class PersonalisedTestRunner(TestRunner):
 
 if __name__ == '__main__':
     dataset_increment = 0     
-    datasets = ['UKPConvArgCrowdSample']
+    datasets = ['UKPConvArgCrowdSample_evalMACE', 'UKPConvArgCrowdSample']
+
+    # UKPConvArgCrowdSample tests prediction of personal data.
+    # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
+
     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
 
     methods = [
-        'PersPrefGP_fa_noOpt', 'PersPrefGP_noOpt_gpnoise', 'PersPrefGP_noOpt', 'PersPrefGP_commonmean_noOpt', 
-        'IndPrefGP_noOpt',  
+        'PersPrefGP_commonmean_noOpt', 'PersPrefGP_noOpt',
+        #'PersPrefGP_fa_noOpt' 'IndPrefGP_noOpt',
                ]  
     embeddings_types = ['word_mean']#, 'skipthoughts'] # 'siamese-cbow'] 
     
     #if 'runner' not in globals():
-    runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods, 
-                                        dataset_increment)
+    runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods,
+                                        dataset_increment, )
     runner.run_test_set(min_no_folds=0, max_no_folds=1)
-    
-    methods = [ 
-        'PersPrefGP_noOpt_nofactorsvi', 'PersPrefGP_noOpt_gpnoise_nofactorsvi', # make sure code works without SVI for latent factors
-        ]  
-    
-    #if 'runner' not in globals():
-    runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods, 
-                                        dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=1, npairs=1000, subsample_tr=1000)

@@ -174,25 +174,31 @@ def load_train_test_data(dataset):
         # basic dataset, requires additional steps to produce the other datasets        
         dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'  
         ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArgAllRank-CSV/'
+
     elif dataset == 'UKPConvArgCrowdSample':
         dirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-XML/'  
         ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/'
-    elif dataset == 'UKPConvArgMACE' or dataset == 'UKPConvArgAll':   
+
+    elif dataset == 'UKPConvArgMACE' or dataset == 'UKPConvArgAll':
         dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'
         ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-Ranking-CSV/'          
+
     elif dataset == 'UKPConvArgStrict':
         dirname = data_root_dir + 'argument_data/UKPConvArg1Strict-XML/'
         ranking_csvdirname = None        
+
     elif dataset == 'UKPConvArgCrowd_evalMACE': # train on the crowd dataset and evaluate on the MACE dataset
         dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'  
         ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArgAllRank-CSV/'
         folds_test, folds_regression_test, _, _, _ = load_train_test_data('UKPConvArgAll')
         dataset = 'UKPConvArgCrowd'
+
     elif dataset == 'UKPConvArgCrowdSample_evalMACE':
         dirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-XML/'  
         ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/'
         folds_test, folds_regression_test, _, _, _ = load_train_test_data('UKPConvArgAll')
         dataset = 'UKPConvArgCrowdSample'
+
     else:
         raise Exception("Invalid dataset %s" % dataset)
 

@@ -96,15 +96,15 @@ if __name__ == '__main__':
     # # Create a GPPrefLearning model
     model = GPPrefLearning(2, mu0=0, shape_s0=100, rate_s0=100, ls_initial=initial_ls, use_svi=True, ninducing=50,
                            max_update_size=100, forgetting_rate=0.9)
-    model.verbose = False
+    model.verbose = True
 
     models['SVI'] = model
     
     # Create a GPPrefLearning model
     model = GPPrefLearning(2, mu0=0, shape_s0=100, rate_s0=100, ls_initial=initial_ls, use_svi=False)
-    model.verbose = False
+    model.verbose = True
 
-    # models['VB'] = model
+    #models['VB'] = model
 
     f_means = {}
     

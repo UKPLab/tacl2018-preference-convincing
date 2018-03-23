@@ -165,7 +165,7 @@ def get_doc_token_seqs(ids, X_list, texts=None):
         start += len(X_list[i])
         
     if texts is not None:
-        utexts = [utext.decode('utf-8') for utext in utexts]
+        utexts = [utext for utext in utexts]
         return X, uids, utexts
     else:
         return X, uids    
@@ -908,8 +908,8 @@ class TestRunner:
                                 self.X, uids, utexts = get_noisy_fold_data(self.folds, self.fold, self.docids, acc)                            
             
             # ranking folds
-            a_rank_train, scores_rank_train, _, person_rank_train, a_rank_test, scores_rank_test, _, person_idx_ranktest = \
-                                                        get_fold_regression_data(self.folds_r, self.fold, self.docids)
+            a_rank_train, scores_rank_train, _, person_rank_train, a_rank_test, scores_rank_test, _, \
+                                person_idx_ranktest = get_fold_regression_data(self.folds_r, self.fold, self.docids)
             
             self.load_features(feature_type, embeddings_type, a1_train, a2_train, uids, utexts)
             #items_feat = items_feat[:, :ndebug_features]     
@@ -948,14 +948,15 @@ class TestRunner:
     #             model = pickle.load(fh)
     #             items_feat_test = None
             self.model = None # initial value
-            
+
             if len(self.default_ls) > 1:
-                self.ls_initial = self.default_ls
-            elif '_oneLS' in self.method:
-                self.ls_initial = np.median(self.default_ls)
-                logging.info("Selecting a single LS for all features: %f" % self.ls_initial)
+                self.ls_initial = self.default_ls[self.valid_feats]
             else:
-                self.ls_initial = self.default_ls          
+                self.ls_initial = self.default_ls
+
+            if '_oneLS' in self.method:
+                self.ls_initial = np.median(ls_initial)
+                logging.info("Selecting a single LS for all features: %f" % self.ls_initial)
             
             logging.info("Starting test with method %s..." % (self.method))
             starttime = time.time()        

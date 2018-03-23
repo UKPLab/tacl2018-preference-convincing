@@ -62,7 +62,7 @@ from sklearn.decomposition import FactorAnalysis
 from scipy.stats import multivariate_normal as mvn, norm
 import logging
 from gp_classifier_vb import matern_3_2_from_raw_vals, derivfactor_matern_3_2_from_raw_vals, temper_extreme_probs, \
-    fractional_convergence, diagonal_from_raw_vals
+    check_convergence, diagonal_from_raw_vals
 from gp_pref_learning import GPPrefLearning, get_unique_locations, pref_likelihood
 from scipy.linalg import block_diag
 from scipy.special import gammaln, psi
@@ -156,7 +156,7 @@ class CollabPrefLearningVB(object):
 
     def __init__(self, nitem_features, nperson_features=0, shape_s0=1, rate_s0=1, shape_ls=1, rate_ls=100, ls=100,
                  shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=20,
-                 use_common_mean_t=True, kernel_func='matern_3_2'):
+                 use_common_mean_t=True, kernel_func='matern_3_2', use_lb=False):
         """
 
         :param nitem_features:
@@ -217,7 +217,12 @@ class CollabPrefLearningVB(object):
 
         self.t_mu0 = 0
 
-        self.conv_threshold = 1e-3
+        self.uselowerbound = use_lb
+        if use_lb:
+            self.conv_threshold = 1e-3
+        else:
+            self.conv_threshold = 1e-1
+
         self.max_iter_G = 50
         self.max_iter = 1000
         self.min_iter = 1
@@ -277,13 +282,21 @@ class CollabPrefLearningVB(object):
         blocks = np.tile(self.K[None, :, :], (self.Npeople, 1, 1))
         self.Kt = block_diag(*blocks)
 
-        self.lsy = np.zeros(self.nperson_features) + self.lsy
-        self.Ky_block = self.y_kernel_func(self.person_features, self.lsy) # + np.eye(self.Npeople) * 1e-6
-        self.invKy_block = np.linalg.inv(self.Ky_block)
+        if self.person_features is None:
+            self.invKy_block = np.diag(np.ones(self.Npeople))  # they are all ones
+            self.invKy = np.diag(np.ones(self.Npeople * self.Nfactors))  # they are all ones
 
-        blocks = [self.Ky_block for _ in range(self.Nfactors)]
-        self.Ky = block_diag(*blocks)
-        self.invKy = np.linalg.inv(self.Ky)
+            self.Ky_block = np.diag(np.ones(self.Npeople))  # they are all ones
+            self.Ky = np.diag(np.ones(self.Npeople * self.Nfactors))  # they are all ones
+
+        else:
+            self.lsy = np.zeros(self.nperson_features) + self.lsy
+            self.Ky_block = self.y_kernel_func(self.person_features, self.lsy) # + np.eye(self.Npeople) * 1e-6
+            self.invKy_block = np.linalg.inv(self.Ky_block)
+
+            blocks = [self.Ky_block for _ in range(self.Nfactors)]
+            self.Ky = block_diag(*blocks)
+            self.invKy = np.linalg.inv(self.Ky)
 
         self.shape_sw = np.zeros(self.Nfactors) + self.shape_sw0
         self.rate_sw = np.zeros(self.Nfactors) + self.rate_sw0
@@ -322,8 +335,7 @@ class CollabPrefLearningVB(object):
                              self.shape_sw / self.rate_sw)
 
         self.wy_gp.set_training_data(self.pref_v, self.pref_u, self.dummy_obs_coords, self.preferences,
-                                     mu0=np.zeros((self.N*self.Npeople, 1)), K=Kw,
-                                     process_obs=self.new_obs, input_type=self.input_type)
+                                     mu0=np.zeros((self.N*self.Npeople, 1)), K=Kw, input_type=self.input_type)
 
     def _init_t(self):
         self.t = np.zeros((self.N, 1))
@@ -406,6 +418,24 @@ class CollabPrefLearningVB(object):
         :return:
         """
 
+        pref_values_in_input = np.unique(preferences)
+        if input_type == 'binary' and np.sum((pref_values_in_input < 0) | (pref_values_in_input > 1)):
+            raise ValueError(
+                'Binary input preferences specified but the data contained the values %s' % pref_values_in_input)
+        elif input_type == 'zero-centered' and np.sum(
+                (pref_values_in_input < -1) | (pref_values_in_input > 1)):
+            raise ValueError(
+                'Zero-centered input preferences specified but the data contained the values %s' % pref_values_in_input)
+        elif input_type == 'zero-centered':
+            # convert them to [0,1]
+            preferences += 1
+            preferences /= 2.0
+        elif input_type != 'binary':
+            raise ValueError('input_type for preference labels must be either "binary" or "zero-centered"')
+
+        self.preferences = np.array(preferences, copy=False)
+
+
         if personIDs is not None:  # process new data
             self.new_obs = True  # there are people we haven't seen before
             # deal only with the original IDs to simplify prediction steps and avoid conversions
@@ -427,14 +457,11 @@ class CollabPrefLearningVB(object):
 
                 self.y_kernel_func = self.kernel_func
             else:
-                self.nperson_features = 1
+                self.nperson_features = 0
                 upeople = np.unique(personIDs)
                 self.Npeople = np.max(upeople).astype(int) + 1
-                self.person_features = np.arange(self.Npeople)[:, None] # we use the IDs as features with diagonal covariance
-
-                self.y_kernel_func = diagonal_from_raw_vals
-
-            self.preferences = np.array(preferences, copy=False)
+                self.person_features = None
+                self.y_kernel_func = None
 
             # IDs must be for unique item-user pairs
             self.pref_v = pref_v + (self.N * self.personIDs)
@@ -451,13 +478,18 @@ class CollabPrefLearningVB(object):
 
         self.input_type = input_type
 
+        self.z = preferences[:, np.newaxis].astype(float)
+        self.nobs = self.z.shape[0]
+
     def fit(self, personIDs=None, items_1_coords=None, items_2_coords=None, item_features=None,
             preferences=None, person_features=None, optimize=False, maxfun=20, use_MAP=False, nrestarts=1,
             input_type='binary', use_lb=False):
         """
         Learn the model with data using variational Bayes.
 
-        :param personIDs: a list of the person IDs of the people who expressed their preferences
+        :param personIDs: a list of the person IDs of the people who expressed their preferences. These should ideally
+        start from zero and be contiguous values, since they are used as indexes into matrices. Gaps in the IDs will
+        mean wasted memory.
         :param items_1_coords: if item_features is None, these should be coordinates of the first items in the pairs
         being compared, otherwise these should be indexes into the item_features vector
         :param items_2_coords: if item_features is None, these should be coordinates of the second items in each pair
@@ -503,24 +535,23 @@ class CollabPrefLearningVB(object):
 
             self.new_obs = False # observations have now been processed once, only updates are required
 
-            lb = self.lowerbound()
-
-            if not use_lb:
-                converged = fractional_convergence(lb, old_lb, self.conv_threshold, True,
-                                                   self.vb_iter, self.verbose,
-                                                   'Preference Components VB lower bound')
+            if use_lb:
+                lb = self.lowerbound()
+                converged = check_convergence(lb, old_lb, self.conv_threshold, True,
+                                              self.vb_iter, self.verbose,
+                                                   'CollabPL VB lower bound')
+                old_lb = lb
             else:
-                converged_w = fractional_convergence(self.w, old_w, self.conv_threshold, False,
-                                                     self.vb_iter, self.verbose,
-                                                     'Preference Components VB, w ')
-                converged_y = fractional_convergence(self.y, old_y, self.conv_threshold,
-                                                     self.vb_iter, self.verbose,
-                                                     'Preference Components VB, y ')
+                converged_w = check_convergence(self.w, old_w, self.conv_threshold, False,
+                                                self.vb_iter, self.verbose,
+                                                     'CollabPL VB, w ', change_as_a_fraction=False)
+                converged_y = check_convergence(self.y, old_y, self.conv_threshold, False,
+                                                self.vb_iter, self.verbose,
+                                                     'CollabPL VB, y ', change_as_a_fraction=False)
                 converged = converged_w & converged_y
 
             old_w = self.w
             old_y = self.y
-            old_lb = lb
 
             self.vb_iter += 1
 
@@ -674,8 +705,8 @@ class CollabPrefLearningVB(object):
             self.sy_matrix[fidxs, :] = self.shape_sy[f] / self.rate_sy[f]  # sy_rows
 
     def _logpD(self):
-
-        rho = self.predict(self.personIDs, self.tpref_v, self.tpref_u, self.obs_coords, self.person_features, no_var=True)
+        fmean = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
+        rho = pref_likelihood(fmean, v=self.pref_v, u=self.pref_u)
         rho = temper_extreme_probs(rho)
         logrho = np.log(rho)
         lognotrho = np.log(1 - rho)
@@ -909,27 +940,33 @@ class CollabPrefLearningVB(object):
 
     # PREDICTION --------------------------------------------------------------------------------------------------
 
-    def predict(self, personids, items_1_coords, items_2_coords, item_features=None, person_features=None, no_var=False):
+    def predict_pairs_from_features(self, personids, item_0_feats=None, item_1_feats=None, person_feats=None, no_var=True):
+        """
+        Predict pairwise labels by passing in two lists of feature vectors for the first and second items in the pairs.
+        This is different to the usual predict() method, which predicts pairwise labels given the indices of items into
+        a set of features.
 
-        if item_features is None:
-            coords_1 = items_1_coords
-            coords_2 = items_2_coords
+        """
+        item_feats, item_0_idxs, item_1_idxs, mu0_out = get_unique_locations(item_0_feats, item_1_feats)
+        return self.predict(personids, item_0_idxs, item_1_idxs, item_feats, person_feats, no_var)
+
+    def predict(self, personids, item_0_idxs, item_1_idxs, item_features=None, person_features=None, no_var=False):
+
+        if person_features is None:
+            logging.info('No person features provided -- assuming no correlations between people')
+            Npeople = len(np.unique(personids))
         else:
-            coords_1 = item_features[items_1_coords]
-            coords_2 = item_features[items_2_coords]
-
-        if person_features is None and self.person_features is not None:
-            logging.info('No person features provided -- assuming same people as during training')
-            person_features = self.person_features
-
-        coords, item_0_idxs, item_1_idxs = get_unique_locations(coords_1, coords_2)
+            Npeople = person_features.shape[0]
         personids = np.array(personids)
 
-        Npeople = person_features.shape[0]
-        N = coords.shape[0]
+        if item_features is None:
+            logging.info('No item features provided -- assuming same items as seen in training')
+            N = self.N
+        else:
+            N = item_features.shape[0]
 
         # set personids and itemids to None to compute all pairs
-        mu, f_cov = self.predict_f(coords, person_features, return_cov=True)
+        mu, f_cov, personids = self.predict_f(item_features, person_features, personids, return_cov=True, return_personids=True)
         mu = mu.T.reshape(N * Npeople, 1)
 
         pref_v = item_0_idxs + (N * personids)
@@ -947,22 +984,72 @@ class CollabPrefLearningVB(object):
         return predicted_prefs
 
     def predict_f_item_person(self, itemids, personids, item_features, person_features=None):
-        predicted_f = self.predict_f(item_features, person_features)
+        predicted_f, personids = self.predict_f(item_features, person_features, personids, return_personids=True)
         predicted_f = predicted_f[itemids, personids]
         return predicted_f
 
-    def predict_f(self, item_features, person_features=None, return_cov=False):
-        y, cov_y = self._predict_y(person_features)
+    def _y_var(self):
+        return np.diag(self.y_cov)
 
-        t, w, cov_t, cov_w = self._predict_w_t(item_features)
+    def predict_f(self, item_features=None, person_features=None, personids=None, return_cov=False, return_personids=False):
+
+        if person_features is None:
+            '''
+            This is the case for where we do not have any person features in training or testing. 
+            In this case we assume diagonal covariance between people. 
+            '''
+            upeople = np.unique(personids)
+            Npeople = len(upeople)
+
+            # reuse the training points
+            y = np.zeros((self.Nfactors, Npeople))
+
+            cov_y = np.tile((np.eye(Npeople))[None, :, :], (self.Nfactors, 1, 1)) * \
+                    (self.rate_sy / self.shape_sy)[:, None, None]
+
+            # for any people IDs we have seen before, we use the posterior mean and variance
+            people_from_training = np.in1d(upeople, self.personIDs)
+
+            y_var = self._y_var()
+
+            if np.any(people_from_training) and self.person_features is not None: # reuse any previously-seen people
+                # copy in the posterior means
+                y[:, people_from_training] = self.y[:, upeople[people_from_training]]
+
+                for f in range(self.Nfactors):
+                    fidxs = upeople[people_from_training] + self.Npeople * f
+                    cov_y[f, people_from_training, people_from_training] = y_var[fidxs]
+
+        else:
+            y, cov_y = self._predict_y(person_features)
+
+        if item_features is None:
+            # reuse the training points
+            t = self.t
+            w = self.w
+
+            cov_w = np.zeros((self.Nfactors, self.N, self.N))
+            for f in range(self.Nfactors):
+                fidxs = np.arange(self.N) + self.N * f
+                cov_w[f] = self.w_cov[fidxs, :][:, fidxs]
+            cov_t = self.t_cov
+        else:
+            t, w, cov_t, cov_w = self._predict_w_t(item_features)
 
         N = item_features.shape[0]
         Npeople = y.shape[1]
 
         predicted_f = (w.dot(y) + t)
 
+        # we may have reused some people from the training set, plus there may be some new user IDs.
+        # The output from predict_f will contain only the people in personids.
+        _, personids = np.unique(personids, return_inverse=True)
+
         if not return_cov:
-            return predicted_f
+            if not return_personids:
+                return predicted_f
+            else:
+                return predicted_f, personids
 
         cov_f = np.tile(cov_t, (Npeople, Npeople))
 
@@ -981,7 +1068,10 @@ class CollabPrefLearningVB(object):
             cov_f += cov_wf + cov_yf
 
         # return predicted_f, t, cov_t, w, cov_w, y, cov_y
-        return predicted_f, cov_f
+        if not return_personids:
+            return predicted_f, cov_f
+        else:
+            return predicted_f, cov_f, personids
 
     def _predict_w_t(self, coords_1):
         # kernel between pidxs and t
@@ -1012,8 +1102,10 @@ class CollabPrefLearningVB(object):
         return t_out, w_out, cov_t, cov_w
 
     def _predict_y(self, person_features):
+
         Ky = self.y_kernel_func(person_features, self.lsy, self.person_features)
         Ky_starstar = self.y_kernel_func(person_features, self.lsy, person_features)
+
         covpair = Ky.dot(self.invKy_block)
         Npeople = person_features.shape[0]
 

@@ -41,7 +41,7 @@ def gen_synthetic_classifications(f_prior_mean=None, nx=100, ny=100):
     fnoisy = norm.rvs(scale=sigma, size=N) + f
     
     # generate the discrete labels from the noisy function
-    labels = sigmoid(fnoisy)
+    labels = sigmoid(fnoisy) # TODO: do we need to round these?
     
     return N, nx, ny, labels, xvals, yvals, f, K
 
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     #model.conv_check_freq = 1
     #model.conv_threshold = 1e-3 # the difference must be less than 1% of the value of the lower bound
        
-    # models['SVI'] = model
+    #models['SVI'] = model
     
     model = GPClassifierSVI(2, z0=0.5, shape_s0=1, rate_s0=1, ls_initial=ls_initial, use_svi=False)
     model.verbose = True

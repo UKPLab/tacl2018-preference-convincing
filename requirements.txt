@@ -11,6 +11,7 @@ funcsigs==1.0.2
 gensim==2.2.0
 html5lib==0.999
 idna==2.5
+joblib==0.11
 Keras==2.0.3
 lxml==3.8.0
 mock==2.0.0
@@ -22,8 +23,8 @@ progressbar2==3.32.1
 protobuf==3.3.0
 pydot-ng==1.0.0
 pyparsing==2.2.0
-python-apt==0.9.3.12
-python-debian==0.1.27
+#python-apt==0.9.3.12
+#python-debian==0.1.27
 python-utils==2.2.0
 PyYAML==3.12
 requests==2.18.1
@@ -39,4 +40,5 @@ Theano==0.9.0
 urllib3==1.21.1
 virtualenv==1.11.6
 Werkzeug==0.12.1
+xmltodict==0.10.2
 yolk==0.4.3
