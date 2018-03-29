@@ -112,7 +112,7 @@ if __name__ == '__main__':
                     data_f.append(thing[foldidx])
                 else:
                     data_f.append(thing)
-            with open(foldfile, 'w') as fh:
+            with open(foldfile, 'wb') as fh:
                 pickle.dump(data_f, fh)        
         
         trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test, \

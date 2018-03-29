@@ -97,7 +97,7 @@ if __name__ == '__main__':
                         data_f.append(thing[f])
                     else:
                         data_f.append(thing)
-                with open(foldfile, 'w') as fh:
+                with open(foldfile, 'wb') as fh:
                     pickle.dump(data_f, fh)  
                               
             gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, \
@@ -169,7 +169,7 @@ if __name__ == '__main__':
                         data_f.append(thing[f])
                     else:
                         data_f.append(thing)
-                with open(foldfile, 'w') as fh:
+                with open(foldfile, 'wb') as fh:
                     pickle.dump(data_f, fh)  
                  
             fold = expt_settings['fold_order'][f]
@@ -294,7 +294,7 @@ if __name__ == '__main__':
                             data_f.append(thing[f])
                         else:
                             data_f.append(thing)
-                    with open(foldfile, 'w') as fh:
+                    with open(foldfile, 'wb') as fh:
                         pickle.dump(data_f, fh)  
                                   
                 runtimes_m[f] = data_f[6]
@@ -392,7 +392,7 @@ if __name__ == '__main__':
                             data_f.append(thing[f])
                         else:
                             data_f.append(thing)
-                    with open(foldfile, 'w') as fh:
+                    with open(foldfile, 'wb') as fh:
                         pickle.dump(data_f, fh)  
                                   
                 runtimes_m[f] = data_f[6]

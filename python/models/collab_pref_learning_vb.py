@@ -483,7 +483,7 @@ class CollabPrefLearningVB(object):
 
     def fit(self, personIDs=None, items_1_coords=None, items_2_coords=None, item_features=None,
             preferences=None, person_features=None, optimize=False, maxfun=20, use_MAP=False, nrestarts=1,
-            input_type='binary', use_lb=False):
+            input_type='binary'):
         """
         Learn the model with data using variational Bayes.
 
@@ -535,11 +535,12 @@ class CollabPrefLearningVB(object):
 
             self.new_obs = False # observations have now been processed once, only updates are required
 
-            if use_lb:
+            if self.uselowerbound:
                 lb = self.lowerbound()
                 converged = check_convergence(lb, old_lb, self.conv_threshold, True,
                                               self.vb_iter, self.verbose,
                                                    'CollabPL VB lower bound')
+
                 old_lb = lb
             else:
                 converged_w = check_convergence(self.w, old_w, self.conv_threshold, False,
@@ -1411,7 +1412,7 @@ class CollabPrefLearningVB(object):
         """
         import pickle
         from copy import deepcopy
-        with open(filename, 'w') as fh:
+        with open(filename, 'wb') as fh:
             m2 = deepcopy(self)
             if hasattr(m2, 't_gp'):
                 m2.t_gp.kernel_func = None

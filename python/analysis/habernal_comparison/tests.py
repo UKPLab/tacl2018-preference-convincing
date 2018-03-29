@@ -114,8 +114,8 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
     if feature_type == 'ling':
         items_feat = ling_feat_spmatrix.toarray()
     
-#     if feature_type == 'debug':
-#         items_feat = items_feat[:, :ndebug_features]
+    if feature_type == 'debug':
+        items_feat = items_feat[:, :ndebug_features]
     
     starttime = time.time()
                                 
@@ -346,6 +346,7 @@ class TestRunner:
             items_feat = items_feat[:, :ndebug_features] #use only n features for faster debugging
             self.ling_items_feat = items_feat
             self.embeddings_items_feat = items_feat
+            valid_feats = valid_feats[:ndebug_features]
             
         self.items_feat = items_feat
         self.ndims = self.items_feat.shape[1]
@@ -992,6 +993,8 @@ class TestRunner:
                                 
                 self.a_rank_test = a_rank_test
                 self.person_rank_test = person_idx_ranktest
+                if self.a_rank_test is not None and len(self.person_rank_test) == 0:
+                    self.person_rank_test = np.zeros(len(self.a_rank_test)) # if no person IDs, make sure we default to 0
                 
                 # run the method with the current data subset
                 method_runner_fun = self._choose_method_fun(feature_type)
@@ -1095,7 +1098,7 @@ class TestRunner:
                 results = (all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],
                    all_target_rankscores[foldidx], self.ls_initial, times[foldidx], final_ls[foldidx], 
                    all_tr_proba[foldidx], len(self.a1_train))
-                with open(foldresultsfile, 'w') as fh:
+                with open(foldresultsfile, 'wb') as fh:
                     pickle.dump(results, fh)
     
                 if not os.path.isfile(results_stem + "/foldorder.txt"):

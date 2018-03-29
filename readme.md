@@ -38,7 +38,7 @@ pair_data = np.genfromtxt('./data/pairwise_prefs.csv', dtype=float, delimiter=',
 # the first column contains IDs of the first items in the pairs. Map these to indices into the item_ids matrix.
 items_1_idxs = np.array([np.argwhere(item_ids==iid)[0][0] for iid in pair_data[:, 1].astype(int)])
 # the second column contains IDs of the second items in the pairs. Map these to indices into the item_ids matrix.
-items_2_idxs = np.array([np.argwhere(item_ids==iid)[0][0] for iid in pair_data[:, 1].astype(int)])
+items_2_idxs = np.array([np.argwhere(item_ids==iid)[0][0] for iid in pair_data[:, 2].astype(int)])
 # third column contains preference labels in binary format (1 indicates the first item is preferred, 0 indicates the second item is preferred)
 prefs = pair_data[:, 2] 
 ~~~

@@ -152,16 +152,15 @@ class GPPrefLearning(GPClassifierSVI):
     def _init_prior_mean_f(self, z0):
         self.mu0_default = z0 # for preference learning, we pass in the latent mean directly  
     
-    def _init_obs_prior(self):
+    def _init_obs_prior(self, mu0):
         # to make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
-        if self.use_svi:
-            Kstar = self.K_nm
-            f_prior_var = None
-        else:
-            Kstar = self.K * self.rate_s0/self.shape_s0
-            f_prior_var = self.rate_s0/self.shape_s0
 
-        m_prior, not_m_prior, v_prior = self._post_sample(self.mu0, f_prior_var, False, Kstar, self.pref_v, self.pref_u)
+        if mu0 is None:
+            mu0 = self.mu0_default
+
+        f_prior_var = self.rate_s0/self.shape_s0
+
+        m_prior, not_m_prior, v_prior = self._post_sample(mu0, f_prior_var, False, None, self.pref_v, self.pref_u)
 
         # find the beta parameters
         a_plus_b = 1.0 / (v_prior / (m_prior*not_m_prior)) - 1
@@ -281,7 +280,7 @@ class GPPrefLearning(GPClassifierSVI):
         phi, g_mean_f = self.forward_model(f, return_g_f=True) # first order Taylor series approximation
         J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * np.sqrt(0.5)
 
-        obs_idxs = np.arange(self.n_locs)[np.newaxis, :]
+        obs_idxs = np.arange(self.n_locs)[None, :]
 
         if data_idx_i is not None and hasattr(self, 'data_obs_idx_i') and len(self.data_obs_idx_i):
             obs_idxs = obs_idxs[:, data_idx_i]
@@ -309,7 +308,7 @@ class GPPrefLearning(GPClassifierSVI):
     # Training methods ------------------------------------------------------------------------------------------------  
             
     def fit(self, items1_coords=None, items2_coords=None, item_features=None, preferences=None, totals=None, 
-            process_obs=True, mu0=None, K=None, optimize=False, input_type='binary'):
+            process_obs=True, mu0=None, K=None, optimize=False, input_type='binary', use_median_ls=False):
         """
         Train the model given a set of preference pairs.
         :param items1_coords: 
@@ -350,7 +349,7 @@ class GPPrefLearning(GPClassifierSVI):
         #TODO: bug fix: if the same object is reused with different set of items, there is a crash because K_nm is not renewed.
 
         super(GPPrefLearning, self).fit((items1_coords, items2_coords), preferences, totals, process_obs, 
-                                        mu0=mu0, K=K, optimize=optimize)
+                                        mu0=mu0, K=K, optimize=optimize, use_median_ls=use_median_ls)
 
     def set_training_data(self, items1_coords=None, items2_coords=None, item_features=None, preferences=None, totals=None,
             mu0=None, K=None, input_type='binary', init_Q_only=False):
@@ -455,6 +454,7 @@ class GPPrefLearning(GPClassifierSVI):
         return self.predict(out_feats, item_0_idxs, item_1_idxs, mu0_out)
 
     def _post_sample(self, f_mean, f_var=None, expectedlog=False, K_star=None, v=None, u=None):
+
         if v is None:
             v = self.pref_v
         if u is None:

@@ -398,7 +398,7 @@ class GPClassifierVB(object):
 
         if reinit_params:
             # Prior noise variance
-            self.estimate_obs_noise()
+            self.estimate_obs_noise(mu0)
             if init_Q_only:
                 return
 
@@ -453,8 +453,13 @@ class GPClassifierVB(object):
             self.obs_f = logit(self.obs_mean)
             self.obs_f[:prev_obs_f.shape[0], :] = prev_obs_f
 
-    def estimate_obs_noise(self):
-        self._init_obs_prior()
+    def estimate_obs_noise(self, mu0):
+        """
+
+        :param mu0: pass in the original mu0 here so we can use more efficient computation if it is scalar
+        :return:
+        """
+        self._init_obs_prior(mu0)
 
         # Noise in observations
         nu0_total = np.sum(self.nu0, axis=0)
@@ -464,9 +469,16 @@ class GPClassifierVB(object):
         self.Q = (self.obs_mean * (1 - self.obs_mean) + var_obs_mean) / self.obs_total_counts
         self.Q = self.Q.flatten()
 
-    def _init_obs_prior(self):
-        f_samples = np.random.normal(loc=self.mu0, scale=np.sqrt(self.rate_s0 / self.shape_s0),
-                                     size=(self.n_locs, 1000))
+    def _init_obs_prior(self, mu0):
+
+        if mu0 is None:
+            mu0 = self.mu0_default
+            n_locs = 1 # sample only once, and use the estimated values across all points
+        else:
+            n_locs = self.n_locs
+
+        f_samples = np.random.normal(loc=mu0, scale=np.sqrt(self.rate_s0 / self.shape_s0),
+                                     size=(n_locs, 1000))
         rho_samples = self.forward_model(f_samples)
         rho_mean = np.mean(rho_samples)
         rho_var = np.var(rho_samples)
@@ -863,7 +875,7 @@ class GPClassifierVB(object):
                                                                                                        np.min(self.ls)))
 
     def fit(self, obs_coords=None, obs_values=None, totals=None, process_obs=True, mu0=None, K=None, optimize=False,
-            maxfun=20, use_MAP=False, nrestarts=1, features=None, use_median_ls=True):
+            maxfun=20, use_MAP=False, nrestarts=1, features=None, use_median_ls=False):
         '''
         obs_coords -- coordinates of observations as an N x D array, where N is number of observations,
         D is number of dimensions
@@ -921,7 +933,7 @@ class GPClassifierVB(object):
             self._init_params(mu0, True, K)
             max_iter = self.max_iter_VB_per_fit
             self.max_iter_VB_per_fit = 1
-            self.fit(process_obs=False, optimize=False)
+            self.fit(process_obs=False, optimize=False, use_median_ls=False)
             self.max_iter_VB_per_fit = max_iter
 
         nfits = 0

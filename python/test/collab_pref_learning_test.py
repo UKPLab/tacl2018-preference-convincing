@@ -107,7 +107,7 @@ if __name__ == '__main__':
         #         nx = 5
         #         ny = 5
 
-        Npeople = 5
+        Npeople = 4
         N = 25
         P = 10000
         nx = 5
@@ -135,7 +135,7 @@ if __name__ == '__main__':
     # Model initialisation --------------------------------------------------------------------------------------------
     use_svi = True
     use_t = True
-    use_person_features = True
+    use_person_features = False
     optimize = False
 
     ls_initial = np.array(ls)# + np.random.rand(len(ls)) * 10)
@@ -145,10 +145,10 @@ if __name__ == '__main__':
     if use_svi:
         model = CollabPrefLearningSVI(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial,
                                       lsy=lsy_initial, use_common_mean_t=use_t,
-                                      nfactors=7, forgetting_rate=0.9, ninducing=16, max_update_size=100, use_lb=False)
+                                      nfactors=7, forgetting_rate=0.9, ninducing=16, max_update_size=100, use_lb=True)
     else:
         model = CollabPrefLearningVB(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial, lsy=lsy_initial,
-                                     use_common_mean_t=use_t, nfactors=7, use_lb=False)
+                                     use_common_mean_t=use_t, nfactors=7, use_lb=True)
 
     if fix_seeds:
         np.random.seed(22)

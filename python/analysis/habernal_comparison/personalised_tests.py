@@ -41,8 +41,8 @@ class PersonalisedTestRunner(TestRunner):
     
         self.model = model_class(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose, 
                      nfactors=nfactors, rate_ls = 1.0 / np.mean(self.ls_initial),
-                     use_common_mean_t=common_mean, max_update_size=1000)
-        self.model.max_iter = 2
+                     use_common_mean_t=common_mean, max_update_size=1000, use_lb=True)
+        self.model.max_iter = 200
         
         zero_centered_prefs = np.array(self.prefs_train, dtype=float)-1
         
@@ -51,7 +51,7 @@ class PersonalisedTestRunner(TestRunner):
         
         proba = self.model.predict(self.person_test, self.a1_test, self.a2_test, self.items_feat)
         if self.a_rank_test is not None:
-            predicted_f = self.model.predict_f_item_person(self.person_rank_test, self.a_rank_test, self.items_feat)
+            predicted_f = self.model.predict_f_item_person(self.a_rank_test, self.person_rank_test, self.items_feat)
     
         return proba, predicted_f, None
 
@@ -72,7 +72,7 @@ if __name__ == '__main__':
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
 
-    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
+    feature_types = ['debug'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
 
     methods = [
         'PersPrefGP_commonmean_noOpt', 'PersPrefGP_noOpt',

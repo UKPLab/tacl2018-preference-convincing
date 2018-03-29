@@ -306,13 +306,13 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                     data_f.append(thing[f])
                                 else:
                                     data_f.append(thing)
-                            with open(foldfile, 'w') as fh:
+                            with open(foldfile, 'wb') as fh:
                                 pickle.dump(data_f, fh)
                         
                         gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, \
                                                     pred_tr_prob, postprocced = get_fold_data(data_f, f, expt_settings)
                         if postprocced: # data was postprocessed and needs saving
-                            with open(foldfile, 'w') as fh:
+                            with open(foldfile, 'wb') as fh:
                                 pickle.dump(data_f, fh)
                         if pred_tr_disc is not None:                                                                         
                             print(str(pred_tr_disc.shape) + ', ' + str(pred_prob.shape) + ', ' + str(
