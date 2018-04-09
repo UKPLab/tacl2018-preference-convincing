@@ -34,7 +34,7 @@ from scipy.stats import pearsonr, spearmanr, kendalltau
 from data_loading import load_train_test_data, load_ling_features, data_root_dir
 import datetime, time
 
-def get_fold_data(data, f, expt_settings):
+def get_fold_data(data, f, expt_settings, flip_labels=False):
     # discrete labels are 0, 1 or 2
     try:
         if len(data[3][f]):
@@ -44,7 +44,8 @@ def get_fold_data(data, f, expt_settings):
             if pred_disc.ndim == 1:
                 pred_disc = pred_disc[:, np.newaxis]
             #if expt_settings['method'] == 'SVM':
-            #    pred_disc = 2 - pred_disc
+            if flip_labels:
+                pred_disc = 2 - pred_disc
             
             # probabilities
             gold_prob = gold_disc / 2.0
@@ -52,7 +53,8 @@ def get_fold_data(data, f, expt_settings):
             if pred_prob.ndim == 1:
                 pred_prob = pred_prob[:, np.newaxis]
             #if expt_settings['method'] == 'SVM':
-            #    pred_prob = 1 - pred_prob    
+            if flip_labels:
+                pred_prob = 1 - pred_prob
             
             # scores used to rank
             if len(data[4]) > 0:
@@ -65,6 +67,9 @@ def get_fold_data(data, f, expt_settings):
             
                 if pred_rank.ndim == 1:
                     pred_rank = pred_rank[:, np.newaxis]
+
+                if flip_labels:
+                    pred_rank = - pred_rank
             else:
                 gold_rank = None
                 pred_rank = None
@@ -72,10 +77,13 @@ def get_fold_data(data, f, expt_settings):
             if len(data) > 8 and data[8] is not None and f in data[8] and data[8][f] is not None:
                 pred_tr_disc = np.round(np.array(data[8][f])) * 2
                 pred_tr_prob = np.round(np.array(data[8][f]))
+                if flip_labels:
+                    pred_tr_disc = 2 - pred_tr_disc
+                    pred_tr_prob = 1 - pred_tr_prob
             else:
                 pred_tr_disc = None
-                pred_tr_prob = None            
-                
+                pred_tr_prob = None
+
         else:
             raise 
     except:        
@@ -114,7 +122,18 @@ def get_fold_data(data, f, expt_settings):
             pred_tr_prob = np.round(np.array(data[8]))
         else:
             pred_tr_disc = None
-            pred_tr_prob = None        
+            pred_tr_prob = None
+
+        if flip_labels:
+            pred_disc = 2 - pred_disc
+
+            pred_prob = 1 - pred_prob
+            if pred_rank is not None:
+                pred_rank = -pred_rank
+            if pred_tr_disc is not None:
+                pred_tr_disc = 2 - pred_tr_disc
+            if pred_tr_prob is not None:
+                pred_tr_prob = 1 - pred_tr_prob
 
         #any postprocessing e.g. to remove errors when saving data
         postprocced = False
@@ -156,7 +175,7 @@ def collate_AL_results(AL_rounds, results, combined_labels, label):
         
     return mean_results
 
-def get_results_dir(data_root_dir, resultsfile_template, expt_settings, foldername='crowdsourcing_argumentation_expts/'):
+def get_results_dir(data_root_dir, resultsfile_template, expt_settings, foldername='crowdsourcing_argumentation_opt/'):
     resultsdir = data_root_dir + 'outputdata/%s' % foldername + \
             resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
                 expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
@@ -175,7 +194,7 @@ def get_results_dir(data_root_dir, resultsfile_template, expt_settings, folderna
         
     return resultsdir    
 
-def load_results_data(data_root_dir, resultsfile_template, expt_settings, foldername='crowdsourcing_argumentation_expts/'):
+def load_results_data(data_root_dir, resultsfile_template, expt_settings, foldername='crowdsourcing_argumentation_opt/'):
     # start by loading the old-style data
     resultsfile = data_root_dir + 'outputdata/' + foldername + \
             resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
@@ -187,8 +206,8 @@ def load_results_data(data_root_dir, resultsfile_template, expt_settings, folder
     nFolds = max_no_folds
     if os.path.isfile(resultsfile): 
         
-        with open(resultsfile, 'r') as fh:
-            data = pickle.load(fh)
+        with open(resultsfile, 'rb') as fh:
+            data = pickle.load(fh, encoding='latin1')
                 
         if nFolds < 1:
             nFolds = len(data[0])
@@ -198,7 +217,7 @@ def load_results_data(data_root_dir, resultsfile_template, expt_settings, folder
     return data, nFolds, resultsdir, resultsfile          
 
 def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, accuracy=1.0, di=0, npairs=0, tag='', 
-                    remove_seen_from_mean=False, max_no_folds=32, min_folds_desired=0, compute_tr_performance=False):
+        remove_seen_from_mean=False, max_no_folds=32, min_folds_desired=0, compute_tr_performance=False, flip_labels=[]):
         
     expt_settings['acc'] = accuracy
     expt_settings['di'] = di
@@ -280,12 +299,12 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             elif fold[-1] == "'" and fold[0] == "'":
                                 fold = fold[1:-1]  
                             expt_settings['fold_order'][f] = fold
-                                                      
+
                         # look for new-style data in separate files for each fold. Prefer new-style if both are found.
                         foldfile = resultsdir + '/fold%i.pkl' % f
                         if os.path.isfile(foldfile):
-                            with open(foldfile, 'r') as fh:
-                                data_f = pickle.load(fh)
+                            with open(foldfile, 'rb') as fh:
+                                data_f = pickle.load(fh, encoding='latin1')
                         else: # convert the old stuff to new stuff
                             if data is None:
                                 min_folds = f+1
@@ -310,7 +329,8 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                 pickle.dump(data_f, fh)
                         
                         gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, \
-                                                    pred_tr_prob, postprocced = get_fold_data(data_f, f, expt_settings)
+                                                    pred_tr_prob, postprocced = get_fold_data(data_f, f, expt_settings,
+                                                                                          flip_labels=m in flip_labels)
                         if postprocced: # data was postprocessed and needs saving
                             with open(foldfile, 'wb') as fh:
                                 pickle.dump(data_f, fh)
@@ -409,7 +429,8 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             tr_results_logloss[row, col, -1, AL_round] = np.mean(tr_results_logloss[row, col, foldrange, AL_round], axis=0)
                             tr_results_auc[row, col, -1, AL_round] = np.mean(tr_results_auc[row, col, foldrange, AL_round], axis=0)
                         
-                    print('p-values for %s, %s, %s, %s:' % (expt_settings['dataset'], expt_settings['method'], expt_settings['feature_type'], expt_settings['embeddings_type']))
+                    print('p-values for %s, %s, %s, %s:' % (expt_settings['dataset'], expt_settings['method'],
+                                                    expt_settings['feature_type'], expt_settings['embeddings_type']))
                         
                     print(wilcoxon(results_f1[0, 0, foldrange, AL_round], 
                                                                       results_f1[row, col, foldrange, AL_round])[1])
@@ -489,63 +510,88 @@ if __name__ == '__main__':
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
     resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
-    
+
     npairs = 0
     di = 0
     max_no_folds = 32
 
-    methods = ['SinglePrefGP_weaksprior', 'SinglePrefGP_noOpt_weaksprior', 'SVM', 'BI-LSTM', 'SingleGPC_noOpt_weaksprior', 'GP+SVM']  
+    methods = ['SinglePrefGP_weaksprior_2107', 'SinglePrefGP_weaksprior_0308', 'SinglePrefGP_weaksprior_0901']#, 'SVM', 'BI-LSTM'] #'SinglePrefGP_weaksprior', 'SingleGPC_noOpt_weaksprior', 'GP+SVM']
     datasets = ['UKPConvArgStrict']
-    feature_types = ['both']
+    feature_types = ['both']#, 'ling']
     embeddings_types = ['word_mean']#['word_mean', 'skipthoughts', 'siamese-cbow']
-#      
-#     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
-#     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-#     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
-#                       max_no_folds=max_no_folds)
-#     
-    datasets = ['UKPConvArgAll']
-  
+
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-    = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
+    = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
                       max_no_folds=max_no_folds)
-     
-#     datasets = ['UKPConvArgCrowdSample_evalMACE']
-#      
-#     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
-#     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-#     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
-#                       max_no_folds=max_no_folds)
-        
-# 
-#     methods = ['SVM' ]  
-#     datasets = ['UKPConvArgStrict', 'UKPConvArgAll', 'UKPConvArgCrowdSample_evalMACE']
-#     feature_types = ['ling']
-#     embeddings_types = ['word_mean']#['word_mean', 'skipthoughts', 'siamese-cbow']
-#      
-#     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
-#     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-#     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
-#                       max_no_folds=max_no_folds)
 
-        
-#     # compute p values of first result to other results in the list
-#     for row in range(results_f1.shape[0]):
-#         for col in range(results_f1.shape[1]):
-#             if row == 0 and col == 0:
-#                 continue
-#             
-#             
-#             _, p = wilcoxon(results_acc[row, col, :-1, 0], results_acc[0, 0, :-1, 0])
-#             print "p-value of %f" % p
-#             _, p = wilcoxon(results_auc[row, col, :-1, 0], results_auc[0, 0, :-1, 0])
-#             print "p-value of %f" % p
-#             _, p = wilcoxon(results_logloss[row, col, :-1, 0], results_logloss[0, 0, :-1, 0])
-#             print "p-value of %f" % p
-#             _, p = wilcoxon(results_pearson[row, col, :-1, 0], results_pearson[0, 0, :-1, 0])
-#             print "p-value of %f" % p
-#             _, p = wilcoxon(results_spearman[row, col, :-1, 0], results_spearman[0, 0, :-1, 0])
-#             print "p-value of %f" % p
-#             _, p = wilcoxon(results_kendall[row, col, :-1, 0], results_kendall[0, 0, :-1, 0])
-#             print "p-value of %f" % p
+    print(results_acc)
+
+#     datasets = ['UKPConvArgAll']
+#
+#     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
+#     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
+#     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
+#                       max_no_folds=max_no_folds)
+#
+    # methods = ['BI-LSTM']#'SinglePrefGP_noOpt_weaksprior']#'SVM', 'SVM']#]#, ]
+    # datasets = ['UKPConvArgStrict']
+    # feature_types = ['both', 'embeddings']
+    # embeddings_types = ['word_mean']  # ['word_mean', 'skipthoughts', 'siamese-cbow']
+    #
+    # results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
+    # tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
+    #     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
+    #                       max_no_folds=max_no_folds, flip_labels=[1])
+    #
+    # datasets = ['UKPConvArgAll']
+    #
+    # results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
+    # tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
+    #     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
+    #                       max_no_folds=max_no_folds, flip_labels=[1])
+
+    #
+    # datasets = ['UKPConvArgCrowdSample_evalMACE']
+    # methods = ['BI-LSTM']#'SVM', 'SVM']#, ]#,  'SingleGPC_noOpt_weaksprior', 'GP+SVM'] 'SinglePrefGP_noOpt_weaksprior']#,
+    # feature_types = ['both', 'embeddings'] #, 'ling']#
+    # embeddings_types = ['word_mean']
+    #
+    # results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
+    # tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
+    # = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
+    #                   max_no_folds=max_no_folds, flip_labels=[1])
+
+#
+# #     methods = ['SVM' ]
+# #     datasets = ['UKPConvArgStrict', 'UKPConvArgAll', 'UKPConvArgCrowdSample_evalMACE']
+# #     feature_types = ['ling']
+# #     embeddings_types = ['word_mean']#['word_mean', 'skipthoughts', 'siamese-cbow']
+# #
+# #     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
+# #     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
+# #     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
+# #                       max_no_folds=max_no_folds)
+#
+#
+# #     # compute p values of first result to other results in the list
+# #     for row in range(results_f1.shape[0]):
+# #         for col in range(results_f1.shape[1]):
+# #             if row == 0 and col == 0:
+# #                 continue
+# #
+# #
+# #             _, p = wilcoxon(results_acc[row, col, :-1, 0], results_acc[0, 0, :-1, 0])
+# #             print "p-value of %f" % p
+# #             _, p = wilcoxon(results_auc[row, col, :-1, 0], results_auc[0, 0, :-1, 0])
+# #             print "p-value of %f" % p
+# #             _, p = wilcoxon(results_logloss[row, col, :-1, 0], results_logloss[0, 0, :-1, 0])
+# #             print "p-value of %f" % p
+# #             _, p = wilcoxon(results_pearson[row, col, :-1, 0], results_pearson[0, 0, :-1, 0])
+# #             print "p-value of %f" % p
+# #             _, p = wilcoxon(results_spearman[row, col, :-1, 0], results_spearman[0, 0, :-1, 0])
+# #             print "p-value of %f" % p
+# #             _, p = wilcoxon(results_kendall[row, col, :-1, 0], results_kendall[0, 0, :-1, 0])
+# #             print "p-value of %f" % p-value
+
+    print("Completed compute metrics")

@@ -41,7 +41,7 @@ def gen_synthetic_classifications(f_prior_mean=None, nx=100, ny=100):
     fnoisy = norm.rvs(scale=sigma, size=N) + f
     
     # generate the discrete labels from the noisy function
-    labels = sigmoid(fnoisy) # TODO: do we need to round these?
+    labels = np.round(sigmoid(fnoisy))
     
     return N, nx, ny, labels, xvals, yvals, f, K
 

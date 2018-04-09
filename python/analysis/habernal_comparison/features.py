@@ -15,7 +15,7 @@ Provide a zoomed-in variant for the best 25 features.
 import os, pickle
 import numpy as np
 import matplotlib.pyplot as plt
-from tests import load_train_test_data, load_embeddings, load_ling_features, get_fold_data, load_features
+from tests import load_train_test_data, load_embeddings, load_ling_features, get_fold_data, TestRunner
 from matplotlib.ticker import MaxNLocator
 
 if __name__ == '__main__':
@@ -46,9 +46,10 @@ if __name__ == '__main__':
                                                     dtype=str)
     else:
         fold_order = None 
-    nFolds = 1
-    start_fold = 12
-    end_fold = 12
+
+    selected_folds = [0, 1, 2, 5, 6, 7, 8, 9, 10, 14, 16, 17, 18, 22, 24, 25, 27, 28, 29, 30]
+    nFolds = len(selected_folds)
+
     if os.path.isfile(resultsfile): 
         
         with open(resultsfile, 'r') as fh:
@@ -74,7 +75,7 @@ if __name__ == '__main__':
       
     mean_ls = None
     for foldidx, fold in enumerate(folds.keys()):
-        if foldidx < start_fold or foldidx > end_fold:
+        if foldidx not in selected_folds:
             continue
         
         if fold_order is None: # fall back to the order on the current machine
@@ -90,8 +91,8 @@ if __name__ == '__main__':
         # look for new-style data in separate files for each fold. Prefer new-style if both are found.
         foldfile = resultsdir + '/fold%i.pkl' % foldidx
         if os.path.isfile(foldfile):
-            with open(foldfile, 'r') as fh:
-                data_f = pickle.load(fh)
+            with open(foldfile, 'rb') as fh:
+                data_f = pickle.load(fh, encoding='latin1')
         else: # convert the old stuff to new stuff
             if data is None:
                 min_folds = foldidx+1
@@ -117,11 +118,20 @@ if __name__ == '__main__':
         
         trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test, \
                                                                     X, uids, utexts = get_fold_data(folds, fold, docids)
-                                                                                  
+
         # get the embedding values for the test data -- need to find embeddings of the whole piece of text
-        items_feat, valid_feats = load_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1, trainids_a2, uids, 
-                                                word_embeddings, X)
-              
+        runner = TestRunner('crowdsourcing_argumentation_expts_first_submission', [dataset], [feature_type],
+                            [embeddings_type], [method], 0)
+        runner.embeddings = word_embeddings
+        runner.X = X
+        runner.ling_feat_spmatrix = ling_feat_spmatrix
+        runner.load_features(feature_type, embeddings_type, trainids_a1, trainids_a2, uids)
+        items_feat = runner.items_feat
+        valid_feats = runner.valid_feats
+
+        min_vals = np.min(items_feat, axis=0)
+        max_vals = np.max(items_feat, axis=0)
+
         nfeats = len(valid_feats)
         # take the mean ls for each feature across the folds
         if foldidx == 0 or mean_ls is None:
@@ -129,8 +139,13 @@ if __name__ == '__main__':
             totals = np.zeros(nfeats, dtype=int)
               
         #print "Warning: not computing means."
-        mean_ls[valid_feats] += data_f[7] / data_f[5]
-        print("Max normed l: %f" % np.max(data_f[7] / data_f[5]))
+        learned_ls = data_f[7]
+        initial_ls = data_f[5] / float(len(valid_feats)) # we want the data relative to the median -- the initial LS were also scaled by no. features
+        mean_ls[valid_feats] += learned_ls / initial_ls # normalisation in original drafts
+        norm_ls = learned_ls / (max_vals - min_vals)
+        #mean_ls[valid_feats] += norm_ls
+
+        print("Max normed l: %f" % np.max(norm_ls))
         totals[valid_feats] += 1
          
     mean_ls = mean_ls[valid_feats]
@@ -218,7 +233,7 @@ if __name__ == '__main__':
     '''
     An alternative to plotting the distributions would be to list the top ten most important and least important features.
     '''
-    figure_path = os.path.expanduser('./documents/pref_learning_for_convincingness/figures/features/')
+    figure_path = os.path.expanduser('./documents/pref_learning_for_convincingness/figures/features2/')
     
     np.savetxt(figure_path + '/feature_table.tex', np.concatenate((sorted_featnames[:, None], sorted_vals[:, None]), 
                                                                   axis=1), fmt='%s & %.5f \\nonumber\\\\')
@@ -233,17 +248,19 @@ if __name__ == '__main__':
         cat_arr.append(clengthscales)
         labels.append(cat)
 
-    plt.hist(cat_arr, label=labels, color=col[:len(labels)], histtype='bar')
+    plt.hist(cat_arr, label=labels, color=col[:len(labels)], histtype='bar',
+             bins=np.logspace(np.log10(1), np.log10(100000), 18), density=True) # density=True causes the values to be normalised
     plt.xlabel('length-scale')
-    plt.ylabel('no. features')
+    plt.ylabel('log_10 no. features')
     plt.legend(loc='best')
-   
+    plt.gca().set_xscale('log')
+
     plt.savefig(figure_path + 'hist.pdf') 
     
     # produce content for a latex table
     
     plt.figure(figsize=(10,3))
-    
+
     meds = []
     low = []
     high = []
@@ -259,44 +276,75 @@ if __name__ == '__main__':
         #mins.append(np.min(clengthscales))
         #maxs.append(np.max(clengthscales))
         vals.append(clengthscales)
-        
-    bp = plt.boxplot(vals, labels=labels, notch=0, whiskerprops={'linestyle':'solid'}, 
-                     patch_artist=True)
-    plt.setp(bp['boxes'], color='black')
-    plt.setp(bp['whiskers'], color='black')    
-    for patch in bp['boxes']:
-        patch.set_facecolor('tan')
-    plt.ylabel('Mean normalised length-scale')
-    plt.gca().yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    plt.gca().set_axisbelow(True)
-    
-    plt.ylim(0,3)
-    
+
+
+        plt.subplot(1, len(np.unique(feat_cats)), c+1)
+
+        plt.xlim(0, 20)
+        plt.hist(clengthscales, label=labels[c], color='blue', histtype='bar',
+                 #bins=np.logspace(np.log10(100), np.log10(100000), 24), density=False, orientation='horizontal')
+                 bins = np.logspace(np.log10(5500), np.log10(34000), 24), density = False, orientation = 'horizontal')
+
+        plt.gca().set_yscale('log')
+
+        if c == 0:
+            plt.ylabel('Mean normalised length-scale x10^3')
+            plt.gca().get_yaxis().set_ticks([6e3, 1e4, 2e4, 3e4])
+            plt.gca().get_yaxis().set_ticklabels(['6', '10', '20', '30'])
+        else:
+            plt.gca().get_yaxis().set_ticks([])
+            plt.gca().get_yaxis().set_ticklabels([])
+
+        plt.gca().get_xaxis().set_ticks([]) # write the x axis limits in the caption!!!
+        plt.title(cat)
+
+        #plt.gca().yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+
+    # for i, v in enumerate(vals):
+    #     vals[i] = np.log10(v)
+
+    #bp = plt.boxplot(vals, labels=labels, notch=0, whiskerprops={'linestyle':'solid'},
+    #                 patch_artist=True)
+    #plt.setp(bp['boxes'], color='black')
+    #plt.setp(bp['whiskers'], color='black')
+    #for patch in bp['boxes']:
+    #    patch.set_facecolor('tan')
+
+    # yrange = np.arange(-2, 3)
+    # plt.gca().set_yticks(yrange)
+    # plt.gca().set_yticklabels(10.0**yrange)
+
+    # plt.gca().set_axisbelow(True)
+
+    #plt.ylim(0,3)
+
     plt.savefig(figure_path + 'boxplot.pdf')
-    
+
     ############
     
-    plt.figure()
-
-    rowsize = 5
-        
-    for c, cat in enumerate(np.unique(feat_cats)):
-        clengthscales = sorted_vals[sorted_cats == cat]
-        #plt.scatter(clengthscales, np.zeros(len(clengthscales)) + (1+c)*1000, marker=marks[c], color=col[c])
-        ax = plt.subplot(len(labels)/rowsize + 1, rowsize, c+1)
-        plt.plot(clengthscales, color=col[c], label=cat, marker=marks[c], linewidth=0)
-        plt.title(cat)
-        plt.ylim(np.min(sorted_vals), np.max(sorted_vals))
-        
-        frame1 = plt.gca()
-        if np.mod(c, rowsize):
-            frame1.axes.get_yaxis().set_ticks([])
-        else:
-            plt.ylabel('length-scale')
-        ax.xaxis.set_major_locator(MaxNLocator(nbins=2))
-
-    plt.xlabel('features')
-    plt.show()
+    # plt.figure()
+    #
+    # rowsize = 5
+    #
+    # for c, cat in enumerate(np.unique(feat_cats)):
+    #     clengthscales = sorted_vals[sorted_cats == cat]
+    #     #plt.scatter(clengthscales, np.zeros(len(clengthscales)) + (1+c)*1000, marker=marks[c], color=col[c])
+    #     ax = plt.subplot(len(labels)/rowsize + 1, rowsize, c+1)
+    #     plt.plot(clengthscales, color=col[c], label=cat, marker=marks[c], linewidth=0)
+    #     plt.title(cat)
+    #     plt.ylim(np.min(sorted_vals), np.max(sorted_vals))
+    #
+    #     frame1 = plt.gca()
+    #     if np.mod(c, rowsize):
+    #         frame1.axes.get_yaxis().set_ticks([])
+    #     else:
+    #         plt.ylabel('length-scale')
+    #     ax.xaxis.set_major_locator(MaxNLocator(nbins=2))
+    #
+    # plt.xlabel('features')
+    # plt.show()
     
     output = np.concatenate((sorted_cats[:, None], featnames[sorted_idxs][:, None], sorted_vals[:, None]), axis=1)
     np.savetxt("./results/features.tsv", output, fmt='%s\t%s\t%s', delimiter='\t', header='category, feature_name, length-scale')
+
+    print('all done.')

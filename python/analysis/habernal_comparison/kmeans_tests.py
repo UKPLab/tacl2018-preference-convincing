@@ -31,6 +31,7 @@ Created on 20 Mar 2017
 
 import logging
 from scipy.stats.stats import pearsonr
+from sklearn.metrics import log_loss
 from sklearn.svm.classes import NuSVR, SVC
 logging.basicConfig(level=logging.DEBUG)
 
@@ -282,10 +283,10 @@ def subsample_tr_data(subsample_amount, a1_train, a2_train):
     
     return pair_subsample_idxs
     
-class TestRunner:    
+class TestRunnerSingleFold:
     
     def __init__(self, current_expt_output_dir, datasets, feature_types, embeddings_types, methods, 
-                 dataset_increment, expt_tag='habernal'):    
+                 dataset_increment, expt_tag='kmeans'):
         self.folds = None
         self.initial_pair_subset = {}
         self.default_ls_values = {}
@@ -419,15 +420,15 @@ class TestRunner:
         self.model.fit(self.a1_train, self.a2_train, new_items_feat, np.array(self.prefs_train, dtype=float)-1, 
                   optimize=self.optimize_hyper, input_type='zero-centered')            
     
-        proba = self.model.predict(None, self.a1_test, self.a2_test, reuse_output_kernel=True, return_var=False)
+        proba = self.model.predict(self.items_feat, self.a1_test, self.a2_test, reuse_output_kernel=True, return_var=False)
     
         if self.a1_unseen is not None and len(self.a1_unseen):
-            tr_proba, _ = self.model.predict(None, self.a1_unseen, self.a2_unseen, reuse_output_kernel=True)
+            tr_proba, _ = self.model.predict(self.items_feat, self.a1_unseen, self.a2_unseen, reuse_output_kernel=True)
         else:
             tr_proba = None
         
         if self.a_rank_test is not None:
-            predicted_f, _ = self.model.predict_f(None, self.a_rank_test)
+            predicted_f, _ = self.model.predict_f(self.items_feat, self.a_rank_test)
         else:
             predicted_f = None
     
@@ -867,7 +868,7 @@ class TestRunner:
                 
         return all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, all_tr_proba
            
-    def run_test(self, feature_type, embeddings_type=None, dataset_increment=0, acc=1.0, subsample_amount=0, 
+    def run_test(self, feature_type, embeddings_type=None, dataset_increment=0, acc=1.0, subsample_amount=0,
                  min_no_folds=0, max_no_folds=32, npairs=0, test_on_all_training_pairs=False):
 
         logging.info("**** Running method %s with features %s, embeddings %s, on dataset %s ****" % (self.method, 
@@ -885,43 +886,38 @@ class TestRunner:
         np.random.seed(111) # allows us to get the same initialisation for all methods/feature types/embeddings
     
         fold_keys = list(self.folds.keys())
-        for foldidx, self.fold in enumerate(fold_keys):
-            if foldidx in all_proba and dataset_increment==0:
-                print(("Skipping fold %i, %s" % (foldidx, self.fold)))
-                continue
-            if foldidx >= max_no_folds or foldidx < min_no_folds:
-                print(("Already completed maximum no. folds. Skipping fold %i, %s" % (foldidx, self.fold)))
-                continue
-            foldresultsfile = results_stem + '/fold%i.pkl' % foldidx
-            if foldidx not in all_proba and os.path.isfile(foldresultsfile): 
-                if dataset_increment == 0:
-                    print(("Skipping fold %i, %s" % (foldidx, self.fold)))
-                    continue
-                
-                with open(foldresultsfile, 'r') as fh:
-                    all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],\
-                    all_target_rankscores[foldidx], _, times[foldidx], final_ls[foldidx], all_tr_proba[foldidx] = \
-                                pickle.load(fh)
-    
+
+        foldidx = 8
+        self.fold = fold_keys[foldidx]
+
+        accu = []
+        auc = []
+        cee = []
+
+        for rep in range(nreps):
+
             # Get data for this fold --------------------------------------------------------------------------------------
             print(("Fold name ", self.fold))
-            a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test,\
-                                self.X, uids, utexts = get_noisy_fold_data(self.folds, self.fold, self.docids, acc)                            
+            foldresultsfile = results_stem + '/fold%i_rep%i.pkl' % (foldidx, rep)
+            if rep == 0:
+
+                a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test,\
+                                self.X, uids, utexts = get_noisy_fold_data(self.folds, self.fold, self.docids, acc)
             
-            # ranking folds
-            a_rank_train, scores_rank_train, _, person_rank_train, a_rank_test, scores_rank_test, _, \
+                # ranking folds
+                a_rank_train, scores_rank_train, _, person_rank_train, a_rank_test, scores_rank_test, _, \
                                 person_idx_ranktest = get_fold_regression_data(self.folds_r, self.fold, self.docids)
             
-            self.load_features(feature_type, embeddings_type, a1_train, a2_train, uids, utexts)
-            #items_feat = items_feat[:, :ndebug_features]     
-    
-            # Subsample training data --------------------------------------------------------------------------------------    
+                self.load_features(feature_type, embeddings_type, a1_train, a2_train, uids, utexts)
+               #items_feat = items_feat[:, :ndebug_features]
+
+            # Subsample training data --------------------------------------------------------------------------------------
             if npairs == 0:
                 npairs_f = len(a1_train)
             else:
                 npairs_f = npairs
-            nseen_so_far = 0     
-                              
+            nseen_so_far = 0
+
             if dataset_increment != 0:
                 if foldidx in all_proba and all_proba[foldidx].shape[1] >= float(npairs_f) / dataset_increment:
                     print(("Skipping fold %i, %s" % (foldidx, self.fold)))
@@ -929,22 +925,22 @@ class TestRunner:
                 nnew_pairs = dataset_increment
             else:
                 nnew_pairs = npairs_f
-                
-            # choose the initial dataset 
-            if self.fold in self.initial_pair_subset:    
+
+            # choose the initial dataset
+            if self.fold in self.initial_pair_subset:
                 pair_subset = self.initial_pair_subset[self.fold]
             elif  dataset_increment != 0:
                 pair_subset = np.random.choice(len(a1_train), nnew_pairs, replace=False)
             elif subsample_amount > 0:
-                pair_subset = subsample_tr_data(subsample_amount, a1_train, a2_train)                     
+                pair_subset = subsample_tr_data(subsample_amount, a1_train, a2_train)
             else:
                 pair_subset = np.arange(npairs_f)
             # save so we can reuse for another method
             self.initial_pair_subset[self.fold] = pair_subset
 
-            self.verbose = verbose
+            self.verbose = True
             self.optimize_hyper = ('noOpt' not in self.method)
-                        
+
     #         with open(modelfile % foldidx, 'r') as fh:
     #             model = pickle.load(fh)
     #             items_feat_test = None
@@ -958,10 +954,10 @@ class TestRunner:
             if '_oneLS' in self.method:
                 self.ls_initial = np.median(ls_initial)
                 logging.info("Selecting a single LS for all features: %f" % self.ls_initial)
-            
+
             logging.info("Starting test with method %s..." % (self.method))
-            starttime = time.time()        
-            
+            starttime = time.time()
+
             unseen_subset = np.ones(len(a1_train), dtype=bool)
     
             # Run the chosen method with active learning simulation if required---------------------------------------------
@@ -1049,9 +1045,10 @@ class TestRunner:
                     
                 logging.info("@@@ Completed running fold %i with method %s, features %s, %i data so far, in %f seconds." % (
                     foldidx, self.method, feature_type, nseen_so_far, endtime-starttime) )
-                logging.info("Accuracy for fold = %f" % (
-                        np.sum(prefs_test[prefs_test != 1] == 2 * predictions.flatten()[prefs_test != 1]
-                            ) / float(np.sum(prefs_test != 1))) )
+                acc_r = (np.sum(prefs_test[prefs_test != 1] == 2 * predictions.flatten()[prefs_test != 1]
+                            ) / float(np.sum(prefs_test != 1)))
+                accu.append(acc_r)
+                logging.info("Accuracy for fold = %f" % acc_r)
                 
                 if predicted_f is not None:
                     # print out the pearson correlation
@@ -1063,8 +1060,14 @@ class TestRunner:
                     logging.info("Unseen data in the training fold, accuracy for fold = %f" % (
                         np.sum(prefs_unseen[prefs_unseen != 1] == 2 * np.round(tr_proba_unseen).flatten()[prefs_unseen != 1]
                             ) / float(np.sum(prefs_unseen != 1))) )   
-                                       
-                logging.info("AUC = %f" % roc_auc_score(prefs_test[prefs_test!=1] / 2.0, proba[prefs_test!=1]) )
+
+                auc_r = roc_auc_score(prefs_test[prefs_test!=1] / 2.0, proba[prefs_test!=1])
+                auc.append(auc_r)
+                logging.info("AUC = %f" % auc_r)
+
+                cee_r = log_loss(prefs_test[prefs_test!=1] / 2.0, proba[prefs_test!=1])
+                cee.append(cee_r)
+
                 # Save the data for later analysis ----------------------------------------------------------------------------
                 if hasattr(self.model, 'ls'):
                     final_ls[foldidx] = self.model.ls
@@ -1106,8 +1109,17 @@ class TestRunner:
                     
                 #with open(modelfile % foldidx, 'w') as fh:
                 #        pickle.dump(model, fh)
-    
-            del self.model # release the memory before we try to do another iteration         
+
+            if hasattr(self, 'model'):
+                del self.model # release the memory before we try to do another iteration
+
+        print("Mean ACC across reps: %f" % np.mean(accu))
+        print("Mean AUC across reps: %f" % np.mean(auc))
+        print("Mean CEE across reps: %f" % np.mean(cee))
+
+        print("Var ACC across reps: %f" % np.var(accu))
+        print("Var AUC across reps: %f" % np.var(auc))
+        print("Var CEE across reps: %f" % np.var(cee))
 
     def run_test_set(self, subsample_tr=0, min_no_folds=0, max_no_folds=32, 
                      npairs=0, test_on_train=False):
@@ -1140,17 +1152,17 @@ class TestRunner:
                         logging.info("**** Completed: method %s with features %s, embeddings %s ****" % (self.method, feature_type, 
                                                                                embeddings_type) )
 if __name__ == '__main__':
-
-    verbose = False
-
     acc = 1.0
     dataset_increment = 0
-         
-    datasets = ['UKPConvArgStrict']
-    methods = ['SinglePrefGP_weaksprior']
+
+    nreps = 10
+
+    datasets = ['UKPConvArgStrict'] 
+    methods = ['SinglePrefGP_noOpt_weaksprior'] # 'BI-LSTM', , ] ,
     feature_types = ['both']
     embeddings_types = ['word_mean']
-
-    runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods,
+          
+    #if not 'runner' in globals():
+    runner = TestRunnerSingleFold('crowdsourcing_argumentation_expts_3000feats', datasets, feature_types, embeddings_types, methods,
                             dataset_increment)
     runner.run_test_set()

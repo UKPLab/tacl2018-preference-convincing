@@ -1,6 +1,15 @@
 """
 Scalable implementation of collaborative Gaussian process preference learning using stochastic variational inference.
 Scales to large sets of observations (preference pairs) and numbers of items and users.
+
+The results look different to the non-SVI version. There is a difference in how G is computed inside expec_t --
+in the non-SVI version, it is computed separately for each observation location, and the obs_f estimates used to compute
+it do not have any shared component across people because the value of t is computed by aggregating across people
+outside the child GP. With the SVI implementation, the aggregation is done at each step by the inducing points, so that
+inside the iterations of t_gp, there is a common t value when computing obs_f for all people. I think both are valid
+approximations considering they are using slightly different values of obs_f to compute the updates. Differences may
+accumulate from small differences in the approximations.
+
 """
 
 import numpy as np
@@ -125,7 +134,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         self.ninducing = self.ninducing_preset
 
-        if self.ninducing > self.obs_coords.shape[0]:
+        if self.ninducing >= self.obs_coords.shape[0]:
             self.ninducing = self.obs_coords.shape[0]
             self.inducing_coords = self.obs_coords
         else:
@@ -144,10 +153,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         # Related to w, the item components ------------------------------------------------------------
         # posterior expected values
-        self.w_u = np.zeros((self.ninducing, self.Nfactors))
-        # self.w_u = mvn.rvs(np.zeros(self.ninducing), self.K_mm, self.Nfactors).reshape(self.Nfactors, self.N)
-        # self.w_u /= (self.shape_sw / self.rate_sw)[:, None]
-        # self.w_u = self.w_u.T
+        # self.w_u = np.zeros((self.ninducing, self.Nfactors))
+        self.w_u = mvn.rvs(np.zeros(self.ninducing), self.K_mm, self.Nfactors).reshape(self.Nfactors, self.N)
+        self.w_u /= (self.shape_sw / self.rate_sw)[:, None]
+        self.w_u = self.w_u.T
         # self.w_u = np.zeros((self.ninducing, self.Nfactors))
         # self.w_u[np.arange(self.ninducing), np.arange(self.ninducing)] = 1.0
 
@@ -187,7 +196,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         else:
             self.y_ninducing = self.ninducing_preset
 
-            if self.y_ninducing > self.Npeople:
+            if self.y_ninducing >= self.Npeople:
                 self.y_ninducing = self.Npeople
                 self.y_inducing_coords = self.person_features
             else:
@@ -366,7 +375,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.t_gp = GPPrefLearning(self.nitem_features, 0, 1, 1, self.shape_ls, self.rate_ls, self.ls,
                                        fixed_s=True, kernel_func='pre', use_svi=True,
                                        delay=self.delay, forgetting_rate=self.forgetting_rate,
-                                       max_update_size=self.update_size)
+                                       max_update_size=self.max_update_size)
             self.t_gp.max_iter_VB_per_fit = 1
             self.t_gp.min_iter_VB = 1
             self.t_gp.max_iter_G = self.max_iter_G  # G needs to converge within each VB iteration otherwise q(t) is poor

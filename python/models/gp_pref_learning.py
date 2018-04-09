@@ -121,9 +121,7 @@ class GPPrefLearning(GPClassifierSVI):
     pref_v = [] # the first items in each pair -- index to the observation coordinates in self.obsx and self.obsy
     pref_u = [] # the second items in each pair -- indices to the observations in self.obsx and self.obsy
     
-    item_features = None
-    
-    def __init__(self, ninput_features, mu0=0, shape_s0=2, rate_s0=2, shape_ls=10, rate_ls=0.1, ls_initial=None, 
+    def __init__(self, ninput_features, mu0=0, shape_s0=2, rate_s0=2, shape_ls=10, rate_ls=0.1, ls_initial=None,
         kernel_func='matern_3_2', kernel_combination='*',
         max_update_size=10000, ninducing=500, use_svi=True, delay=10, forgetting_rate=0.7, verbose=False, fixed_s=False):
         
@@ -152,11 +150,13 @@ class GPPrefLearning(GPClassifierSVI):
     def _init_prior_mean_f(self, z0):
         self.mu0_default = z0 # for preference learning, we pass in the latent mean directly  
     
-    def _init_obs_prior(self, mu0):
+    def _init_obs_prior(self):
         # to make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
 
-        if mu0 is None:
+        if self.mu0 is None:
             mu0 = self.mu0_default
+        else:
+            mu0 = self.mu0
 
         f_prior_var = self.rate_s0/self.shape_s0
 
@@ -203,11 +203,11 @@ class GPPrefLearning(GPClassifierSVI):
         #poscounts = poscounts.astype(int)
         totals = totals.astype(int)  
                                
-        if self.item_features is not None:
-            self.obs_uidxs = np.arange(self.item_features.shape[0])
+        if self.features is not None:
+            self.obs_uidxs = np.arange(self.features.shape[0])
             self.pref_v = obs_coords_0.flatten()
             self.pref_u = obs_coords_1.flatten()
-            self.obs_coords = self.item_features
+            self.obs_coords = self.features
             return poscounts, totals             
         else:
             # TODO: This code could be merged with get_unique_locations()
@@ -343,13 +343,10 @@ class GPPrefLearning(GPClassifierSVI):
         elif process_obs and input_type != 'binary':
             raise ValueError('input_type for preference labels must be either "binary" or "zero-centered"') 
             
-        if item_features is not None: # keep the old item features if we pass in none
-            self.item_features = item_features
-
         #TODO: bug fix: if the same object is reused with different set of items, there is a crash because K_nm is not renewed.
 
         super(GPPrefLearning, self).fit((items1_coords, items2_coords), preferences, totals, process_obs, 
-                                        mu0=mu0, K=K, optimize=optimize, use_median_ls=use_median_ls)
+                                mu0=mu0, K=K, optimize=optimize, use_median_ls=use_median_ls, features=item_features)
 
     def set_training_data(self, items1_coords=None, items2_coords=None, item_features=None, preferences=None, totals=None,
             mu0=None, K=None, input_type='binary', init_Q_only=False):
@@ -376,11 +373,8 @@ class GPPrefLearning(GPClassifierSVI):
         elif input_type != 'binary':
             raise ValueError('input_type for preference labels must be either "binary" or "zero-centered"')
 
-        if item_features is not None:  # keep the old item features if we pass in none
-            self.item_features = item_features
-
         super(GPPrefLearning, self).set_training_data((items1_coords, items2_coords), preferences, totals,
-                                        mu0=mu0, K=K, init_Q_only=init_Q_only)
+                                        mu0=mu0, K=K, init_Q_only=init_Q_only, features=item_features)
 
     def _update_sample_idxs(self):
         nobs = self.obs_f.shape[0]
@@ -468,12 +462,21 @@ class GPPrefLearning(GPClassifierSVI):
         elif K_star is not None:
             f_samples = mvn.rvs(mean=f_mean.flatten(), cov=K_star, size=1000).T
         else:
-            f_samples = np.random.normal(loc=f_mean, scale=np.sqrt(f_var), size=(f_mean.shape[0], 1000))
+            if np.isscalar(f_mean):
+                N = 1
+            else:
+                N = f_mean.shape[0]
+
+            f_samples = np.random.normal(loc=f_mean, scale=np.sqrt(f_var), size=(N, 1000))
 
         # g_f = (f_samples[v, :] - f_samples[u, :])  / np.sqrt(2)
         # phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the
 
-        phi = self.forward_model(f_samples, v=v, u=u)
+        if N == 1:
+            phi = self.forward_model(f_samples, v=[0], u=[0])
+        else:
+            phi = self.forward_model(f_samples, v=v, u=u)
+
         phi = temper_extreme_probs(phi)
         if expectedlog:
             phi = np.log(phi)

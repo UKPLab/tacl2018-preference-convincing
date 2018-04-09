@@ -107,17 +107,17 @@ if __name__ == '__main__':
         #         nx = 5
         #         ny = 5
 
-        Npeople = 4
-        N = 25
-        P = 10000
-        nx = 5
-        ny = 5
+        Npeople = 8
+        N = 16
+        P = 5000
+        nx = 4
+        ny = 4
 
-        Npeoplefeatures = 4
+        Npeoplefeatures = 3
         ls = [10, 5]
         s = 0.0001
         lsy = 2 + np.zeros(Npeoplefeatures)
-        Nfactors = 3
+        Nfactors = 2
 
         prefs, item_features, person_features, pair1idxs, pair2idxs, personids, latent_f, w, t, y = \
             gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, s, lsy, Npeoplefeatures)
@@ -133,9 +133,12 @@ if __name__ == '__main__':
     #     np.random.seed() # do this if we want to use a different seed each time to test the variation in results
         
     # Model initialisation --------------------------------------------------------------------------------------------
-    use_svi = True
+    if len(sys.argv) > 1:
+        use_svi = sys.argv[1] == 'svi'
+    else:
+        use_svi = True
     use_t = True
-    use_person_features = False
+    use_person_features = True
     optimize = False
 
     ls_initial = np.array(ls)# + np.random.rand(len(ls)) * 10)
@@ -145,7 +148,7 @@ if __name__ == '__main__':
     if use_svi:
         model = CollabPrefLearningSVI(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial,
                                       lsy=lsy_initial, use_common_mean_t=use_t,
-                                      nfactors=7, forgetting_rate=0.9, ninducing=16, max_update_size=100, use_lb=True)
+                                      nfactors=7, forgetting_rate=0.7, ninducing=16, max_update_size=100, use_lb=True)
     else:
         model = CollabPrefLearningVB(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial, lsy=lsy_initial,
                                      use_common_mean_t=use_t, nfactors=7, use_lb=True)
@@ -153,7 +156,7 @@ if __name__ == '__main__':
     if fix_seeds:
         np.random.seed(22)
 
-    model.verbose = True
+    model.verbose = False
     model.min_iter = 1
     model.max_iter = 200
     model.fit(personids[trainidxs], pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], 
@@ -163,7 +166,8 @@ if __name__ == '__main__':
     print(("Difference between true person length scale and inferred person length scale = %s" % (lsy - model.lsy)))
     
     # turn the values into predictions of preference pairs.
-    results = model.predict(personids[testidxs], pair1idxs[testidxs], pair2idxs[testidxs], item_features)
+    results = model.predict(personids[testidxs], pair1idxs[testidxs], pair2idxs[testidxs], item_features,
+                            person_features.T if use_person_features else None)
     
     # make the test more difficult: we predict for a person we haven't seen before who has same features as another
     result_new_person = model.predict(
@@ -305,6 +309,8 @@ if __name__ == '__main__':
     fig = plt.figure()
     ymap = model.y.T
     scale = np.std(ymap)
+    if scale == 0:
+        scale = 1.0
     #scale = np.sqrt(model.rate_sy[np.newaxis, :]/model.shape_sy[np.newaxis, :])
     ymap /= scale
     ax = plt.imshow(ymap, cmap=cmap, origin='lower', extent=[0, ymap.shape[1], 0, ymap.shape[0]],
@@ -325,6 +331,8 @@ if __name__ == '__main__':
        
     # w
     scale = np.std(model.w)
+    if scale == 0:
+        scale = 1.0
     model.w /= scale
     wmin = np.min(model.w)
     wmax = np.max(model.w)

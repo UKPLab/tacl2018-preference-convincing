@@ -132,3 +132,6 @@ outputdata/*.pkl
 /hardcopy.1
 **/*.out
 **/*.synctex.gz
+**/*.bak
+**/*.xml
+**/*.iml

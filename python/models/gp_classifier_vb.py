@@ -289,6 +289,8 @@ def check_convergence(newval, oldval, conv_threshold, positive_only, iter=-1, ve
     if verbose:
         if np.isscalar(newval):
             logging.debug('%s: %.5f, diff = %.5f at iteration %i' % (label, newval, diff, iter))
+        elif newval.size == 1:
+            logging.debug('%s: %.5f, diff = %.5f at iteration %i' % (label, newval.flatten()[0], diff, iter))
         else:
             logging.debug('%s: diff = %.5f at iteration %i' % (label, diff, iter))
             # logging.debug(np.max(np.abs(newval - oldval)))
@@ -398,7 +400,7 @@ class GPClassifierVB(object):
 
         if reinit_params:
             # Prior noise variance
-            self.estimate_obs_noise(mu0)
+            self.estimate_obs_noise()
             if init_Q_only:
                 return
 
@@ -453,13 +455,13 @@ class GPClassifierVB(object):
             self.obs_f = logit(self.obs_mean)
             self.obs_f[:prev_obs_f.shape[0], :] = prev_obs_f
 
-    def estimate_obs_noise(self, mu0):
+    def estimate_obs_noise(self):
         """
 
         :param mu0: pass in the original mu0 here so we can use more efficient computation if it is scalar
         :return:
         """
-        self._init_obs_prior(mu0)
+        self._init_obs_prior()
 
         # Noise in observations
         nu0_total = np.sum(self.nu0, axis=0)
@@ -859,8 +861,8 @@ class GPClassifierVB(object):
         :param features:
         :return:
         """
-
-        self.features = features
+        if features is not None:  # keep the old item features if we pass in none
+            self.features = features
 
         # Initialise the objects that store the observation data
         self._process_observations(obs_coords, obs_values, totals)
@@ -880,7 +882,8 @@ class GPClassifierVB(object):
         obs_coords -- coordinates of observations as an N x D array, where N is number of observations,
         D is number of dimensions
         '''
-        self.features = features
+        if features is not None: # keep the old item features if we pass in none
+            self.features = features
 
         if optimize:
             return self._optimize(obs_coords, obs_values, totals, process_obs, mu0, K, maxfun, use_MAP, nrestarts)
@@ -950,7 +953,7 @@ class GPClassifierVB(object):
 
             res = minimize(self.neg_marginal_likelihood, initialguess,
                            args=(-1, use_MAP,), jac=self.nml_jacobian, method='L-BFGS-B',
-                           options={'maxiter': maxfun, 'ftol' : 1e-3, 'gtol': 10 ** (- self.ninput_features - 1)})
+                           options={'maxfun': maxfun, 'maxiter' : maxfun, 'ftol' : 1e-3, 'gtol': 10 ** (- self.ninput_features - 1)})
 
             opt_hyperparams = res['x']
             nlml = res['fun']
@@ -1119,9 +1122,14 @@ class GPClassifierVB(object):
                     out_feats = out_feats.T
                 self.out_feats = out_feats
                 # compute kernels given the feature vectors supplied
-                self.K_star = self.kernel_func(np.array(out_feats).astype(float), self.ls, self._get_training_feats(),
+                out_feats_arr = np.array(out_feats).astype(float)
+                self.K_star = self.kernel_func(out_feats_arr, self.ls, self._get_training_feats(),
                                                operator=self.kernel_combination)
-                self.K_starstar = 1.0  # assuming that the kernel function places ones along diagonals
+                if full_cov:
+                    self.K_starstar = self.kernel_func(out_feats_arr, self.ls, out_feats_arr,
+                                                       operator=self.kernel_combination)
+                else:
+                    self.K_starstar = 1.0  # assuming that the kernel function places ones along diagonals
             else:
                 pass  # we reuse the previous self.K_star and self.K_starstar values
 

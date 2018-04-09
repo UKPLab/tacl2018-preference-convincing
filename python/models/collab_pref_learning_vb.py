@@ -739,7 +739,7 @@ class CollabPrefLearningVB(object):
         # we want to replace this precision with the global values. w_gp and y_gp are different
         # because G is different in each.
         data_ll = self.wy_gp.data_ll(logrho, lognotrho)
-        data_ll -= 0.5 * np.trace((prod_cov + w_y_cov_w + y_w_cov_y).dot(self.wy_gp.get_obs_precision()))
+        #data_ll -= 0.5 * np.trace((prod_cov + w_y_cov_w + y_w_cov_y).dot(self.wy_gp.get_obs_precision()))
 
         return data_ll
 
