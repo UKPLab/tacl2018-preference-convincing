@@ -137,7 +137,7 @@ if __name__ == '__main__':
         print("Kendall's tau (test): %.3f" % kendalltau(f_test, fpred)[0] )
             
         rho = sigmoid(f[testidxs])
-        rho_pred, var_rho_pred = model.predict(obs_coords[testidxs])
+        rho_pred, var_rho_pred = model.predict(obs_coords[testidxs], variance_method='sample')
         rho_pred = rho_pred.flatten()
         t_pred = np.round(rho_pred)
         

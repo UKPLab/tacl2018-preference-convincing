@@ -81,6 +81,8 @@ class GPClassifierSVI(GPClassifierVB):
         if not self.use_svi:
             return super(GPClassifierSVI, self)._init_covariance()
 
+        self.obs_v = np.ones((self.n_locs, 1)) * self.rate_s0 / self.shape_s0
+
     def _init_s(self):
         if not self.use_svi:
             return super(GPClassifierSVI, self)._init_s()
@@ -189,6 +191,11 @@ class GPClassifierSVI(GPClassifierVB):
 
     # Log Likelihood Computation -------------------------------------------------------------------------------------
 
+    def _logpt(self):
+        logrho, lognotrho, _ = self._post_sample(self.obs_f, self.obs_v, expectedlog=True)
+
+        return logrho, lognotrho
+
     def _logpf(self):
         # Note that some terms are cancelled with those in data_ll to simplify
         if not self.use_svi:
@@ -199,8 +206,7 @@ class GPClassifierSVI(GPClassifierVB):
         D = len(self.um_minus_mu0)
         logdet_Ks = - D * self.Elns + logdet_K
 
-        # the terms below simplify to D only invKs_mm matches uS, which it doesn't because of the stochastic updates
-        invK_expecF = np.trace((self.get_obs_precision() + self.invKs_mm).dot(self.uS))
+        invK_expecF = np.trace(self.invKs_mm.dot(self.uS))
 
         m_invK_m = self.um_minus_mu0.T.dot(self.invK_mm * self.s).dot(self.um_minus_mu0)
 
@@ -327,7 +333,8 @@ class GPClassifierSVI(GPClassifierVB):
         if self.covpair is None:
             self.covpair = scipy.linalg.solve(self.Ks_mm, self.Ks_nm.T).T
 
-        self.obs_f = self._f_given_u(self.covpair, self.mu0)
+        self.obs_f, self.obs_v = self._f_given_u(self.covpair, self.mu0, 1.0 / self.s, full_cov=False)
+
 
     def _f_given_u(self, covpair, mu0, Ks_nn=None, full_cov=True):
         # see Hensman, Scalable variational Gaussian process classification, equation 18

@@ -389,6 +389,8 @@ class GPClassifierVB(object):
 
         self.vb_iter = 0
 
+        self.features = None # an optional matrix of object feature vectors. Is not needed if coordinates are passed in
+
     # Initialisation --------------------------------------------------------------------------------------------------
 
     def _init_params(self, mu0, reinit_params, K=None, init_Q_only=False):
@@ -443,6 +445,8 @@ class GPClassifierVB(object):
     def _init_obs_mu0(self, mu0):
         if mu0 is None:
             mu0 = self.mu0_default
+
+        self.mu0_input = mu0 # save because in some cases we pass in a scalar and it is more convenient to work with this
         self.mu0 = np.zeros((self.n_locs, 1)) + mu0
         self.Ntrain = self.obs_values.size
 
@@ -471,13 +475,13 @@ class GPClassifierVB(object):
         self.Q = (self.obs_mean * (1 - self.obs_mean) + var_obs_mean) / self.obs_total_counts
         self.Q = self.Q.flatten()
 
-    def _init_obs_prior(self, mu0):
+    def _init_obs_prior(self):
 
-        if mu0 is None:
-            mu0 = self.mu0_default
+        mu0 = self.mu0_input
+        if np.isscalar(mu0):
             n_locs = 1 # sample only once, and use the estimated values across all points
         else:
-            n_locs = self.n_locs
+            n_locs = len(mu0)
 
         f_samples = np.random.normal(loc=mu0, scale=np.sqrt(self.rate_s0 / self.shape_s0),
                                      size=(n_locs, 1000))
@@ -708,9 +712,13 @@ class GPClassifierVB(object):
         return np.sum(lnp_gp)
 
     def _logpt(self):
-        rho, notrho = self._post_rough(self.obs_f, self.obs_C)
-        logrho = np.log(rho)
-        lognotrho = np.log(notrho)
+        # this produces an upper bound on the expected log (a concave function), according to jensen's inequality.
+        # Having an upper bound on the variational lower bound could introduce noise when optimising...
+        # rho, notrho = self._post_rough(self.obs_f, self.obs_C)
+        # logrho = np.log(rho)
+        # lognotrho = np.log(notrho)
+
+        logrho, lognotrho, _ = self._post_sample(self.obs_f, np.diag(self.obs_C)[:, None], expectedlog=True)
 
         return logrho, lognotrho
 
@@ -721,8 +729,8 @@ class GPClassifierVB(object):
         logdet_Ks = -D * self.Elns + logdet_K
 
         # term below simplifies
-        # invK_expecF = np.trace(self.invK.dot(self.obs_C) * self.s)
-        invK_expecF = D
+        invK_expecF = np.trace(self.invK.dot(self.obs_C) * self.s)
+        # invK_expecF = D
 
         m_invK_m = (self.obs_f - self.mu0).T.dot(self.invK*self.s).dot(self.obs_f-self.mu0)
 

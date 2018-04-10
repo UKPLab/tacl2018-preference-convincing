@@ -447,12 +447,29 @@ class GPPrefLearning(GPClassifierSVI):
         out_feats, item_0_idxs, item_1_idxs, mu0_out = get_unique_locations(out_feats, out_1_feats, mu0_out, mu0_out_1)
         return self.predict(out_feats, item_0_idxs, item_1_idxs, mu0_out)
 
+    def _logpt(self):
+        if self.use_svi:
+            K_star = self.K_nm
+            f_mean = 0
+        else:
+            K_star = self.obs_C
+            f_mean = self.obs_f
+
+        logrho, lognotrho, _ = self._post_sample(f_mean, None, expectedlog=True, K_star=K_star)
+
+        return logrho, lognotrho
+
     def _post_sample(self, f_mean, f_var=None, expectedlog=False, K_star=None, v=None, u=None):
 
         if v is None:
             v = self.pref_v
         if u is None:
             u = self.pref_u
+
+        if np.isscalar(f_mean):
+            N = 1
+        else:
+            N = f_mean.shape[0]
 
         # since we don't have f_cov
         if K_star is not None and self.use_svi:
@@ -462,11 +479,6 @@ class GPPrefLearning(GPClassifierSVI):
         elif K_star is not None:
             f_samples = mvn.rvs(mean=f_mean.flatten(), cov=K_star, size=1000).T
         else:
-            if np.isscalar(f_mean):
-                N = 1
-            else:
-                N = f_mean.shape[0]
-
             f_samples = np.random.normal(loc=f_mean, scale=np.sqrt(f_var), size=(N, 1000))
 
         # g_f = (f_samples[v, :] - f_samples[u, :])  / np.sqrt(2)
