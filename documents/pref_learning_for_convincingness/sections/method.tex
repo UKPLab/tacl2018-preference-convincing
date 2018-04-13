@@ -10,18 +10,18 @@ We assume that the likelihood of $y$ depends on the latent convincingness, $f(\m
 $f(\mathbf x_j)$, of the arguments in the pair. 
 Our goals is to predict $y$ for pairs that have not been observed, 
 %as well as to predict the convincingness, 
-and $f(\mathbf x_i)$, which may be used to rank arguments.
+and predict $f(\mathbf x_i)$, which may be used to rank arguments.
 The relationship between convincingness and pairwise labels is described by the following:% \emph{preference likelihood}:
 \begin{flalign}
-& p( i \succ j | f(x_i), f(x_j), \delta_{i}, \delta_{j} ) & \nonumber\\
+& p( i \succ j | f(\mathbf x_i), f(\mathbf x_j), \delta_{i}, \delta_{j} ) & \nonumber\\
 & \hspace{0.9cm} = \begin{cases}
- 1 & \text{if }f(x_i) + \delta_{i} \geq f(j) + \delta_{j} \\
+ 1 & \text{if }f(\mathbf x_i) + \delta_{i} \geq f(j) + \delta_{j} \\
  0 & \text{otherwise,}
  \end{cases} &
  \label{eq:pl}
 \end{flalign}
 where $\delta \sim \mathcal{N}(0, 1)$ is Gaussian-distributed noise. 
-If the convincingness $f(x_i)$ is higher than the convincingness $f(x_j)$, 
+If the convincingness $f(\mathbf x_i)$ is higher than the convincingness $f(\mathbf x_j)$, 
 the preference label $i \succ j$ is more likely to be true.
 However, the label also depends on the noise terms, $\delta_{i}$ and $\delta_{j}$,
 to allow for errors caused by, for example, disagreement between human annotators.
@@ -32,13 +32,13 @@ to allow for errors caused by, for example, disagreement between human annotator
 %To obtain the likelihood of a pairwise label given only $f(x_i)$ and $f(x_j)$, 
 We simplify Equation \ref{eq:pl} by integrating out $\delta_{i}$ and $\delta_{j}$ to obtain the \emph{preference likelihood}:
 \begin{flalign}
-& p( i \succ j | f(x_i), f(x_j) ) & \nonumber\\
-& = \int\int p( x_i \succ x_j | f(x_i), f(x_j), \delta_{i}, \delta_{j} ) &\nonumber\\
+& p( i \succ j | f(\mathbf x_i), f(\mathbf x_j) ) & \nonumber\\
+& = \int\int p( i \succ j | f(\mathbf x_i), f(\mathbf x_j), \delta_{i}, \delta_{j} ) &\nonumber\\
 & \hspace{3cm}\mathcal{N}(\delta_{i}; 0, 1)\mathcal{N}(\delta_{j}; 0, 1) d\delta_{i} d\delta_{j} &\nonumber\\
 & = \Phi\left( z \right), 
 \label{eq:plphi}
 \end{flalign}
-where $z = (f(x_i) - f(x_j)) / \sqrt{2}$,
+where $z = (f(\mathbf x_i) - f(\mathbf x_j)) / \sqrt{2}$,
 and $\Phi$ is the cumulative distribution function of the standard normal distribution. 
 
 We assume that convincingness is a function, $f$, of argument features, 
@@ -47,7 +47,7 @@ $k_{\theta}$ is a kernel function with hyper-parameters $\theta$,
 and $s$ is a scale parameter. 
 The kernel function controls the smoothness of $f$ over the feature space,
 while $s$ controls the variance of $f$. 
-Increasing $s$ means that, on average, the magnitude of $f(x_i)-f(x_j)$ increases  
+Increasing $s$ means that, on average, the magnitude of $f(\mathbf x_i)-f(\mathbf x_j)$ increases  
 so that $\Phi(z)$ is closer to $0$ or $1$, and erroneous pairwise labels are less likely.
 Therefore, larger values of $s$ correspond to less observation noise.
 We assume a Gamma distribution $1/s \sim \mathcal{G}(a_0, b_0)$ with shape $a_0$ and scale $b_0$,
@@ -55,11 +55,11 @@ as this is a conjugate prior.
 
 Given $N$ arguments and $P$ labelled preference pairs, $\mathbf y=\{y_1,...,y_P\}$,
 we can make predictions by finding the posterior distribution over the convincingness values, 
-$\mathbf f = \{f(\mathbf{x}_1),...,f(\mathbf{x}_N)\}$, given by:
+$\mathbf f = \{f(\mathbf {x}_1),...,f(\mathbf {x}_N)\}$, given by:
 \begin{flalign}
-& p\left(\mathbf f | \mathbf{y}, k_{\theta}, a_0, b_0 \right) & = \frac{1}{Z} \int \prod_{k=1}^P \Phi\!\left( z_k \right) 
-\mathcal{N}(\bs f; \bs 0, & \bs K_{\theta}s) & \nonumber \\
-& & \mathcal{G}(s; a_0, b_0) ds, 
+& p\left(\mathbf f | \mathbf{y}, k_{\theta}, a_0, b_0 \right) = \frac{1}{Z} \int \prod_{k=1}^P \Phi\!\left( z_k \right) 
+\mathcal{N}(\mathbf f; \mathbf 0, \mathbf K_{\theta}s) \nonumber & \\
+& \hspace{4cm} \mathcal{G}(s; a_0, b_0) \mathrm{d}s, &
 \label{eq:post}
 \end{flalign}
 where $Z = p\left(\mathbf{y} | k_{\theta}, a_0, b_0 \right)$ is the normalization constant.
@@ -77,12 +77,12 @@ Instead, we use a faster \emph{variational} method that maintains the benefits o
 to the preference likelihood given by Equation \ref{eq:plphi}.
 
 To apply the variational approach, we define an approximation $q(\mathbf f)$ to Equation \ref{eq:post}. 
-First, we approximate the preference likelihood with a Gaussian, $\prod_{k=1}^P \Phi\left( z_k \right) \approx \mathcal{N}(\mathbf y; \mathbf G\hat{\mathbf f}, \mathbf Q)$. This allows us to avoid the intractable integral in $Z$ and obtain another Gaussian, $q(\bs f) = \mathcal{N}(\mathbf f; \hat{\mathbf f}, \mathbf C)$. 
+First, we approximate the preference likelihood with a Gaussian, $\prod_{k=1}^P \Phi\left( z_k \right) \approx \mathcal{N}(\mathbf y; \mathbf G\hat{\mathbf f}, \mathbf Q)$. This allows us to avoid the intractable integral in $Z$ and obtain another Gaussian, $q(\mathbf f) = \mathcal{N}(\mathbf f; \hat{\mathbf f}, \mathbf C)$. 
 The parameters $\hat{\mathbf f}$ and $\mathbf C$ 
 depend on the approximate preference likelihood 
 and an approximate distribution over $s$: $q(s) = \mathcal{G}(s; a, b)$. 
 The variational inference algorithm begins by initialising the parameters $\mathbf G$, $ \hat{\mathbf f}$, $\mathbf C$, $a$ and $b$ at random. Then, the  algorithm proceeds iteratively updating each parameter in turn, given the current values for the other parameters. 
-This optimisation procedure minimises the Kullback-Leibler (KL) divergence of $p(\mathbf f |\mathbf y, k_{\theta}, a_0, b_0)$ from $q(f)$, causing $q(f)$ to converge to an approximate posterior. 
+This optimisation procedure minimises the Kullback-Leibler (KL) divergence of $p(\mathbf f |\mathbf y, k_{\theta}, a_0, b_0)$ from $q(\mathbf f)$, causing $q(\mathbf f)$ to converge to an approximate posterior. 
 
 The update equations for the mean $\hat{\mathbf f}$ and covariance $\mathbf C$ require inverting the covariance matrix, $K_{\theta}$, at a computational cost of $\mathcal{O}(N^3)$, which is impractical with more than a few hundred data points. 
 Furthermore, the updates also require $\mathcal{O}(NP)$ computations and
@@ -101,8 +101,8 @@ SVI makes two approximations: it assumes $M$ \emph{inducing points},
 which act as a substitute for the observed arguments;
 it uses only a random subset of the data containing $P_n$ pairs at each iteration. 
 At each iteration, $t$, rather than update $\hat{\mathbf{f}}$ and $\bs C$ directly, 
-we update the mean $\hat{\mathbf{f}_m}$ and covariance $\bs C_m$ for the inducing
-points. The update for each parameter $\lambda \in \{\hat{\mathbf{f}_m}, \bs C_m\}$ takes the form of a weighted mean of the previous estimate and a new estimate computed from only a subset of observations:
+we update the mean $\hat{\mathbf{f}}_m$ and covariance $\bs C_m$ for the inducing
+points. The update for each parameter $\lambda \in \{\hat{\mathbf{f}}_m, \bs C_m\}$ takes the form of a weighted mean of the previous estimate and a new estimate computed from only a subset of observations:
 \begin{flalign}
 \lambda^{(t)} = (1 - \rho_t) \lambda ^ {(t-1)} + \rho_t \hat{\lambda}_t P/P_n,
 \end{flalign}
@@ -119,7 +119,7 @@ By choosing $M <\!\!< N$ and $P_n <\!\!< P$, we limit the computational
 complexity of each SVI iteration to $\mathcal{O}(M^3 + MP_n)$ and the 
 memory complexity $\mathcal{O}(M^2 + MP_n + P_n^2)$.
 To choose representative inducing points, 
-we use K-means++\cite{arthur2007k} with $K=M$ to rapidly cluster the feature vectors, 
+we use K-means++~\cite{arthur2007k} with $K=M$ to rapidly cluster the feature vectors, 
 then take the cluster centres as inducing points.
 Compared to standard K-means, K-means++ introduces a new method for choosing the initial cluster seeds that
 %provides theoretical bounds on the error function. In practice, this 
@@ -133,9 +133,9 @@ where $k_d$ is a function of the distance between the values of feature $d$
 for items $x$ and $x'$, and a length-scale hyper-parameter, $l_d$.
 The length-scale controls the smoothness of the function across the feature space,
 and can be optimised by choosing the value of $l_d$ that maximises the approximate log marginal likelihood, $\mathcal{L} \approx \log p(\bs y)$. 
-This process is known as \emph{maximum likelihood II}~\cite{rasmussen_gaussian_2006}.
+This process is known as \emph{maximum likelihood II (MLII)}~\cite{rasmussen_gaussian_2006}.
 Features with larger length-scales after optimisation are less relevant because their values
 have less effect on $k_{\theta}(\mathbf x, \mathbf x') $.
-To cut out the cost of optimising the length-scales, we can alternatively set them using a median heuristic,
+To avoid the cost of optimising the length-scales, we can alternatively set them using a median heuristic,
 which has been shown to perform well in practice~\cite{gretton2012optimal}: 
 $ l_{d,MH} = \frac{1}{D} \mathrm{median}( \{ |x_{i,d} - x_{j,d}| \forall i=1,..,N, \forall j=1,...,N\} ) $.

@@ -9,8 +9,8 @@ Automated methods could help readers overcome this challenge
  by identifying high-quality, persuasive arguments from both sides of a debate. 
  
 Theoretical approaches for assessing argument quality have proved difficult to apply to everyday arguments~\cite{boudry2015fake}.
-Empirical approaches instead require example judgements of arguments,
-such as those shown in Figure \ref{fig:argument_examples}, to train machine learning methods.
+Empirical machine learning approaches instead train models using example judgements of arguments,
+such as those shown in Figure \ref{fig:argument_examples}.
 %Consider the :
 %how does one assign a numerical convincingness score to each argument? 
 %arguments paired with human judgements of their convincingness.
@@ -32,8 +32,8 @@ Previous approaches to obtaining such judgements include training annotators to 
 asking annotators for simple binary or three-class categories~\cite{wei2016preliminary}, and
 aggregating binary votes from multiple people~\cite{wei2016post,tan2016winning}.
 However, these approaches are limited by the cost of training annotators, 
-a very restricted set of categories, or %that restricts filtering or sorting of arguments, or
-the need for multiple annotators per text.
+a highly restricted set of categories, or %that restricts filtering or sorting of arguments, or
+the need for multiple annotators per document.
 
 An alternative way to judge arguments is to compare them against one another~\cite{habernal2016argument}.
 When comparing the arguments in Figure \ref{fig:argument_examples}, we may judge that argument 1 is less convincing due to its writing style, whereas argument 2 
@@ -49,7 +49,7 @@ toward high, low or middling values, or an individual's bias changing over time.
 % Not really connected to previous paragraph?
 % }
 In practice, we face a data acquisition bottleneck when encountering new domains or audiences.
-For example, machine learning typically requires datasets with 
+For example, neural network methods typically require datasets with 
 many thousands of hand-labelled examples to perform well~\cite{srivastava2014dropout,collobert2011natural}.
 One solution is to employ multiple non-specialist annotators at low cost (\emph{crowdsourcing}), 
 but this requires quality control techniques to account for errors.

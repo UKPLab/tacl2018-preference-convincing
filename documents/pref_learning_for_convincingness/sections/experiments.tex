@@ -34,7 +34,7 @@
 \end{table*}
 We first use toy datasets to illustrate the behaviour of several different methods (described below).
 Then, 
-we analyse the scalability and performance our approach on datasets provided by Habernal and Gurevych~\shortcite{habernal2016argument},
+we analyse the scalability and performance of our approach on datasets provided by Habernal and Gurevych~\shortcite{habernal2016argument},
 which contain pairwise labels for arguments taken from online discussion forums.
 The labels can have a value of $0$, meaning the annotator found the second argument in the pair more convincing,
 $1$ if the annotator was undecided, or $2$ if the first argument was more convincing.
@@ -88,11 +88,11 @@ each fold corresponds to one of 16 controversial topics, and one of two stances 
 Our two tasks are \emph{ranking} arguments by convincingness and  
 \emph{classification} of pairwise labels to predict which argument is more convincing. 
 For both tasks, our proposed GPPL method is trained using the pairwise labels for the training folds.
-We rank arguments by their expected convincingness, $\mathbb{E}[f(\mathbf{x}_n)]\approx \hat{f}_n$ for each argument $i$ with feature vector $\mathbf{x}_n$, under the approximate posterior $q(\bs f)$
+We rank arguments by their expected convincingness, $\mathbb{E}[f(\mathbf{x}_n)]\approx \hat{f}_n$ for each argument $i$ with feature vector $\mathbf{x}_n$, under the approximate posterior $q(\mathbf f)$
 output by our SVI algorithm.
 We obtain classification probabilities using Equation \ref{eq:plphi} but 
-accommodate the posterior covariance, $\bs C$, of $f$, by replacing $z$ with $\hat{z} = (\hat{f}(\bs x_i) - \hat{f}(\bs x_j)) / \sqrt{2 + C_{ii} + C_{jj} - C_{ij} - C_{ji}}$.
-We tested the sensitivity of GPPL to the seed values for K-means++ by training the model on the same $31$ folds of UKPConvArgStrict $20$ times, each with a different random seed, then testing on the remaining fold.
+accommodate the posterior covariance, $\mathbf C$, of $\mathbf f$, by replacing $z$ with $\hat{z} = (\hat{f}(\mathbf x_i) - \hat{f}(\mathbf x_j)) / \sqrt{2 + C_{ii} + C_{jj} - C_{ij} - C_{ji}}$.
+We tested the sensitivity of GPPL to the choice of seed values for K-means++ by training the model on the same $31$ folds of UKPConvArgStrict $20$ times, each with a different random seed, then testing on the remaining fold.
 The resulting accuracy had a standard deviation of $0.03$. 
 In the following experiments, all methods were initialised and trained once for each fold of each experiment.
 
@@ -147,7 +147,7 @@ We also evaluate a non-Bayesian approach that uses the same pairwise likelihood 
 but uses them to train an SVM regression model instead of a GP (\emph{PL+SVR}).
 
 We use two sets of input features. The \emph{ling} feature set contains $32010$ linguistic features,  
-including unigrams, bigrams, parts-of-speech n-grams, production rules,
+including unigrams, bigrams, parts-of-speech (POS) n-grams, production rules,
 ratios and counts of word length, punctuation and verb forms,
 dependency tree depth, named entity type counts,
 readability measures, sentiment scores, and spell-checking.
@@ -180,28 +180,28 @@ Following those results, we set $M=500$ for Experiments 3, 4 and 5 and $M=N$ for
 \centering
 \captionsetup[subfloat]{labelformat=empty}
 \subfloat[\;no cycle]{
-  \includegraphics[width=.22\columnwidth, clip=True, trim=60 60 45 24]{figures/cycles_demo/no_cycle/GPPL_probas}
+  \includegraphics[width=.22\columnwidth, clip=True, trim=58 20 47 24]{figures/cycles_demo2/no_cycle/GPPL_probas}
 }
 \subfloat[single cycle]{
-  \includegraphics[width=.205\columnwidth, clip=True, trim=70 60 48 24]{figures/cycles_demo/simple_cycle/GPPL_probas}
+  \includegraphics[width=.205\columnwidth, clip=True, trim=70 20 48 24]{figures/cycles_demo2/simple_cycle/GPPL_probas}
 }
 \subfloat[double cycle]{
-  \includegraphics[width=.205\columnwidth, clip=True, trim=70 60 48 24]{figures/cycles_demo/double_cycle/GPPL_probas}
+  \includegraphics[width=.205\columnwidth, clip=True, trim=70 20 48 24]{figures/cycles_demo2/double_cycle/GPPL_probas}
 }
 \subfloat[9 undecided\;\;\;\;\;]{
-  \includegraphics[width=.27\columnwidth, clip=True, trim=60 60 5 24]{figures/cycles_demo/undecided/GPPL_probas_2}
+  \includegraphics[width=.278\columnwidth, clip=True, trim=55 20 4 20]{figures/cycles_demo2/undecided/GPPL_probas}
 }\\
 \subfloat[]{
-  \includegraphics[width=.22\columnwidth, clip=True, trim=60 45 45 24]{figures/cycles_demo/no_cycle/SVM_probas} 
+  \includegraphics[width=.22\columnwidth, clip=True, trim=58 5 47 24]{figures/cycles_demo2/no_cycle/SVM_probas} 
 }
 \subfloat[]{
-  \includegraphics[width=.205\columnwidth, clip=True, trim=70 45 48 24]{figures/cycles_demo/simple_cycle/SVM_probas} 
+  \includegraphics[width=.205\columnwidth, clip=True, trim=70 5 48 24]{figures/cycles_demo2/simple_cycle/SVM_probas} 
 }
 \subfloat[]{
-  \includegraphics[width=.205\columnwidth, clip=True, trim=70 45 48 24]{figures/cycles_demo/double_cycle/SVM_probas} 
+  \includegraphics[width=.205\columnwidth, clip=True, trim=70 5 48 24]{figures/cycles_demo2/double_cycle/SVM_probas} 
 }
 \subfloat[]{
-  \includegraphics[width=.27\columnwidth, clip=True, trim=60 45 5 24]{figures/cycles_demo/undecided/SVM_probas} 
+  \includegraphics[width=.278\columnwidth, clip=True, trim=55 5 4 20]{figures/cycles_demo2/undecided/SVM_probas} 
 }
 \caption{Mean GPPL (top row) and SVM (bottom row) predictions over 25 repeats. Probability that the argument 
 on the horizontal axis $\succ$ the argument on the vertical axis.}
@@ -220,17 +220,17 @@ predict ranks and pairwise labels for arguments arg0 to arg4.
 \begin{figure*}[h]
 \centering
 \subfloat[Varying no. arguments in training set, Glove features]{
-\includegraphics[width=0.55\columnwidth, clip=True, trim=12 54 12 10]{figures/scalability/num_arguments.pdf}
+\includegraphics[width=0.56\columnwidth, clip=True, trim=12 53 0 20]{figures/scalability/num_arguments.pdf}
 \label{fig:scale_N}
 }
 \hspace{0.1cm}
 \subfloat[Varying no. ling+Glove features, GPPL, medi., M=500]{
-\includegraphics[width=0.55\columnwidth, clip=True, trim=0 47 25 10]{figures/scalability/num_features_gppl.pdf}
+\includegraphics[width=0.55\columnwidth, clip=True, trim=20 47 0 20]{figures/scalability/num_features_gppl.pdf}
 \label{fig:scale_dims}
 }
 \hspace{0.1cm}
 \subfloat[Varying no. ling+Glove features, long-running methods]{
-\includegraphics[width=0.59\columnwidth, clip=True, trim=0 58 14 10]{figures/scalability/num_features_others.pdf}
+\includegraphics[width=0.59\columnwidth, clip=True, trim=0 58 10 20]{figures/scalability/num_features_others.pdf}
 \label{fig:scale_dims_others}
 }
 \caption{Runtimes for training+prediction on UKPConvArgStrict with different subsamples of data. Means over 32 runs. Note logarithmic x-axis for (b) and (c). }
@@ -238,11 +238,11 @@ predict ranks and pairwise labels for arguments arg0 to arg4.
 \begin{figure}[t]
 \subfloat[33210 ling+Glove features]{
 \hspace{-1.5mm}
-\includegraphics[width=0.49\columnwidth, clip=True, trim=4 40 15 0]{figures/scalability/num_inducing_32310_features.pdf}
+\includegraphics[width=0.49\columnwidth, clip=True, trim=4 40 13 12]{figures/scalability/num_inducing_32310_features.pdf}
 \label{fig:scale_M_b}}
 \subfloat[300 Glove features]{
 \hspace{-1.5mm}
-\includegraphics[width=0.48\columnwidth, clip=True, trim=10 40 17 0]{figures/scalability/num_inducing_300_features.pdf}
+\includegraphics[width=0.48\columnwidth, clip=True, trim=8 40 17 12]{figures/scalability/num_inducing_300_features.pdf}
 \label{fig:scale_M_a}}
 \caption{Effect of varying $M$ on accuracy and runtime (training+prediction) of GPPL for UKPConvArgStrict.  Means over 32 runs.}
 \label{fig:scale_M}
@@ -272,7 +272,7 @@ The SVM and PageRank are unaffected as they cannot be trained using the undecide
 However, the GPPL classifications are less confident and the difference in GPPL scores between arg0 and the other arguments decreases, since GPPL gives the edge from arg2 to arg0 less weight.
 
 In conclusion, GPPL appears to resolve conflicts in the preference graphs
-more intuitively than PageRank, which was designed for ranking web pages by 
+more intuitively than PageRank, which was designed to rank web pages by 
 importance rather than preference. 
 In contrast to SVM, GPPL is able to account for cycles and undecided labels to soften its predictions.
 
@@ -282,7 +282,7 @@ We analyse empirically the scalability of the proposed SVI method for GPPL using
 Figure \ref{fig:scale_M} shows the effect of varying the number of inducing points, $M$, on the overall runtime and accuracy of the method. The accuracy increases quickly with $M$, and flattens out, suggesting there is little benefit to increasing  $M$ further on this dataset. 
 The runtimes increase with $M$,  and are much longer with 32310 features than with 300 features.
 The difference is due to the cost of computing the kernel, which is linear in $M$,
-With only $300$ features, Figure \ref{fig:scale_M_b} appears polynomial, reflecting the 
+With only $300$ features, the Figure \ref{fig:scale_M_a} runtime appears polynomial, reflecting the 
 $\mathcal{O}(M^3)$ term in the inference procedure. 
 
 \begin{table*}
@@ -368,11 +368,11 @@ Using a combination of features improves all methods, suggesting that embeddings
 Optimising the length-scale using MLII improves classification accuracy by 1\% over the median heuristic,
 and significantly improves accuracy ($p=.043$) and AUC ($p=.013$) 
 over the previous state-of-the-art, SVM \emph{ling}.
-The differences in all ranking metrics between GPPL opt. and SVM \emph{ling + Glove} 
-are statistically significant, with $p=.029$ for Pearson's $r$ and $p<\!<\!<.01$ for both 
-Spearman's $\rho$ and Kendall's $\tau$.
 However, the cost of these improvements is that each fold required around 2 hours to compute instead of 
 approximately 10 minutes on the same machine (Intel i7 quad-core desktop) using the median heuristic. 
+The differences in all ranking metrics between GPPL opt. and SVM \emph{ling + Glove} 
+are statistically significant, with $p=.029$ for Pearson's $r$ and $p<\!\!<\!\!<.01$ for both 
+Spearman's $\rho$ and Kendall's $\tau$.
 
 GPC produces the best results on the classification task ($p<.01$ for all metrics compared to all other methods), 
 indicating the benefits of a Bayesian approach over SVM and BiLSTM.
@@ -414,7 +414,7 @@ We use UKPConvArgCrowdSample to introduce noisy data
 and conflicting pairwise labels
 to both the classification and regression tasks, to test
 the hypothesis that GPPL would best handle unreliable crowdsourced data.
-The evaluation uses the labels from UKPConvArgStrict and UKPConvArgRank for items in the test set.
+The evaluation uses gold labels from UKPConvArgStrict and UKPConvArgRank for the test set.
 The results in Table \ref{tab:noisy} show that all methods perform worse compared to 
 Experiment 3 due to the presence of errors in the pairwise labels. 
 Here, GPPL produces the best classification accuracy and cross-entropy error (significant with $p<\!\!<\!\!<.01$ compared to all other methods except accuracy compared to GP+SVR, for which $p=.045$), while GPC has the highest AUC ($p<\!\!<\!\!<$ compared to all except GP+SVR, which was not significant). 
@@ -447,7 +447,8 @@ used to re-train the model. We repeated the process until $400$ labels had been 
 The result is plotted in Figure \ref{fig:active_learning}, showing that GPPL
 reaches a mean accuracy of 70\% with only 100 labels, while SVM and BiLSTM do not reach the same performance given 400 labels. 
 After 100 labels, the 
-performance of BiLSTM decreases. It has previously been shown ~\cite{cawley2011baseline,guyon2011results,settles2010active} that uncertainty sampling sometimes causes accuracy to decrease if the model overfits to a small sample, causing it to mis-classify some data points with high confidence so that they are not selected and corrected by uncertainty sampling.  
+performance of BiLSTM decreases. It has previously been shown ~\cite{cawley2011baseline,guyon2011results,settles2010active} that uncertainty sampling sometimes causes accuracy to decrease. If the model overfits to a small dataset, 
+it can mis-classify some data points with high confidence so that they are not selected and corrected by uncertainty sampling.  
 The larger number of parameters in the BiLSTM may make it may more prone to overfitting with small datasets than SVM or GPPL. 
 The Bayesian approach of GPPL aims to further 
 reduce overfitting by accounting for parameter uncertainty.
@@ -471,17 +472,19 @@ Figure \ref{fig:boxplot} shows the distribution of length-scales for each catego
 optimisation improved accuracy by $\>3\%$. The length-scales
 were normalised by dividing by their median heuristic values, 
 which were their initial values before optimisation.
-To limit computation time, the optimisation algorithm was restricted to $25$ iterations, so may only have fully optimised features with larger gradients, 
-hence a large number of feature values remain close to $1$.
-The widest distributions of length-scales are for the mean word embeddings and the ``other'' category, while a very large number of ngram and production rule features 
-have length-scales close to $1$. The latter features may be weakly informative, 
-as their length-scales have not been increased, or there may be insufficient 
-data to learn these length-scales given the restricted number of iterations.
-For n-grams, the relationship to convincingness may be topic-specific, 
-hence they are not identified as important when the model is trained on $31$ different topics. 
+The widest distributions of length-scales are for the mean word embeddings and the ``other'' category.
+A very large number of features have length-scales close to $1$,
+which may mean that they are weakly informative, as their length-scales have not been increased,
+or that there was insufficient data or time to learn their length-scales.
+To limit computation time, the optimisation algorithm was restricted to $25$ iterations, 
+so may only have fully optimised features with larger gradients, 
+leaving other features with normalised length-scales close to $1$.
+ 
 Table \ref{tab:extreme_features} shows features with length-scales $<0.99$,
 of which there are two production rule features and $18$ POS-n-gram features,
 suggesting that the latter may capture more relevant aspects of grammar for convincingness. 
+For n-grams, the relationship to convincingness may be topic-specific, 
+hence they are not identified as important when the model is trained on $31$ different topics. 
 %The n-grams with length-scales $<0.99$ may be indicative of the
 %number of sentences -- it is possible very short arguments correlate with
 %less convincing arguments.
@@ -489,19 +492,19 @@ The fact that MLII did not substantially shorten the length-scales for n-grams a
 corresponds to previous results ~\cite{persing2017can}, which found these feature sets less informative than other argument-related feature sets.
  
 Table \ref{tab:extreme_features} also presents a breakdown of the ``other'' features into sentiment, ratio, count and NER features. 
-The shortest length-scales are for sentiment features, suggesting a link between 
+The shortest length-scales are for sentiment features, pointing to a possible link between 
 argumentation quality and sentiment. However, ``VeryPositive'' was the feature with
 the largest length-scale, either because the median was a poor heuristic in this case or
 because the feature was uninformative, perhaps because sarcastic statements can be confused with highly positive sentiment.
 The short length-scale for the ``words $>6$ letters'' ratio suggest that some surface features may be informative,
 despite previous work \cite{wei2016post} finding a set of surface features less informative than other feature sets. 
-In this case, longer words may relate to more convincing arguments. 
+In this case, longer words may relate to more sophisticated and convincing arguments. 
 % It is possible that continuing the optimisation procedure for a larger number of steps would 
 % identify large length-scales for other features that may be discarded. However, caution is 
 % required to avoid overfitting to the training set during optimisation~\cite{qi2004predictive}.
 \begin{figure}[h]
 \includegraphics[width=\columnwidth, clip=True, trim=32 0 57 0]{figures/features2/boxplot}
-\caption{Histograms of mean length-scales on folds where MLII optimization improved performance.}
+\caption{Histograms of mean normalised length-scales on folds where MLII improved performance $>3\%$.}
 \label{fig:boxplot}
 \end{figure}
 % old results pre bug-fix
@@ -739,15 +742,15 @@ These cases may not be distinguishable by a GP given only \emph{ling + Glove} fe
 % Shows better division between certain and uncertain predictions
 An expected advantage of GPPL is that it provides more meaningful uncertainty estimates for tasks such as active learning. 
 We examined whether erroneous classifications correspond to more uncertain predictions
-when using GPPL and SVM when both methods use the \emph{ling} features.
+with GPPL \emph{ling} and SVM \emph{ling}.
 For UKPConvArgStrict, the mean Shannon entropy
 of the pairwise predictions from GPPL 
 was .129 for correct predictions and 2.443 for errors,
 while for SVM, the mean Shannon entropy was  .188 for correct predictions and 
 1.583 for incorrect.
-With both methods, more uncertain predictions correlate with more errors,
+With both methods, more uncertain (higher entropy) predictions correlate with more errors,
 but the more extreme values for GPPL suggest that its output probabilities more 
-accurately reflect uncertainty than those given by the SVM.
+accurately reflect uncertainty than those produced by the SVM.
 
 % % the analysis below is possible only using the predictions for the training points; however we do not predict for
 % % the provided training points?
