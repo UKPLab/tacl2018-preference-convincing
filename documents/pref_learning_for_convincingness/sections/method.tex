@@ -24,12 +24,7 @@ where $\delta \sim \mathcal{N}(0, 1)$ is Gaussian-distributed noise.
 If the convincingness $f(x_i)$ is higher than the convincingness $f(x_j)$, 
 the preference label $i \succ j$ is more likely to be true.
 However, the label also depends on the noise terms, $\delta_{i}$ and $\delta_{j}$,
-to allow for 
-%the possibility that observed pairwise labels  
-%not always reflect the underlying convincingness values,
-%since they may 
-%contain 
-errors caused by, for example, disagreement between human annotators.
+to allow for errors caused by, for example, disagreement between human annotators.
 %, or interpreting clicks in a user interface as preferences between the items displayed.
 %Errors may also occur if pairwise labels are derived from implicit data such as clicks streams. For example,  
 %a user selecting one argument from a list rather than another may be treated as a pairwise preference label that gives a 
@@ -49,12 +44,7 @@ and $\Phi$ is the cumulative distribution function of the standard normal distri
 We assume that convincingness is a function, $f$, of argument features, 
 drawn from a Gaussian process prior: $f \sim \mathcal{GP}(0, k_{\theta}s)$, where 
 $k_{\theta}$ is a kernel function with hyper-parameters $\theta$, 
-and $s$ is a scale parameter.
-%A Gaussian process (GP) is a nonparametric distribution over functions, meaning  
-%it does not assume a fixed number of parameters \textit{a priori} and instead allows the model complexity to grow to fit the data.  
-%that determine the complexity of the function,
-%and can instead describe complex, nonlinear relationships between feature vectors and convincingness. 
-% point about regularising needs to come when we discuss inference.
+and $s$ is a scale parameter. 
 The kernel function controls the smoothness of $f$ over the feature space,
 while $s$ controls the variance of $f$. 
 Increasing $s$ means that, on average, the magnitude of $f(x_i)-f(x_j)$ increases  
@@ -62,11 +52,7 @@ so that $\Phi(z)$ is closer to $0$ or $1$, and erroneous pairwise labels are les
 Therefore, larger values of $s$ correspond to less observation noise.
 We assume a Gamma distribution $1/s \sim \mathcal{G}(a_0, b_0)$ with shape $a_0$ and scale $b_0$,
 as this is a conjugate prior.
-%, which makes the form of posterior easier to work with: 
-.
 
-% should we just write the posterior in here? If so, need to index y by k, and therefore i and j by k. 
-%It depends on whether the following section makes any sense without it.
 Given $N$ arguments and $P$ labelled preference pairs, $\mathbf y=\{y_1,...,y_P\}$,
 we can make predictions by finding the posterior distribution over the convincingness values, 
 $\mathbf f = \{f(\mathbf{x}_1),...,f(\mathbf{x}_N)\}$, given by:

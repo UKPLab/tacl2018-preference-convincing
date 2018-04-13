@@ -100,7 +100,6 @@ We compare GPPL to an SVM with radial basis function kernel,
 and a bi-directional long short-term memory network (BiLSTM),
 with $64$ output nodes in the core LSTM layer. 
 The SVM and BiLSTM were tested by Habernal and Gurevych~\shortcite{habernal2016argument} and are available in our software repository.
-%We extended the BiLSTM approach to accommodate argument-level features as well as word sequences by adding a %fully-connected layer with $64$ units.
 To apply SVM and BiLSTM to the classification task, we concatenate the feature vectors of each pair of arguments and train on the pairwise labels.
 For ranking, PageRank is first applied to arguments in the training folds to obtain scores from the pairwise labels,
 which are then used to train the SVM and BiLSTM regression models.
@@ -192,12 +191,6 @@ Following those results, we set $M=500$ for Experiments 3, 4 and 5 and $M=N$ for
 \subfloat[9 undecided\;\;\;\;\;]{
   \includegraphics[width=.27\columnwidth, clip=True, trim=60 60 5 24]{figures/cycles_demo/undecided/GPPL_probas_2}
 }\\
-%\caption{Mean GPPL predictions over 25 repeats. Probability that the argument 
-%on the horizontal axis is preferred to the argument on the vertical axis.}
-%\label{fig:gppl_classification}
-%\end{figure}
-%\begin{figure}[t]
-%\centering
 \subfloat[]{
   \includegraphics[width=.22\columnwidth, clip=True, trim=60 45 45 24]{figures/cycles_demo/no_cycle/SVM_probas} 
 }
@@ -266,7 +259,6 @@ although arg0 and arg1 are in a cycle so there is no reason to prefer them.
 GPPL, in contrast,  weakly predicts that arg3 is preferred.
 
 The ``double cycle" scenario contains two paths from arg2 to arg0, via arg1 or arg3, and one conflicting
-%PageRank and GPPL produce very different results. Here, the argument graph shows 
 preference arg2 $\succ$ arg0. 
 GPPL scores the arguments as if the single conflicting preference, arg2 $\succ$ arg0, 
 is less important than the two parallel paths from arg2 to arg0. 
@@ -274,10 +266,8 @@ In contrast, PageRank gives high scores to both arg0 and arg2.
 The classifications by GPPL and SVM are similar, but GPPL produces more uncertain 
 predictions than in the first scenario due to the conflict.
 
-%``cycle with 9 undecided prefs"
 Finally,  Figure \ref{fig:ugraph} shows the addition of $9$ undecided labels to the ``no cycle" scenario, indicated by 
 undirected edges in Figure \ref{fig:arg_graph}, to simulate multiple annotators viewing the pair without being able to choose the most convincing argument.
-%and did not all agree. 
 The SVM and PageRank are unaffected as they cannot be trained using the undecided labels.
 However, the GPPL classifications are less confident and the difference in GPPL scores between arg0 and the other arguments decreases, since GPPL gives the edge from arg2 to arg0 less weight.
 
@@ -288,14 +278,12 @@ In contrast to SVM, GPPL is able to account for cycles and undecided labels to s
 
 \subsection{Experiment 2: Scalability}
 
-%In Section \ref{sec:model}, we introduced a scalable inference method (SVI) for the GPPL model and described its theoretical complexity. 
 We analyse empirically the scalability of the proposed SVI method for GPPL using the UKPConvArgStrict dataset.
 Figure \ref{fig:scale_M} shows the effect of varying the number of inducing points, $M$, on the overall runtime and accuracy of the method. The accuracy increases quickly with $M$, and flattens out, suggesting there is little benefit to increasing  $M$ further on this dataset. 
-The runtimes 
-increase with $M$,  and are much longer with 32310 features than with 300 features.
-%although it is not clear that the $\mathcal{O}(M^3)$ term  to identify the relationship from the plots as the runtime is affected by several computations that scale as a function of $M$. 
+The runtimes increase with $M$,  and are much longer with 32310 features than with 300 features.
 The difference is due to the cost of computing the kernel, which is linear in $M$,
-With only $300$ features, Figure \ref{fig:scale_M_b} appears polynomial, reflecting the $\mathcal{O}(M^3)$ term in the inference procedure. 
+With only $300$ features, Figure \ref{fig:scale_M_b} appears polynomial, reflecting the 
+$\mathcal{O}(M^3)$ term in the inference procedure. 
 
 \begin{table*}
 \small
@@ -317,46 +305,28 @@ Kendall's $\tau$: &.34 & .34 &.27 & .31 &.47 &.31  &.49   &  \textbf{.50} & - & 
   \caption{Performance comparison on UKPConvArgStrict and UKPConvArgRank datasets. }
   \label{tab:clean_results}
 \end{table*}
-%SVI limits the computational and memory complexity of each iteration of the variational inference algorithm. However, the number of iterations
-%required for the algorithm to converge is hard to analyse theoretically. 
 We tested GPPL with both the SVI algorithm, with $M=100$ and $P_n=200$, and variational inference without inducing points or stochastic updates (labelled ``no SVI'') with different sizes of training dataset subsampled from UKPConvArgStrict. 
-The results are shown in Figure \ref{fig:scale_N}.
-For GPPL with SVI, the runtime increases very little with dataset size,
-%, suggesting that the number of iterations required does not substantially increase with the training set size in this dataset. As expected, t
-while the runtime with ``no SVI'' increases polynomially with training set size (both $N$ and $P$).
-%, reflecting the increasing value of both the number of arguments, $N$, and the number of pairs, $P$. 
+The results are shown in Figure \ref{fig:scale_N}. 
+For GPPL with SVI, the runtime increases very little with dataset size, 
+while the runtime with ``no SVI'' increases polynomially with training set size (both $N$ and $P$). 
 At $N=100$, the number of inducing points is $M=N$ but the SVI algorithm is still faster due to the stochastic updates with $P_n=200 <\!\!<\!\!< P$ pairs.
-% used by ``no SVI''.
 
-%Noting that GPPL runtimes are significantly lower with smaller feature sets, we tested
-Figure \ref{fig:scale_dims} shows
-the effect of the number of features, $D$, on runtimes.  
+Figure \ref{fig:scale_dims} shows the effect of the number of features, $D$, on runtimes.  
 Runtimes for GPPL increase by a large amount with $D=32310$,
- because the SVI method computes the kernel matrix, $K_{mm}$, with computational complexity $\mathcal{O}(D)$. While $D$ is small, other
-costs dominate.
-%, but since the other key terms $M$ and $P_n$ are fixed, 
-%$\mathcal{O}(D)$ computations becomes important when $D$ is large, hence the near 
-%ten-fold increase in runtime from $3000$ to $32310$ features. 
+ because the SVI method computes the kernel matrix, $K_{mm}$, with computational complexity $\mathcal{O}(D)$. 
+ While $D$ is small, other costs dominate. 
 We show runtimes using the MLII optimisation procedure with GPPL in Figure \ref{fig:scale_dims_others}. 
 Owing to the long computation times required, the procedure was limited to
 a maximum of 25 iterations and did not terminate in fewer than 25 in any of the test runs. 
 This creates a similar pattern to Figure \ref{fig:scale_dims} (approximately multiples of $50$).
-%, we were unable to test the optimisation
-%procedure to convergence. 
-%However, the results in the next section demonstrate that MLII optimisation can be 
-%valuable even with a restricted number of iterations.  
 
-%To give an idea of how our GPPL implementation scales in comparison to the other approaches, 
 We include runtimes for SVM and BiLSTM in Figures \ref{fig:scale_N} and
 \ref{fig:scale_dims_others} to show their runtime patterns, but note that the runtimes reflect differences in implementations and system hardware.
 Both SVM and GPPL were run on an Intel i7 quad-core desktop. For SVM we used LibSVM version 3.2, which could be sped up if probability estimates were not required.
-%, as they involve a costly cross-validation step. 
 BiLSTM was run with Theano 0.7\footnote{\url{http://deeplearning.net/software/theano/}} on an Nvidia Tesla P100 GPU. 
 We can see in Figure \ref{fig:scale_dims_others} that the runtime for BiLSTM does
 not appear to increase due to the number of features, while that of SVM increases sharply with $32310$ features. 
-%The sequential model of BiLSTM takes as input up to $300$ Glove features for each word of an argument, whereas GPPL and SVM use a single mean vector per argument, so the true number of inputs to BiLSTM is far greater. With $>=3000$ features, the BiLSTM runtime decreases, which may mean that the algorithm is converging faster with more data.
- In Figure \ref{fig:scale_N}, we observe the SVM runtimes increase polynomially with training set size. 
- %With these smaller training set sizes, SVM has shorter runtimes than  BiLSTM, which may have more computational overheads independent of training set size, but is slower in Figure \ref{fig:scale_dims_others} with $1052$ arguments and the same number of features.
+In Figure \ref{fig:scale_N}, we observe the SVM runtimes increase polynomially with training set size. 
 
 \subsection{Experiment 3: UKPConvArgStrict and UKPConvArgRank}
 % \todo{statistical significance? paired Wilcoxon signed-rank test, GPPL ARD vs. SVM. }
@@ -406,9 +376,7 @@ approximately 10 minutes on the same machine (Intel i7 quad-core desktop) using 
 
 GPC produces the best results on the classification task ($p<.01$ for all metrics compared to all other methods), 
 indicating the benefits of a Bayesian approach over SVM and BiLSTM.
-%and showing directly training a classifier in some cases performs better than the GPPL approach of regression through the pairwise likelihood. 
 However, unlike GPPL, GPC cannot be used to rank the arguments.
-%, GPPL may be more suitable in some situations. 
 The results also show that PL+SVR does not reach the same performance as GPPL, 
 suggesting that GPPL may benefit from the Bayesian integration of a GP with the preference likelihood. 
 
@@ -451,15 +419,9 @@ The results in Table \ref{tab:noisy} show that all methods perform worse compare
 Experiment 3 due to the presence of errors in the pairwise labels. 
 Here, GPPL produces the best classification accuracy and cross-entropy error (significant with $p<\!\!<\!\!<.01$ compared to all other methods except accuracy compared to GP+SVR, for which $p=.045$), while GPC has the highest AUC ($p<\!\!<\!\!<$ compared to all except GP+SVR, which was not significant). 
 Compared to UKPConvArgStrict, the classification performance of GPC, SVM and BiLSTM decreased more than that of GPPL.
-%, 
-% which may be  due to the much larger input space 
- %caused by concatenating the feature vectors of the items in each pair. This increases the sparsity of the training data, which may be more problematic when training using noisy labels, since there are fewer neighbouring labels in the higher-dimensional 
-%feature space to correct the errors. 
-%Furthermore, GPC, SVM and BiLSTM
 These methods lack a mechanism to resolve conflicts in the preference graph, unlike GPPL and PL+SVR, which handle conflicts through the preference likelihood.  
 PL+SVR again performs worse than GPPL on classification metrics, although its ranking performance is comparable. 
 For ranking, GPPL again outperforms SVM and BiLSTM in all metrics (significant with $p<\!\!<\!\!<.01$ in all cases except for SVM with Pearson's correlation).
-% while for other methods it remains the same as for UKPConvArgAll. 
 
 %Comparing both features to individual sets on this dataset... the only significant diffs are:    
 %SVM, both vs. ling
@@ -484,9 +446,6 @@ used to re-train the model. We repeated the process until $400$ labels had been 
 
 The result is plotted in Figure \ref{fig:active_learning}, showing that GPPL
 reaches a mean accuracy of 70\% with only 100 labels, while SVM and BiLSTM do not reach the same performance given 400 labels. 
-%The accuracy of GPPL also increases by approximately 17\% given 200 labels, while SVM increases
-%approximately 6\% and BiLSTM only 2\%. 
-%The accuracy of GPPL increases more rapidly than BiLSTM at first, after which the 
 After 100 labels, the 
 performance of BiLSTM decreases. It has previously been shown ~\cite{cawley2011baseline,guyon2011results,settles2010active} that uncertainty sampling sometimes causes accuracy to decrease if the model overfits to a small sample, causing it to mis-classify some data points with high confidence so that they are not selected and corrected by uncertainty sampling.  
 The larger number of parameters in the BiLSTM may make it may more prone to overfitting with small datasets than SVM or GPPL. 
@@ -500,24 +459,13 @@ The results suggest that GPPL may be more suitable than the alternatives in cold
 \label{fig:active_learning}
 \end{figure}
 
-% This plot is invalid because SVM and BiLSTM are trained on the output from PageRank, which was trained with all the data!
-% \begin{figure}
-% \includegraphics[width=1.0\columnwidth,trim=0 0 0 23,clip=true]{figures/active_learning/test_pearson}
-% \caption{Active learning simulation for the three methods showing the mean pearson correlation with the gold standard ranking over 32 runs.}
-% \end{figure}
-
 \subsection{Relevant Feature Determination}
 
-% \todo{how much does this really show us? Could we skip this section to make more space for error analysis?
-% In contrast with Lampos et al 2014, we cannot identify a small number of important features --> looks like we need
-% a combination, perhaps a hierarchical feature representation.}
 We now examine the length-scales learned by optimising GPPL using MLII  
 to identify informative features. 
 A larger length-scale causes greater smoothing, 
 implying that the feature is less relevant when predicting the convincingness function
 than a feature with a small length-scale. 
-%In contrast, small length-scales indicate more informative features, since their
-%precise value affects the latent preference function.
 Figure \ref{fig:boxplot} shows the distribution of length-scales for each category of
 \emph{ling+Glove} features, averaged over the folds in UKPConvArgStrict where MLII
 optimisation improved accuracy by $\>3\%$. The length-scales
@@ -531,22 +479,15 @@ as their length-scales have not been increased, or there may be insufficient
 data to learn these length-scales given the restricted number of iterations.
 For n-grams, the relationship to convincingness may be topic-specific, 
 hence they are not identified as important when the model is trained on $31$ different topics. 
-%The informativeness of production rules would be reduced if high quality and low quality arguments share common grammatical structures.
 Table \ref{tab:extreme_features} shows features with length-scales $<0.99$,
 of which there are two production rule features and $18$ POS-n-gram features,
 suggesting that the latter may capture more relevant aspects of grammar for convincingness. 
 %The n-grams with length-scales $<0.99$ may be indicative of the
 %number of sentences -- it is possible very short arguments correlate with
 %less convincing arguments.
-%However, the small changes to the 
 The fact that MLII did not substantially shorten the length-scales for n-grams and POS n-grams 
 corresponds to previous results ~\cite{persing2017can}, which found these feature sets less informative than other argument-related feature sets.
  
-%suggesting that some of these features are far more informative for argument convincingness than others.
-%The length-scales for many dimensions of the mean word embeddings were increased,
-%giving ratios close to $4$ times the median heuristic, 
-%suggesting that these dimensions may be
-%only very weakly informative in comparison to other dimensions of the embedding %vectors. 
 Table \ref{tab:extreme_features} also presents a breakdown of the ``other'' features into sentiment, ratio, count and NER features. 
 The shortest length-scales are for sentiment features, suggesting a link between 
 argumentation quality and sentiment. However, ``VeryPositive'' was the feature with
@@ -554,11 +495,7 @@ the largest length-scale, either because the median was a poor heuristic in this
 because the feature was uninformative, perhaps because sarcastic statements can be confused with highly positive sentiment.
 The short length-scale for the ``words $>6$ letters'' ratio suggest that some surface features may be informative,
 despite previous work \cite{wei2016post} finding a set of surface features less informative than other feature sets. 
-In this case, longer words may relate to more convincing arguments.
-%the largest
-%and smallest ratios for embeddings and linguistic features. The unigram "safety" has
-%a very high length-scale, suggesting it is not informative and could be discarded. 
-%In future, features with large length-scales could be discarded to reduce the computational cost of training and prediction. 
+In this case, longer words may relate to more convincing arguments. 
 % It is possible that continuing the optimisation procedure for a larger number of steps would 
 % identify large length-scales for other features that may be discarded. However, caution is 
 % required to avoid overfitting to the training set during optimisation~\cite{qi2004predictive}.
@@ -567,6 +504,7 @@ In this case, longer words may relate to more convincing arguments.
 \caption{Histograms of mean length-scales on folds where MLII optimization improved performance.}
 \label{fig:boxplot}
 \end{figure}
+% old results pre bug-fix
 % \begin{table}
 % \small
 %   \begin{tabularx}{\columnwidth}{l | X }

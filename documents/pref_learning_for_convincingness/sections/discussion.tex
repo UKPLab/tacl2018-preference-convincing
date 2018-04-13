@@ -7,16 +7,13 @@ that is suitable for large NLP datasets.
 Our experiments demonstrated that our method significantly outperforms the state-of-the-art
 on a benchmark dataset for argument convincingness, 
 particularly when noisy and conflicting pairwise labels are used in training.
-%reducing dependence on a quality control pipeline for crowdsourced data. 
-Active learning experiments showed that GPPL is an effective model 
-for cold-start situations 
+Active learning experiments showed that GPPL is an effective model for cold-start situations 
 and that the convincingness of Internet arguments can be predicted reasonably 
 well given only a small number of samples.
-%or for learning from implicit user feedback.
 The results also showed that linguistic features and word embeddings provide complementary information,
 and that GPPL can be used to automatically identify relevant features.
 
 Future work will evaluate our approach on other NLP tasks 
 where reliable classifications may be difficult to obtain, 
-such as learning to classifiy text from implicit user feedback~\cite{joachims2002optimizing}.
+such as learning to classify text from implicit user feedback~\cite{joachims2002optimizing}.
 We also plan to investigate training the GP using absolute scores in combination with pairwise labels.
