@@ -3,17 +3,17 @@
 First, we define a probabilistic model for preference learning~\cite{chu2005preference}.
 We observe preference pairs, each consisting of a pair of feature vectors $\mathbf x_i$ and $\mathbf x_j$, for arguments $i$ and $j$,
 %the $k$th pair refers to arguments $i$ and $j$ $x_i$ and $x_j$ and its label may 
-and a label $y \in \{i \succ j, j \succ i\}$, where $i \succ j$ indicates that $i$ is more convincing than
-$j$, and $j \succ i$ means the opposite.
+and a label $y \in \{i \succ j, j \succ i\}$.
+%, where $i \succ j$ indicates that $i$ is more convincing than
+%$j$, and $j \succ i$ means the opposite.
 We assume that the likelihood of $y$ depends on the latent convincingness, $f(\mathbf{x_i})$ and 
 $f(\mathbf x_j)$, of the arguments in the pair. 
 Our goals is to predict $y$ for pairs that have not been observed, 
 %as well as to predict the convincingness, 
 and $f(\mathbf x_i)$, which may be used to rank arguments.
-
 The relationship between convincingness and pairwise labels is described by the following:% \emph{preference likelihood}:
 \begin{flalign}
-& p( x_i \succ x_j | f(x_i), f(x_j), \delta_{i}, \delta_{j} ) & \nonumber\\
+& p( i \succ j | f(x_i), f(x_j), \delta_{i}, \delta_{j} ) & \nonumber\\
 & \hspace{0.9cm} = \begin{cases}
  1 & \text{if }f(x_i) + \delta_{i} \geq f(j) + \delta_{j} \\
  0 & \text{otherwise,}
@@ -37,14 +37,14 @@ errors caused by, for example, disagreement between human annotators.
 %To obtain the likelihood of a pairwise label given only $f(x_i)$ and $f(x_j)$, 
 We simplify Equation \ref{eq:pl} by integrating out $\delta_{i}$ and $\delta_{j}$ to obtain the \emph{preference likelihood}:
 \begin{flalign}
-& p( x_i \succ x_j | f(x_i), f(x_j) ) & \nonumber\\
+& p( i \succ j | f(x_i), f(x_j) ) & \nonumber\\
 & = \int\int p( x_i \succ x_j | f(x_i), f(x_j), \delta_{i}, \delta_{j} ) &\nonumber\\
 & \hspace{3cm}\mathcal{N}(\delta_{i}; 0, 1)\mathcal{N}(\delta_{j}; 0, 1) d\delta_{i} d\delta_{j} &\nonumber\\
-& = \Phi\left( z \right),
+& = \Phi\left( z \right), 
 \label{eq:plphi}
 \end{flalign}
-where $z = (f(x_i) - f(x_j) ) / \sqrt{2}$ and $\Phi$ %(z)$  = \int_{-\infty}^z \mathcal{N}(\gamma; 0, 1) d\gamma$ 
- is the cumulative distribution function of the standard normal distribution. 
+where $z = (f(x_i) - f(x_j)) / \sqrt{2}$,
+and $\Phi$ is the cumulative distribution function of the standard normal distribution. 
 
 We assume that convincingness is a function, $f$, of argument features, 
 drawn from a Gaussian process prior: $f \sim \mathcal{GP}(0, k_{\theta}s)$, where 
@@ -59,17 +59,17 @@ The kernel function controls the smoothness of $f$ over the feature space,
 while $s$ controls the variance of $f$. 
 Increasing $s$ means that, on average, the magnitude of $f(x_i)-f(x_j)$ increases  
 so that $\Phi(z)$ is closer to $0$ or $1$, and erroneous pairwise labels are less likely.
-Therefore, larger values of $s$ correspond to lower noise levels.
-We place a Gamma distribution over $1/s$ with shape $a_0$ and scale $b_0$,
-as this is a conjugate prior:
+Therefore, larger values of $s$ correspond to less observation noise.
+We assume a Gamma distribution $1/s \sim \mathcal{G}(a_0, b_0)$ with shape $a_0$ and scale $b_0$,
+as this is a conjugate prior.
 %, which makes the form of posterior easier to work with: 
-$1/s \sim \mathcal{G}(a_0, b_0)$.
+.
 
 % should we just write the posterior in here? If so, need to index y by k, and therefore i and j by k. 
 %It depends on whether the following section makes any sense without it.
-Given a set of $N$ arguments and $P$ labelled preference pairs, $\mathbf y=\{y_1,...,y_P\}$,
-we can make predictions by finding the posterior distribution over the argument convincingness values, 
-$\mathbf f = \{f(\mathbf{x}_1),...,f(\mathbf{x}_N))$, given by:
+Given $N$ arguments and $P$ labelled preference pairs, $\mathbf y=\{y_1,...,y_P\}$,
+we can make predictions by finding the posterior distribution over the convincingness values, 
+$\mathbf f = \{f(\mathbf{x}_1),...,f(\mathbf{x}_N)\}$, given by:
 \begin{flalign}
 & p\left(\mathbf f | \mathbf{y}, k_{\theta}, a_0, b_0 \right) & = \frac{1}{Z} \int \prod_{k=1}^P \Phi\!\left( z_k \right) 
 \mathcal{N}(\bs f; \bs 0, & \bs K_{\theta}s) & \nonumber \\
@@ -114,13 +114,13 @@ to scale to datasets containing at least tens of thousands of arguments and pair
 SVI makes two approximations: it assumes $M$ \emph{inducing points},
 which act as a substitute for the observed arguments;
 it uses only a random subset of the data containing $P_n$ pairs at each iteration. 
-At each iteration, $t$, rather than updates to $\hat{\mathbf{f}}$ and $\bs C$ directly, 
+At each iteration, $t$, rather than update $\hat{\mathbf{f}}$ and $\bs C$ directly, 
 we update the mean $\hat{\mathbf{f}_m}$ and covariance $\bs C_m$ for the inducing
-points. The updates for each parameter $\lambda \in \{\hat{\mathbf{f}_m}, \bs C_m\}$ takes the form of a weighted average between the previous estimate and a new estimate computed from only a subset of observations:
+points. The update for each parameter $\lambda \in \{\hat{\mathbf{f}_m}, \bs C_m\}$ takes the form of a weighted mean of the previous estimate and a new estimate computed from only a subset of observations:
 \begin{flalign}
 \lambda^{(t)} = (1 - \rho_t) \lambda ^ {(t-1)} + \rho_t \hat{\lambda}_t P/P_n,
 \end{flalign}
-where $\rho=t^{-u}$ is the step size, $u$ is a forgetting rate,% for previous values,
+where $\rho=t^{-u}$ is the step size, $u$ is a forgetting rate, % for previous values,
 and $\hat{\lambda}_t$ is the new estimate computed from $P_n$ out of $P$ observations.
 The values of $\hat{\mathbf{f}}$ and $\bs C$ can be estimated from 
 the inducing point distribution.
@@ -129,14 +129,17 @@ the inducing point distribution.
 %& \hat{\mathbf{f}} \approx \bs K_{nm} \bs K_{mm}^{-1} \hat{\mathbf{f}_m} & \nonumber\\
 %& \bs C \approx \bs K_{nm} \bs K_{mm}^{-1} (\bs C_m - \bs K_{mm}s) \bs K_{mm}^{-1} \bs K_{nm}^{T}. & 
 %\end{flalign}
-By choosing $M << N$ and $P_n << P$, we limit the computational
+By choosing $M <\!\!< N$ and $P_n <\!\!< P$, we limit the computational
 complexity of each SVI iteration to $\mathcal{O}(M^3 + MP_n)$ and the 
 memory complexity $\mathcal{O}(M^2 + MP_n + P_n^2)$.
 To choose representative inducing points, 
-we use K-means with $K=M$ to rapidly cluster the feature vectors, 
+we use K-means++\cite{arthur2007k} with $K=M$ to rapidly cluster the feature vectors, 
 then take the cluster centres as inducing points.
+Compared to standard K-means, K-means++ introduces a new method for choosing the initial cluster seeds that
+%provides theoretical bounds on the error function. In practice, this 
+reduces the number of poor-quality clusterings.% that result from random initialisation.
 
-A further benefit of GPs is that they enable automatic relevance determination (ARD)
+A further benefit of GPs is that they enable \emph{automatic relevance determination (ARD)}
 to identify informative features, which works as follows.
 The prior covariance of $f$ is defined by a kernel function of the form 
 $k_{\theta}(\mathbf x, \mathbf x') = \prod_{d=1}^D k_d(|x_d - x_d'| / l_d)$, 

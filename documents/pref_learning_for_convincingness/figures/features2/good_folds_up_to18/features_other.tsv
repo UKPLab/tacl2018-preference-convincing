@@ -1,0 +1,16 @@
+# category, feature_name, length-scale
+other	sentimentPositive	0.7069896580850078	
+other	word_more_6_letters_ratio	0.8108525306065648	
+other	sentimentVeryNegative	0.8939559374152283	
+other	sentimentNeutral	0.9305313533795144	
+other	sentimentNegative	0.9779835142779824	
+other	word_more_6_letters	0.9876129684609247	
+other	de.tudarmstadt.ukp.dkpro.core.api.ner.type.Location	0.9940355487234958	
+other	oovWordsCount	0.9987821771751132	
+other	de.tudarmstadt.ukp.dkpro.core.api.ner.type.Person	0.9989505067431197	
+other	de.tudarmstadt.ukp.dkpro.core.api.ner.type.Organization	0.9996058816029183	
+other	sentence_length	0.9997898579902693	
+other	minimum_length	0.9999624220894756	
+other	spell_skill	0.9999920917829428	
+other	ExclamationRatio	1.0002584550996867	
+other	sentimentVeryPositive	2.351629014243212	
