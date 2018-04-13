@@ -1153,4 +1153,4 @@ if __name__ == '__main__':
 
     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods,
                             dataset_increment)
-    runner.run_test_set()
+    runner.run_test_set(min_no_folds=16, max_no_folds=32)

@@ -13,6 +13,8 @@ Created on 20 Jul 2017
 '''
 import os, sys
 
+from gp_pref_learning import GPPrefLearning
+
 sys.path.append("./python")
 sys.path.append("./python/analysis")
 sys.path.append("./python/models")
@@ -23,11 +25,14 @@ sys.path.append(os.path.expanduser("~/git/pyIBCC/python"))
 
 import numpy as np
 import matplotlib.pyplot as plt
-from tests import run_gppl, load_ling_features, load_features, get_noisy_fold_data, load_embeddings, \
-                        compute_lengthscale_heuristic
+from tests import load_ling_features, get_noisy_fold_data, load_embeddings, \
+                        compute_lengthscale_heuristic, get_mean_embeddings
 from data_loading import load_train_test_data
 import networkx as nx
 from sklearn.svm import SVC
+
+import matplotlib
+matplotlib.rcParams.update({'font.size': 16})
 
 def run_pagerank(trainids_a1, trainids_a2, prefs_train):
     G = nx.DiGraph()
@@ -69,7 +74,7 @@ def plot_probas(total_p, label, outputdir, N, vmin=0, vmax=1):
     # Plot classifications of all pairs as a coloured 3x3 table
     plt.figure(figsize=(4,3))
     data = mean_p.reshape(N, N) # do 1 - to get the preference for the argument along x axis over arg along y axis 
-    im = plt.imshow(data, interpolation='nearest', vmin=vmin, vmax=vmax, cmap=plt.cm.get_cmap('jet'))
+    im = plt.imshow(data, interpolation='nearest', vmin=vmin, vmax=vmax, cmap=plt.cm.get_cmap('hot'))
     plt.grid('on')
     plt.title('%s -- Predicted Preferences: p(arg_x > arg_y)' % label)
     plt.xlabel('ID of arg_x')
@@ -170,6 +175,9 @@ def plot_arg_graph(prefs_train, sample_objs, obj_labels, outputdir, label):
     plt.savefig(outputdir + '/' + label + '_arg_graph.pdf')  
 
 def run_test(label, trainids_a1, trainids_a2, prefs_train, nrepeats):
+
+    trainids_a1 = np.array(trainids_a1)
+    trainids_a2 = np.array(trainids_a2)
     
     total_f_gppl = 0
     total_p_gppl = 0
@@ -178,7 +186,7 @@ def run_test(label, trainids_a1, trainids_a2, prefs_train, nrepeats):
     total_f_pagerank = 0
     
     output_dir = os.path.expanduser(
-        './documents/pref_learning_for_convincingness/figures/cycles_demo/')
+        './documents/pref_learning_for_convincingness/figures/cycles_demo2/')
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
     output_dir +=  label + '/'
@@ -191,9 +199,7 @@ def run_test(label, trainids_a1, trainids_a2, prefs_train, nrepeats):
         obj_labels = []
         for arg in sample_objs:
             obj_labels.append('arg%i' % arg)
-                
-        items_feat_r = items_feat[sample_objs, :]
-    
+
         # test all possible pairs!
         N = len(sample_objs)
         testids_a1 = np.tile(sample_objs[:, None], (1, N)).flatten()
@@ -203,15 +209,23 @@ def run_test(label, trainids_a1, trainids_a2, prefs_train, nrepeats):
             plot_arg_graph(prefs_train, sample_objs, obj_labels, output_dir, 'arggraph')
     
         # Run GPPL.
-        proba, predicted_f, _, model = run_gppl(fold, None, method, trainids_a1, trainids_a2, prefs_train, 
-                items_feat_r, embeddings, X, ndims, False, testids_a1, testids_a2, None, None, 
-                default_ls_value, verbose=False, item_idx_ranktrain=None, rankscores_train=None, 
-                item_idx_ranktest=sample_objs)
+        model = GPPrefLearning(ninput_features=items_feat.shape[1], ls_initial=default_ls_value, verbose=False,
+                    shape_s0=2.0, rate_s0=200.0, rate_ls = 1.0 / np.mean(default_ls_value), use_svi=True,
+                    ninducing=500, max_update_size=200, kernel_combination='*', forgetting_rate=0.7,
+                    delay=1.0)
+        model.fit(trainids_a1, trainids_a2, items_feat, np.array(prefs_train, dtype=float)-1,
+                  optimize=False, input_type='zero-centered')
+        proba = model.predict(None, testids_a1, testids_a2, reuse_output_kernel=True, return_var=False)
+        predicted_f, _ = model.predict_f(None, sample_objs)
+
+        #fold, None, method, , ,
+
+
         # Flip the latent function because GPPL treats 2.0 as a preference for the first item in the pair,
         # whereas in our data it is a preference for the second item. If we don't flip, the latent function correlates
         # with a ranking (the lower the better). The predicted class labels don't require flipping. 
         predicted_f = -predicted_f   
-        _, f_var = model.predict_f(sample_objs, use_training_items=True)
+        _, f_var = model.predict_f(None, sample_objs)
         
         total_p_gppl += proba
         total_v_gppl += f_var
@@ -273,10 +287,9 @@ if __name__ == '__main__':
     fold = list(folds.keys())[0]
     print(("Fold name ", fold))
     trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test,\
-                        X, uids, utexts = get_noisy_fold_data(folds, fold, docids, 1.0)                            
-        
-    items_feat, valid_feats = load_features(feature_type, ling_feat_spmatrix, embeddings_type, trainids_a1, 
-                                           trainids_a2, uids, embeddings, X, index_to_word_map, utexts)
+                        X, uids, utexts = get_noisy_fold_data(folds, fold, docids, 1.0)
+
+    items_feat = get_mean_embeddings(embeddings, X)
     ndims = items_feat.shape[1]
     # Generate simple training data containing a->b, b->c, c->a cycle.
     nrepeats = 25
