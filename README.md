@@ -1,3 +1,8 @@
+TODO: Remove the irrelevant files, e.g. Lukin_comparison, tests_small, learning_without_features...
+TODO: add license text to start of all files
+TODO: add notices.txt
+TODO: add licence.txt
+
 # Finding Convincing Arguments Using Scalable Bayesian Preference Learning
 
 This project contains the scalable implementation of Gaussian process preference learning (GPPL) using stochastic
@@ -82,8 +87,6 @@ https://github.com/UKPLab/acl2016-convincing-arguments
 
 ## How to run the experiments
 
-TODO: Remove the irrelevant files, e.g. Lukin_comparison, tests_small, learning_without_features...
-
 1. Generate the data by following the instructions from  https://github.com/UKPLab/acl2016-convincing-arguments. The
 default path for the data used by the experiment scripts is set in ./python/analysis/data_loading.py, line 12. Set this
 path to your desired data directory.
@@ -149,19 +152,19 @@ The plots will be saved to ./documents/pref_learning_for_convincingness/figures/
 
 ## How to use the GPPL implementation
 
-To run preference learning, see gp_pref_learning class in 
+To run preference learning, see gp_pref_learning class in
 python/models/gp_pref_learning.py. You can run a simple example that generates
 synthetic data by running python/test/gp_pref_learning_test.py.
 
-The preference learning model and algorithm are implemented by the class 
-GPPrefLearning inside python/test/gp_pref_learning_test.py. 
-The important methods in this class are listed below; please look at the 
+The preference learning model and algorithm are implemented by the class
+GPPrefLearning inside python/test/gp_pref_learning_test.py.
+The important methods in this class are listed below; please look at the
 docstrings for these methods for more details:
    * The constructor: set the model hyperparameters
    * fit(): train the model
-   * predict(): predict pairwise labels for new pairs 
+   * predict(): predict pairwise labels for new pairs
    * predict_f(): predict scores for a set of items given their features, which can be used to rank the items.
-   
+
 ## Example usage
 
 Start by loading in some data from a CSV file using numpy:
@@ -179,7 +182,7 @@ items_1_idxs = np.array([np.argwhere(item_ids==iid)[0][0] for iid in pair_data[:
 # the second column contains IDs of the second items in the pairs. Map these to indices into the item_ids matrix.
 items_2_idxs = np.array([np.argwhere(item_ids==iid)[0][0] for iid in pair_data[:, 2].astype(int)])
 # third column contains preference labels in binary format (1 indicates the first item is preferred, 0 indicates the second item is preferred)
-prefs = pair_data[:, 2] 
+prefs = pair_data[:, 2]
 ~~~
 
 Construct a GPPrefLearning object. The following values are reasonable defaults
@@ -187,7 +190,7 @@ for the applications we have tried so far:
 ~~~
 from gp_pref_learning import *
 from gp_classifier_vb import compute_median_lengthscales # use this function to set sensible values for the lengthscale hyperparameters
-model = GPPrefLearning(item_feats.shape[1], shape_s0=2, rate_s0=200, 
+model = GPPrefLearning(item_feats.shape[1], shape_s0=2, rate_s0=200,
                         ls_initial=compute_median_lengthscales(summary_matrix) )
 ~~~
 
@@ -196,8 +199,8 @@ Now train the object given the data:
 model.fit(items_1_idxs, items_2_idxs, item_feats, prefs, optimize=False)
 ~~~
 
-Given the fitted model, we can now make predictions about any items given their 
-features. These may be new, previously unseen items, or items that were used in 
+Given the fitted model, we can now make predictions about any items given their
+features. These may be new, previously unseen items, or items that were used in
 training. To obtain a score for each item, e.g. to be used for ranking items,
 call the following:
 ~~~
@@ -209,7 +212,7 @@ You can also predict pairwise labels for any items given their features:
 model.predict(test_item_feats, test_items_1_idxs, test_items_2_idxs)
 ~~~
 Here, the test_item_feats object is a matrix where each row is a feature vector
-of an item. The test_items_1_idxs and test_items_2_idxs objects are vectors 
+of an item. The test_items_1_idxs and test_items_2_idxs objects are vectors
 (lists or 1-dimensional numpy arrays) containing indices into test_item_feats
 of items you wish to compare.
 
@@ -218,10 +221,10 @@ of items you wish to compare.
 For setting the prior mean function:
    * when calling fit(), pass in a vector mu0 that is the same size as item_features. Each entry of mu0 is the prior
 preference function mean for the corresponding item in item_features
-   * when calling predict_f() to predict the score for test items, or 
-when calling predict() to predict pairwise labels, 
-the argument mu0_output should be used to provide the preference function mean 
-for the corresponding items in items_coords, i.e. each item indexed in 
+   * when calling predict_f() to predict the score for test items, or
+when calling predict() to predict pairwise labels,
+the argument mu0_output should be used to provide the preference function mean
+for the corresponding items in items_coords, i.e. each item indexed in
 items_coords should have a prior mean value in mu0_output
 
 For the prior precision:
