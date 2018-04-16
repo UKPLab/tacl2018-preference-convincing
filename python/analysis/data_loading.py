@@ -218,7 +218,7 @@ def load_train_test_data(dataset):
         else: #if 'UKPConvArgStrict' in dataset or 'UKPConvArgAll' in dataset or dataset == 'UKPConvArgCrowdSample':
             generate_gold_CSV(dirname, csvdirname) # select only the gold labels
                 
-    embeddings_dir = data_root_dir + '/embeddings/'
+    embeddings_dir = './data/'
     print(("Embeddings directory: %s" % embeddings_dir))
     
     # Load the train/test data into a folds object. -------------------------------------------------------------------

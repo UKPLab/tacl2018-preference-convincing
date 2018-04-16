@@ -56,7 +56,7 @@ if __name__ == '__main__':
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
     = compute_metrics.compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs, 
-                      max_no_folds=max_no_folds, min_folds=0)
+                      max_no_folds=max_no_folds, min_folds_desired=0)
         
     ax1 = plot_active_learning_results(mean_results[0], 'F1 score', 'Mean over test topics', style=styles[0])
     #ax2 = plot_active_learning_results(mean_results[7], 'F1 score', 'Mean over training topics')

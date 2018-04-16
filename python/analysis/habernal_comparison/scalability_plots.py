@@ -75,8 +75,8 @@ if __name__ == '__main__':
             # look for new-style data in separate files for each fold. Prefer new-style if both are found.
             foldfile = resultsdir + '/fold%i.pkl' % f
             if os.path.isfile(foldfile):
-                with open(foldfile, 'r') as fh:
-                    data_f = pickle.load(fh)
+                with open(foldfile, 'rb') as fh:
+                    data_f = pickle.load(fh, encoding='latin1')
             else: # convert the old stuff to new stuff
                 if data is None:
                     min_folds = f+1
@@ -147,8 +147,8 @@ if __name__ == '__main__':
             # look for new-style data in separate files for each fold. Prefer new-style if both are found.
             foldfile = resultsdir + '/fold%i.pkl' % f
             if os.path.isfile(foldfile):
-                with open(foldfile, 'r') as fh:
-                    data_f = pickle.load(fh)
+                with open(foldfile, 'rb') as fh:
+                    data_f = pickle.load(fh, encoding='latin1')
             else: # convert the old stuff to new stuff
                 if data is None:
                     min_folds = f+1
@@ -272,8 +272,8 @@ if __name__ == '__main__':
                 # look for new-style data in separate files for each fold. Prefer new-style if both are found.
                 foldfile = resultsdir + '/fold%i.pkl' % f
                 if os.path.isfile(foldfile):
-                    with open(foldfile, 'r') as fh:
-                        data_f = pickle.load(fh)
+                    with open(foldfile, 'rb') as fh:
+                        data_f = pickle.load(fh, encoding='latin1')
                 else: # convert the old stuff to new stuff
                     if data is None:
                         min_folds = f+1
@@ -370,8 +370,8 @@ if __name__ == '__main__':
                 # look for new-style data in separate files for each fold. Prefer new-style if both are found.
                 foldfile = resultsdir + '/fold%i.pkl' % f
                 if os.path.isfile(foldfile):
-                    with open(foldfile, 'r') as fh:
-                        data_f = pickle.load(fh)
+                    with open(foldfile, 'rb') as fh:
+                        data_f = pickle.load(fh, encoding='latin1')
                 else: # convert the old stuff to new stuff
                     if data is None:
                         min_folds = f+1

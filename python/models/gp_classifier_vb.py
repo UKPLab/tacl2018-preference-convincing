@@ -122,6 +122,10 @@ def derivfactor_matern_3_2_from_raw_vals_onedimension(vals, vals2, ls_d, operato
     To obtain the derivative W.R.T the length scale indicated by dim, multiply the value returned by this function
     with the kernel. Use this to save recomputing the kernel for each dimension.
     '''
+    if ls_d == 0:
+        dKdls_d = np.inf
+        return dKdls_d
+
     D = np.abs(compute_distance(vals, vals2.T))
     # K = -(1 + K) * (ls_d - K) * np.exp(-K / ls_d) / ls_d**3
     sqrt3d = D * 3 ** 0.5 / ls_d
@@ -131,6 +135,8 @@ def derivfactor_matern_3_2_from_raw_vals_onedimension(vals, vals2, ls_d, operato
     if operator == '*':
         Kfactor = sqrt3d * exp_minus_sqrt3d
         Kfactor += exp_minus_sqrt3d
+
+        Kfactor[Kfactor == 0] = np.nextafter(0,1)
 
         dKdls_d /= Kfactor
 
@@ -797,7 +803,7 @@ class GPClassifierVB(object):
             self.ls[dimension] = np.exp(hyperparams)
         if np.any(np.isinf(self.ls)):
             return np.inf
-        if np.any(self.ls < 1e-100):
+        if np.any(self.ls < 1e-100 * self.initialguess):
             # avoid very small length scales
             return np.inf
 
@@ -954,12 +960,12 @@ class GPClassifierVB(object):
         logging.debug("Optimising length-scale for all dimensions")
 
         for r in range(nrestarts):
-            initialguess = np.log(self.ls)
+            self.initialguess = np.log(self.ls)
             if self.n_lengthscales == 1:
-                initialguess = initialguess[0]
+                self.initialguess = self.initialguess[0]
             logging.debug("Initial length-scale guess in restart %i: %s" % (r, self.ls))
 
-            res = minimize(self.neg_marginal_likelihood, initialguess,
+            res = minimize(self.neg_marginal_likelihood, self.initialguess,
                            args=(-1, use_MAP,), jac=self.nml_jacobian, method='L-BFGS-B',
                            options={'maxfun': maxfun, 'maxiter' : maxfun, 'ftol' : 1e-3, 'gtol': 10 ** (- self.ninput_features - 1)})
 
@@ -980,8 +986,8 @@ class GPClassifierVB(object):
             # need to go back to the best result
             self.neg_marginal_likelihood(best_opt_hyperparams, -1, use_MAP=False)
 
-        logging.debug("Optimal hyper-parameters: %s; found using %i objective fun evals" %
-                      (self.ls, nfits))
+        logging.debug("Optimal value = %.5f with hyper-parameters: %s; found using %i objective fun evals" %
+                      (-nlml, self.ls, nfits))
         return self.ls, -min_nlml  # return the log marginal likelihood
 
     def _expec_f(self):
@@ -1146,8 +1152,6 @@ class GPClassifierVB(object):
             self.K_star, self.K_starstar = self._get_training_cov()
             if not full_cov:
                 self.K_starstar = np.diag(self.K_starstar)
-            if mu0_output is None:
-                mu0_output = self.mu0
 
         else:
             # other combinations are invalid
@@ -1162,7 +1166,10 @@ class GPClassifierVB(object):
         if out_idxs is not None:
             K_star = K_star[out_idxs, :]
             if not np.isscalar(K_starstar):
-                K_starstar = K_starstar[out_idxs, :][:, out_idxs]
+                if full_cov:
+                    K_starstar = K_starstar[out_idxs, :][:, out_idxs]
+                else:
+                    K_starstar = K_starstar[out_idxs]
 
         noutputs = K_star.shape[0]
 
