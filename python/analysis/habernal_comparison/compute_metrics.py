@@ -519,7 +519,7 @@ if __name__ == '__main__':
     di = 0
     max_no_folds = 32
 
-    methods = ['SinglePrefGP_weaksprior_1404barney']#['SinglePrefGP_weaksprior_2107', 'SinglePrefGP_weaksprior_0308', 'SinglePrefGP_weaksprior_0901']#, 'SVM', 'BI-LSTM'] #'SinglePrefGP_weaksprior', 'SingleGPC_noOpt_weaksprior', 'GP+SVM']
+    methods = ['SinglePrefGP_weaksprior']#['SinglePrefGP_weaksprior_2107', 'SinglePrefGP_weaksprior_0308', 'SinglePrefGP_weaksprior_0901']#, 'SVM', 'BI-LSTM'] #'SinglePrefGP_weaksprior', 'SingleGPC_noOpt_weaksprior', 'GP+SVM']
     datasets = ['UKPConvArgStrict']
     feature_types = ['both']#, 'ling']
     embeddings_types = ['word_mean']#['word_mean', 'skipthoughts', 'siamese-cbow']
@@ -530,73 +530,6 @@ if __name__ == '__main__':
                       max_no_folds=max_no_folds)
 
     print(results_acc)
-
-#     datasets = ['UKPConvArgAll']
-#
-#     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
-#     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-#     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-#                       max_no_folds=max_no_folds)
-#
-    # methods = ['SinglePrefGP_noOpt_weaksprior', 'BI-LSTM']#'SinglePrefGP_noOpt_weaksprior']#'SVM', 'SVM']#]#, ]
-    # datasets = ['UKPConvArgAll']
-    # feature_types = ['embeddings']
-    # embeddings_types = ['word_mean']  # ['word_mean', 'skipthoughts', 'siamese-cbow']
-    #
-    # results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
-    # tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-    #     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-    #                       max_no_folds=max_no_folds, flip_labels=[])
-    #
-    # datasets = ['UKPConvArgAll']
-    #
-    # results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
-    # tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-    #     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-    #                       max_no_folds=max_no_folds, flip_labels=[1])
-
-    #
-    # datasets = ['UKPConvArgCrowdSample_evalMACE']
-    # methods = ['BI-LSTM']#'SVM', 'SVM']#, ]#,  'SingleGPC_noOpt_weaksprior', 'GP+SVM'] 'SinglePrefGP_noOpt_weaksprior']#,
-    # feature_types = ['both', 'embeddings'] #, 'ling']#
-    # embeddings_types = ['word_mean']
-    #
-    # results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
-    # tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-    # = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-    #                   max_no_folds=max_no_folds, flip_labels=[1])
-
-#
-# #     methods = ['SVM' ]
-# #     datasets = ['UKPConvArgStrict', 'UKPConvArgAll', 'UKPConvArgCrowdSample_evalMACE']
-# #     feature_types = ['ling']
-# #     embeddings_types = ['word_mean']#['word_mean', 'skipthoughts', 'siamese-cbow']
-# #
-# #     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
-# #     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-# #     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-# #                       max_no_folds=max_no_folds)
-#
-#
-# #     # compute p values of first result to other results in the list
-# #     for row in range(results_f1.shape[0]):
-# #         for col in range(results_f1.shape[1]):
-# #             if row == 0 and col == 0:
-# #                 continue
-# #
-# #
-# #             _, p = wilcoxon(results_acc[row, col, :-1, 0], results_acc[0, 0, :-1, 0])
-# #             print "p-value of %f" % p
-# #             _, p = wilcoxon(results_auc[row, col, :-1, 0], results_auc[0, 0, :-1, 0])
-# #             print "p-value of %f" % p
-# #             _, p = wilcoxon(results_logloss[row, col, :-1, 0], results_logloss[0, 0, :-1, 0])
-# #             print "p-value of %f" % p
-# #             _, p = wilcoxon(results_pearson[row, col, :-1, 0], results_pearson[0, 0, :-1, 0])
-# #             print "p-value of %f" % p
-# #             _, p = wilcoxon(results_spearman[row, col, :-1, 0], results_spearman[0, 0, :-1, 0])
-# #             print "p-value of %f" % p
-# #             _, p = wilcoxon(results_kendall[row, col, :-1, 0], results_kendall[0, 0, :-1, 0])
-# #             print "p-value of %f" % p-value
 
     print("Completed compute metrics")
 

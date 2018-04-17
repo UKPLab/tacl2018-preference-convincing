@@ -883,7 +883,7 @@ class TestRunner:
         all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, all_tr_proba = \
                                                                                 self._reload_partial_result(resultsfile)
                 
-        np.random.seed(111) # allows us to get the same initialisation for all methods/feature types/embeddings
+        np.random.seed(121) # allows us to get the same initialisation for all methods/feature types/embeddings
 
         if os.path.isfile(results_stem + '/foldorder.txt'):
             fold_keys = np.genfromtxt(os.path.expanduser(results_stem + '/foldorder.txt'), dtype=str)
@@ -1156,4 +1156,4 @@ if __name__ == '__main__':
 
     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods,
                             dataset_increment)
-    runner.run_test_set(min_no_folds=9, max_no_folds=11)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32)
