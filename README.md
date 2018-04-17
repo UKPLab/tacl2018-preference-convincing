@@ -1,6 +1,4 @@
-TODO: Remove the irrelevant files, e.g. Lukin_comparison, tests_small, learning_without_features...
-TODO: add license text to start of all files
-TODO: add notices.txt
+TODO: add license text to start of all files. Check how Ivan has done this.
 TODO: add licence.txt
 
 # Finding Convincing Arguments Using Scalable Bayesian Preference Learning
