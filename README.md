@@ -1,6 +1,3 @@
-TODO: add license text to start of all files. Check how Ivan has done this.
-TODO: add licence.txt
-
 # Finding Convincing Arguments Using Scalable Bayesian Preference Learning
 
 This project contains the scalable implementation of Gaussian process preference learning (GPPL) using stochastic
@@ -22,7 +19,7 @@ Please use the following citation:
 }
 ```
 
-> **Abstract** <
+> **Abstract**
 
 We introduce a scalable Bayesian preference
 learning method for identifying convincing ar-
@@ -53,7 +50,7 @@ show that word embeddings in combination
 with linguistic features also benefit GPs when
 predicting argument convincingness.
 
-> Contact person: Edwin Simpson, simpson@ukp.informatik.tu-darmstadt.de
+**Contact person:** Edwin Simpson, simpson@ukp.informatik.tu-darmstadt.de
 
 https://www.ukp.tu-darmstadt.de/
 
@@ -89,7 +86,7 @@ https://github.com/UKPLab/acl2016-convincing-arguments
 default path for the data used by the experiment scripts is set in ./python/analysis/data_loading.py, line 12. Set this
 path to your desired data directory.
 
-If your data directory is not ./data/, copy the data for experiments 4 and 5 to your data directory by copying folders
+   If your data directory is not ./data/, copy the data for experiments 4 and 5 to your data directory by copying folders
 UKPConvArg1-crowdsample-ranking-CSV and UKPConvArgCrowdSample-new-CSV.
 
 2. Run experiment 1 by running script python/analysis/cycles_demo.py from the root directory of the project:
@@ -98,55 +95,76 @@ python ./python/analysis/cycles_demo.py
 
 3. Run experiment 2 (this will take some time):
 
-python ./python/analysis/habernal_comparison/scalability_tests.py
+   ```
+   python ./python/analysis/habernal_comparison/scalability_tests.py
+   ```
 
-Generate the plots:
+   Generate the plots:
 
-python ./python/analysis/habernal_comparison/scalability_plots.py
+   ```
+   python ./python/analysis/habernal_comparison/scalability_plots.py
+   ```
 
-The plots will be saved by default to './documents/pref_learning_for_convincingness/figures/scalability'.
+   The plots will be saved by default to './documents/pref_learning_for_convincingness/figures/scalability'.
 
 4. Run experiment 3 (this will take some time):
 
-python ./python/analysis/habernal_comparison/clean_data_tests.py
+   ```
+    python ./python/analysis/habernal_comparison/clean_data_tests.py
+   ```
 
-This script simply sets some parameters for the test:
-- the choice of method
-- dataset
-- features to use with each method
-Given these settings, the experiments are then implemented by ./python/analysis/habernal_comparison/tests.py.
+   This script simply sets some parameters for the test:
+   * the choice of method
+   * dataset
+   * features to use with each method
 
-Compute the performance metrics:
+   Given these settings, the experiments are then implemented by ./python/analysis/habernal_comparison/tests.py.
 
-python ./python/analysis/habernal_comparison/clean_data_metrics.py
+   Compute the performance metrics:
 
-This script also just sets some parameters and then calls ./python/analysis/habernal_comparison/compute_metrics.py.
+   ```
+   python ./python/analysis/habernal_comparison/clean_data_metrics.py
+   ```
+
+   This script also just sets some parameters and then calls ./python/analysis/habernal_comparison/compute_metrics.py.
 
 5. Run experiment 4 (this will take some time):
 
-python ./python/analysis/habernal_comparison/noisy_data_tests.py
+   ```
+   python ./python/analysis/habernal_comparison/noisy_data_tests.py
+   ```
 
-Compute the performance metrics:
+   Compute the performance metrics:
 
-python ./python/analysis/habernal_comparison/noisy_data_metrics.py
+   ```
+   python ./python/analysis/habernal_comparison/noisy_data_metrics.py
+   ```
 
 6. Run experiment 5 (this will take some time) for active learning:
 
-python ./python/analysis/habernal_comparison/active_learning_tests.py
+   ```
+   python ./python/analysis/habernal_comparison/active_learning_tests.py
+   ```
 
-Compute the performance metrics:
+   Compute the performance metrics:
 
-python ./python/analysis/habernal_comparison/compute_AL_metrics.py
+   ```
+   python ./python/analysis/habernal_comparison/compute_AL_metrics.py
+   ```
 
 7. Run analysis of the relevant feature determination:
 
-python ./python/analysis/habernal_comparison/features.py
+   ```
+   python ./python/analysis/habernal_comparison/features.py
+   ```
 
-The plots will be saved to ./documents/pref_learning_for_convincingness/figures/features2/
+   The plots will be saved to ./documents/pref_learning_for_convincingness/figures/features2/
 
 8. Produce the output used for error analysis:
 
- python ./python/analysis/habernal_comparison/error_analysis.py
+   ```
+   python ./python/analysis/habernal_comparison/error_analysis.py
+   ```
 
 ## How to use the GPPL implementation
 
