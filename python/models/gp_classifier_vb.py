@@ -803,7 +803,7 @@ class GPClassifierVB(object):
             self.ls[dimension] = np.exp(hyperparams)
         if np.any(np.isinf(self.ls)):
             return np.inf
-        if np.any(self.ls < 1e-100 * self.initialguess):
+        if np.any(self.ls < 1e-6 * self.initialguess):
             # avoid very small length scales
             return np.inf
 
