@@ -797,7 +797,7 @@ class GPClassifierVB(object):
             self.ls[dimension] = np.exp(hyperparams)
         if np.any(np.isinf(self.ls)):
             return np.inf
-        if np.any(self.ls < 1e-100):
+        if np.any(self.ls < 1e-100 * self.initialguess):
             # avoid very small length scales
             return np.inf
 
@@ -954,12 +954,12 @@ class GPClassifierVB(object):
         logging.debug("Optimising length-scale for all dimensions")
 
         for r in range(nrestarts):
-            initialguess = np.log(self.ls)
+            self.initialguess = np.log(self.ls)
             if self.n_lengthscales == 1:
-                initialguess = initialguess[0]
+                self.initialguess = self.initialguess[0]
             logging.debug("Initial length-scale guess in restart %i: %s" % (r, self.ls))
 
-            res = minimize(self.neg_marginal_likelihood, initialguess,
+            res = minimize(self.neg_marginal_likelihood, self.initialguess,
                            args=(-1, use_MAP,), jac=self.nml_jacobian, method='L-BFGS-B',
                            options={'maxfun': maxfun, 'maxiter' : maxfun, 'ftol' : 1e-3, 'gtol': 10 ** (- self.ninput_features - 1)})
 
