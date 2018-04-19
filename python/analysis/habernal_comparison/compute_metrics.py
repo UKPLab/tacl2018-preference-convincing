@@ -36,7 +36,7 @@ import datetime, time
 
 data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
-expt_root_dir = 'crowdsourcing_argumentation_expts/'
+expt_root_dir = 'crowdsourcing_argumentation_opt/'
 
 def get_fold_data(data, f, expt_settings, flip_labels=False):
     # discrete labels are 0, 1 or 2
@@ -519,7 +519,7 @@ if __name__ == '__main__':
     di = 0
     max_no_folds = 32
 
-    methods = ['SinglePrefGP_weaksprior']#['SinglePrefGP_weaksprior_2107', 'SinglePrefGP_weaksprior_0308', 'SinglePrefGP_weaksprior_0901']#, 'SVM', 'BI-LSTM'] #'SinglePrefGP_weaksprior', 'SingleGPC_noOpt_weaksprior', 'GP+SVM']
+    methods = ['SinglePrefGP_weaksprior_1904']#['SinglePrefGP_weaksprior_2107', 'SinglePrefGP_weaksprior_0308', 'SinglePrefGP_weaksprior_0901']#, 'SVM', 'BI-LSTM'] #'SinglePrefGP_weaksprior', 'SingleGPC_noOpt_weaksprior', 'GP+SVM']
     datasets = ['UKPConvArgStrict']
     feature_types = ['both']#, 'ling']
     embeddings_types = ['word_mean']#['word_mean', 'skipthoughts', 'siamese-cbow']
