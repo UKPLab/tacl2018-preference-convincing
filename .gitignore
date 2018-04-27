@@ -137,3 +137,6 @@ outputdata/*.pkl
 **/*.bak
 **/*.xml
 **/*.iml
+venv
+venv_linux/
+.idea/
