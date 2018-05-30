@@ -88,7 +88,7 @@ each fold corresponds to one of 16 controversial topics, and one of two stances 
 Our two tasks are \emph{ranking} arguments by convincingness and  
 \emph{classification} of pairwise labels to predict which argument is more convincing. 
 For both tasks, our proposed GPPL method is trained using the pairwise labels for the training folds.
-We rank arguments by their expected convincingness, $\mathbb{E}[f(\mathbf{x}_n)]\approx \hat{f}_n$ for each argument $i$ with feature vector $\mathbf{x}_n$, under the approximate posterior $q(\mathbf f)$
+We rank arguments by their expected convincingness, $\mathbb{E}[f(\mathbf{x}_i)]\approx \hat{f}(\mathbf {x_i})$ for each argument $i$ with feature vector $\mathbf{x}_i$, under the approximate posterior $q(\mathbf f)$
 output by our SVI algorithm.
 We obtain classification probabilities using Equation \ref{eq:plphi} but 
 accommodate the posterior covariance, $\mathbf C$, of $\mathbf f$, by replacing $z$ with $\hat{z} = (\hat{f}(\mathbf x_i) - \hat{f}(\mathbf x_j)) / \sqrt{2 + C_{ii} + C_{jj} - C_{ij} - C_{ji}}$.
@@ -142,9 +142,11 @@ which are then used to train the SVM and BiLSTM regression models.
 As a Bayesian alternative to GPPL, 
 we test a Gaussian process classifier (\emph{GPC}) for the classification task 
 by concatenating the feature vectors of arguments in the same way as the SVM classifier.
-We also evaluate a non-Bayesian approach that uses the same pairwise likelihood as GPPL
-(Equation \ref{eq:plphi}) to infer function values, 
-but uses them to train an SVM regression model instead of a GP (\emph{PL+SVR}).
+We also evaluate a non-Bayesian approach that infers function values using the 
+same pairwise preference likelihood as GPPL
+(Equation \ref{eq:plphi}, referred to here as \emph{PL}), 
+but uses them to train an SVM regression model instead of a GP. 
+In the results, we refer to this method as \emph{PL+SVR}.
 
 We use two sets of input features. The \emph{ling} feature set contains $32010$ linguistic features,  
 including unigrams, bigrams, parts-of-speech (POS) n-grams, production rules,

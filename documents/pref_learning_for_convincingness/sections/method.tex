@@ -1,6 +1,6 @@
 \section{Scalable Bayesian Preference Learning}\label{sec:model}
 
-First, we define a probabilistic model for preference learning~\cite{chu2005preference}.
+First, we introduce a probabilistic model for preference learning~\cite{chu2005preference}.
 We observe preference pairs, each consisting of a pair of feature vectors $\mathbf x_i$ and $\mathbf x_j$, for arguments $i$ and $j$,
 %the $k$th pair refers to arguments $i$ and $j$ $x_i$ and $x_j$ and its label may 
 and a label $y \in \{i \succ j, j \succ i\}$.
@@ -57,9 +57,10 @@ Given $N$ arguments and $P$ labelled preference pairs, $\mathbf y=\{y_1,...,y_P\
 we can make predictions by finding the posterior distribution over the convincingness values, 
 $\mathbf f = \{f(\mathbf {x}_1),...,f(\mathbf {x}_N)\}$, given by:
 \begin{flalign}
-& p\left(\mathbf f | \mathbf{y}, k_{\theta}, a_0, b_0 \right) = \frac{1}{Z} \int \prod_{k=1}^P \Phi\!\left( z_k \right) 
-\mathcal{N}(\mathbf f; \mathbf 0, \mathbf K_{\theta}s) \nonumber & \\
-& \hspace{4cm} \mathcal{G}(s; a_0, b_0) \mathrm{d}s, &
+& p\left(\mathbf f | \mathbf{y}, k_{\theta}, a_0, b_0 \right) 
+\propto p(\mathbf y | \mathbf f) p(\mathbf f | k_{\theta}, a_0, b_0) & \nonumber \\
+& = \frac{1}{Z} \int \prod_{k=1}^P \Phi\!\left( z_k \right) 
+\mathcal{N}(\mathbf f; \mathbf 0, \mathbf K_{\theta}s) \mathcal{G}(s; a_0, b_0) \mathrm{d}s, &
 \label{eq:post}
 \end{flalign}
 where $Z = p\left(\mathbf{y} | k_{\theta}, a_0, b_0 \right)$ is the normalization constant.
@@ -138,4 +139,5 @@ Features with larger length-scales after optimisation are less relevant because 
 have less effect on $k_{\theta}(\mathbf x, \mathbf x') $.
 To avoid the cost of optimising the length-scales, we can alternatively set them using a median heuristic,
 which has been shown to perform well in practice~\cite{gretton2012optimal}: 
-$ l_{d,MH} = \frac{1}{D} \mathrm{median}( \{ |x_{i,d} - x_{j,d}| \forall i=1,..,N, \forall j=1,...,N\} ) $.
+$ \tilde{l}_{d} = \frac{1}{D} \mathrm{median}\left( \left\{ |x_{i,d} - x_{j,d}|, \right.\right.$
+$ \left.\left. \forall i=1,...,N, \forall j=1,...,N\right\} \right) $.
