@@ -8,7 +8,7 @@ and a label $y \in \{i \succ j, j \succ i\}$.
 %$j$, and $j \succ i$ means the opposite.
 We assume that the likelihood of $y$ depends on the latent convincingness, $f(\mathbf{x_i})$ and 
 $f(\mathbf x_j)$, of the arguments in the pair. 
-Our goals is to predict $y$ for pairs that have not been observed, 
+Our goal is to predict $y$ for pairs that have not been observed, 
 %as well as to predict the convincingness, 
 and predict $f(\mathbf x_i)$, which may be used to rank arguments.
 The relationship between convincingness and pairwise labels is described by the following:% \emph{preference likelihood}:
@@ -53,17 +53,17 @@ Therefore, larger values of $s$ correspond to less observation noise.
 We assume a Gamma distribution $1/s \sim \mathcal{G}(a_0, b_0)$ with shape $a_0$ and scale $b_0$,
 as this is a conjugate prior.
 
-Given $N$ arguments and $P$ labelled preference pairs, $\mathbf y=\{y_1,...,y_P\}$,
+Given $N$ arguments and $P$ labeled preference pairs, $\mathbf y=\{y_1,...,y_P\}$,
 we can make predictions by finding the posterior distribution over the convincingness values, 
 $\mathbf f = \{f(\mathbf {x}_1),...,f(\mathbf {x}_N)\}$, given by:
 \begin{flalign}
 & p\left(\mathbf f | \mathbf{y}, k_{\theta}, a_0, b_0 \right) 
 \propto p(\mathbf y | \mathbf f) p(\mathbf f | k_{\theta}, a_0, b_0) & \nonumber \\
-& = \frac{1}{Z} \int \prod_{k=1}^P \Phi\!\left( z_k \right) 
-\mathcal{N}(\mathbf f; \mathbf 0, \mathbf K_{\theta}s) \mathcal{G}(s; a_0, b_0) \mathrm{d}s, &
+& \! =  \frac{1}{Z} \! \int  \prod_{k=1}^P \Phi\!\left( z_k \right) 
+\mathcal{N}(\mathbf f; \mathbf 0, \mathbf K_{\theta}s) \mathcal{G}(s; a_0, b_0) \mathrm{d}s, \!\!\!\! &
 \label{eq:post}
 \end{flalign}
-where $Z = p\left(\mathbf{y} | k_{\theta}, a_0, b_0 \right)$ is the normalization constant.
+where $Z = p\left(\mathbf{y} | k_{\theta}, a_0, b_0 \right)$.
 Unfortunately, neither $Z$ nor the integral over $s$ 
 can be computed analytically, so we must turn to approximations.
 
@@ -82,16 +82,16 @@ First, we approximate the preference likelihood with a Gaussian, $\prod_{k=1}^P 
 The parameters $\hat{\mathbf f}$ and $\mathbf C$ 
 depend on the approximate preference likelihood 
 and an approximate distribution over $s$: $q(s) = \mathcal{G}(s; a, b)$. 
-The variational inference algorithm begins by initialising the parameters $\mathbf G$, $ \hat{\mathbf f}$, $\mathbf C$, $a$ and $b$ at random. Then, the  algorithm proceeds iteratively updating each parameter in turn, given the current values for the other parameters. 
-This optimisation procedure minimises the Kullback-Leibler (KL) divergence of $p(\mathbf f |\mathbf y, k_{\theta}, a_0, b_0)$ from $q(\mathbf f)$, causing $q(\mathbf f)$ to converge to an approximate posterior. 
+The variational inference algorithm begins by initializing the parameters $\mathbf G$, $ \hat{\mathbf f}$, $\mathbf C$, $a$ and $b$ at random. Then, the  algorithm proceeds iteratively updating each parameter in turn, given the current values for the other parameters. 
+This optimization procedure minimizes the Kullback-Leibler (KL) divergence of $p(\mathbf f |\mathbf y, k_{\theta}, a_0, b_0)$ from $q(\mathbf f)$, causing $q(\mathbf f)$ to converge to an approximate posterior. 
 
 The update equations for the mean $\hat{\mathbf f}$ and covariance $\mathbf C$ require inverting the covariance matrix, $K_{\theta}$, at a computational cost of $\mathcal{O}(N^3)$, which is impractical with more than a few hundred data points. 
 Furthermore, the updates also require $\mathcal{O}(NP)$ computations and
 have $\mathcal{O}(N^2 + NP + P^2)$ memory complexity.
 To resolve this, 
-%Starting from random initial values, we update $q(f,s)$ iteratively to maximise a lower bound on the log marginal likelihood, 
+%Starting from random initial values, we update $q(f,s)$ iteratively to maximize a lower bound on the log marginal likelihood, 
 %$\mathcal{L} \leq \log p(\mathbf y | \theta, a_0, b_0)$.
-%This optimisation procedure minimises the Kullback-Leibler divergence of $p(f,s|\mathbf y, \theta, a_0, b_0)$ from $q(f,s)$,
+%This optimization procedure minimizes the Kullback-Leibler divergence of $p(f,s|\mathbf y, \theta, a_0, b_0)$ from $q(f,s)$,
 %meaning that $q(f,s)$ converges to an approximate posterior. 
 we apply a recently introduced technique, stochastic variational inference (SVI) 
 \cite{hoffman2013stochastic,hensman_scalable_2015},
@@ -121,10 +121,10 @@ complexity of each SVI iteration to $\mathcal{O}(M^3 + MP_n)$ and the
 memory complexity $\mathcal{O}(M^2 + MP_n + P_n^2)$.
 To choose representative inducing points, 
 we use K-means++~\cite{arthur2007k} with $K=M$ to rapidly cluster the feature vectors, 
-then take the cluster centres as inducing points.
+then take the cluster centers as inducing points.
 Compared to standard K-means, K-means++ introduces a new method for choosing the initial cluster seeds that
 %provides theoretical bounds on the error function. In practice, this 
-reduces the number of poor-quality clusterings.% that result from random initialisation.
+reduces the number of poor-quality clusterings.% that result from random initialization.
 
 A further benefit of GPs is that they enable \emph{automatic relevance determination (ARD)}
 to identify informative features, which works as follows.
@@ -133,11 +133,11 @@ $k_{\theta}(\mathbf x, \mathbf x') = \prod_{d=1}^D k_d(|x_d - x_d'| / l_d)$,
 where $k_d$ is a function of the distance between the values of feature $d$ 
 for items $x$ and $x'$, and a length-scale hyper-parameter, $l_d$.
 The length-scale controls the smoothness of the function across the feature space,
-and can be optimised by choosing the value of $l_d$ that maximises the approximate log marginal likelihood, $\mathcal{L} \approx \log p(\bs y)$. 
+and can be optimized by choosing the value of $l_d$ that maximizes the approximate log marginal likelihood, $\mathcal{L} \approx \log p(\bs y)$. 
 This process is known as \emph{maximum likelihood II (MLII)}~\cite{rasmussen_gaussian_2006}.
-Features with larger length-scales after optimisation are less relevant because their values
+Features with larger length-scales after optimization are less relevant because their values
 have less effect on $k_{\theta}(\mathbf x, \mathbf x') $.
-To avoid the cost of optimising the length-scales, we can alternatively set them using a median heuristic,
+To avoid the cost of optimizing the length-scales, we can alternatively set them using a median heuristic,
 which has been shown to perform well in practice~\cite{gretton2012optimal}: 
 $ \tilde{l}_{d} = \frac{1}{D} \mathrm{median}\left( \left\{ |x_{i,d} - x_{j,d}|, \right.\right.$
 $ \left.\left. \forall i=1,...,N, \forall j=1,...,N\right\} \right) $.

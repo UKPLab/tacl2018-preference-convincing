@@ -140,3 +140,10 @@ outputdata/*.pkl
 venv
 venv_linux/
 .idea/
+*.bbl
+**/*.bbl
+documents/pref_learning_for_convincingness/1304-2018-TACL-ES-pref_learning_for_convincingness.bbl
+**.bbl
+*.blg
+**backup.*
+documents/pref_learning_for_convincingness/figures/scalability/num_arguments_backup.pdf

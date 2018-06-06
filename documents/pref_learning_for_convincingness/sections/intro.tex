@@ -9,14 +9,14 @@ Automated methods could help readers overcome this challenge
  by identifying high-quality, persuasive arguments from both sides of a debate. 
  
 Theoretical approaches for assessing argument quality have proved difficult to apply to everyday arguments~\cite{boudry2015fake}.
-Empirical machine learning approaches instead train models using example judgements of arguments,
+Empirical machine learning approaches instead train models using example judgments of arguments,
 such as those shown in Figure \ref{fig:argument_examples}.
 %Consider the :
 %how does one assign a numerical convincingness score to each argument? 
-%arguments paired with human judgements of their convincingness.
+%arguments paired with human judgments of their convincingness.
 %approaches have recently shown success in assessing quality, convincingness or 
 %persuasiveness \cite{habernal2016argument,wei2016post,wei2016preliminary,persing2017can} 
-%Typically, machine learning approaches require examples of arguments paired with judgements of their convincingness.
+%Typically, machine learning approaches require examples of arguments paired with judgments of their convincingness.
 \begin{figure}
 \textbf{Topic:} ``William Farquhar ought to be honoured as the rightful founder of Singapore". \\
 \textbf{Stance:} ``No, it is Raffles!" \\
@@ -28,7 +28,7 @@ Raffles conceived a town plan to remodel Singapore into a modern city. The plan 
 \caption{Example argument pair from an online debate.}
 \label{fig:argument_examples}
 \end{figure}
-Previous approaches to obtaining such judgements include training annotators to assign scores from 1-6~\cite{persing2017can}, 
+Previous approaches to obtaining such judgments include training annotators to assign scores from 1-6~\cite{persing2017can}, 
 asking annotators for simple binary or three-class categories~\cite{wei2016preliminary}, and
 aggregating binary votes from multiple people~\cite{wei2016post,tan2016winning}.
 However, these approaches are limited by the cost of training annotators, 
@@ -50,10 +50,10 @@ toward high, low or middling values, or an individual's bias changing over time.
 % }
 In practice, we face a data acquisition bottleneck when encountering new domains or audiences.
 For example, neural network methods typically require datasets with 
-many thousands of hand-labelled examples to perform well~\cite{srivastava2014dropout,collobert2011natural}.
+many thousands of hand-labeled examples to perform well~\cite{srivastava2014dropout,collobert2011natural}.
 One solution is to employ multiple non-specialist annotators at low cost (\emph{crowdsourcing}), 
 but this requires quality control techniques to account for errors.
-Another source of data are the actions of users of a software application, which can be interpreted as pairwise judgements~\cite{joachims2002optimizing}. For example, when a user clicks on an argument in a list it can be interpreted
+Another source of data are the actions of users of a software application, which can be interpreted as pairwise judgments~\cite{joachims2002optimizing}. For example, when a user clicks on an argument in a list it can be interpreted
  as a preference for the selected argument over more highly-ranked arguments.
 However, the resulting pairwise labels are likely to be a very noisy indication of preference.
 
@@ -95,7 +95,7 @@ but this work focuses on predicting salience of an argument given the state of t
 Wachsmuth et al.~\shortcite{wachsmuth2017argumentation} recently showed
  that relative comparisons of argument convincingness correlate with theory-derived quality ratings.
 Habernal and Gurevych~\shortcite{habernal2016argument} established datasets
-containing crowdsourced pairwise judgements of convincingness for arguments taken from online discussions. 
+containing crowdsourced pairwise judgments of convincingness for arguments taken from online discussions. 
 Errors in the crowdsourced data were handled by determining gold labels using the MACE algorithm~\cite{hovy2013learning}.
 The gold labels were then used to train SVM and bi-directional long short-term memory (BiLSTM) classifiers to predict pairwise
 labels for new arguments. 
@@ -103,7 +103,7 @@ The gold labels were also used to construct a directed graph of convincingness, 
 to produce scores for each argument. 
 These scores were then used to train SVM and BiLSTM regression models.
 A drawback of such pipeline approaches is that they are prone to error propagation~\cite{chen2016joint},
-and consensus algorithms such as MACE require multiple crowdsourced labels for each argument pair, 
+and consensus algorithms, such as MACE, require multiple crowdsourced labels for each argument pair, 
 which increases annotation costs.
 
 \section{Bayesian Methods for NLP}\label{sec:bayesian}
@@ -123,12 +123,12 @@ where $P(D|M)$ is the likelihood of the data given $M$, and $P(M)$ is the model 
 If the dataset is small, the posterior remains close to the prior, so the model 
 does not assume extreme values given a small training sample.
 %which reduces overfitting.
-Rather than learning a posterior, neural network training typically selects model parameters that maximise the likelihood, 
+Rather than learning a posterior, neural network training typically selects model parameters that maximize the likelihood, 
 so they are more prone to overfitting with small datasets, which can reduce performance~\cite{xiong2011bayesian}.
 
 % \todo{link each paragraph to argumentation problem: no trustworthy labels; multiple annotators; ?}
 Bayesian methods can be trained using unsupervised or semi-supervised learning
-to take advantage of structure in unlabelled data when labelled data is in short supply.
+to take advantage of structure in unlabeled data when labeled data is in short supply.
 Popular examples in NLP are
 Latent Dirichlet Allocation (LDA)~\cite{blei2003latent}, which is used for topic modelling,
 and its extension, the hierarchical Dirichlet process (HDP)~\cite{teh2005sharing}, which learns the number of topics rather than requiring it to be fixed a priori.
@@ -146,7 +146,7 @@ GPs are nonparametric, meaning they can model highly nonlinear functions by
 allowing function complexity to grow with the amount of data~\cite{rasmussen_gaussian_2006}.
 They account for model uncertainty when extrapolating from sparse training data
 and can be incorporated into larger graphical models.
-Example applications include analysing the relationship between a user's impact on Twitter 
+Example applications include analyzing the relationship between a user's impact on Twitter 
 and the textual features of their tweets~\cite{lampos2014predicting}, 
 predicting the level of emotion in text~\cite{beck2014joint},
 and estimating the quality of machine translations given source and translated texts~\cite{cohn2013modelling}.
@@ -186,7 +186,7 @@ Mallows models can be trained from pairwise preferences
 ~\cite{lu2011learning}, but inference is usually costly
 since the number of possible permutations is $\mathcal{O}(N!)$, 
 where $N$ is the number of arguments. 
-Modelling only the ordering does not allow us to quantify 
+Modeling only the ordering does not allow us to quantify 
 the difference between arguments at similar ranks.
 
 To avoid the problems of classifier-based and permutation-based methods, 

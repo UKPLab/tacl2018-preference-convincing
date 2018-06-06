@@ -74,7 +74,7 @@ Ronan Collobert, Jason Weston, L{\'e}on Bottou, Michael Karlen, Koray
 \newblock {\em Journal of Machine Learning Research}, 12(Aug):2493--2537.
 
 \bibitem[\protect\citename{Felt \bgroup et al.\egroup }2016]{felt2016semantic}
-Paul Felt, Eric~K Ringger, and Kevin~D Seppi.
+Paul Felt, Eric~K. Ringger, and Kevin~D. Seppi.
 \newblock 2016.
 \newblock Semantic annotation aggregation with conditional crowdsourcing models
   and word embeddings.
@@ -84,7 +84,7 @@ Paul Felt, Eric~K Ringger, and Kevin~D Seppi.
 \bibitem[\protect\citename{Gretton \bgroup et al.\egroup
   }2012]{gretton2012optimal}
 Arthur Gretton, Dino Sejdinovic, Heiko Strathmann, Sivaraman Balakrishnan,
-  Massimiliano Pontil, Kenji Fukumizu, and Bharath~K Sriperumbudur.
+  Massimiliano Pontil, Kenji Fukumizu, and Bharath~K. Sriperumbudur.
 \newblock 2012.
 \newblock Optimal kernel choice for large-scale two-sample tests.
 \newblock In {\em Advances in Neural Information Processing Systems}, pages
@@ -115,13 +115,13 @@ James Hensman, Alexander G. de~G. Matthews, and Zoubin Ghahramani.
 
 \bibitem[\protect\citename{Hoffman \bgroup et al.\egroup
   }2013]{hoffman2013stochastic}
-Matthew~D Hoffman, David~M Blei, Chong Wang, and John~William Paisley.
+Matthew~D. Hoffman, David~M. Blei, Chong Wang, and John~William Paisley.
 \newblock 2013.
 \newblock Stochastic variational inference.
 \newblock {\em Journal of Machine Learning Research}, 14(1):1303--1347.
 
 \bibitem[\protect\citename{Hovy \bgroup et al.\egroup }2013]{hovy2013learning}
-Dirk Hovy, Taylor Berg-Kirkpatrick, Ashish Vaswani, and Eduard~H Hovy.
+Dirk Hovy, Taylor Berg-Kirkpatrick, Ashish Vaswani, and Eduard~H. Hovy.
 \newblock 2013.
 \newblock Learning whom to trust with {MACE}.
 \newblock In {\em Proceedings of NAACL-HLT 2013}, pages 1120--1130. ACL.
@@ -143,7 +143,7 @@ Maurice~George Kendall.
   }2016]{kenter2016siamesecbow}
 Tom Kenter, Alexey Borisov, and Maarten de~Rijke.
 \newblock 2016.
-\newblock Siamese {CBOW:} optimizing word embeddings for sentence
+\newblock Siamese {CBOW:} {Optimizing} word embeddings for sentence
   representations.
 \newblock In {\em Proceedings of the The 54th Annual Meeting of the Association
   for Computational Linguistics (Volume 1: Long Papers)}, pages 941--951.
@@ -157,14 +157,14 @@ Hiroyuki Kido and Keishi Okamoto.
   Conference on Artificial Intelligence}, pages 249--255.
 
 \bibitem[\protect\citename{Kingsley and Brown}2010]{kingsley2006preference}
-David~C Kingsley and Thomas~C. Brown.
+David~C. Kingsley and Thomas~C. Brown.
 \newblock 2010.
 \newblock Preference uncertainty, preference refinement and paired comparison
   experiments.
 \newblock {\em Land Economics}, 86(3):530--544.
 
 \bibitem[\protect\citename{Kiros \bgroup et al.\egroup }2015]{kiros2015skip}
-Ryan Kiros, Yukun Zhu, Ruslan~R Salakhutdinov, Richard Zemel, Raquel Urtasun,
+Ryan Kiros, Yukun Zhu, Ruslan~R. Salakhutdinov, Richard Zemel, Raquel Urtasun,
   Antonio Torralba, and Sanja Fidler.
 \newblock 2015.
 \newblock Skip-thought vectors.
@@ -188,7 +188,7 @@ Tyler Lu and Craig Boutilier.
   Learning}, pages 145--152.
 
 \bibitem[\protect\citename{Luce}1959]{luce1959possible}
-R~Duncan Luce.
+R.~Duncan Luce.
 \newblock 1959.
 \newblock On the possible psychophysical laws.
 \newblock {\em Psychological Review}, 66(2):81.
@@ -225,7 +225,7 @@ Ariel Monteserin and Anal{\'\i}a Amandi.
 \bibitem[\protect\citename{Mosteller}2006]{mosteller2006remarks}
 Frederick Mosteller.
 \newblock 2006.
-\newblock Remarks on the method of paired comparisons: I. the least squares
+\newblock Remarks on the method of paired comparisons: I. {The} least squares
   solution assuming equal standard deviations and equal correlations.
 \newblock In {\em Selected Papers of Frederick Mosteller}, pages 157--162.
   Springer.
@@ -240,20 +240,20 @@ Hannes Nickisch and Carl~Edward Rasmussen.
 \bibitem[\protect\citename{Persing and Ng}2017]{persing2017can}
 Isaac Persing and Vincent Ng.
 \newblock 2017.
-\newblock Why can’t you convince me? modeling weaknesses in unpersuasive
+\newblock Why {can't} you convince me? {Modeling} weaknesses in unpersuasive
   arguments.
 \newblock In {\em Proceedings of the 26th International Joint Conference on
   Artificial Intelligence}, pages 4082--4088.
 
 \bibitem[\protect\citename{Plackett}1975]{plackett1975analysis}
-Robin~L Plackett.
+Robin~L. Plackett.
 \newblock 1975.
 \newblock The analysis of permutations.
 \newblock {\em Applied Statistics}, pages 193--202.
 
 \bibitem[\protect\citename{Rasmussen and
   Williams}2006]{rasmussen_gaussian_2006}
-Carl~E Rasmussen and Christopher K.~I. Williams.
+Carl~E. Rasmussen and Christopher K.~I. Williams.
 \newblock 2006.
 \newblock {Gaussian} processes for machine learning.
 \newblock {\em The {MIT} Press, Cambridge, {MA}, {USA}}, 38:715--719.
@@ -283,8 +283,8 @@ Burr Settles.
 
 \bibitem[\protect\citename{Simpson \bgroup et al.\egroup
   }2015]{simpson2015language}
-Edwin~D Simpson, Matteo Venanzi, Steven Reece, Pushmeet Kohli, John Guiver,
-  Stephen~J Roberts, and Nicholas~R Jennings.
+Edwin~D. Simpson, Matteo Venanzi, Steven Reece, Pushmeet Kohli, John Guiver,
+  Stephen~J. Roberts, and Nicholas~R. Jennings.
 \newblock 2015.
 \newblock Language understanding in the wild: Combining crowdsourcing and
   machine learning.
@@ -293,14 +293,14 @@ Edwin~D Simpson, Matteo Venanzi, Steven Reece, Pushmeet Kohli, John Guiver,
 
 \bibitem[\protect\citename{Srivastava \bgroup et al.\egroup
   }2014]{srivastava2014dropout}
-Nitish Srivastava, Geoffrey~E Hinton, Alex Krizhevsky, Ilya Sutskever, and
-  Ruslan Salakhutdinov.
+Nitish Srivastava, Geoffrey~E. Hinton, Alex Krizhevsky, Ilya Sutskever, and
+  Ruslan~R. Salakhutdinov.
 \newblock 2014.
-\newblock Dropout: a simple way to prevent neural networks from overfitting.
+\newblock Dropout: {A} simple way to prevent neural networks from overfitting.
 \newblock {\em Journal of machine learning research}, 15(1):1929--1958.
 
 \bibitem[\protect\citename{Steinberg and Bonilla}2014]{steinberg2014extended}
-Daniel~M Steinberg and Edwin~V Bonilla.
+Daniel~M. Steinberg and Edwin~V. Bonilla.
 \newblock 2014.
 \newblock Extended and unscented {Gaussian} processes.
 \newblock In {\em Advances in Neural Information Processing Systems}, pages
@@ -315,7 +315,7 @@ Chenhao Tan, Vlad Niculae, Cristian Danescu-Niculescu-Mizil, and Lillian Lee.
   Wide Web}, pages 613--624.
 
 \bibitem[\protect\citename{Teh \bgroup et al.\egroup }2005]{teh2005sharing}
-Yee~W Teh, Michael~I Jordan, Matthew~J Beal, and David~M Blei.
+Yee~W. Teh, Michael~I. Jordan, Matthew~J. Beal, and David~M. Blei.
 \newblock 2005.
 \newblock Sharing clusters among related groups: Hierarchical {Dirichlet}
   processes.
@@ -347,7 +347,7 @@ Henning Wachsmuth, Nona Naderi, Ivan Habernal, Yufang Hou, Graeme Hirst, Iryna
 \bibitem[\protect\citename{Wei \bgroup et al.\egroup }2016a]{wei2016post}
 Zhongyu Wei, Yang Liu, and Yi~Li.
 \newblock 2016a.
-\newblock Is this post persuasive? ranking argumentative comments in online
+\newblock Is this post persuasive? {Ranking} argumentative comments in online
   forum.
 \newblock In {\em Proceedings of the 54th Annual Meeting of the Association for
   Computational Linguistics (Volume 2: Short Papers)}, pages 195--200.
