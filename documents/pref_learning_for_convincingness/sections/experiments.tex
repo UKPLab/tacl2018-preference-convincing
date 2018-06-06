@@ -46,7 +46,7 @@ including conflicts and undecided labels, and to test the suitability of our met
 to address the cold-start problem in domains with no labeled data.
 For these datasets, we perform 32-fold cross validation, where
 %, using 31 folds for training and one for testing. 
-each fold corresponds to one of 16 controversial topics, and one of two stances for that topic.
+each fold corresponds to one of two stances for one of 16 controversial topics.
  
 \subsection{Method Comparison}
 
@@ -447,7 +447,7 @@ to select the $2$ pairs with the least confident classifications.
 The labels for these pairs are then added to the training set and 
 used to re-train the model. We repeated the process until $400$ labels had been sampled. 
 
-The result is plotted in Figure \ref{fig:active_learning}, showing that GPPL
+The result in Figure \ref{fig:active_learning} shows that GPPL
 reaches a mean accuracy of 70\% with only 100 labels, while SVM and BiLSTM do not reach the same performance given 400 labels. 
 After 100 labels, the 
 performance of BiLSTM decreases. It has previously been shown ~\cite{cawley2011baseline,guyon2011results,settles2010active} that uncertainty sampling sometimes causes accuracy to decrease. If the model overfits to a small dataset, 

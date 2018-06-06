@@ -1,11 +1,11 @@
-This is BibTeX, Version 0.99d (TeX Live 2015/Debian)
+This is BibTeX, Version 0.99d (TeX Live 2015)
 Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
 The top-level auxiliary file: 1304-2018-TACL-ES-pref_learning_for_convincingness.aux
 The style file: acl2012.bst
 Database file #1: simpson_pref_learning_for_convincingness.bib
 You've used 49 entries,
             2490 wiz_defined-function locations,
-            843 strings with 14653 characters,
+            843 strings with 14654 characters,
 and the built_in function-call counts, 24820 in all, are:
 = -- 2672
 > -- 863

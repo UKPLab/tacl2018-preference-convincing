@@ -49,7 +49,9 @@ The kernel function controls the smoothness of $f$ over the feature space,
 while $s$ controls the variance of $f$. 
 Increasing $s$ means that, on average, the magnitude of $f(\mathbf x_i)-f(\mathbf x_j)$ increases  
 so that $\Phi(z)$ is closer to $0$ or $1$, and erroneous pairwise labels are less likely.
-Therefore, larger values of $s$ correspond to less observation noise.
+Therefore, larger values of $s$ correspond to less observation noise
+and there is no need for a separate term for the variance of $\delta$, as in Chu and Ghaharamani~\shortcite{chu2005preference}.
+%, because $s$ scales $f$ relative to $\delta$.
 We assume a Gamma distribution $1/s \sim \mathcal{G}(a_0, b_0)$ with shape $a_0$ and scale $b_0$,
 as this is a conjugate prior.
 
