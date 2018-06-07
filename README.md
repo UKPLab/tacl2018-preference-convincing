@@ -254,3 +254,4 @@ For the prior precision:
  as follows...  
    * shape_s0 = n / 2.0
    * rate_s0 = v * n / 2.0
+
