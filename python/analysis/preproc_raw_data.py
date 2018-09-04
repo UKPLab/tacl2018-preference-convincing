@@ -129,10 +129,10 @@ def process_list_of_gold(pairlist):
     pairlist = pairlist['annotatedArgumentPair']
     for pair in pairlist:
         if 'goldLabel' in pair:            
-            row = [pair['id'].encode('utf-8'), 'goldLabel'.encode('utf-8'), 
-                   pair['goldLabel'].encode('utf-8'),
-                   pair['arg1']['text'].encode('utf-8').replace('\n', ' ').replace('\t', ' '), 
-                   pair['arg2']['text'].encode('utf-8').replace('\n', ' ').replace('\t', ' ')]
+            row = [pair['id'].encode('ascii','ignore'), 'goldLabel',
+                   pair['goldLabel'].encode('ascii','ignore'),
+                   pair['arg1']['text'].replace('\n', ' ').replace('\t', ' ').encode('ascii','ignore'),
+                   pair['arg2']['text'].replace('\n', ' ').replace('\t', ' ').encode('ascii','ignore')]
             crowdlabels.append(row)
         
     return np.array(crowdlabels)
@@ -158,7 +158,7 @@ def generate_gold_CSV(datadir, outputdir):
         if f.split('.')[-1] != 'xml':
             continue        
         print("Processing file %i of %i, filename=%s" % (i, len(datafiles), f))
-        with open(datadir + f) as ffile:
+        with open(datadir + f, 'r') as ffile:
             doc = xmltodict.parse(ffile.read())
             pairlist = doc['list']
             labels = process_list_of_gold(pairlist)    
