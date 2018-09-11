@@ -21,113 +21,10 @@ from sklearn.datasets import load_svmlight_file
 from preproc_raw_data import generate_turker_CSV, generate_gold_CSV
 import numpy as np
 
-def combine_into_libsvm_files(dataset, ids1, ids2, labels, dataset_type, fold, nfeats,
-        dirname=data_root_dir + '/lingdata/UKPConvArg1-Full-libsvm', 
-        outputfile=data_root_dir + '/libsvmdata/%s-%s-%s-libsvm.txt', reverse_pairs=False, 
-        embeddings=None, a1=None, a2=None, embeddings_only=False): 
-    outputfile = outputfile % (dataset, dataset_type, fold)
-    
-    outputstr = ""
-    dataids = [] # contains the argument document IDs in the same order as in the ouputfile and outputstr
-    
-    if os.path.isfile(outputfile):
-        os.remove(outputfile)
-    
-    with open(outputfile, 'a') as ofh:    
-        for row in range(len(ids1)):
-            # each file should contain only one line
-            fname1 = '%s.libsvm.txt' % ids1[row]
-            with open(dirname + "/" + fname1) as fh:
-                lines = fh.readlines()
-
-            comment_split_line = lines[0][1:].split('#')
-            
-            if embeddings_only:           
-                outputline = str(float(labels[row])) + comment_split_line[0]
-            else:
-                outputline = str(float(labels[row])) + '\t'
-            
-            if embeddings is not None:
-                first_embedding_feature_id = nfeats
-                if ids2 is not None:
-                    first_embedding_feature_id += nfeats
-                
-                docvec = embeddings[a1[row], :]
-                for i, v in enumerate(docvec):
-                    outputline += str(int(i) + first_embedding_feature_id)
-                    outputline += ':' + str(v) + '\t'
-                  
-            if ids2 is not None:
-                fname2 = ids2[row] + '.libsvm.txt'
-                with open(dirname + "/" + fname2) as fh:
-                    lines2 = fh.readlines()
-
-                # move comments at end of first line to end of complete joint line
-                comment_split_line2 = lines2[0][1:].split('#')
-                
-                if not embeddings_only:
-                    for feat in comment_split_line2[0].split('\t'):
-                        if not len(feat):
-                            continue
-                        outputline += str(int(feat.split(':')[0]) + nfeats)
-                        outputline += ':' + feat.split(':')[1] + '\t'
-                    # we could re-add the comments back in, but this seems to be problematic for libsvm, not sure why?
-                    #if len(comment_split_line) > 1:
-                    #    outputline += '\t#' + comment_split_line[1] + '_' + comment_split_line_complete[1]  
-        
-                if embeddings is not None:
-                    first_embedding_feature_id = nfeats * 2 + embeddings.shape[1]
-                    
-                    docvec = embeddings[a2[row], :]
-                    for i, v in enumerate(docvec):
-                        outputline += str(int(i) + first_embedding_feature_id)
-                        outputline += ':' + str(v) + '\t'        
-        
-            outputline += '\n'
-        
-            ofh.write(outputline)
-                
-            if reverse_pairs and ids2 is not None:
-                outputline = str(float(1 - labels[row])) + comment_split_line2[0] 
-
-                if embeddings is not None:
-                    first_embedding_feature_id = nfeats
-                    if ids2 is not None:
-                        first_embedding_feature_id += nfeats
-                
-                    docvec = embeddings[a2[row], :]
-                    for i, v in enumerate(docvec):
-                        outputline += str(int(i) + first_embedding_feature_id)
-                        outputline += ':' + str(v) + '\t'
-                
-                largestsofar = nfeats
-                
-                for feat in comment_split_line[0].split('\t'):
-                    if not len(feat):
-                        continue
-                    outputline += str(int(feat.split(':')[0]) + nfeats)
-                    outputline += ':' + feat.split(':')[1] + '\t'
-                    if int(feat.split(':')[0]) + nfeats < largestsofar:
-                        print('Parsing error...')
-                    largestsofar = int(feat.split(':')[0]) + nfeats
-                    
-                if embeddings is not None:
-                    first_embedding_feature_id = nfeats * 2 + embeddings.shape[1]
-                    
-                    docvec = embeddings[a1[row], :]
-                    for i, v in enumerate(docvec):
-                        outputline += str(int(i) + first_embedding_feature_id)
-                        outputline += ':' + str(v) + '\t'    
-                    
-                outputline += '\n'
-                ofh.write(outputline)
-                
-    return outputfile, outputstr, dataids
-
-def combine_lines_into_one_file(dataset, dirname=data_root_dir + '/lingdata/UKPConvArg1-Full-libsvm', 
-        outputfile=data_root_dir + '/lingdata/%s-libsvm.txt'): 
-    output_argid_file = outputfile % ("argids_%s" % dataset)
-    outputfile = outputfile % dataset
+def combine_lines_into_one_file(dataset_name, dirname=data_root_dir + '/lingdata/UKPConvArg1-Full-libsvm',
+                                outputfile=data_root_dir + '/lingdata/%s-libsvm.txt'):
+    output_argid_file = outputfile % ("argids_%s" % dataset_name)
+    outputfile = outputfile % dataset_name
     
     outputstr = ""
     dataids = [] # contains the argument document IDs in the same order as in the ouputfile and outputstr
@@ -143,12 +40,12 @@ def combine_lines_into_one_file(dataset, dirname=data_root_dir + '/lingdata/UKPC
                 lines = fh.readlines()
             for line in lines:
                 dataids.append(fid)
-                outputline = line
+                outputline = line.split('#')[0]
                 ofh.write(outputline)
                 outputstr += outputline + '\n'
                 
     if os.path.isfile(output_argid_file):
-        os.remove(outputfile)
+        os.remove(output_argid_file)
         
     dataids = np.array(dataids)[:, np.newaxis]
     np.savetxt(output_argid_file, dataids, '%s')

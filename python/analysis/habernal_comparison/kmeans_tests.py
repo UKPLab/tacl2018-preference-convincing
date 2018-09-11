@@ -61,7 +61,7 @@ from gp_classifier_svi import GPClassifierSVI
 from gp_classifier_vb import compute_median_lengthscales
 from sklearn.svm import SVR 
 from data_loading import load_train_test_data, load_embeddings, load_ling_features, data_root_dir, \
-    combine_into_libsvm_files, load_siamese_cbow_embeddings, load_skipthoughts_embeddings
+    load_siamese_cbow_embeddings, load_skipthoughts_embeddings
 import numpy as np
     
 ndebug_features = 10

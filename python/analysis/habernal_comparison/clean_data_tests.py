@@ -25,9 +25,8 @@ if __name__ == '__main__':
                         dataset_increment)
     runner.run_test_set()
 
-
     datasets = ['UKPConvArgStrict']
-    methods = ['SVM', 'BI-LSTM', 'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior',
+    methods = ['SinglePrefGP_noOpt_weaksprior', 'SVM', 'BI-LSTM', 'SinglePrefGP_weaksprior',
                'SingleGPC_noOpt_weaksprior', 'GP+SVM']
     feature_types = ['both'] #
     embeddings_types = ['word_mean']

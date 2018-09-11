@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
+import os
 from copy import copy
 
 import numpy as np
@@ -18,7 +19,7 @@ def load_single_file(directory, file_name, word_to_indices_map, nb_words=None):
     :param nb_words: maximum word index to be kept; otherwise treated as OOV
     :return: tuple of lists of integers
     """
-    f = open(directory + file_name, 'r')
+    f = open(os.path.join(directory, file_name), 'r')
     lines = f.readlines()
     # remove first line with comments
     del lines[0]
@@ -32,7 +33,11 @@ def load_single_file(directory, file_name, word_to_indices_map, nb_words=None):
 
     for line in lines:
         # print line
-        arg_id, label, a1, a2 = line.split('\t')
+        toks = line.split('\t')
+        arg_id = toks[0]
+        label = toks[1]
+        a1 = toks[-2]
+        a2 = toks[-1]
         # print(arg_id, label, a1, a2)
 
         id_vector.append(arg_id)
@@ -104,7 +109,7 @@ def load_single_file_separate_args(directory, file_name, word_to_indices_map, nb
     id_vector = []
     turkerids = []
     
-    for line in lines:
+    for line in lines[1:]:
         # print line
         toks = line.split('\t')
         if len(toks) != 5:
