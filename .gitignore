@@ -147,3 +147,8 @@ documents/pref_learning_for_convincingness/1304-2018-TACL-ES-pref_learning_for_c
 *.blg
 **backup.*
 documents/pref_learning_for_convincingness/figures/scalability/num_arguments_backup.pdf
+data/new_ranking1
+data/new_ranking2
+data/new_ranking3
+data/new_ranking_libsvm
+model.pkl
