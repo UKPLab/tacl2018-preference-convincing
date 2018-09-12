@@ -153,12 +153,13 @@ if __name__ == '__main__':
 
     input = os.path.abspath(test_data_path)
     tmp = os.path.abspath('./data/new_ranking1')
-    script = 'Pipeline'
+    script = 'PipelineSeparateArguments'
     package = 'de.tudarmstadt.ukp.experiments.argumentation.convincingness.preprocessing'
 
-    # call(['java', '-cp', classpath,
-    #       package + '.' + script,
-    #       input, tmp], cwd=java_run_path)
+    call(['java', '-cp', classpath,
+          package + '.' + script,
+          input, tmp], cwd=java_run_path)
+    print('Completed step 1')
 
     # step 2, sentiment analysis
     tmp2 = os.path.abspath('./data/new_ranking2')
@@ -168,6 +169,7 @@ if __name__ == '__main__':
     # call(['java', '-cp', stanford_classpath,
     #       package + '.' + script,
     #       tmp, tmp2], cwd=java_stanford_path)
+    # print('Completed step 2')
 
     # step 3, extract features
     tmp3 = os.path.abspath('./data/new_ranking3')
@@ -178,6 +180,7 @@ if __name__ == '__main__':
     # call(['java', '-cp', classpath,
     #       package + '.' + script,
     #       tmp2, tmp3, arg], cwd=java_run_path)
+    # print('Completed step 3')
 
     # step 4, export to SVMLib format
     output = os.path.abspath('./data/new_ranking_libsvm')
@@ -186,6 +189,7 @@ if __name__ == '__main__':
 
     # call(['java', '-cp', classpath,
     #       package + '.' + script, tmp3, output], cwd=java_run_path)
+    # print('Completed step 4')
 
     # Load the linguistic features
     ling_dir = output
@@ -193,7 +197,10 @@ if __name__ == '__main__':
     ling_file, _, docids = combine_lines_into_one_file('new_test_data',
                                                        dirname=ling_dir,
                                                        outputfile=ling_dir + "/%s-libsvm.txt")
-    ling_feat_spmatrix, _ = load_svmlight_file(ling_file, n_features=model.features.shape[1] - len(embeddings[0]) + 1)
+    print('Completed combining libSVM files.')
+
+    ling_feat_spmatrix, _ = load_svmlight_file(ling_file, n_features=model.features.shape[1] - len(embeddings[0]))
+    print('Loaded libSVM data')
 
     X = []
     test_ids = []
@@ -207,7 +214,7 @@ if __name__ == '__main__':
         data = pd.read_csv(os.path.join(input, file_name), delimiter='\t', na_values=[])
         data = data.fillna('N/A')
 
-        ids = data['#id'].values
+        ids = [file_lineid in data['#id'].values]
         a1 = data['argument'].values
 
         a1_tokens = [vocabulary_embeddings_extractor.tokenize(a1_line) for a1_line in a1]

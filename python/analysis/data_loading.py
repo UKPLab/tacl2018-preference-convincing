@@ -31,9 +31,16 @@ def combine_lines_into_one_file(dataset_name, dirname=data_root_dir + '/lingdata
     
     if os.path.isfile(outputfile):
         os.remove(outputfile)
-        
+    if os.path.isfile(output_argid_file):
+        os.remove(output_argid_file)
+
+
     with open(outputfile, 'a') as ofh: 
         for filename in os.listdir(dirname):
+
+            if os.path.samefile(outputfile, os.path.join(dirname, filename)):
+                continue
+
             fid = filename.split('.')[0]
             print(("writing from file %s with row ID %s" % (filename, fid)))
             with open(dirname + "/" + filename) as fh:
@@ -41,12 +48,12 @@ def combine_lines_into_one_file(dataset_name, dirname=data_root_dir + '/lingdata
             for line in lines:
                 dataids.append(fid)
                 outputline = line.split('#')[0]
+                if outputline[-1] != '\n':
+                    outputline += '\n'
+
                 ofh.write(outputline)
                 outputstr += outputline + '\n'
-                
-    if os.path.isfile(output_argid_file):
-        os.remove(output_argid_file)
-        
+
     dataids = np.array(dataids)[:, np.newaxis]
     np.savetxt(output_argid_file, dataids, '%s')
                 
