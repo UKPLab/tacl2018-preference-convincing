@@ -1,6 +1,6 @@
 from sklearn.datasets import load_svmlight_file
 
-from data_loader import load_single_file_separate_args, load_single_file
+from data_loader import load_single_file_separate_args
 from data_loading import load_ling_features, load_embeddings, combine_lines_into_one_file
 from gp_classifier_vb import compute_median_lengthscales
 from gp_pref_learning import GPPrefLearning
@@ -22,6 +22,8 @@ test_data_path = './data/new_test_data' # location of your test data file. MUST 
 
 embeddings_dir = './data/'
 
+training_data_path = "~/data/personalised_argumentation/"
+
 java_run_path = '../acl2016-convincing-arguments/code/argumentation-convincingness-experiments-java/'
 java_stanford_path = '../acl2016-convincing-arguments/code/de.tudarmstadt.ukp.dkpro.core.stanfordsentiment-gpl/'
 mvn_path = '../acl2016-convincing-arguments/code/'
@@ -29,8 +31,12 @@ classpath = "./target/argumentation-convincingness-experiments-java-1.0-SNAPSHOT
 stanford_classpath = "./target/de.tudarmstadt.ukp.dkpro.core.stanfordsentiment-gpl-1.7.0.jar:" \
                      "./target/lib/*"
 
-def load_dataset(dataset):
-    data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
+training_dataset = 'UKPConvArgStrict'
+
+def load_dataset(dataset, embeddings):
+    ling_feat_spmatrix, docids = load_ling_features(dataset, training_data_path)
+
+    data_root_dir = os.path.expanduser(training_data_path)
     dirname = data_root_dir + 'argument_data/UKPConvArg1Strict-XML/'
     csvdirname = data_root_dir + 'argument_data/%s-new-CSV/' % dataset
 
@@ -40,16 +46,6 @@ def load_dataset(dataset):
     # Here we keep each the features of each argument in a pair separate, rather than concatenating them.
     print(('Loading train/test data from %s...' % csvdirname))
 
-    files = listdir(csvdirname)
-
-    for file_name in files:
-        if file_name.split('.')[-1] != 'csv':
-            print("Skipping files without .csv suffix: %s" % csvdirname + '/' + file_name)
-            files.remove(file_name)
-
-    word_to_indices_map, word_index_to_embeddings_map, index_to_word_map = vocabulary_embeddings_extractor.load_all(
-        embeddings_dir + 'vocabulary.embeddings.all.pkl.bz2')
-
     person_train = []
     a1_train = []
     a2_train = []
@@ -58,7 +54,11 @@ def load_dataset(dataset):
     X_a1 = []
     X_a2 = []
 
-    for file_name in files:
+    for file_name in listdir(csvdirname):
+        if file_name.split('.')[-1] != 'csv':
+            print("Skipping files without .csv suffix: %s" % csvdirname + '/' + file_name)
+            continue
+
         Xa1, Xa2, labels, ids, turker_ids, a1, a2 = load_single_file_separate_args(csvdirname, file_name,
                                                                                   word_to_indices_map, None)
 
@@ -74,91 +74,73 @@ def load_dataset(dataset):
 
     train_ids = np.array([ids_pair.split('_') for ids_pair in ids_train])
 
-    docids = np.unique(train_ids)
-
     a1_train = get_docidxs_from_ids(docids, train_ids[:, 0])
     a2_train = get_docidxs_from_ids(docids, train_ids[:, 1])
 
     X, u_ids = get_doc_token_seqs((a1_train, a2_train), [X_a1, X_a2])
-
-    ling_feat_spmatrix, docids = load_ling_features(dataset)
-
-    logging.info("Converting texts to mean embeddings (we could use a better sentence embedding?)...")
-    embeddings = load_embeddings(word_index_to_embeddings_map)
     items_feat = get_mean_embeddings(embeddings, X)
-    logging.info("...embeddings loaded.")
 
-    # trim away any features not in the training data because we can't learn from them
-    valid_feats = np.sum((items_feat[a1_train] != 0) + (items_feat[a2_train] != 0), axis=0) > 0
-    items_feat = items_feat[:, valid_feats]
-
-    logging.info("Obtaining linguistic features for argument texts.")
-    # trim the features that are not used in training
     ling_items_feat = ling_feat_spmatrix[u_ids, :].toarray()
     items_feat = np.concatenate((items_feat, ling_items_feat), axis=1)
-    logging.info("...loaded all linguistic features for training and test data.")
 
     print('Found %i features.' % items_feat.shape[1])
 
     ndims = items_feat.shape[1]
 
+    return items_feat, ling_feat_spmatrix.shape[1], word_to_indices_map, a1_train, \
+           a2_train, prefs_train, ndims
+
+def train_model(embeddings):
+    # Train a model...
+    items_feat, n_ling_feats, word_to_indices_map, valid_feats_ling, a1_train, a2_train, prefs_train, ndims \
+        = load_dataset(training_dataset, embeddings)  # reload only if we use a new dataset
+
     ls_initial = compute_median_lengthscales(items_feat)
 
-    return items_feat, ling_feat_spmatrix.shape[1], embeddings, word_to_indices_map, a1_train, \
-           a2_train, prefs_train, ls_initial, ndims
+    model = GPPrefLearning(ninput_features=ndims, ls_initial=ls_initial, verbose=False,
+                                shape_s0=2.0, rate_s0=200.0, rate_ls=1.0 / np.mean(ls_initial),
+                                use_svi=True, ninducing=500, max_update_size=200, kernel_combination='*',
+                                forgetting_rate=0.7, delay=1.0)
 
-if __name__ == '__main__':
+    model.max_iter_VB = 2000
 
-    # acc = 1.0
-    # dataset_increment = 0
-    #
-    # # Train a model on the UKPConvArgStrict data
-    #
-    # dataset = 'UKPConvArgStrict'
-    # items_feat, n_ling_feats, embeddings, word_to_indices_map, valid_feats_ling, a1_train, a2_train, prefs_train, ls_initial, ndims \
-    #     = load_dataset(dataset)  # reload only if we use a new dataset
-    #
-    # model = GPPrefLearning(ninput_features=ndims, ls_initial=ls_initial, verbose=False,
-    #                             shape_s0=2.0, rate_s0=200.0, rate_ls=1.0 / np.mean(ls_initial),
-    #                             use_svi=True, ninducing=500, max_update_size=200, kernel_combination='*',
-    #                             forgetting_rate=0.7, delay=1.0)
-    #
-    # model.max_iter_VB = 2000
-    #
-    # print("no. features: %i" % items_feat.shape[1])
-    #
-    # model.fit(a1_train, a2_train, items_feat, np.array(prefs_train, dtype=float) - 1, optimize=False,
-    #           input_type='zero-centered')
-    #
-    # logging.info("**** Completed training GPPL ****")
-    #
-    # # Save the model in case we need to reload it
-    #
-    # with open(pkl_file, 'wb') as fh:
-    #     pickle.dump(model, fh)
+    print("no. features: %i" % items_feat.shape[1])
 
-    # Load the model and the embeddings from file
-    with open(pkl_file, 'rb') as fh:
-        model = pickle.load(fh)
-    word_to_indices_map, word_index_to_embeddings_map, index_to_word_map = vocabulary_embeddings_extractor.load_all(
-        embeddings_dir + 'vocabulary.embeddings.all.pkl.bz2')
-    embeddings = load_embeddings(word_index_to_embeddings_map)
+    model.fit(a1_train, a2_train, items_feat, np.array(prefs_train, dtype=float) - 1, optimize=False,
+              input_type='zero-centered')
 
-    # Now load some test documents for RANKING and extract their features
+    logging.info("**** Completed training GPPL ****")
 
+    # Save the model in case we need to reload it
+
+    with open(pkl_file, 'wb') as fh:
+        pickle.dump(model, fh)
+
+def preprocessing_pipeline(input, output):
     # From Ivan Habernal's preprocessing pipeline, first, compile it
     call(['mvn', 'package'], cwd=mvn_path)
 
-    # step 1, convert to CSV:
+    # step 0, remove any '_' tokens as these will break the method
+    tmp0 = os.path.abspath('./data/new_test_data0')
+    if not os.path.exists(tmp0):
+        os.mkdir(tmp0)
 
-    input = os.path.abspath(test_data_path)
+    for input_file in os.listdir(input):
+        text_data = pd.read_csv(os.path.join(input, input_file), sep='\t', keep_default_na=False, index_col=0)
+        text_data.replace('_', ' ', regex=True, inplace=True, )
+        text_data.replace('\t', ' ', regex=True, inplace=True, )
+
+        text_data.to_csv(os.path.join(tmp0, input_file), sep='\t')
+
+
+    # step 1, convert to CSV:
     tmp = os.path.abspath('./data/new_ranking1')
     script = 'PipelineSeparateArguments'
     package = 'de.tudarmstadt.ukp.experiments.argumentation.convincingness.preprocessing'
 
     call(['java', '-cp', classpath,
           package + '.' + script,
-          input, tmp], cwd=java_run_path)
+          tmp0, tmp], cwd=java_run_path)
     print('Completed step 1')
 
     # step 2, sentiment analysis
@@ -183,23 +165,24 @@ if __name__ == '__main__':
     print('Completed step 3')
 
     # step 4, export to SVMLib format
-    output = os.path.abspath('./data/new_ranking_libsvm')
+    feature_dir = os.path.join(os.path.expanduser(training_data_path), 'tempdata/all3')# use this directory to get a mapping from features to integers that matches the training set
     script = 'SVMLibEverythingExporter'
     package = 'de.tudarmstadt.ukp.experiments.argumentation.convincingness.svmlib'
 
     call(['java', '-cp', classpath,
-          package + '.' + script, tmp3, output], cwd=java_run_path)
+          package + '.' + script, tmp3, output, feature_dir], cwd=java_run_path)
     print('Completed step 4')
 
+def load_test_dataset(output):
     # Load the linguistic features
-    ling_dir = output
-    print(("Loading linguistic features from %s" % ling_dir))
-    ling_file, _, docids = combine_lines_into_one_file('new_test_data',
-                                                       dirname=ling_dir,
-                                                       outputfile=ling_dir + "/%s-libsvm.txt")
-    print('Completed combining libSVM files.')
+    print(("Loading linguistic features from %s" % output))
+    ling_feat_spmatrix, docids = load_ling_features('new_test_data',
+                       output,
+                       '',
+                       output,
+                       model.features.shape[1] - len(embeddings[0])
+                       )
 
-    ling_feat_spmatrix, _ = load_svmlight_file(ling_file, n_features=model.features.shape[1] - len(embeddings[0]))
     print('Loaded libSVM data')
 
     X = []
@@ -219,9 +202,9 @@ if __name__ == '__main__':
 
         a1_tokens = [vocabulary_embeddings_extractor.tokenize(a1_line) for a1_line in a1]
         a1_indices = [[word_to_indices_map.get(word, 2) for word in a1_tokens_line] for a1_tokens_line in a1_tokens]
-        Xa1 = [[1] + a1_indices_line for a1_indices_line in a1_indices]
+        Xa1 = np.array([[1] + a1_indices_line for a1_indices_line in a1_indices])
 
-        valid_args = ids in docids
+        valid_args = np.in1d(ids, docids)
         a1 = a1[valid_args]
         Xa1 = Xa1[valid_args]
         ids = ids[valid_args]
@@ -231,14 +214,38 @@ if __name__ == '__main__':
         test_ids.extend(ids)
 
     # load the embeddings
-    X_test, _ = get_doc_token_seqs((test_ids), [X])
+    X_test, uids = get_doc_token_seqs((test_ids), [X]) # X_test is in the order of sorted test_ids
     emb_feat = get_mean_embeddings(embeddings, X_test)
 
-    ling_items_feat = ling_feat_spmatrix.toarray()
+    # ling_feat_spmatrix is in the order of lines in ling_file, so map back to order of test_ids
+    docid_to_idx_map = np.argsort(docids).flatten()
+    ling_items_feat = ling_feat_spmatrix.toarray()[docid_to_idx_map, :]
     test_items_feat = np.concatenate((emb_feat, ling_items_feat), axis=1)
 
-    print('Predicting ...')
-    predicted_f, _ = model.predict_f(None, test_ids)
+    return test_items_feat, uids
 
-    print('Results: ')
-    print(predicted_f)
+if __name__ == '__main__':
+
+    word_to_indices_map, word_index_to_embeddings_map, index_to_word_map = vocabulary_embeddings_extractor.load_all(
+        embeddings_dir + 'vocabulary.embeddings.all.pkl.bz2')
+    embeddings = load_embeddings(word_index_to_embeddings_map)
+
+    train_model(embeddings)
+
+    # Load the model and the embeddings from file
+    with open(pkl_file, 'rb') as fh:
+        model = pickle.load(fh)
+
+    # Now load some test documents for RANKING and extract their features
+    input = os.path.abspath(test_data_path)
+    output = os.path.abspath('./data/new_ranking_libsvm')
+    preprocessing_pipeline(input, output)
+
+    test_items_feat, text_ids = load_test_dataset(output)
+
+    print('Predicting ...')
+    predicted_f, _ = model.predict_f(out_feats=test_items_feat)
+
+    print('Results: id, score ')
+    for i in range(len(text_ids)):
+        print('%s, %s' % (text_ids[i], predicted_f[i]))
