@@ -166,10 +166,10 @@ if __name__ == '__main__':
     script = 'StanfordSentimentAnnotator'
     package = 'de.tudarmstadt.ukp.dkpro.core.stanfordsentiment'
 
-    # call(['java', '-cp', stanford_classpath,
-    #       package + '.' + script,
-    #       tmp, tmp2], cwd=java_stanford_path)
-    # print('Completed step 2')
+    call(['java', '-cp', stanford_classpath,
+          package + '.' + script,
+          tmp, tmp2], cwd=java_stanford_path)
+    print('Completed step 2')
 
     # step 3, extract features
     tmp3 = os.path.abspath('./data/new_ranking3')
@@ -177,19 +177,19 @@ if __name__ == '__main__':
     package = 'de.tudarmstadt.ukp.experiments.argumentation.convincingness.features'
     arg = 'false' # not using argument pairs here
 
-    # call(['java', '-cp', classpath,
-    #       package + '.' + script,
-    #       tmp2, tmp3, arg], cwd=java_run_path)
-    # print('Completed step 3')
+    call(['java', '-cp', classpath,
+          package + '.' + script,
+          tmp2, tmp3, arg], cwd=java_run_path)
+    print('Completed step 3')
 
     # step 4, export to SVMLib format
     output = os.path.abspath('./data/new_ranking_libsvm')
     script = 'SVMLibEverythingExporter'
     package = 'de.tudarmstadt.ukp.experiments.argumentation.convincingness.svmlib'
 
-    # call(['java', '-cp', classpath,
-    #       package + '.' + script, tmp3, output], cwd=java_run_path)
-    # print('Completed step 4')
+    call(['java', '-cp', classpath,
+          package + '.' + script, tmp3, output], cwd=java_run_path)
+    print('Completed step 4')
 
     # Load the linguistic features
     ling_dir = output
@@ -214,7 +214,7 @@ if __name__ == '__main__':
         data = pd.read_csv(os.path.join(input, file_name), delimiter='\t', na_values=[])
         data = data.fillna('N/A')
 
-        ids = [file_lineid in data['#id'].values]
+        ids = data['#id'].values
         a1 = data['argument'].values
 
         a1_tokens = [vocabulary_embeddings_extractor.tokenize(a1_line) for a1_line in a1]
