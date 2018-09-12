@@ -169,16 +169,24 @@ def load_siamese_cbow_embeddings(word_to_indices_map):
     import wordEmbeddings as siamese_cbow
     return siamese_cbow.wordEmbeddings(filename)
      
-def load_ling_features(dataset):
-    ling_dir = data_root_dir + 'lingdata/'
+def load_ling_features(dataset,
+                       root_dir=data_root_dir,
+                       ling_subdir='lingdata/',
+                       input_dir=data_root_dir+'/lingdata/UKPConvArg1-Full-libsvm',
+                       max_n_features=None):
+
+    ling_dir = root_dir + ling_subdir
     print(("Looking for linguistic features in directory %s" % ling_dir)) 
     print('Loading linguistic features')
     ling_file = ling_dir + "/%s-libsvm.txt" % dataset
     argids_file = ling_dir + "/%s-libsvm.txt" % ("argids_%s" % dataset)
     if not os.path.isfile(ling_file) or not os.path.isfile(argids_file):
-        ling_file, _ , docids = combine_lines_into_one_file(dataset, outputfile=ling_dir+"/%s-libsvm.txt")
+        ling_file, _ , docids = combine_lines_into_one_file(dataset,
+                                                            dirname=input_dir,
+                                                            outputfile=ling_dir+"/%s-libsvm.txt"
+                                                            )
     else:
         docids = np.genfromtxt(argids_file, str)
         
-    ling_feat_spmatrix, _ = load_svmlight_file(ling_file)
+    ling_feat_spmatrix, _ = load_svmlight_file(ling_file, n_features=max_n_features)
     return ling_feat_spmatrix, docids

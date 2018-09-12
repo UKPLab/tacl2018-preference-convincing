@@ -152,3 +152,8 @@ data/new_ranking2
 data/new_ranking3
 data/new_ranking_libsvm
 model.pkl
+data/new_test_data
+data/new_test_data0
+data/UKPConvArg1-crowdsample-ranking-CSV
+data/UKPConvArgCrowdSample-new-CSV
+data/vocabulary.embeddings.all.pkl.bz2
