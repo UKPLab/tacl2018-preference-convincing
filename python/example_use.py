@@ -161,6 +161,10 @@ def load_test_dataset(output):
 
 if __name__ == '__main__':
 
+    print('This script trains a model on the UKPConvArgStrict dataset. So, before running this script, you '
+          'need to run "python/analysis/habernal_comparison/run_preprocessing.py" to extract the linguistic features'
+          'from this dataset.')
+
     word_to_indices_map, word_index_to_embeddings_map, index_to_word_map = vocabulary_embeddings_extractor.load_all(
         embeddings_dir + 'vocabulary.embeddings.all.pkl.bz2')
     embeddings = load_embeddings(word_index_to_embeddings_map)

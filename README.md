@@ -79,6 +79,8 @@ https://github.com/UKPLab/acl2016-convincing-arguments
 * Python 3
 * virtualenv
 * The required packages are listed in requirements.txt. You can install them using pip install -r requirements.txt
+* Maven -- check if you have the command line program 'mvn' -- required to extract the linguistic features from our experimental datasets. You can skip 
+this if you are not re-running our experiments or training a model on UKPConvArg*** datasets.
 
 ## How to run the experiments
 
@@ -184,7 +186,8 @@ python ./python/example_use.py
 The script will train a convincingness model on the UKPConvArgStrict data, then
 run it to score arguments in a new dataset. 
 
-Pre-requisite: this script assumes you have carried out step 0 above.
+Pre-requisite: this script assumes you have carried out step 0 above and 
+run "python/analysis/habernal_comparison/run_preprocessing.py" to extract the linguistic features.
 
 ## How to use the GPPL implementation
 
