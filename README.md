@@ -68,7 +68,7 @@ details on the respective publication.
 * documents -- sources for the paper
 * error_analysis -- working data files for error analysis
 * python/analysis -- experiment code
-* python/analysis/habernal_comparison -- experiment code for use with the datasets discussed in paper, available at
+* python/analysis/habernal_comparison -- experiment code for use with the datasets discussed in paper, originally obtained from
 https://github.com/UKPLab/acl2016-convincing-arguments
 * python/models -- the implementation of the GPPL method
 * python/test -- some simple test scripts for the GPPL methods
@@ -82,9 +82,6 @@ https://github.com/UKPLab/acl2016-convincing-arguments
 
 ## How to run the experiments
 
-0. Check out the repository at https://github.com/UKPLab/acl2016-convincing-arguments 
-to get the code for preprocessing and extracting linguistic features.
-
 1. Extract the linguistic features from the data by running:
 
 ```
@@ -92,6 +89,8 @@ python ./python/analysis/habernal_comparison/run_preprocessing.py.
 ```
 
 By default, the data is provided by this repository at ./data and this path is set in ./python/analysis/data_loading.py, line 12.
+The data is originally provided by https://github.com/UKPLab/acl2016-convincing-arguments, the copies
+are provided here for convenience.
 
 2. Run experiment 1 by running script python/analysis/cycles_demo.py from the root directory of the project:
 
