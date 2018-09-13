@@ -9,7 +9,7 @@ Created on 10 Jun 2017
 '''
 import os, sys
 
-data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
+data_root_dir = os.path.abspath(os.path.expanduser("./data/"))
 
 sys.path.append('../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python')
 sys.path.append(os.path.expanduser('~/data/personalised_argumentation/embeddings/Siamese-CBOW/siamese-cbow'))
@@ -21,8 +21,8 @@ from sklearn.datasets import load_svmlight_file
 from preproc_raw_data import generate_turker_CSV, generate_gold_CSV
 import numpy as np
 
-def combine_lines_into_one_file(dataset_name, dirname=data_root_dir + '/lingdata/UKPConvArg1-Full-libsvm',
-                                outputfile=data_root_dir + '/lingdata/%s-libsvm.txt'):
+def combine_lines_into_one_file(dataset_name, dirname=os.path.join(data_root_dir, 'lingdata/UKPConvArg1-Full-libsvm'),
+                                outputfile=os.path.join(data_root_dir, 'lingdata/%s-libsvm.txt')):
     output_argid_file = outputfile % ("argids_%s" % dataset_name)
     outputfile = outputfile % dataset_name
     
@@ -39,6 +39,9 @@ def combine_lines_into_one_file(dataset_name, dirname=data_root_dir + '/lingdata
         for filename in os.listdir(dirname):
 
             if os.path.samefile(outputfile, os.path.join(dirname, filename)):
+                continue
+
+            if filename.split('.')[-1] != 'txt':
                 continue
 
             fid = filename.split('.')[0]
@@ -76,30 +79,30 @@ def load_train_test_data(dataset):
       
     if dataset == 'UKPConvArgCrowd':
         # basic dataset, requires additional steps to produce the other datasets        
-        dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'  
-        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArgAllRank-CSV/'
+        dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-full-XML/')
+        ranking_csvdirname = os.path.join(data_root_dir, 'argument_data/UKPConvArgAllRank-CSV/')
 
     elif dataset == 'UKPConvArgCrowdSample':
-        dirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-XML/'  
-        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/'
+        dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-crowdsample-XML/')
+        ranking_csvdirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/')
 
     elif dataset == 'UKPConvArgMACE' or dataset == 'UKPConvArgAll':
-        dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'
-        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-Ranking-CSV/'          
+        dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-full-XML/')
+        ranking_csvdirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-Ranking-CSV/')
 
     elif dataset == 'UKPConvArgStrict':
-        dirname = data_root_dir + 'argument_data/UKPConvArg1Strict-XML/'
+        dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1Strict-XML/')
         ranking_csvdirname = None        
 
     elif dataset == 'UKPConvArgCrowd_evalMACE': # train on the crowd dataset and evaluate on the MACE dataset
-        dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'  
-        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArgAllRank-CSV/'
+        dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-full-XML/')
+        ranking_csvdirname = os.path.join(data_root_dir, 'argument_data/UKPConvArgAllRank-CSV/')
         folds_test, folds_regression_test, _, _, _ = load_train_test_data('UKPConvArgAll')
         dataset = 'UKPConvArgCrowd'
 
     elif dataset == 'UKPConvArgCrowdSample_evalMACE':
-        dirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-XML/'  
-        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/'
+        dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-crowdsample-XML/')
+        ranking_csvdirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/')
         folds_test, folds_regression_test, _, _, _ = load_train_test_data('UKPConvArgAll')
         dataset = 'UKPConvArgCrowdSample'
 
@@ -111,7 +114,7 @@ def load_train_test_data(dataset):
         folds_regression_test = None
     
     print(("Data directory = %s, dataset=%s" % (dirname, dataset)))
-    csvdirname = data_root_dir + 'argument_data/%s-new-CSV/' % dataset
+    csvdirname = os.path.join(data_root_dir, 'argument_data/%s-new-CSV/' % dataset)
     # Generate the CSV files from the XML files. These are easier to work with! The CSV files from Habernal do not 
     # contain all turker info that we need, so we generate them afresh here.
     if not os.path.isdir(csvdirname):
@@ -172,10 +175,10 @@ def load_siamese_cbow_embeddings(word_to_indices_map):
 def load_ling_features(dataset,
                        root_dir=data_root_dir,
                        ling_subdir='lingdata/',
-                       input_dir=data_root_dir+'/lingdata/UKPConvArg1-Full-libsvm',
+                       input_dir=os.path.join(data_root_dir, 'lingdata/UKPConvArg1-Full-libsvm'),
                        max_n_features=None):
 
-    ling_dir = root_dir + ling_subdir
+    ling_dir = os.path.join(root_dir, ling_subdir)
     print(("Looking for linguistic features in directory %s" % ling_dir)) 
     print('Loading linguistic features')
     ling_file = ling_dir + "/%s-libsvm.txt" % dataset
@@ -183,7 +186,7 @@ def load_ling_features(dataset,
     if not os.path.isfile(ling_file) or not os.path.isfile(argids_file):
         ling_file, _ , docids = combine_lines_into_one_file(dataset,
                                                             dirname=input_dir,
-                                                            outputfile=ling_dir+"/%s-libsvm.txt"
+                                                            outputfile=os.path.join(ling_dir, "%s-libsvm.txt")
                                                             )
     else:
         docids = np.genfromtxt(argids_file, str)
