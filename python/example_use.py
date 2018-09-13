@@ -1,17 +1,16 @@
 from sklearn.datasets import load_svmlight_file
-
 from data_loader import load_single_file_separate_args
-from data_loading import load_ling_features, load_embeddings, combine_lines_into_one_file
+from data_loading import load_ling_features, load_embeddings
 from gp_classifier_vb import compute_median_lengthscales
 from gp_pref_learning import GPPrefLearning
 from preproc_raw_data import generate_gold_CSV
+from run_preprocessing import preprocessing_pipeline
 from tests import get_docidxs_from_ids, get_doc_token_seqs, get_mean_embeddings
 import numpy as np
 import logging
 import os
 from os import listdir
 import vocabulary_embeddings_extractor
-from subprocess import call
 import pickle
 import pandas as pd
 
@@ -22,18 +21,24 @@ test_data_path = './data/new_test_data' # location of your test data file. MUST 
 
 embeddings_dir = './data/'
 
-training_data_path = "~/data/personalised_argumentation/"
-
-java_run_path = '../acl2016-convincing-arguments/code/argumentation-convincingness-experiments-java/'
-java_stanford_path = '../acl2016-convincing-arguments/code/de.tudarmstadt.ukp.dkpro.core.stanfordsentiment-gpl/'
-mvn_path = '../acl2016-convincing-arguments/code/'
-classpath = "./target/argumentation-convincingness-experiments-java-1.0-SNAPSHOT.jar:target/lib/*"
-stanford_classpath = "./target/de.tudarmstadt.ukp.dkpro.core.stanfordsentiment-gpl-1.7.0.jar:" \
-                     "./target/lib/*"
-
+training_data_path = os.path.expanduser("~/data/personalised_argumentation/")
 training_dataset = 'UKPConvArgStrict'
 
-def load_dataset(dataset, embeddings):
+def concat_feature_sets(a, X, ling_feat_spmatrix, docid_to_idx_map=None):
+    X, u_ids = get_doc_token_seqs(a, X)
+    items_feat = get_mean_embeddings(embeddings, X)
+
+    if docid_to_idx_map is None:
+        docid_to_idx_map = u_ids
+
+    ling_items_feat = ling_feat_spmatrix.toarray()[docid_to_idx_map, :]
+    items_feat = np.concatenate((items_feat, ling_items_feat), axis=1)
+
+    print('Found %i features.' % items_feat.shape[1])
+
+    return items_feat, u_ids
+
+def load_train_dataset(dataset, embeddings):
     ling_feat_spmatrix, docids = load_ling_features(dataset, training_data_path)
 
     data_root_dir = os.path.expanduser(training_data_path)
@@ -42,8 +47,6 @@ def load_dataset(dataset, embeddings):
 
     generate_gold_CSV(dirname, csvdirname)  # select only the gold labels
 
-    # Load the train/test data into a folds object. -------------------------------------------------------------------
-    # Here we keep each the features of each argument in a pair separate, rather than concatenating them.
     print(('Loading train/test data from %s...' % csvdirname))
 
     person_train = []
@@ -77,13 +80,7 @@ def load_dataset(dataset, embeddings):
     a1_train = get_docidxs_from_ids(docids, train_ids[:, 0])
     a2_train = get_docidxs_from_ids(docids, train_ids[:, 1])
 
-    X, u_ids = get_doc_token_seqs((a1_train, a2_train), [X_a1, X_a2])
-    items_feat = get_mean_embeddings(embeddings, X)
-
-    ling_items_feat = ling_feat_spmatrix[u_ids, :].toarray()
-    items_feat = np.concatenate((items_feat, ling_items_feat), axis=1)
-
-    print('Found %i features.' % items_feat.shape[1])
+    items_feat, uids = concat_feature_sets((a1_train, a2_train), [X_a1, X_a2], ling_feat_spmatrix)
 
     ndims = items_feat.shape[1]
 
@@ -92,8 +89,8 @@ def load_dataset(dataset, embeddings):
 
 def train_model(embeddings):
     # Train a model...
-    items_feat, n_ling_feats, word_to_indices_map, valid_feats_ling, a1_train, a2_train, prefs_train, ndims \
-        = load_dataset(training_dataset, embeddings)  # reload only if we use a new dataset
+    items_feat, n_ling_feats, word_to_indices_map, a1_train, a2_train, prefs_train, ndims \
+        = load_train_dataset(training_dataset, embeddings)  # reload only if we use a new dataset
 
     ls_initial = compute_median_lengthscales(items_feat)
 
@@ -116,63 +113,6 @@ def train_model(embeddings):
     with open(pkl_file, 'wb') as fh:
         pickle.dump(model, fh)
 
-def preprocessing_pipeline(input, output):
-    # From Ivan Habernal's preprocessing pipeline, first, compile it
-    call(['mvn', 'package'], cwd=mvn_path)
-
-    # step 0, remove any '_' tokens as these will break the method
-    tmp0 = os.path.abspath('./data/new_test_data0')
-    if not os.path.exists(tmp0):
-        os.mkdir(tmp0)
-
-    for input_file in os.listdir(input):
-        text_data = pd.read_csv(os.path.join(input, input_file), sep='\t', keep_default_na=False, index_col=0)
-        text_data.replace('_', ' ', regex=True, inplace=True, )
-        text_data.replace('\t', ' ', regex=True, inplace=True, )
-
-        text_data.to_csv(os.path.join(tmp0, input_file), sep='\t')
-
-
-    # step 1, convert to CSV:
-    tmp = os.path.abspath('./data/new_ranking1')
-    script = 'PipelineSeparateArguments'
-    package = 'de.tudarmstadt.ukp.experiments.argumentation.convincingness.preprocessing'
-
-    call(['java', '-cp', classpath,
-          package + '.' + script,
-          tmp0, tmp], cwd=java_run_path)
-    print('Completed step 1')
-
-    # step 2, sentiment analysis
-    tmp2 = os.path.abspath('./data/new_ranking2')
-    script = 'StanfordSentimentAnnotator'
-    package = 'de.tudarmstadt.ukp.dkpro.core.stanfordsentiment'
-
-    call(['java', '-cp', stanford_classpath,
-          package + '.' + script,
-          tmp, tmp2], cwd=java_stanford_path)
-    print('Completed step 2')
-
-    # step 3, extract features
-    tmp3 = os.path.abspath('./data/new_ranking3')
-    script = 'ExtractFeaturesPipeline'
-    package = 'de.tudarmstadt.ukp.experiments.argumentation.convincingness.features'
-    arg = 'false' # not using argument pairs here
-
-    call(['java', '-cp', classpath,
-          package + '.' + script,
-          tmp2, tmp3, arg], cwd=java_run_path)
-    print('Completed step 3')
-
-    # step 4, export to SVMLib format
-    feature_dir = os.path.join(os.path.expanduser(training_data_path), 'tempdata/all3')# use this directory to get a mapping from features to integers that matches the training set
-    script = 'SVMLibEverythingExporter'
-    package = 'de.tudarmstadt.ukp.experiments.argumentation.convincingness.svmlib'
-
-    call(['java', '-cp', classpath,
-          package + '.' + script, tmp3, output, feature_dir], cwd=java_run_path)
-    print('Completed step 4')
-
 def load_test_dataset(output):
     # Load the linguistic features
     print(("Loading linguistic features from %s" % output))
@@ -189,12 +129,12 @@ def load_test_dataset(output):
     test_ids = []
     a = []
 
-    for file_name in listdir(input):
+    for file_name in listdir(input_dir):
         if file_name.split('.')[-1] != 'csv':
-            print("Skipping files without .csv suffix: %s" % input + '/' + file_name)
+            print("Skipping files without .csv suffix: %s" % input_dir + '/' + file_name)
             continue
 
-        data = pd.read_csv(os.path.join(input, file_name), delimiter='\t', na_values=[])
+        data = pd.read_csv(os.path.join(input_dir, file_name), delimiter='\t', na_values=[])
         data = data.fillna('N/A')
 
         ids = data['#id'].values
@@ -214,13 +154,8 @@ def load_test_dataset(output):
         test_ids.extend(ids)
 
     # load the embeddings
-    X_test, uids = get_doc_token_seqs((test_ids), [X]) # X_test is in the order of sorted test_ids
-    emb_feat = get_mean_embeddings(embeddings, X_test)
-
-    # ling_feat_spmatrix is in the order of lines in ling_file, so map back to order of test_ids
     docid_to_idx_map = np.argsort(docids).flatten()
-    ling_items_feat = ling_feat_spmatrix.toarray()[docid_to_idx_map, :]
-    test_items_feat = np.concatenate((emb_feat, ling_items_feat), axis=1)
+    test_items_feat, uids = concat_feature_sets((test_ids), [X], ling_feat_spmatrix, docid_to_idx_map)
 
     return test_items_feat, uids
 
@@ -237,11 +172,15 @@ if __name__ == '__main__':
         model = pickle.load(fh)
 
     # Now load some test documents for RANKING and extract their features
-    input = os.path.abspath(test_data_path)
-    output = os.path.abspath('./data/new_ranking_libsvm')
-    preprocessing_pipeline(input, output)
+    input_dir = os.path.abspath(test_data_path)
+    output_dir = os.path.abspath('./data/new_ranking_libsvm')
 
-    test_items_feat, text_ids = load_test_dataset(output)
+    # use this directory to get a mapping from features to integers that matches the training set
+    feature_dir = os.path.join(os.path.expanduser(training_data_path), 'tempdata/all3')
+
+    preprocessing_pipeline(input_dir, output_dir, 'new_test_ranking', './data', feature_dir, remove_tabs=True)
+
+    test_items_feat, text_ids = load_test_dataset(output_dir)
 
     print('Predicting ...')
     predicted_f, _ = model.predict_f(out_feats=test_items_feat)
