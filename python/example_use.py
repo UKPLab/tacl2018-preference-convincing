@@ -50,8 +50,8 @@ def load_train_dataset(dataset, embeddings):
     ling_feat_spmatrix, docids = load_ling_features(dataset, training_data_path)
 
     data_root_dir = os.path.expanduser(training_data_path)
-    dirname = data_root_dir + 'argument_data/UKPConvArg1Strict-XML/'
-    csvdirname = data_root_dir + 'argument_data/%s-new-CSV/' % dataset
+    dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1Strict-XML/')
+    csvdirname = os.path.join(data_root_dir, 'argument_data/%s-new-CSV/' % dataset)
 
     generate_gold_CSV(dirname, csvdirname)  # select only the gold labels
 
