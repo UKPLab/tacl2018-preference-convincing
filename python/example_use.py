@@ -32,7 +32,7 @@ embeddings_dir = './data/'
 training_data_path = os.path.abspath("./data/")
 training_dataset = 'UKPConvArgStrict'
 
-def concat_feature_sets(a, X, ling_feat_spmatrix, docid_to_idx_map=None):
+def concat_feature_sets(a, X, ling_feat_spmatrix, embeddings, docid_to_idx_map=None):
     X, u_ids = get_doc_token_seqs(a, X)
     items_feat = get_mean_embeddings(embeddings, X)
 
@@ -50,10 +50,7 @@ def load_train_dataset(dataset, embeddings):
     ling_feat_spmatrix, docids = load_ling_features(dataset, training_data_path)
 
     data_root_dir = os.path.expanduser(training_data_path)
-    dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1Strict-XML/')
     csvdirname = os.path.join(data_root_dir, 'argument_data/%s-new-CSV/' % dataset)
-
-    generate_gold_CSV(dirname, csvdirname)  # select only the gold labels
 
     print(('Loading train/test data from %s...' % csvdirname))
 
@@ -88,7 +85,7 @@ def load_train_dataset(dataset, embeddings):
     a1_train = get_docidxs_from_ids(docids, train_ids[:, 0])
     a2_train = get_docidxs_from_ids(docids, train_ids[:, 1])
 
-    items_feat, uids = concat_feature_sets((a1_train, a2_train), [X_a1, X_a2], ling_feat_spmatrix)
+    items_feat, uids = concat_feature_sets((a1_train, a2_train), [X_a1, X_a2], ling_feat_spmatrix, embeddings)
 
     ndims = items_feat.shape[1]
 
@@ -121,7 +118,7 @@ def train_model(embeddings):
     with open(pkl_file, 'wb') as fh:
         pickle.dump(model, fh)
 
-def load_test_dataset(output):
+def load_test_dataset(output, embeddings):
     # Load the linguistic features
     print(("Loading linguistic features from %s" % output))
     ling_feat_spmatrix, docids = load_ling_features('new_test_data',
@@ -163,7 +160,7 @@ def load_test_dataset(output):
 
     # load the embeddings
     docid_to_idx_map = np.argsort(docids).flatten()
-    test_items_feat, uids = concat_feature_sets((test_ids), [X], ling_feat_spmatrix, docid_to_idx_map)
+    test_items_feat, uids = concat_feature_sets((test_ids), [X], ling_feat_spmatrix, embeddings, docid_to_idx_map)
 
     return test_items_feat, uids
 
@@ -193,7 +190,7 @@ if __name__ == '__main__':
 
     preprocessing_pipeline(input_dir, output_dir, 'new_test_ranking', tmp_dir, feature_dir, remove_tabs=True)
 
-    test_items_feat, text_ids = load_test_dataset(output_dir)
+    test_items_feat, text_ids = load_test_dataset(output_dir, embeddings)
 
     print('Predicting ...')
     predicted_f, _ = model.predict_f(out_feats=test_items_feat)
