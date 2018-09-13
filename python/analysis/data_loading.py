@@ -11,7 +11,7 @@ import os, sys
 
 data_root_dir = os.path.abspath(os.path.expanduser("./data/"))
 
-sys.path.append('../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python')
+sys.path.append(os.path.abspath('./git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python'))
 sys.path.append(os.path.expanduser('~/data/personalised_argumentation/embeddings/Siamese-CBOW/siamese-cbow'))
 sys.path.append(os.path.expanduser("~/data/personalised_argumentation/embeddings/skip-thoughts"))
 
