@@ -179,6 +179,10 @@ def load_ling_features(dataset,
                        max_n_features=None):
 
     ling_dir = os.path.join(root_dir, ling_subdir)
+
+    if not os.path.exists(ling_dir):
+        os.mkdir(ling_dir)
+
     print(("Looking for linguistic features in directory %s" % ling_dir)) 
     print('Loading linguistic features')
     ling_file = ling_dir + "/%s-libsvm.txt" % dataset

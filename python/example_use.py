@@ -173,12 +173,13 @@ if __name__ == '__main__':
 
     # Now load some test documents for RANKING and extract their features
     input_dir = os.path.abspath(test_data_path)
+    tmp_dir = os.path.abspath('./data/tempdata')
     output_dir = os.path.abspath('./data/new_ranking_libsvm')
 
     # use this directory to get a mapping from features to integers that matches the training set
-    feature_dir = os.path.join(os.path.expanduser(training_data_path), 'tempdata/all3')
+    feature_dir = os.path.join(os.path.expanduser(training_data_path), 'tempdata/UKPConvArg1-full3')
 
-    preprocessing_pipeline(input_dir, output_dir, 'new_test_ranking', './data', feature_dir, remove_tabs=True)
+    preprocessing_pipeline(input_dir, output_dir, 'new_test_ranking', tmp_dir, feature_dir, remove_tabs=True)
 
     test_items_feat, text_ids = load_test_dataset(output_dir)
 

@@ -82,12 +82,16 @@ https://github.com/UKPLab/acl2016-convincing-arguments
 
 ## How to run the experiments
 
-1. Generate the data by following the instructions from  https://github.com/UKPLab/acl2016-convincing-arguments. The
-default path for the data used by the experiment scripts is set in ./python/analysis/data_loading.py, line 12. Set this
-path to your desired data directory.
+0. Check out the repository at https://github.com/UKPLab/acl2016-convincing-arguments 
+to get the code for preprocessing and extracting linguistic features.
 
-   If your data directory is not ./data/, copy the data for experiments 4 and 5 to your data directory by copying folders
-UKPConvArg1-crowdsample-ranking-CSV and UKPConvArgCrowdSample-new-CSV.
+1. Extract the linguistic features from the data by running:
+
+```
+python ./python/analysis/habernal_comparison/run_preprocessing.py. 
+```
+
+By default, the data is provided by this repository at ./data and this path is set in ./python/analysis/data_loading.py, line 12.
 
 2. Run experiment 1 by running script python/analysis/cycles_demo.py from the root directory of the project:
 
@@ -166,10 +170,31 @@ python ./python/analysis/cycles_demo.py
    python ./python/analysis/habernal_comparison/error_analysis.py
    ```
 
+## Template for running on a new dataset with Ling+Glove feature sets
+
+You can use the following script as a template for running GPPL on new datasets 
+using the same feature sets as in our paper. If you have another method for
+extracting features from your datasets, you may with to skip this example
+and look at 'how to use the GPPL implementation'.
+
+
+```
+python ./python/example_use.py
+```
+
+The script will train a convincingness model on the UKPConvArgStrict data, then
+run it to score arguments in a new dataset. 
+
+Pre-requisite: this script assumes you have carried out step 0 above.
+
 ## How to use the GPPL implementation
 
-To run preference learning, see gp_pref_learning class in
-python/models/gp_pref_learning.py. You can run a simple example that generates
+The preference learning method is implemented by the gp_pref_learning class in
+python/models/gp_pref_learning.py. 
+The template for training and prediction described above contains an example of how
+to use the class, but also contains code for extracting our linguistic features and Glove embeddings,
+which you may not need.
+You can run a simpler example that generates
 synthetic data by running python/test/gp_pref_learning_test.py.
 
 The preference learning model and algorithm are implemented by the class
@@ -181,7 +206,10 @@ docstrings for these methods for more details:
    * predict(): predict pairwise labels for new pairs
    * predict_f(): predict scores for a set of items given their features, which can be used to rank the items.
 
-## Example usage
+## Example usage of GPPL
+
+In this example, we assume that you have a file, 'items.csv', that contains the feature data for some
+documents or other items that you wish to model.
 
 Start by loading in some data from a CSV file using numpy:
 ~~~
