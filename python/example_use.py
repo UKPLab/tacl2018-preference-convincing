@@ -29,7 +29,7 @@ test_data_path = './data/new_test_data' # location of your test data file. MUST 
 
 embeddings_dir = './data/'
 
-training_data_path = os.path.expanduser("~/data/personalised_argumentation/")
+training_data_path = os.path.abspath("./data/")
 training_dataset = 'UKPConvArgStrict'
 
 def concat_feature_sets(a, X, ling_feat_spmatrix, docid_to_idx_map=None):
