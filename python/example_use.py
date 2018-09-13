@@ -1,3 +1,5 @@
+import sys
+
 from sklearn.datasets import load_svmlight_file
 from data_loader import load_single_file_separate_args
 from data_loading import load_ling_features, load_embeddings
@@ -13,6 +15,12 @@ from os import listdir
 import vocabulary_embeddings_extractor
 import pickle
 import pandas as pd
+
+# include the paths for the other directories
+sys.path.append("./python")
+sys.path.append("./python/analysis")
+sys.path.append("./python/models")
+sys.path.append("./python/analysis/habernal_comparison")
 
 # set the path for the java source code here
 
