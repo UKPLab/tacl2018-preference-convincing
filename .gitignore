@@ -136,7 +136,7 @@ outputdata/*.pkl
 **/*.out
 **/*.synctex.gz
 **/*.bak
-**/*.xml
+data/*.xml
 **/*.iml
 venv
 venv_linux/

@@ -1,3 +1,12 @@
+'''
+Produce the linguistic features for the experiments on UKPConvArgStrict, UKPConvArgCrowdSample, etc.
+
+The script runs a number of java commands -- in case of problems,
+please check the command line output for errors, and check that the output directory contains a file for each of 1052
+arguments.
+
+'''
+
 import os
 from subprocess import call
 import pandas as pd
