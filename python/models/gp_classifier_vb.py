@@ -122,6 +122,10 @@ def derivfactor_matern_3_2_from_raw_vals_onedimension(vals, vals2, ls_d, operato
     To obtain the derivative W.R.T the length scale indicated by dim, multiply the value returned by this function
     with the kernel. Use this to save recomputing the kernel for each dimension.
     '''
+    if ls_d == 0:
+        dKdls_d = np.inf
+        return dKdls_d
+
     D = np.abs(compute_distance(vals, vals2.T))
     # K = -(1 + K) * (ls_d - K) * np.exp(-K / ls_d) / ls_d**3
     sqrt3d = D * 3 ** 0.5 / ls_d
@@ -131,6 +135,8 @@ def derivfactor_matern_3_2_from_raw_vals_onedimension(vals, vals2, ls_d, operato
     if operator == '*':
         Kfactor = sqrt3d * exp_minus_sqrt3d
         Kfactor += exp_minus_sqrt3d
+
+        Kfactor[Kfactor == 0] = np.nextafter(0,1)
 
         dKdls_d /= Kfactor
 
@@ -227,7 +233,7 @@ def _dists_f(items_feat_sample, f):
     if np.mod(f, 1000) == 0:
         logging.info('computed lengthscale for feature %i' % f)
     dists = np.abs(items_feat_sample[:, np.newaxis] - items_feat_sample[np.newaxis, :])
-    # we exclude the zero distances. With sparse features, these would likely downplay the lengthscale.                                
+    # we exclude the zero distances. With sparse features, these would likely downplay the lengthscale.
     med = np.median(dists[dists > 0])
     if np.isnan(med):
         med = 1.0
@@ -255,7 +261,7 @@ def compute_median_lengthscales(items_feat, multiply_heuristic_power=1.0, N_max=
     # Power of Linear-time Kernel Two-Sample Testing under Mean-difference Alternatives" by Ramdas et al. 2014. In that
     # paper they refer to root(no. dimensions) because they square the lengthscale in the kernel function.
     # It's possible that this value should be higher if a lot of feature values are actually missing values, as these
-    # would lower the median. 
+    # would lower the median.
 
     return ls_initial_guess
 
@@ -787,7 +793,7 @@ class GPClassifierVB(object):
     def neg_marginal_likelihood(self, hyperparams, dimension, use_MAP=False):
         '''
         Weight the marginal log data likelihood by the hyper-prior. Unnormalised posterior over the hyper-parameters.
-        
+
         '''
         if np.any(np.isnan(hyperparams)):
             return np.inf
@@ -797,6 +803,7 @@ class GPClassifierVB(object):
             self.ls[dimension] = np.exp(hyperparams)
         if np.any(np.isinf(self.ls)):
             return np.inf
+
         if np.any(self.ls < 1e-100 * self.initialguess):
             # avoid very small length scales
             return np.inf
@@ -980,8 +987,8 @@ class GPClassifierVB(object):
             # need to go back to the best result
             self.neg_marginal_likelihood(best_opt_hyperparams, -1, use_MAP=False)
 
-        logging.debug("Optimal hyper-parameters: %s; found using %i objective fun evals" %
-                      (self.ls, nfits))
+        logging.debug("Optimal value = %.5f with hyper-parameters: %s; found using %i objective fun evals" %
+                      (-nlml, self.ls, nfits))
         return self.ls, -min_nlml  # return the log marginal likelihood
 
     def _expec_f(self):
@@ -1071,14 +1078,14 @@ class GPClassifierVB(object):
         '''
         Evaluate the function posterior mean and variance at the given co-ordinates using the 2D squared exponential
         kernel
-        
+
         Parameters
         ----------
-        
-        reuse_output_kernel : can be switched on to reuse the output kernel to save computational cost when the 
-        out_feats object is the same over many calls to predict(), and the lengthscale and covariance function 
+
+        reuse_output_kernel : can be switched on to reuse the output kernel to save computational cost when the
+        out_feats object is the same over many calls to predict(), and the lengthscale and covariance function
         do not change between calls.
-        
+
         '''
         self.predict_f(out_feats, out_idxs, K_star, K_starstar, mu0_output, reuse_output_kernel)
 
@@ -1142,12 +1149,10 @@ class GPClassifierVB(object):
                 pass  # we reuse the previous self.K_star and self.K_starstar values
 
         elif out_feats is None and K_star is None and K_starstar is None:
-            # use the training feature vectors 
+            # use the training feature vectors
             self.K_star, self.K_starstar = self._get_training_cov()
             if not full_cov:
                 self.K_starstar = np.diag(self.K_starstar)
-            if mu0_output is None:
-                mu0_output = self.mu0
 
         else:
             # other combinations are invalid
@@ -1162,7 +1167,10 @@ class GPClassifierVB(object):
         if out_idxs is not None:
             K_star = K_star[out_idxs, :]
             if not np.isscalar(K_starstar):
-                K_starstar = K_starstar[out_idxs, :][:, out_idxs]
+                if full_cov:
+                    K_starstar = K_starstar[out_idxs, :][:, out_idxs]
+                else:
+                    K_starstar = K_starstar[out_idxs]
 
         noutputs = K_star.shape[0]
 

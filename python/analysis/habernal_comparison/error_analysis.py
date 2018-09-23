@@ -106,8 +106,8 @@ def print_where_one_right_two_wrong(expt_settings, feature_type_one, feature_typ
 
         foldfile = resultsdir_1 + '/fold%i.pkl' % f1
         if os.path.isfile(foldfile):
-            with open(foldfile, 'r') as fh:
-                data_1 = pickle.load(fh)
+            with open(foldfile, 'rb') as fh:
+                data_1 = pickle.load(fh, encoding='latin1')
 
         if 'fold_order' in expt_settings_2 and expt_settings_2['fold_order'] is not None:
             f2 = np.argwhere(np.array(expt_settings_2['fold_order']) == fold)[0][0]
@@ -116,8 +116,8 @@ def print_where_one_right_two_wrong(expt_settings, feature_type_one, feature_typ
 
         foldfile = resultsdir_2 + '/fold%i.pkl' % f2
         if os.path.isfile(foldfile):
-            with open(foldfile, 'r') as fh:
-                data_2 = pickle.load(fh)
+            with open(foldfile, 'rb') as fh:
+                data_2 = pickle.load(fh, encoding='latin1')
 
         # Load the ground truth classifications
         gold_disc_1, pred_disc_1, _, _, _, _, _, _, _ = get_fold_data(data_1, f1, expt_settings_1)
@@ -145,10 +145,10 @@ def print_where_one_right_two_wrong(expt_settings, feature_type_one, feature_typ
 
         # pairs falsely classified by one and not the other
         if len(false_pairs_1) != len(false_pairs_2):
-            print("mismatched fold %i: " % f)
-            print("word mean: " + str(len(false_pairs_1)))
-            print("ling: " + str(len(false_pairs_2)))
-            print(len(folds[fold]['test'][0]))
+            print(("mismatched fold %i: " % f))
+            print(("word mean: " + str(len(false_pairs_1))))
+            print(("ling: " + str(len(false_pairs_2))))
+            print((len(folds[fold]['test'][0])))
             continue
 
         # cases where 1 is wrong and 2 is right
@@ -188,10 +188,10 @@ def print_where_one_right_two_wrong(expt_settings, feature_type_one, feature_typ
     top_texts_1 = alltexts_1[top_ids]
 
     # Get the original argument text. Print it with the mis-classification label and score.
-    print("Showing the top 25 most incorrectly labelled arguments for %s: " % expt_settings_1['feature_type'])
+    print(("Showing the top 25 most incorrectly labelled arguments for %s: " % expt_settings_1['feature_type']))
     print("No. times underrated; no.times overrated; argument text")
     for i, text in enumerate(top_texts_1):
-        print("\t %i %i %s \n" % (errorcounts_1[i, 0], errorcounts_1[i, 1], text))
+        print(("\t %i %i %s \n" % (errorcounts_1[i, 0], errorcounts_1[i, 1], text)))
 
 def compute_max_train_similarity(expt_settings, method, ls, docids, items_feat, similarities_all=None):
     '''
@@ -236,8 +236,8 @@ def compute_max_train_similarity(expt_settings, method, ls, docids, items_feat, 
 
         foldfile = resultsdir_1 + '/fold%i.pkl' % f1
         if os.path.isfile(foldfile):
-            with open(foldfile, 'r') as fh:
-                data_1 = pickle.load(fh)
+            with open(foldfile, 'rb') as fh:
+                data_1 = pickle.load(fh, encoding='latin1')
 
         # Load the ground truth classifications
         gold_disc_1, pred_disc_1, _, _, _, _, _, _, _ = get_fold_data(data_1, f1, expt_settings_1)
@@ -308,10 +308,10 @@ def compute_max_train_similarity(expt_settings, method, ls, docids, items_feat, 
     var_true /= nFolds
     var_true = np.sqrt(var_true)
 
-    print("For all folds: mean total_sim for correctly classified pairs: %f (STD %f)" % (mean_true,
-                                                                                          np.sqrt(var_true)))
-    print("For all folds: mean total_sim for incorrectly classified pairs: %f (STD %f)" % (mean_false,
-                                                                                        np.sqrt(var_false)))
+    print(("For all folds: mean total_sim for correctly classified pairs: %f (STD %f)" % (mean_true,
+                                                                                          np.sqrt(var_true))))
+    print(("For all folds: mean total_sim for incorrectly classified pairs: %f (STD %f)" % (mean_false,
+                                                                                        np.sqrt(var_false))))
 
     return similarities_all
 
@@ -341,10 +341,10 @@ def compute_entropies(expt_settings, method, feature_type, embeddings_type):
 
         foldfile = resultsdir_1 + '/fold%i.pkl' % f1
         if os.path.isfile(foldfile):
-            with open(foldfile, 'r') as fh:
-                data_1 = pickle.load(fh)
+            with open(foldfile, 'rb') as fh:
+                data_1 = pickle.load(fh, encoding='latin1')
         else:
-            print("Error -- data not found at %s" % foldfile)
+            print(("Error -- data not found at %s" % foldfile))
 
         gold_disc_1, pred_disc_1, gold_prob, pred_prob, _, _, _, _, _ = get_fold_data(data_1, f1, expt_settings_1)
         if expt_settings_1['method'] == 'SVM':
@@ -402,10 +402,10 @@ def compute_errors_in_training(expt_settings, method, feature_type, embeddings_t
 
         foldfile = resultsdir_1 + '/fold%i.pkl' % f1
         if os.path.isfile(foldfile):
-            with open(foldfile, 'r') as fh:
-                data_1 = pickle.load(fh)
+            with open(foldfile, 'rb') as fh:
+                data_1 = pickle.load(fh, encoding='latin1')
         else:
-            print("Error -- data not found at %s" % foldfile)
+            print(("Error -- data not found at %s" % foldfile))
 
         _, _, _, _, _, _, pred_tr, _, _ = get_fold_data(data_1, f1, expt_settings_1)
         if expt_settings_1['method'] == 'SVM':
@@ -457,10 +457,10 @@ def print_best_worst(expt_settings, method, feature_type, embeddings_type, folds
 
         foldfile = resultsdir_1 + '/fold%i.pkl' % f1
         if os.path.isfile(foldfile):
-            with open(foldfile, 'r') as fh:
-                data_1 = pickle.load(fh)
+            with open(foldfile, 'rb') as fh:
+                data_1 = pickle.load(fh, encoding='latin1')
         else:
-            print("Error -- data not found at %s" % foldfile)
+            print(("Error -- data not found at %s" % foldfile))
 
         # Load the ground truth classifications
         _, _, _, _, gold_score, _, _, _, _ = get_fold_data(data_1, f1, expt_settings_1)
@@ -476,10 +476,10 @@ def print_best_worst(expt_settings, method, feature_type, embeddings_type, folds
         bottomargs = gold_ranked_idxs[:10]
 
         for arg in topargs:
-            print(utexts_f[arg])
+            print((utexts_f[arg]))
 
         for arg in bottomargs:
-            print(utexts_f[arg])
+            print((utexts_f[arg]))
 
 def get_rank_deviations(expt_settings, method, feature_type, embeddings_type, folds_r):
     # Load the results for GPPL with Ling.
@@ -508,10 +508,10 @@ def get_rank_deviations(expt_settings, method, feature_type, embeddings_type, fo
 
         foldfile = resultsdir_1 + '/fold%i.pkl' % f1
         if os.path.isfile(foldfile):
-            with open(foldfile, 'r') as fh:
-                data_1 = pickle.load(fh)
+            with open(foldfile, 'rb') as fh:
+                data_1 = pickle.load(fh, encoding='latin1')
         else:
-            print("Error -- data not found at %s" % foldfile)
+            print(("Error -- data not found at %s" % foldfile))
 
         # Load the ground truth classifications
         _, _, _, _, gold_score, pred_score, _, _, _ = get_fold_data(data_1, f1, expt_settings_1)
@@ -535,7 +535,7 @@ def get_rank_deviations(expt_settings, method, feature_type, embeddings_type, fo
 
 def print_arg_text(errors_1, errors_2, top_texts):
     for i, text in enumerate(top_texts):
-        print("\t %i %i %s \n" % (errors_1[i], errors_2[i], text))
+        print(("\t %i %i %s \n" % (errors_1[i], errors_2[i], text)))
 
 if __name__ == '__main__':
     # Step 1. Inspecting arguments in fifty pairs falsely classified by GPPL using only Glove or only ling features.
@@ -545,46 +545,46 @@ if __name__ == '__main__':
         expt_settings['di'] = 0.0
         expt_settings['foldorderfile'] = None
 
-    # expt_settings['dataset'] = 'UKPConvArgStrict'
-    # expt_settings['method'] = 'SinglePrefGP_noOpt_weaksprior'
-    # folds, folds_regression, _, _, _ = load_train_test_data(expt_settings['dataset'])
-    # expt_settings['folds'] = folds
-    # expt_settings['folds_regression'] = folds_regression
-    #
-    #
-    # print_where_one_right_two_wrong(expt_settings, 'embeddings', 'ling', 'word_mean', '')
-    # print_where_one_right_two_wrong(expt_settings, 'ling', 'embeddings', '', 'word_mean')
-    #
-    # # step 2. Inspect the arguments that 'both' gets right and embeddings or ling alone gets wrong. Expect the results
-    # # to be similar to the same as the previous step.
-    # print_where_one_right_two_wrong(expt_settings, 'embeddings', 'both', 'word_mean', 'word_mean')
-    # print_where_one_right_two_wrong(expt_settings, 'ling', 'both', '', 'word_mean')
-    #
-    # print_where_one_right_two_wrong(expt_settings, 'both', 'embeddings', 'word_mean', 'word_mean')
-    # print_where_one_right_two_wrong(expt_settings, 'both', 'ling', 'word_mean', '')
-    #
-    # # Step 3: Compare GPPL to SVM to see which handles outliers better given same features
-    # ling_feat_spmatrix, docids = load_ling_features(expt_settings['dataset'])
-    #
-    # if 'ls' not in globals():
-    #     ls = compute_lengthscale_heuristic('ling', '', None, ling_feat_spmatrix, docids, folds, None,
-    #                                    multiply_heuristic_power=0.5)
-    # items_feat = ling_feat_spmatrix.toarray()
-    #
-    # if 'similarity' not in globals():
-    #     similarity = None
-    # similarity = compute_max_train_similarity(expt_settings, 'SinglePrefGP_noOpt_weaksprior', ls, docids, items_feat, similarity)
-    # similarity = compute_max_train_similarity(expt_settings, 'SVM', ls, docids, items_feat, similarity)
-    #
-    # # Step 4: Compare GPPL to SVM look for other patterns in different errors given best features available
-    # print_where_one_right_two_wrong(expt_settings, 'both', 'ling', 'word_mean', '', 'SinglePrefGP_weaksprior', 'SVM')
-    # print_where_one_right_two_wrong(expt_settings, 'ling', 'both', '', 'word_mean', 'SVM', 'SinglePrefGP_weaksprior')
-    #
-    # # Step 8: Compute entropy for classifier predictions by SVM and GPPL for false/true labels; ling features for both
-    # print "Entropy for SVM correct/incorrect labels: %f, %f" % compute_entropies(expt_settings, 'SVM', 'ling', '')
-    # print "Entropy for GPPL correct/incorrect labels: %f, %f" % compute_entropies(expt_settings,
-    #                                                                   'SinglePrefGP_weaksprior', 'both', 'word_mean')
-    #
+    expt_settings['dataset'] = 'UKPConvArgStrict'
+    expt_settings['method'] = 'SinglePrefGP_noOpt_weaksprior'
+    folds, folds_regression, _, _, _ = load_train_test_data(expt_settings['dataset'])
+    expt_settings['folds'] = folds
+    expt_settings['folds_regression'] = folds_regression
+
+
+    print_where_one_right_two_wrong(expt_settings, 'embeddings', 'ling', 'word_mean', '')
+    print_where_one_right_two_wrong(expt_settings, 'ling', 'embeddings', '', 'word_mean')
+
+    # step 2. Inspect the arguments that 'both' gets right and embeddings or ling alone gets wrong. Expect the results
+    # to be similar to the same as the previous step.
+    print_where_one_right_two_wrong(expt_settings, 'embeddings', 'both', 'word_mean', 'word_mean')
+    print_where_one_right_two_wrong(expt_settings, 'ling', 'both', '', 'word_mean')
+
+    print_where_one_right_two_wrong(expt_settings, 'both', 'embeddings', 'word_mean', 'word_mean')
+    print_where_one_right_two_wrong(expt_settings, 'both', 'ling', 'word_mean', '')
+
+    # Step 3: Compare GPPL to SVM to see which handles outliers better given same features
+    ling_feat_spmatrix, docids = load_ling_features(expt_settings['dataset'])
+
+    if 'ls' not in globals():
+        ls = compute_lengthscale_heuristic('ling', '', None, ling_feat_spmatrix, docids, folds, None,
+                                       multiply_heuristic_power=0.5)
+    items_feat = ling_feat_spmatrix.toarray()
+
+    if 'similarity' not in globals():
+        similarity = None
+    similarity = compute_max_train_similarity(expt_settings, 'SinglePrefGP_noOpt_weaksprior', ls, docids, items_feat, similarity)
+    similarity = compute_max_train_similarity(expt_settings, 'SVM', ls, docids, items_feat, similarity)
+
+    # Step 4: Compare GPPL to SVM look for other patterns in different errors given best features available
+    print_where_one_right_two_wrong(expt_settings, 'both', 'ling', 'word_mean', '', 'SinglePrefGP_weaksprior', 'SVM')
+    print_where_one_right_two_wrong(expt_settings, 'ling', 'both', '', 'word_mean', 'SVM', 'SinglePrefGP_weaksprior')
+
+    # Step 8: Compute entropy for classifier predictions by SVM and GPPL for false/true labels; ling features for both
+    print("Entropy for SVM correct/incorrect labels: %f, %f" % compute_entropies(expt_settings, 'SVM', 'ling', ''))
+    print("Entropy for GPPL correct/incorrect labels: %f, %f" % compute_entropies(expt_settings,
+                                                                      'SinglePrefGP_weaksprior', 'both', 'word_mean'))
+
     # a. Compute the rankings for GPPL and SVM.
     # b. Compute deviations from gold rank.
     expt_settings['dataset'] = 'UKPConvArgAll'
@@ -596,40 +596,35 @@ if __name__ == '__main__':
     print_best_worst(expt_settings, 'SinglePrefGP_weaksprior', 'both', 'word_mean', folds_regression)
     print("--------")
 
-    # deviations_gppl, utexts_gppl = get_rank_deviations(expt_settings, 'SinglePrefGP_weaksprior', 'both', 'word_mean',
-    #                                                    folds_regression)
-    # deviations_svm, utexts_svm = get_rank_deviations(expt_settings, 'SVM', 'ling', '', folds_regression)
-    #
-    # # c. Compute differences in deviations between SVM and GPPL
-    # diffs = np.abs(deviations_svm) - np.abs(deviations_gppl)
-    # diff_args = np.argsort(diffs)
-    #
-    # # Step 5: Ranking errors that SVM made but GPPL solves - Look at top 20 diffs in deviations
-    # argidxs = diff_args[-20:]
-    # # load the matching argument texts
-    # print "Biggest differences in rank deviation between SVM and GPPL: where SVM was worse"
-    # print "Rank deviations by gppl; rank deviations by SVM; argument text"
-    # top_texts = utexts_svm[argidxs]
-    # print_arg_text(deviations_gppl[argidxs], deviations_svm[argidxs], top_texts)
-    #
-    # # Step 6: Ranking errors that GPPL makes the SVM did not make - Look at top 20 negative diffs in deviations. Use best version of GPPL.
-    # argidxs = diff_args[:20]
-    # print "Biggest differences in rank deviation between SVM and GPPL: where GPPL was worse"
-    # print "Rank deviations by gppl; rank deviations by SVM; argument text"
-    # top_texts = utexts_gppl[argidxs]
-    # print_arg_text(deviations_gppl[argidxs], deviations_svm[argidxs], top_texts)
-    #
-    # # Step 7: Other ranking errors that GPPL still makes - Look at top 20 deviations for GPPL.
-    # dev_args = np.argsort(np.abs(deviations_gppl))
-    # argidxs = dev_args[-20:]
-    # print "Biggest rank deviations for GPPL only"
-    # print "Rank deviations by gppl; -; argument text"
-    # top_texts = utexts_gppl[argidxs]
-    # print_arg_text(deviations_gppl[argidxs], np.zeros(len(deviations_gppl)), top_texts)
+    deviations_gppl, utexts_gppl = get_rank_deviations(expt_settings, 'SinglePrefGP_weaksprior', 'both', 'word_mean',
+                                                       folds_regression)
+    deviations_svm, utexts_svm = get_rank_deviations(expt_settings, 'SVM', 'ling', '', folds_regression)
 
-#     # Step 9: Erroneous training labels in CrowdSample: how often did they result in errors with GPPL and SVM.
-#     # THIS IDEA DOESN'T WORK.
-#     compute_errors_in_training(expt_settings, 'SinglePrefGP_noOpt_weaksprior', 'both', 'word_mean')
-#     compute_errors_in_training(expt_settings, 'SVM', 'ling', '')
+    # c. Compute differences in deviations between SVM and GPPL
+    diffs = np.abs(deviations_svm) - np.abs(deviations_gppl)
+    diff_args = np.argsort(diffs)
+
+    # Step 5: Ranking errors that SVM made but GPPL solves - Look at top 20 diffs in deviations
+    argidxs = diff_args[-20:]
+    # load the matching argument texts
+    print("Biggest differences in rank deviation between SVM and GPPL: where SVM was worse")
+    print("Rank deviations by gppl; rank deviations by SVM; argument text")
+    top_texts = utexts_svm[argidxs]
+    print_arg_text(deviations_gppl[argidxs], deviations_svm[argidxs], top_texts)
+
+    # Step 6: Ranking errors that GPPL makes the SVM did not make - Look at top 20 negative diffs in deviations. Use best version of GPPL.
+    argidxs = diff_args[:20]
+    print("Biggest differences in rank deviation between SVM and GPPL: where GPPL was worse")
+    print("Rank deviations by gppl; rank deviations by SVM; argument text")
+    top_texts = utexts_gppl[argidxs]
+    print_arg_text(deviations_gppl[argidxs], deviations_svm[argidxs], top_texts)
+
+    # Step 7: Other ranking errors that GPPL still makes - Look at top 20 deviations for GPPL.
+    dev_args = np.argsort(np.abs(deviations_gppl))
+    argidxs = dev_args[-20:]
+    print("Biggest rank deviations for GPPL only")
+    print("Rank deviations by gppl; -; argument text")
+    top_texts = utexts_gppl[argidxs]
+    print_arg_text(deviations_gppl[argidxs], np.zeros(len(deviations_gppl)), top_texts)
 
 
