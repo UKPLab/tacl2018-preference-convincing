@@ -60,10 +60,11 @@ from gp_classifier_svi import GPClassifierSVI
 from gp_classifier_vb import compute_median_lengthscales
 from sklearn.svm import SVR 
 from data_loading import load_train_test_data, load_embeddings, load_ling_features, data_root_dir, \
-    combine_into_libsvm_files, load_siamese_cbow_embeddings, load_skipthoughts_embeddings
+    load_siamese_cbow_embeddings, load_skipthoughts_embeddings
 import numpy as np
     
 ndebug_features = 10
+verbose = False
     
 def save_fold_order(resultsdir, folds=None, dataset=None):
     if folds is None and dataset is not None:
@@ -191,7 +192,7 @@ def get_fold_data(folds, fold, docids):
     testids = np.array([ids_pair.split('_') for ids_pair in ids_test])
     a1_test = get_docidxs_from_ids(docids, testids[:, 0])
     a2_test = get_docidxs_from_ids(docids, testids[:, 1])
-    
+
     X, uids, utexts = get_doc_token_seqs((a1_train, a2_train, a1_test, a2_test), 
                            [X_train_a1, X_train_a2, X_test_a1, X_test_a2], (tr_a1, tr_a2, test_a1, test_a2))
         
@@ -354,8 +355,8 @@ class TestRunner:
     
     # Methods for running the prediction methods --------------------------------------------------------------------------
     def run_gppl(self):
-        # TODO: Find out why updates to preference learning code or the test framework seem to have reduced accuracy.
-        #   - Convergence taking longer, method runs for 200 iterations without completing. Maybe step size in the SVI 
+        # TODO: Find out whether updates to preference learning code or the test framework seem to have reduced accuracy.
+        #   - Convergence taking longer, method runs for 200 iterations without completing. Maybe step size in the SVI
         # updates should be increased, but this does not explain the change. ***Caused by change to logpt?*** 
         # ***Covariance means we can't treat f_var in same way as noise! Was there some reason we previously thought the var cancelled out?***
         #   - Delay changed from 1 to 10. This may mean it doesn't converge in the permitted no. iterations. ***Testing again with delay of 1 didn't change result much***
@@ -430,7 +431,7 @@ class TestRunner:
             predicted_f, _ = self.model.predict_f(None, self.a_rank_test)
         else:
             predicted_f = None
-    
+
         return proba, predicted_f, tr_proba
     
 #     model, _, a1_train, a2_train, self.prefs_train, items_feat, _, _, self.a1_test, self.a2_test, 
@@ -859,9 +860,9 @@ class TestRunner:
             final_ls = {}
             times = {}
         else:
-            with open(resultsfile, 'r') as fh:
+            with open(resultsfile, 'rb') as fh:
                 all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, _, times, final_ls, \
-                                                                                        all_tr_proba = pickle.load(fh)
+                                                                    all_tr_proba = pickle.load(fh, encoding='latin1')
             if all_tr_proba is None:
                 all_tr_proba = {}
                 
@@ -882,9 +883,13 @@ class TestRunner:
         all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, all_tr_proba = \
                                                                                 self._reload_partial_result(resultsfile)
                 
-        np.random.seed(111) # allows us to get the same initialisation for all methods/feature types/embeddings
-    
-        fold_keys = list(self.folds.keys())
+        np.random.seed(121) # allows us to get the same initialisation for all methods/feature types/embeddings
+
+        if os.path.isfile(results_stem + '/foldorder.txt'):
+            fold_keys = np.genfromtxt(os.path.expanduser(results_stem + '/foldorder.txt'), dtype=str)
+        else:
+            fold_keys = list(self.folds.keys())
+
         for foldidx, self.fold in enumerate(fold_keys):
             if foldidx in all_proba and dataset_increment==0:
                 print(("Skipping fold %i, %s" % (foldidx, self.fold)))
@@ -898,10 +903,10 @@ class TestRunner:
                     print(("Skipping fold %i, %s" % (foldidx, self.fold)))
                     continue
                 
-                with open(foldresultsfile, 'r') as fh:
+                with open(foldresultsfile, 'rb') as fh:
                     all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],\
                     all_target_rankscores[foldidx], _, times[foldidx], final_ls[foldidx], all_tr_proba[foldidx] = \
-                                pickle.load(fh)
+                                pickle.load(fh, encoding='latin1')
     
             # Get data for this fold --------------------------------------------------------------------------------------
             print(("Fold name ", self.fold))
@@ -956,7 +961,7 @@ class TestRunner:
                 self.ls_initial = self.default_ls
 
             if '_oneLS' in self.method:
-                self.ls_initial = np.median(ls_initial)
+                self.ls_initial = np.median(self.ls_initial)
                 logging.info("Selecting a single LS for all features: %f" % self.ls_initial)
             
             logging.info("Starting test with method %s..." % (self.method))
@@ -1141,8 +1146,6 @@ class TestRunner:
                                                                                embeddings_type) )
 if __name__ == '__main__':
 
-    verbose = False
-
     acc = 1.0
     dataset_increment = 0
          
@@ -1153,4 +1156,4 @@ if __name__ == '__main__':
 
     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods,
                             dataset_increment)
-    runner.run_test_set(min_no_folds=16, max_no_folds=32)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32)

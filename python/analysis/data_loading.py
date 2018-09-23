@@ -9,7 +9,7 @@ Created on 10 Jun 2017
 '''
 import os, sys
 
-data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
+data_root_dir = os.path.abspath(os.path.expanduser("./data/"))
 
 sys.path.append('../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python')
 sys.path.append(os.path.expanduser('~/data/personalised_argumentation/embeddings/Siamese-CBOW/siamese-cbow'))
@@ -21,135 +21,42 @@ from sklearn.datasets import load_svmlight_file
 from preproc_raw_data import generate_turker_CSV, generate_gold_CSV
 import numpy as np
 
-def combine_into_libsvm_files(dataset, ids1, ids2, labels, dataset_type, fold, nfeats,
-        dirname=data_root_dir + '/lingdata/UKPConvArg1-Full-libsvm', 
-        outputfile=data_root_dir + '/libsvmdata/%s-%s-%s-libsvm.txt', reverse_pairs=False, 
-        embeddings=None, a1=None, a2=None, embeddings_only=False): 
-    outputfile = outputfile % (dataset, dataset_type, fold)
+def combine_lines_into_one_file(dataset_name, dirname=os.path.join(data_root_dir, 'lingdata/UKPConvArg1-Full-libsvm'),
+                                outputfile=os.path.join(data_root_dir, 'lingdata/%s-libsvm.txt')):
+    output_argid_file = outputfile % ("argids_%s" % dataset_name)
+    outputfile = outputfile % dataset_name
     
     outputstr = ""
     dataids = [] # contains the argument document IDs in the same order as in the ouputfile and outputstr
     
     if os.path.isfile(outputfile):
         os.remove(outputfile)
-    
-    with open(outputfile, 'a') as ofh:    
-        for row in range(len(ids1)):
-            # each file should contain only one line
-            fname1 = '%s.libsvm.txt' % ids1[row]
-            with open(dirname + "/" + fname1) as fh:
-                lines = fh.readlines()
+    if os.path.isfile(output_argid_file):
+        os.remove(output_argid_file)
 
-            comment_split_line = lines[0][1:].split('#')
-            
-            if embeddings_only:           
-                outputline = str(float(labels[row])) + comment_split_line[0]
-            else:
-                outputline = str(float(labels[row])) + '\t'
-            
-            if embeddings is not None:
-                first_embedding_feature_id = nfeats
-                if ids2 is not None:
-                    first_embedding_feature_id += nfeats
-                
-                docvec = embeddings[a1[row], :]
-                for i, v in enumerate(docvec):
-                    outputline += str(int(i) + first_embedding_feature_id)
-                    outputline += ':' + str(v) + '\t'
-                  
-            if ids2 is not None:
-                fname2 = ids2[row] + '.libsvm.txt'
-                with open(dirname + "/" + fname2) as fh:
-                    lines2 = fh.readlines()
 
-                # move comments at end of first line to end of complete joint line
-                comment_split_line2 = lines2[0][1:].split('#')
-                
-                if not embeddings_only:
-                    for feat in comment_split_line2[0].split('\t'):
-                        if not len(feat):
-                            continue
-                        outputline += str(int(feat.split(':')[0]) + nfeats)
-                        outputline += ':' + feat.split(':')[1] + '\t'
-                    # we could re-add the comments back in, but this seems to be problematic for libsvm, not sure why?
-                    #if len(comment_split_line) > 1:
-                    #    outputline += '\t#' + comment_split_line[1] + '_' + comment_split_line_complete[1]  
-        
-                if embeddings is not None:
-                    first_embedding_feature_id = nfeats * 2 + embeddings.shape[1]
-                    
-                    docvec = embeddings[a2[row], :]
-                    for i, v in enumerate(docvec):
-                        outputline += str(int(i) + first_embedding_feature_id)
-                        outputline += ':' + str(v) + '\t'        
-        
-            outputline += '\n'
-        
-            ofh.write(outputline)
-                
-            if reverse_pairs and ids2 is not None:
-                outputline = str(float(1 - labels[row])) + comment_split_line2[0] 
-
-                if embeddings is not None:
-                    first_embedding_feature_id = nfeats
-                    if ids2 is not None:
-                        first_embedding_feature_id += nfeats
-                
-                    docvec = embeddings[a2[row], :]
-                    for i, v in enumerate(docvec):
-                        outputline += str(int(i) + first_embedding_feature_id)
-                        outputline += ':' + str(v) + '\t'
-                
-                largestsofar = nfeats
-                
-                for feat in comment_split_line[0].split('\t'):
-                    if not len(feat):
-                        continue
-                    outputline += str(int(feat.split(':')[0]) + nfeats)
-                    outputline += ':' + feat.split(':')[1] + '\t'
-                    if int(feat.split(':')[0]) + nfeats < largestsofar:
-                        print('Parsing error...')
-                    largestsofar = int(feat.split(':')[0]) + nfeats
-                    
-                if embeddings is not None:
-                    first_embedding_feature_id = nfeats * 2 + embeddings.shape[1]
-                    
-                    docvec = embeddings[a1[row], :]
-                    for i, v in enumerate(docvec):
-                        outputline += str(int(i) + first_embedding_feature_id)
-                        outputline += ':' + str(v) + '\t'    
-                    
-                outputline += '\n'
-                ofh.write(outputline)
-                
-    return outputfile, outputstr, dataids
-
-def combine_lines_into_one_file(dataset, dirname=data_root_dir + '/lingdata/UKPConvArg1-Full-libsvm', 
-        outputfile=data_root_dir + '/lingdata/%s-libsvm.txt'): 
-    output_argid_file = outputfile % ("argids_%s" % dataset)
-    outputfile = outputfile % dataset
-    
-    outputstr = ""
-    dataids = [] # contains the argument document IDs in the same order as in the ouputfile and outputstr
-    
-    if os.path.isfile(outputfile):
-        os.remove(outputfile)
-        
     with open(outputfile, 'a') as ofh: 
         for filename in os.listdir(dirname):
+
+            if os.path.samefile(outputfile, os.path.join(dirname, filename)):
+                continue
+
+            if filename.split('.')[-1] != 'txt':
+                continue
+
             fid = filename.split('.')[0]
             print(("writing from file %s with row ID %s" % (filename, fid)))
             with open(dirname + "/" + filename) as fh:
                 lines = fh.readlines()
             for line in lines:
                 dataids.append(fid)
-                outputline = line
+                outputline = line.split('#')[0]
+                if outputline[-1] != '\n':
+                    outputline += '\n'
+
                 ofh.write(outputline)
                 outputstr += outputline + '\n'
-                
-    if os.path.isfile(output_argid_file):
-        os.remove(outputfile)
-        
+
     dataids = np.array(dataids)[:, np.newaxis]
     np.savetxt(output_argid_file, dataids, '%s')
                 
@@ -172,30 +79,30 @@ def load_train_test_data(dataset):
       
     if dataset == 'UKPConvArgCrowd':
         # basic dataset, requires additional steps to produce the other datasets        
-        dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'  
-        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArgAllRank-CSV/'
+        dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-full-XML/')
+        ranking_csvdirname = os.path.join(data_root_dir, 'argument_data/UKPConvArgAllRank-CSV/')
 
     elif dataset == 'UKPConvArgCrowdSample':
-        dirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-XML/'  
-        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/'
+        dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-crowdsample-XML/')
+        ranking_csvdirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/')
 
     elif dataset == 'UKPConvArgMACE' or dataset == 'UKPConvArgAll':
-        dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'
-        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-Ranking-CSV/'          
+        dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-full-XML/')
+        ranking_csvdirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-Ranking-CSV/')
 
     elif dataset == 'UKPConvArgStrict':
-        dirname = data_root_dir + 'argument_data/UKPConvArg1Strict-XML/'
+        dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1Strict-XML/')
         ranking_csvdirname = None        
 
     elif dataset == 'UKPConvArgCrowd_evalMACE': # train on the crowd dataset and evaluate on the MACE dataset
-        dirname = data_root_dir + 'argument_data/UKPConvArg1-full-XML/'  
-        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArgAllRank-CSV/'
+        dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-full-XML/')
+        ranking_csvdirname = os.path.join(data_root_dir, 'argument_data/UKPConvArgAllRank-CSV/')
         folds_test, folds_regression_test, _, _, _ = load_train_test_data('UKPConvArgAll')
         dataset = 'UKPConvArgCrowd'
 
     elif dataset == 'UKPConvArgCrowdSample_evalMACE':
-        dirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-XML/'  
-        ranking_csvdirname = data_root_dir + 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/'
+        dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-crowdsample-XML/')
+        ranking_csvdirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/')
         folds_test, folds_regression_test, _, _, _ = load_train_test_data('UKPConvArgAll')
         dataset = 'UKPConvArgCrowdSample'
 
@@ -207,7 +114,7 @@ def load_train_test_data(dataset):
         folds_regression_test = None
     
     print(("Data directory = %s, dataset=%s" % (dirname, dataset)))
-    csvdirname = data_root_dir + 'argument_data/%s-new-CSV/' % dataset
+    csvdirname = os.path.join(data_root_dir, 'argument_data/%s-new-CSV/' % dataset)
     # Generate the CSV files from the XML files. These are easier to work with! The CSV files from Habernal do not 
     # contain all turker info that we need, so we generate them afresh here.
     if not os.path.isdir(csvdirname):
@@ -218,7 +125,7 @@ def load_train_test_data(dataset):
         else: #if 'UKPConvArgStrict' in dataset or 'UKPConvArgAll' in dataset or dataset == 'UKPConvArgCrowdSample':
             generate_gold_CSV(dirname, csvdirname) # select only the gold labels
                 
-    embeddings_dir = data_root_dir + '/embeddings/'
+    embeddings_dir = './data/'
     print(("Embeddings directory: %s" % embeddings_dir))
     
     # Load the train/test data into a folds object. -------------------------------------------------------------------
@@ -265,16 +172,24 @@ def load_siamese_cbow_embeddings(word_to_indices_map):
     import wordEmbeddings as siamese_cbow
     return siamese_cbow.wordEmbeddings(filename)
      
-def load_ling_features(dataset):
-    ling_dir = data_root_dir + 'lingdata/'
+def load_ling_features(dataset,
+                       root_dir=data_root_dir,
+                       ling_subdir='lingdata/',
+                       input_dir=os.path.join(data_root_dir, 'lingdata/UKPConvArg1-Full-libsvm'),
+                       max_n_features=None):
+
+    ling_dir = os.path.join(root_dir, ling_subdir)
     print(("Looking for linguistic features in directory %s" % ling_dir)) 
     print('Loading linguistic features')
     ling_file = ling_dir + "/%s-libsvm.txt" % dataset
     argids_file = ling_dir + "/%s-libsvm.txt" % ("argids_%s" % dataset)
     if not os.path.isfile(ling_file) or not os.path.isfile(argids_file):
-        ling_file, _ , docids = combine_lines_into_one_file(dataset, outputfile=ling_dir+"/%s-libsvm.txt")
+        ling_file, _ , docids = combine_lines_into_one_file(dataset,
+                                                            dirname=input_dir,
+                                                            outputfile=os.path.join(ling_dir, "%s-libsvm.txt")
+                                                            )
     else:
         docids = np.genfromtxt(argids_file, str)
         
-    ling_feat_spmatrix, _ = load_svmlight_file(ling_file)
+    ling_feat_spmatrix, _ = load_svmlight_file(ling_file, n_features=max_n_features)
     return ling_feat_spmatrix, docids

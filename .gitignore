@@ -1,5 +1,6 @@
 *.old
-
+data/lingdata
+data/tempdata
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -11,6 +12,8 @@ __pycache__/
 
 # Distribution / packaging
 .Python
+venv/
+venv_linux
 env/
 build/
 develop-eggs/
@@ -135,3 +138,23 @@ outputdata/*.pkl
 **/*.bak
 **/*.xml
 **/*.iml
+venv
+venv_linux/
+.idea/
+*.bbl
+**/*.bbl
+documents/pref_learning_for_convincingness/1304-2018-TACL-ES-pref_learning_for_convincingness.bbl
+**.bbl
+*.blg
+**backup.*
+documents/pref_learning_for_convincingness/figures/scalability/num_arguments_backup.pdf
+data/new_ranking1
+data/new_ranking2
+data/new_ranking3
+data/new_ranking_libsvm
+model.pkl
+data/new_test_data
+data/new_test_data0
+data/UKPConvArg1-crowdsample-ranking-CSV
+data/UKPConvArgCrowdSample-new-CSV
+data/vocabulary.embeddings.all.pkl.bz2
