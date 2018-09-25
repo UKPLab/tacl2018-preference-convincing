@@ -304,7 +304,7 @@ def check_convergence(newval, oldval, conv_threshold, positive_only, iter=-1, ve
             logging.debug('%s: diff = %.5f at iteration %i' % (label, diff, iter))
             # logging.debug(np.max(np.abs(newval - oldval)))
 
-    if positive_only and diff < - conv_threshold:  # ignore any error of less than ~1%, as we are using approximations here anyway
+    if positive_only and diff < - 1.0:  # ignore any error of less than ~1%, as we are using approximations here anyway
         logging.warning('%s = %.5f, changed by %.5f in iteration %i' % (label, newval, diff, iter))
 
     converged = diff < conv_threshold
@@ -341,7 +341,6 @@ class GPClassifierVB(object):
     K_star = None
 
     n_converged = 1  # number of iterations while the algorithm appears to be converged -- in case of local maxima
-    max_iter_VB = 0
     max_iter_VB_per_fit = 200  # 1000
     min_iter_VB = 5
     max_iter_G = 10
@@ -359,6 +358,7 @@ class GPClassifierVB(object):
         self.verbose = verbose
 
         self.n_locs = 0 # at this point we have no training locations
+        self.max_iter_VB = self.max_iter_VB_per_fit
 
         # Grid size for prediction
         self.ninput_features = ninput_features
