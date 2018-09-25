@@ -71,11 +71,11 @@ class GPClassifierSVI(GPClassifierVB):
 
     # Initialisation --------------------------------------------------------------------------------------------------
 
-    def _init_params(self, mu0=None, reinit_params=True, K=None, init_Q_only=False):
-        if self.use_svi and (self.K_mm is None or self.vb_iter == 0) and not init_Q_only:
+    def _init_params(self, mu0=None, reinit_params=True, K=None):
+        if self.use_svi and (self.K_mm is None or self.vb_iter == 0):
             self._choose_inducing_points()
 
-        super(GPClassifierSVI, self)._init_params(mu0, reinit_params, K, init_Q_only)
+        super(GPClassifierSVI, self)._init_params(mu0, reinit_params, K)
 
     def _init_covariance(self):
         if not self.use_svi:
