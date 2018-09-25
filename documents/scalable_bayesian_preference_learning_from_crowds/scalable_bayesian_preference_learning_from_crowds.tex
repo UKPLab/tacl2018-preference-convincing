@@ -1,21 +1,24 @@
-\documentclass[11pt,letterpaper]{article}
-\usepackage[letterpaper]{geometry}
-\usepackage{acl2012}
-\usepackage{times}
-\usepackage{latexsym}
-\usepackage[fleqn]{amsmath}
-\usepackage{multirow}
+\RequirePackage[fleqn]{amsmath}
+\RequirePackage{fix-cm}
+%
+%\documentclass{svjour3}                     % onecolumn (standard format)
+%\documentclass[smallcondensed]{svjour3}     % onecolumn (ditto)
+\documentclass[smallextended]{svjour3}       % onecolumn (second format)
+%\documentclass[twocolumn]{svjour3}          % twocolumn
+%
+\smartqed  % flush right qed marks, e.g. at end of proof
+%
+\usepackage{graphicx}
+
+%\usepackage{times}
+%\usepackage{latexsym}
+%\usepackage{multirow}
 \usepackage{url}
 \makeatletter
-\newcommand{\@BIBLABEL}{\@emptybiblabel}
-\newcommand{\@emptybiblabel}[1]{}
 \makeatother
-\usepackage[hidelinks]{hyperref}
-\DeclareMathOperator*{\argmax}{arg\,max}
-\setlength\titlebox{6.5cm}    % Expanding the titlebox
+%\usepackage[hidelinks]{hyperref}
+%\DeclareMathOperator*{\argmax}{arg\,max}
 
-% \documentclass[11pt]{article}
-% \usepackage{acl2016}
 % \usepackage{times}
 % \usepackage{url}
 % \usepackage{latexsym}
@@ -27,7 +30,6 @@
 % 
 % \usepackage{cite}
 
-\usepackage{graphicx}
 \usepackage{amsfonts}
 \usepackage{algorithm2e}
 \usepackage{array}
@@ -39,6 +41,7 @@
 
 \newcommand{\bs}{\boldsymbol}  
 \newcommand{\wrtd}{\mathrm{d}}
+\providecommand{\shortcite}[1]{\cite{#1}}
 
 \makeatletter
 \makeatother %some sort of hack related to the symbol @
@@ -49,19 +52,16 @@
 Scalable Bayesian Preference Learning from Crowds
 }
 
-\author{First Author \\
-  Affiliation / Address line 1 \\
-  Affiliation / Address line 2 \\
-  Affiliation / Address line 3 \\
-  {\tt email@domain} \\\And
-  Second Author \\
-  Affiliation / Address line 1 \\
-  Affiliation / Address line 2 \\
-  Affiliation / Address line 3 \\
-  {\tt email@domain} \\}
-
-\date{}
+\author{Edwin Simpson 
+\and Iryna Gurevych \\
+}
+\institute{Ubiquitous Knowledge Processing Lab, Dept. of Computer Science, Technische Universit\"at Darmstadt, Germany\\
+              \email{\{simpson,gurevych\}@ukp.informatik.tu-darmstadt.de}
+}
+\date{Received: date}
 \begin{document}
+
+% do not exceed 20 pages including references
 
 \maketitle
 
@@ -90,10 +90,10 @@ We show that the model is able to identify a number of latent features for the w
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\input{sections/intro}
-\input{sections/method}
-\input{sections/experiments}
-\input{sections/discussion}
+\input{intro}
+\input{method}
+\input{experiments}
+\input{discussion}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -102,15 +102,9 @@ We show that the model is able to identify a number of latent features for the w
 
 \cleardoublepage
 
-% \addcontentsline{toc}{chapter}{Bibliography}
-%\bibliographystyle{apalike}
-\bibliographystyle{acl2012}
-\bibliography{simpson_scalabel_bayesian_preference_learning_from_crowds}
+\bibliographystyle{spmpsci}      % mathematics and physical sciences
+\bibliography{simpson_scalable_bayesian_pref_learning_from_crowds}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\cleardoublepage
-\appendix
-\input{sections/appendix}
 
 \end{document}

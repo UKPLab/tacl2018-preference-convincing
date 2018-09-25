@@ -46,7 +46,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \title{ 
-Finding Convincing Arguments using Scalable Bayesian Preference Learning
+Scalable Bayesian Preference Learning from Crowds
 }
 
 \author{First Author \\
@@ -65,33 +65,17 @@ Finding Convincing Arguments using Scalable Bayesian Preference Learning
 
 \maketitle
 
-% Points to address:
-% 1. Is scalability needed when data is sparse? Yes -- for a single topic we quickly hit the 
-% limits with > 500 comparisons; these pairs may be noisy rather than just small; the 
-% large feature space means data is still sparse; scalabe method means that model can be
-% continuously updated as new data arrives.
-
 \begin{abstract}
-%Automated methods for identifying convincing arguments can be hampered by 
-%a lack of gold-standard ratings or rankings in new topics or domains.
-%We address this problem by introducing a scalable Bayesian preference learning method
-%for argument convincingness.
-We introduce a scalable Bayesian preference learning method for identifying
-convincing arguments in the absence of gold-standard ratings or rankings.
-% so far, classifiers and graph ranking methods have been adapted to PL -- our approach addresses the problem without a pipeline and without 
-In contrast to previous work, we avoid the need for separate approaches or pipelines
-to produce training data, predict rankings and perform pairwise classification.
-Although Bayesian methods are known to be effective when faced with sparse or noisy training data, 
-they have not previously been used to identify convincing arguments.
-One deterrent is their perceived lack of scalability, which we address by developing a 
-stochastic variational inference method for Gaussian process (GP) preference learning.
-We show how our method can be applied to predict argument convincingness from crowdsourced data, 
-outperforming state-of-the-art methods, particularly when the data is sparse or noisy.  
-We demonstrate how our Bayesian approach enables more effective active learning,
-thereby reducing the amount of data required to identify convincing arguments for new users and domains.
-While word embeddings are principally used with neural networks, our results show that word embeddings in combination with linguistic features also benefit GPs when predicting
-argument convincingness.
-
+We show how to make collaborative preference learning work at scale and how it can be used to learn
+a target preference function from crowdsourced data or other noisy preference labels. 
+The collaborative model captures the reliability of each worker or data source and models their biases and error rates. 
+It uses latent factors to share information between similar workers and a target preference function.
+We devise an SVI inference schema to enable the model to scale to real-world datasets.
+Experiments compare results using standard variational inference, laplace approximation and SVI.
+On real-world data we show the benefit of the personalised model over a GP preference learning approach 
+that treats all labels as coming from the same source,
+as well as established alternative methods and classifier baselines.
+We show that the model is able to identify a number of latent features for the workers and for textual arguments.
 \end{abstract}
 
 % For peer review papers, you can put extra information on the cover
@@ -121,7 +105,7 @@ argument convincingness.
 % \addcontentsline{toc}{chapter}{Bibliography}
 %\bibliographystyle{apalike}
 \bibliographystyle{acl2012}
-\bibliography{simpson_pref_learning_for_convincingness}
+\bibliography{simpson_scalabel_bayesian_preference_learning_from_crowds}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

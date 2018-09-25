@@ -173,7 +173,13 @@ class GPPrefLearning(GPClassifierSVI):
     
     def _init_obs_f(self):
         # Mean probability at observed points given local observations
-        self.obs_f = np.zeros((self.n_locs, 1)) + self.mu0
+        if self.obs_f is None:  # don't reset if we are only adding more data
+            self.obs_f = np.zeros((self.n_locs, 1)) + self.mu0
+        elif self.obs_f.shape[0] < self.n_locs:
+            prev_obs_f = self.obs_f
+            self.obs_f = np.zeros((self.n_locs, 1)) + self.mu0
+            self.obs_f[:prev_obs_f.shape[0], :] = prev_obs_f
+
         
     def _init_obs_mu0(self, mu0):
         if mu0 is None or not len(mu0):
