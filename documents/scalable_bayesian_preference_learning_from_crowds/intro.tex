@@ -16,3 +16,17 @@ The collaborative Gaussian process (Houlsby et al. 2012) learns multiple users' 
 However existing implementations do not scale and do not identify ground truth. 
 
 We show how to scale it using SVI and how to use the model to identify ground truth from subjective preferences. 
+
+In this paper, we develop methodology to solve the following questions:
+\begin{enumerate}
+  \item How can we learn a rating function over large sets of items given a large number of pairwise comparisons?
+  \item How do we account for the different personal preferences of annotators when inferring the ground truth?
+\end{enumerate}
+To answer these questions we make the following technical contributions:
+\begin{enumerate}
+ \item We propose a method for predicting either gold-standard or personalized ratings by aggregating crowdsourced preference labels using a model of the noise and biases of individual annotators. % say why this is not possible with Dawid and Skene
+  \item %To enable collaborative preference learning % collaborative preference learning needs to be defined above
+   To enable this method to scale to large, real-world datasets, we develop
+   stochastic variational inference for Bayesian matrix factorization and Gaussian process preference learning.
+  \item To expedite hyper-parameter tuning, we introduce a technique for gradient-based length-scale optimization of Gaussian processes.
+\end{enumerate}

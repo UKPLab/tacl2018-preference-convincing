@@ -234,7 +234,10 @@ def _dists_f(items_feat_sample, f):
         logging.info('computed lengthscale for feature %i' % f)
     dists = np.abs(items_feat_sample[:, np.newaxis] - items_feat_sample[np.newaxis, :])
     # we exclude the zero distances. With sparse features, these would likely downplay the lengthscale.
-    med = np.median(dists[dists > 0])
+    if np.any(dists > 0):
+        med = np.median(dists[dists > 0])
+    else:
+        med = 1.0
     if np.isnan(med):
         med = 1.0
     return med
@@ -355,6 +358,8 @@ class GPClassifierVB(object):
 
         self.verbose = verbose
 
+        self.n_locs = 0 # at this point we have no training locations
+
         # Grid size for prediction
         self.ninput_features = ninput_features
 
@@ -399,18 +404,17 @@ class GPClassifierVB(object):
 
     # Initialisation --------------------------------------------------------------------------------------------------
 
-    def _init_params(self, mu0, reinit_params, K=None, init_Q_only=False):
+    def _init_params(self, mu0, reinit_params, K=None):
         self._init_obs_mu0(mu0)
 
         if reinit_params or K is not None:
             self.K = K
             self._init_covariance()
 
+        # Prior noise variance
+        self.estimate_obs_noise()
+
         if reinit_params:
-            # Prior noise variance
-            self.estimate_obs_noise()
-            if init_Q_only:
-                return
 
             self._init_obs_f()
             self._init_s()
@@ -881,7 +885,8 @@ class GPClassifierVB(object):
 
         # Initialise the objects that store the observation data
         self._process_observations(obs_coords, obs_values, totals)
-        self._init_params(mu0, True, K, init_Q_only)
+
+        self._init_params(mu0, init_Q_only is False, K)
         self.vb_iter = 0 # don't reset if we don't have new data
 
         if not len(self.obs_coords):
@@ -896,6 +901,9 @@ class GPClassifierVB(object):
         '''
         obs_coords -- coordinates of observations as an N x D array, where N is number of observations,
         D is number of dimensions
+
+        TODO: simplify interface by removing process_obs so that if the data is passed in, it is
+        always processed.
         '''
         if features is not None: # keep the old item features if we pass in none
             self.features = features
@@ -905,15 +913,23 @@ class GPClassifierVB(object):
 
         # Initialise the objects that store the observation data
         if process_obs:
+            prev_n_locs = self.n_locs # how many training data points did we have before?
             self._process_observations(obs_coords, obs_values, totals)
-            if use_median_ls:
+
+            # do we have new training locations?
+            new_locations = (features is not None) or (self.n_locs != prev_n_locs)
+
+            if use_median_ls and new_locations:
                 self.ls = compute_median_lengthscales(self.obs_coords)
-            self._init_params(mu0, True, K)
-            self.vb_iter = 0 # don't reset if we don't have new data
+
+            self._init_params(mu0, new_locations, K)
+            self.vb_iter = 0 # reset if we have processed new observations
+
         elif mu0 is not None or K is not None:  # updated mean but not updated observations
             self._init_params(mu0, False, K)  # don't reset the parameters, but make sure mu0 is updated
 
-        self.max_iter_VB += self.max_iter_VB_per_fit
+        if not process_obs:
+            self.max_iter_VB += self.max_iter_VB_per_fit
 
         if not len(self.obs_coords):
             return
