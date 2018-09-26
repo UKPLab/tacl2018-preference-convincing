@@ -304,7 +304,7 @@ def check_convergence(newval, oldval, conv_threshold, positive_only, iter=-1, ve
             logging.debug('%s: diff = %.5f at iteration %i' % (label, diff, iter))
             # logging.debug(np.max(np.abs(newval - oldval)))
 
-    if positive_only and diff < - 1.0:  # ignore any error of less than ~1%, as we are using approximations here anyway
+    if positive_only and diff < - 1.0 and iter > 0:  # ignore any error of less than ~1%, as we are using approximations here anyway
         logging.warning('%s = %.5f, changed by %.5f in iteration %i' % (label, newval, diff, iter))
 
     converged = diff < conv_threshold
@@ -1068,7 +1068,7 @@ class GPClassifierVB(object):
             oldL = prev_val
             L = self.lowerbound()
             converged = check_convergence(L, oldL, self.conv_threshold, True, self.vb_iter,
-                                          self.verbose | (self.vb_iter==0), 'GP Classifier VB lower bound')
+                                          self.verbose, 'GP Classifier VB lower bound')
             current_value = L
         elif not self.uselowerbound and np.mod(self.vb_iter, self.conv_check_freq) == self.conv_check_freq-1:
             diff = np.max(np.abs(self.obs_f - prev_val))
