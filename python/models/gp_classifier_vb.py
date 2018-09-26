@@ -586,7 +586,7 @@ class GPClassifierVB(object):
         n_obs = obs_values.shape[0]
 
         if self.verbose:
-            logging.debug("GP inference with %i observations." % n_obs)
+            logging.debug("GP inference with %i observed data points." % n_obs)
 
         if totals is None or not np.any(totals >= 0):
             if (obs_values.ndim == 1 or obs_values.shape[
@@ -956,7 +956,7 @@ class GPClassifierVB(object):
         #self.vb_iter += 1
 
         if self.verbose:
-            logging.debug("gp grid trained with inverse output scale %.5f" % self.s)
+            logging.debug("GP fit complete. Inverse output scale=%.5f" % self.s)
 
     def _optimize(self, obs_coords, obs_values, totals=None, process_obs=True, mu0=None, K=None, maxfun=25,
                   use_MAP=False, nrestarts=1):
