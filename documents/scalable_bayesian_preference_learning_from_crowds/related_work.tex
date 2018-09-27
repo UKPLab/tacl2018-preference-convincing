@@ -1,0 +1,51 @@
+\section{Related Work}
+\label{sec:rw}
+
+%Things we assume are discussed in the intro:
+% -- recommendation
+% -- learning from implicit preferences/user actions
+% -- benefits of BMF
+% -- use of GPs for BMF?
+
+\subsection{Preference Learning from Crowds}
+
+<generic stuff on preference learning including eric horvitz paper, something more recent?>
+
+These methods assume a single ground truth and model the differences between annotators as noise rather than
+learning their individual preferences.
+
+Tian et al.~\cite{tian2012learning} 
+consider crowdsourcing tasks where there may be more than one correct answer. 
+They cluster annotators into 'schools of thought' whose members tend to agree with each other. 
+This method assumes that workers are limited to one cluster so cannot model preferences that 
+only partially overlap, such as users who share an interest in a certain genre of books, 
+but whose other interests are different.
+%how do they actually model items? Do they use a GP?
+
+\subsection{Bayesian Methods for Collaborative Filtering and Preference Learning}
+
+%include the work on collaborative GPPL
+A Bayesian approach to preference learning with Gaussian processes, \emph{GPPL}, was introduced by ~\citet{chu2005preference}. This model assumes a single preference function over items, so cannot
+be used to model the individual preferences of multiple users.
+The approach was extended by Houlsby et al.~\citeyear{houlsby2012collaborative}
+to capture individual preferences using a latent factor model. 
+Pairwise labels from users with common interests help to predict each other's preference function, hence 
+this can be seen as a \emph{collaborative} learning method, as used in \emph{recommender systems}.
+The inference techniques proposed for this model mean it scales poorly, with computational complexity $\mathcal{O}(N^3 + NP)$, where $N$ is the number of items and $P$ is the number of pairwise labels, and memory complexity $\mathcal{O}(N^2 + NP + P^2)$. In this paper, we address this issue and adapt the model for aggregating crowdsourced data.
+
+%other Bayesian recommender systems that deal with noisy preferences
+
+\subsection{Scalable Bayesian Matrix Factorization}
+% previous work on how to make BMF more scalable with larger datasets or Latent factor analysis etc.
+% who has used GPs for BMF?
+
+\cite{khan2014scalable} scalable collaborative GPPL!
+
+\subsection{Stochastic Variational Inference}
+% use of SVI for making Bayesian methods more scalable, including GPs
+
+\emph{Stochastic variational inference (SVI)} is an approximate Bayesian method that addresses the need for scalable inference~\cite{hoffman2013stochastic}. It has been successfully applied to Gaussian processes~\cite{hensman_scalable_2015}, including Gaussian process classifiers~\cite{hensman_scalable_2015}.
+It was recently adapted to Gaussian process preference learning~\cite{simpson2018finding}.
+This paper builds on this work to apply SVI to collaborative Gaussian process preference learning
+as well as Bayesian matrix factorization in general. We also provide the first full derivation of SVI for GPPL
+and introduce a technique for efficiently tuning the length-scale of the Gaussian processes.

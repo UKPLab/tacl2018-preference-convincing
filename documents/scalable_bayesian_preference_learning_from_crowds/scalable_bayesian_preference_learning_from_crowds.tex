@@ -3,7 +3,7 @@
 %
 %\documentclass{svjour3}                     % onecolumn (standard format)
 %\documentclass[smallcondensed]{svjour3}     % onecolumn (ditto)
-\documentclass[smallextended]{svjour3}       % onecolumn (second format)
+\documentclass[smallextended,natbib]{svjour3}       % onecolumn (second format)
 %\documentclass[twocolumn]{svjour3}          % twocolumn
 %
 \smartqed  % flush right qed marks, e.g. at end of proof
@@ -28,7 +28,7 @@
 % \usepackage{amstext}
 % \usepackage{amsthm}
 % 
-% \usepackage{cite}
+%\usepackage{cite}
 
 \usepackage{amsfonts}
 \usepackage{algorithm2e}
@@ -41,7 +41,6 @@
 
 \newcommand{\bs}{\boldsymbol}  
 \newcommand{\wrtd}{\mathrm{d}}
-\providecommand{\shortcite}[1]{\cite{#1}}
 
 \makeatletter
 \makeatother %some sort of hack related to the symbol @
@@ -91,6 +90,7 @@ We show that the model is able to identify a number of latent features for the w
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \input{intro}
+\input{related_work}
 \input{method}
 \input{experiments}
 \input{discussion}
@@ -102,7 +102,7 @@ We show that the model is able to identify a number of latent features for the w
 
 \cleardoublepage
 
-\bibliographystyle{spmpsci}      % mathematics and physical sciences
+\bibliographystyle{spbasic}      % mathematics and physical sciences
 \bibliography{simpson_scalable_bayesian_pref_learning_from_crowds}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
