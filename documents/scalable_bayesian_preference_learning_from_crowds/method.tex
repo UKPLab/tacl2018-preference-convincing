@@ -18,7 +18,7 @@
 
 %%%% The preference likelihood model
 
-Following Chu and Ghahramani~\shortcite{chu2005preference}, 
+Following Chu and Ghahramani~\citeyear{chu2005preference}, 
 we model the relationship between a latent preference function, $f$,
 and each observed pairwise label, $v_k \succ u_k$, where $k$ is an index into a list of 
 $P$ pairs, as follows:
@@ -33,7 +33,7 @@ where $\delta_i \sim \mathcal{N}(0, 1)$ is Gaussian-distributed noise.
 The noise term allows for variations in the observed preferences, which may occur if 
 different annotators disagree or change their minds, or if
 the preferences are derived from noisy implicit data such as clicks streams.
-We deviate from Chu and Ghahramani~\shortcite{chu2005preference} by assuming $\delta_i$
+We deviate from Chu and Ghahramani~\citeyear{chu2005preference} by assuming $\delta_i$
 has variance $\sigma=1$, and instead scale the function $f$ relative to this. This formulation
 is equivalent but is more convenient for variational inference. 
 We marginalise the noise terms to obtain the preference likelihood:
@@ -48,7 +48,7 @@ drawn from a gamma prior with shape $a_0$ and scale $b_0$.
 The kernel function controls the correlation between values of $f$ at different points in the feature space.
 
 The inference goal is to learn the posterior distribution over the function values $f(i)$ for each item $i$.
-Chu and Ghahramani~\shortcite{chu2005preference}
+Chu and Ghahramani~\citeyear{chu2005preference}
 used gradient descent to optimise a Laplace approximation. 
 However, this approach produces a maximum a-posteriori (MAP) approximation, 
 which takes the most probable values of parameters rather than integrating over their distributions
