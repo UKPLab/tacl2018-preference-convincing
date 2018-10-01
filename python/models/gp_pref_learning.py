@@ -87,7 +87,7 @@ def pref_likelihood(fmean, fvar=None, subset_idxs=[], v=[], u=[], return_g_f=Fal
     else:
         if fvar.ndim < 2:
             fvar = fvar[:, np.newaxis]        
-        fvar += 2.0
+        fvar = fvar + 2.0
     
     if len(v) and len(u):
         g_f = (fmean[v, :] - fmean[u, :]) / np.sqrt(fvar) # / np.sqrt(self.s)) # gives an NobsxNobs matrix
