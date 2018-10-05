@@ -158,8 +158,12 @@ class GPPrefLearning(GPClassifierSVI):
         else:
             mu0 = self.mu0
 
+        # I think that we should really sample using the full covariance here, since some values are bound to be close
+        # together given the prior covariance. However, in practice this is much slower to sample, so we use a diagonal
+        # as an approximation, which may  under-estimate variance, since the resulting Q is a combination of
+        # a term with too low observation variance + too high model variance. Hence we exaggerated the amount learned
+        # from similar points, reducing the effect of the prior covariance.
         f_prior_var = self.rate_s0/self.shape_s0
-
         m_prior, not_m_prior, v_prior = self._post_sample(mu0, f_prior_var, False, None, self.pref_v, self.pref_u)
 
         # find the beta parameters
@@ -419,7 +423,7 @@ class GPPrefLearning(GPClassifierSVI):
             if self.use_svi:
                 _, _, v_post = self._post_sample(self.mu0_output, K_star=self.K_star, v=item_0_idxs, u=item_1_idxs)
             else:
-                _, _, v_post = self._post_sample(f, f_var=np.diag(C)[:, None], v=item_0_idxs, u=item_1_idxs)
+                _, _, v_post = self._post_sample(f, K_star=C, v=item_0_idxs, u=item_1_idxs)
 
         if expectedlog:
             m_post = np.log(m_post)
