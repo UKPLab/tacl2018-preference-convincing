@@ -89,13 +89,8 @@ def load_train_dataset(dataset, embeddings):
 
 def train_model(embeddings):
     # Train a model...
-    #items_feat, n_ling_feats, word_to_indices_map, a1_train, a2_train, prefs_train, ndims \
+    items_feat, n_ling_feats, word_to_indices_map, a1_train, a2_train, prefs_train, ndims \
        = load_train_dataset(training_dataset, embeddings)  # reload only if we use a new dataset
-    items_feat = np.array([[0], [1]])
-    a1_train = np.array([0])
-    a2_train = np.array([1])
-    prefs_train = np.array([0]) # a1 is preferred
-    ndims = 1
 
     ls_initial = compute_median_lengthscales(items_feat)
 

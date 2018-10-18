@@ -160,3 +160,15 @@ data/new_test_data0
 data/UKPConvArg1-crowdsample-ranking-CSV
 data/UKPConvArgCrowdSample-new-CSV
 data/vocabulary.embeddings.all.pkl.bz2
+*.gz
+**/**.gz
+documents/scalable_bayesian_preference_learning_from_crowds/experiments.tex~
+documents/scalable_bayesian_preference_learning_from_crowds/hyperparameters.tex~
+documents/scalable_bayesian_preference_learning_from_crowds/inference.tex~
+documents/scalable_bayesian_preference_learning_from_crowds/intro.tex~
+documents/scalable_bayesian_preference_learning_from_crowds/method.tex~
+documents/scalable_bayesian_preference_learning_from_crowds/model.tex~
+documents/scalable_bayesian_preference_learning_from_crowds/related_work.tex~
+documents/scalable_bayesian_preference_learning_from_crowds/scalable_bayesian_preference_learning_from_crowds.tex~
+documents/scalable_bayesian_preference_learning_from_crowds/simpson_scalable_bayesian_pref_learning_from_crowds.bib~
+documents/scalable_bayesian_preference_learning_from_crowds/template.tex~
