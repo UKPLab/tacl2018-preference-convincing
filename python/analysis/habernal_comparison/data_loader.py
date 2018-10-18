@@ -140,9 +140,9 @@ def load_single_file_separate_args(directory, file_name, word_to_indices_map, nb
 
         # map class to vector
         if 'a1' == label:
-            y = 0
-        elif 'a2' == label:
             y = 2
+        elif 'a2' == label:
+            y = 0
         else:
             y = 1
 
@@ -236,7 +236,7 @@ def load_my_data(directory, test_split=0.2, nb_words=None, add_reversed_training
 
     return output_folds_with_train_test_data, word_index_to_embeddings_map
 
-def load_my_data_separate_args(directory, test_split=0.2, nb_words=None, add_reversed_training_data=False, 
+def load_my_data_separate_args(directory, test_split=0.2, nb_words=None, add_reversed_training_data=False,
                                embeddings_dir=''):
     # directory = '/home/habi/research/data/convincingness/step5-gold-data/'
     # directory = '/home/user-ukp/data2/convincingness/step7-learning-11-no-eq/'

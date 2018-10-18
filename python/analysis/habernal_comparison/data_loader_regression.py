@@ -59,8 +59,8 @@ def load_single_file(directory, file_name, word_to_indices_map, nb_words=None):
         x = [1] + a1_indices + [1]
         # print(x)
 
-        # convert score to float
-        y = float(score)
+        # convert score to float. The scores seem to be negated.
+        y = -float(score)
 
         x_vectors.append(x)
         y_labels.append(y)
