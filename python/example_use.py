@@ -1,9 +1,22 @@
-from sklearn.datasets import load_svmlight_file
+'''
+Simpler example showing how to use train and use the convincingness model for prediction.
+
+This script trains a model on the UKPConvArgStrict dataset. So, before running this script, you need to run
+"python/analysis/habernal_comparison/run_preprocessing.py" to extract the linguistic features from this dataset.
+
+'''
+import sys
+
+# include the paths for the other directories
+sys.path.append("./python")
+sys.path.append("./python/analysis")
+sys.path.append("./python/models")
+sys.path.append("./python/analysis/habernal_comparison")
+
 from data_loader import load_single_file_separate_args
 from data_loading import load_ling_features, load_embeddings
 from gp_classifier_vb import compute_median_lengthscales
 from gp_pref_learning import GPPrefLearning
-from preproc_raw_data import generate_gold_CSV
 from run_preprocessing import preprocessing_pipeline
 from tests import get_docidxs_from_ids, get_doc_token_seqs, get_mean_embeddings
 import numpy as np
@@ -21,18 +34,16 @@ test_data_path = './data/new_test_data' # location of your test data file. MUST 
 
 embeddings_dir = './data/'
 
-training_data_path = os.path.expanduser("~/data/personalised_argumentation/")
+training_data_path = os.path.abspath("./data/")
 training_dataset = 'UKPConvArgStrict'
 
-def concat_feature_sets(a, X, ling_feat_spmatrix, docid_to_idx_map=None):
+def concat_feature_sets(a, X, ling_feat_spmatrix, embeddings):
     X, u_ids = get_doc_token_seqs(a, X)
     items_feat = get_mean_embeddings(embeddings, X)
 
-    if docid_to_idx_map is None:
-        docid_to_idx_map = u_ids
+    items_feat = np.concatenate((items_feat, ling_feat_spmatrix.toarray()), axis=1)
 
-    ling_items_feat = ling_feat_spmatrix.toarray()[docid_to_idx_map, :]
-    items_feat = np.concatenate((items_feat, ling_items_feat), axis=1)
+    items_feat[np.isnan(items_feat)] = 0
 
     print('Found %i features.' % items_feat.shape[1])
 
@@ -42,10 +53,7 @@ def load_train_dataset(dataset, embeddings):
     ling_feat_spmatrix, docids = load_ling_features(dataset, training_data_path)
 
     data_root_dir = os.path.expanduser(training_data_path)
-    dirname = data_root_dir + 'argument_data/UKPConvArg1Strict-XML/'
-    csvdirname = data_root_dir + 'argument_data/%s-new-CSV/' % dataset
-
-    generate_gold_CSV(dirname, csvdirname)  # select only the gold labels
+    csvdirname = os.path.join(data_root_dir, 'argument_data/%s-new-CSV/' % dataset)
 
     print(('Loading train/test data from %s...' % csvdirname))
 
@@ -80,7 +88,7 @@ def load_train_dataset(dataset, embeddings):
     a1_train = get_docidxs_from_ids(docids, train_ids[:, 0])
     a2_train = get_docidxs_from_ids(docids, train_ids[:, 1])
 
-    items_feat, uids = concat_feature_sets((a1_train, a2_train), [X_a1, X_a2], ling_feat_spmatrix)
+    items_feat, uids = concat_feature_sets((a1_train, a2_train), [X_a1, X_a2], ling_feat_spmatrix, embeddings)
 
     ndims = items_feat.shape[1]
 
@@ -113,7 +121,7 @@ def train_model(embeddings):
     with open(pkl_file, 'wb') as fh:
         pickle.dump(model, fh)
 
-def load_test_dataset(output):
+def load_test_dataset(output, embeddings):
     # Load the linguistic features
     print(("Loading linguistic features from %s" % output))
     ling_feat_spmatrix, docids = load_ling_features('new_test_data',
@@ -155,11 +163,15 @@ def load_test_dataset(output):
 
     # load the embeddings
     docid_to_idx_map = np.argsort(docids).flatten()
-    test_items_feat, uids = concat_feature_sets((test_ids), [X], ling_feat_spmatrix, docid_to_idx_map)
+    test_items_feat, uids = concat_feature_sets((test_ids), [X], ling_feat_spmatrix, embeddings, docid_to_idx_map)
 
     return test_items_feat, uids
 
 if __name__ == '__main__':
+
+    print('This script trains a model on the UKPConvArgStrict dataset. So, before running this script, you '
+          'need to run "python/analysis/habernal_comparison/run_preprocessing.py" to extract the linguistic features'
+          'from this dataset.')
 
     word_to_indices_map, word_index_to_embeddings_map, index_to_word_map = vocabulary_embeddings_extractor.load_all(
         embeddings_dir + 'vocabulary.embeddings.all.pkl.bz2')
@@ -173,14 +185,15 @@ if __name__ == '__main__':
 
     # Now load some test documents for RANKING and extract their features
     input_dir = os.path.abspath(test_data_path)
+    tmp_dir = os.path.abspath('./data/tempdata')
     output_dir = os.path.abspath('./data/new_ranking_libsvm')
 
     # use this directory to get a mapping from features to integers that matches the training set
-    feature_dir = os.path.join(os.path.expanduser(training_data_path), 'tempdata/all3')
+    feature_dir = os.path.join(os.path.expanduser(training_data_path), 'tempdata/UKPConvArg1-full3')
 
-    preprocessing_pipeline(input_dir, output_dir, 'new_test_ranking', './data', feature_dir, remove_tabs=True)
+    preprocessing_pipeline(input_dir, output_dir, 'new_test_ranking', tmp_dir, feature_dir, remove_tabs=True)
 
-    test_items_feat, text_ids = load_test_dataset(output_dir)
+    test_items_feat, text_ids = load_test_dataset(output_dir, embeddings)
 
     print('Predicting ...')
     predicted_f, _ = model.predict_f(out_feats=test_items_feat)

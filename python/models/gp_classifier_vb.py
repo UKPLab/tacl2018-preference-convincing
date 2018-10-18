@@ -233,8 +233,12 @@ def _dists_f(items_feat_sample, f):
     if np.mod(f, 1000) == 0:
         logging.info('computed lengthscale for feature %i' % f)
     dists = np.abs(items_feat_sample[:, np.newaxis] - items_feat_sample[np.newaxis, :])
-    # we exclude the zero distances. With sparse features, these would likely downplay the lengthscale.                                
-    med = np.median(dists[dists > 0])
+    # we exclude the zero distances. With sparse features, these would likely downplay the lengthscale.
+    if np.any(dists > 0):
+        med = np.median(dists[dists > 0])
+    else:
+        med = 1.0
+
     if np.isnan(med):
         med = 1.0
     return med
@@ -301,7 +305,7 @@ def check_convergence(newval, oldval, conv_threshold, positive_only, iter=-1, ve
             logging.debug('%s: diff = %.5f at iteration %i' % (label, diff, iter))
             # logging.debug(np.max(np.abs(newval - oldval)))
 
-    if positive_only and diff < - conv_threshold:  # ignore any error of less than ~1%, as we are using approximations here anyway
+    if positive_only and diff < - 10000 * conv_threshold:  # ignore any small errors as we are using approximations
         logging.warning('%s = %.5f, changed by %.5f in iteration %i' % (label, newval, diff, iter))
 
     converged = diff < conv_threshold
@@ -912,7 +916,7 @@ class GPClassifierVB(object):
         elif mu0 is not None or K is not None:  # updated mean but not updated observations
             self._init_params(mu0, False, K)  # don't reset the parameters, but make sure mu0 is updated
 
-        self.max_iter_VB += self.max_iter_VB_per_fit
+        self.max_iter_VB = self.vb_iter + self.max_iter_VB_per_fit
 
         if not len(self.obs_coords):
             return

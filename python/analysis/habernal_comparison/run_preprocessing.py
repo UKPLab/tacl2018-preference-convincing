@@ -1,10 +1,18 @@
+'''
+Produce the linguistic features for the experiments on UKPConvArgStrict, UKPConvArgCrowdSample, etc.
+
+The script runs a number of java commands -- in case of problems,
+please check the command line output for errors, and check that the output directory contains a file for each of 1052
+arguments.
+
+'''
 import os
 from subprocess import call
 import pandas as pd
 
-java_run_path = '../acl2016-convincing-arguments/code/argumentation-convincingness-experiments-java/'
-java_stanford_path = '../acl2016-convincing-arguments/code/de.tudarmstadt.ukp.dkpro.core.stanfordsentiment-gpl/'
-mvn_path = '../acl2016-convincing-arguments/code/'
+java_run_path = './acl2016-convincing-arguments/code/argumentation-convincingness-experiments-java/'
+java_stanford_path = './acl2016-convincing-arguments/code/de.tudarmstadt.ukp.dkpro.core.stanfordsentiment-gpl/'
+mvn_path = './acl2016-convincing-arguments/code/'
 classpath = "./target/argumentation-convincingness-experiments-java-1.0-SNAPSHOT.jar:target/lib/*"
 stanford_classpath = "./target/de.tudarmstadt.ukp.dkpro.core.stanfordsentiment-gpl-1.7.0.jar:" \
                      "./target/lib/*"
