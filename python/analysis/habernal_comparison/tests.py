@@ -146,14 +146,19 @@ def get_doc_token_seqs(ids, X_list, texts=None):
         allids = ids
     uids, uidxs = np.unique(allids, return_index=True)
     # get the word index vectors corresponding to the unique arguments
-    X = np.zeros(np.max(uids) + 1, dtype=object)
-    
+    X = np.empty(np.max(uids) + 1, dtype=object)
+
     if texts is not None:
         utexts = np.zeros(np.max(uids) + 1, dtype=object)
         utexts[:] = '' 
     
     start = 0
     fin = 0
+
+    for i in range(len(X)):
+        if i not in uids:
+            X[i] = []
+
     for i in range(len(X_list)):
         fin += len(X_list[i])
         idxs = (uidxs>=start) & (uidxs<fin)
@@ -527,7 +532,7 @@ class TestRunner:
         prefs_train_fl = np.array(self.prefs_train, dtype=float)
         svc_labels = np.concatenate((prefs_train_fl * 0.5, 1 - prefs_train_fl * 0.5))
 #                                             
-#         filetemplate = data_root_dir + '/libsvmdata/%s-%s-%s-libsvm.txt'
+#         filetemplate = os.path.join(data_root_dir, 'libsvmdata/%s-%s-%s-libsvm.txt')
 #         nfeats = self.ling_feat_spmatrix.shape[1]
 #           
 #         #if not os.path.isfile(trainfile):
@@ -778,11 +783,11 @@ class TestRunner:
     def _set_resultsfile(self, feature_type, embeddings_type, acc, dataset_increment):
         # To run the active learning tests, call this function with dataset_increment << 1.0. 
         # To add artificial noise to the data, run with acc < 1.0.
-        output_data_dir = data_root_dir + 'outputdata/'
+        output_data_dir = os.path.join(data_root_dir, 'outputdata/')
         if not os.path.isdir(output_data_dir):
             os.mkdir(output_data_dir)
             
-        output_data_dir = output_data_dir + self.expt_output_dir
+        output_data_dir = os.path.join(output_data_dir, self.expt_output_dir)
         if not os.path.isdir(output_data_dir):
             os.mkdir(output_data_dir)    
             
