@@ -86,7 +86,7 @@ def pref_likelihood(fmean, fvar=None, subset_idxs=[], v=[], u=[], return_g_f=Fal
         fvar = 2.0
     else:
         if fvar.ndim < 2:
-            fvar = fvar[:, np.newaxis]
+            fvar = fvar[:, np.newaxis]        
         fvar = fvar + 2.0
 
     if len(v) and len(u):
@@ -389,13 +389,19 @@ class GPPrefLearning(GPClassifierSVI):
                                         mu0=mu0, K=K, init_Q_only=init_Q_only, features=item_features)
 
     def _update_sample_idxs(self):
-        nobs = self.obs_f.shape[0]
-
+        obs_idxs = np.unique([self.pref_v, self.pref_u]) #only consider the points that are really observed
+        nobs = obs_idxs.shape[0]
+        
         if not self.fixed_sample_idxs:
             self.data_obs_idx_i = 0
 
             while not np.sum(self.data_obs_idx_i): # make sure we don't choose indices that have not been compared
-                self.data_idx_i = np.sort(np.random.choice(nobs, self.update_size, replace=False))
+                if nobs > self.update_size:
+                    self.data_idx_i = np.sort(np.random.choice(nobs, self.update_size, replace=False))
+                else:
+                    self.data_idx_i = np.arange(nobs)
+
+                self.data_idx_i = obs_idxs[self.data_idx_i]
                 self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)
         else:
             self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)

@@ -238,6 +238,7 @@ def _dists_f(items_feat_sample, f):
         med = np.median(dists[dists > 0])
     else:
         med = 1.0
+
     if np.isnan(med):
         med = 1.0
     return med
@@ -304,7 +305,7 @@ def check_convergence(newval, oldval, conv_threshold, positive_only, iter=-1, ve
             logging.debug('%s: diff = %.5f at iteration %i' % (label, diff, iter))
             # logging.debug(np.max(np.abs(newval - oldval)))
 
-    if positive_only and diff < - 1.0 and iter > 0:  # ignore any error of less than ~1%, as we are using approximations here anyway
+    if positive_only and diff < - 10000 * conv_threshold:  # ignore any small errors as we are using approximations
         logging.warning('%s = %.5f, changed by %.5f in iteration %i' % (label, newval, diff, iter))
 
     converged = diff < conv_threshold

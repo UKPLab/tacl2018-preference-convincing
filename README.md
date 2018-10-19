@@ -10,8 +10,182 @@ For running the experiments, please see the requirements.txt for further depende
 
 ## How to run
 
-To run preference learning, see gp_pref_learning class in 
-python/models/gp_pref_learning.py. You can run a simple example that generates
+We introduce a scalable Bayesian preference
+learning method for identifying convincing ar-
+guments in the absence of gold-standard rat-
+ings or rankings. In contrast to previous work,
+we avoid the need for separate methods to
+perform quality control on training data, pre-
+dict rankings and perform pairwise classifica-
+tion. Bayesian approaches are an effective so-
+lution when faced with sparse or noisy train-
+ing data, but have not previously been used
+to identify convincing arguments. One issue
+is scalability, which we address by develop-
+ing a stochastic variational inference method
+for Gaussian process (GP) preference learn-
+ing. We show how our method can be ap-
+plied to predict argument convincingness from
+crowdsourced data, outperforming the previ-
+ous state-of-the-art, particularly when trained
+with small amounts of unreliable data. We
+demonstrate how the Bayesian approach en-
+ables more effective active learning, thereby
+reducing the amount of data required to iden-
+tify convincing arguments for new users and
+domains. While word embeddings are princi-
+pally used with neural networks, our results
+show that word embeddings in combination
+with linguistic features also benefit GPs when
+predicting argument convincingness.
+
+**Contact person:** Edwin Simpson, simpson@ukp.informatik.tu-darmstadt.de
+
+https://www.ukp.tu-darmstadt.de/
+
+https://www.tu-darmstadt.de/
+
+Don't hesitate to send us an e-mail or report an issue, if something is broken (and it shouldn't be)
+or if you have further questions.
+
+> This repository contains experimental software and is published for the sole purpose of giving additional background
+details on the respective publication.
+
+## Project Structure
+
+* data -- a folder containing small data files + default place to generate dataset files for the experiments
+* documents -- sources for the paper
+* error_analysis -- working data files for error analysis
+* python/analysis -- experiment code
+* python/analysis/habernal_comparison -- experiment code for use with the datasets discussed in paper, originally obtained from
+https://github.com/UKPLab/acl2016-convincing-arguments
+* python/models -- the implementation of the GPPL method
+* python/test -- some simple test scripts for the GPPL methods
+* results -- an output directory for storing results
+
+## Requirements
+
+* Python 3
+* virtualenv
+* The required packages are listed in requirements.txt. You can install them using pip install -r requirements.txt
+* Maven -- check if you have the command line program 'mvn' -- required to extract the linguistic features from our experimental datasets. You can skip 
+this if you are not re-running our experiments or training a model on UKPConvArg*** datasets.
+
+## How to run the experiments
+
+1. Extract the linguistic features from the data by running:
+
+```
+python ./python/analysis/habernal_comparison/run_preprocessing.py. 
+```
+
+By default, the data is provided by this repository at ./data and this path is set in ./python/analysis/data_loading.py, line 12.
+The data is originally provided by https://github.com/UKPLab/acl2016-convincing-arguments, the copies
+are provided here for convenience.
+
+2. Run experiment 1 by running script python/analysis/cycles_demo.py from the root directory of the project:
+
+python ./python/analysis/cycles_demo.py
+
+3. Run experiment 2 (this will take some time):
+
+   ```
+   python ./python/analysis/habernal_comparison/scalability_tests.py
+   ```
+
+   Generate the plots:
+
+   ```
+   python ./python/analysis/habernal_comparison/scalability_plots.py
+   ```
+
+   The plots will be saved by default to './documents/pref_learning_for_convincingness/figures/scalability'.
+
+4. Run experiment 3 (this will take some time):
+
+   ```
+    python ./python/analysis/habernal_comparison/clean_data_tests.py
+   ```
+
+   This script simply sets some parameters for the test:
+   * the choice of method
+   * dataset
+   * features to use with each method
+
+   Given these settings, the experiments are then implemented by ./python/analysis/habernal_comparison/tests.py.
+
+   Compute the performance metrics:
+
+   ```
+   python ./python/analysis/habernal_comparison/clean_data_metrics.py
+   ```
+
+   This script also just sets some parameters and then calls ./python/analysis/habernal_comparison/compute_metrics.py.
+
+5. Run experiment 4 (this will take some time):
+
+   ```
+   python ./python/analysis/habernal_comparison/noisy_data_tests.py
+   ```
+
+   Compute the performance metrics:
+
+   ```
+   python ./python/analysis/habernal_comparison/noisy_data_metrics.py
+   ```
+
+6. Run experiment 5 (this will take some time) for active learning:
+
+   ```
+   python ./python/analysis/habernal_comparison/active_learning_tests.py
+   ```
+
+   Compute the performance metrics:
+
+   ```
+   python ./python/analysis/habernal_comparison/compute_AL_metrics.py
+   ```
+
+7. Run analysis of the relevant feature determination:
+
+   ```
+   python ./python/analysis/habernal_comparison/features.py
+   ```
+
+   The plots will be saved to ./documents/pref_learning_for_convincingness/figures/features2/
+
+8. Produce the output used for error analysis:
+
+   ```
+   python ./python/analysis/habernal_comparison/error_analysis.py
+   ```
+
+## Template for running on a new dataset with Ling+Glove feature sets
+
+You can use the following script as a template for running GPPL on new datasets 
+using the same feature sets as in our paper. If you have another method for
+extracting features from your datasets, you may with to skip this example
+and look at 'how to use the GPPL implementation'.
+
+
+```
+python ./python/example_use.py
+```
+
+The script will train a convincingness model on the UKPConvArgStrict data, then
+run it to score arguments in a new dataset. 
+
+Pre-requisite: this script assumes you have carried out step 0 above and 
+run "python/analysis/habernal_comparison/run_preprocessing.py" to extract the linguistic features.
+
+## How to use the GPPL implementation
+
+The preference learning method is implemented by the gp_pref_learning class in
+python/models/gp_pref_learning.py. 
+The template for training and prediction described above contains an example of how
+to use the class, but also contains code for extracting our linguistic features and Glove embeddings,
+which you may not need.
+You can run a simpler example that generates
 synthetic data by running python/test/gp_pref_learning_test.py.
 
 The preference learning model and algorithm are implemented by the class 
@@ -20,10 +194,13 @@ The important methods in this class are listed below; please look at the
 docstrings for these methods for more details:
    * The constructor: set the model hyperparameters
    * fit(): train the model
-   * predict(): predict pairwise labels for new pairs 
-   * predict_f(): predict rankings for a set of items given their features.
-   
-## Example usage
+   * predict(): predict pairwise labels for new pairs
+   * predict_f(): predict scores for a set of items given their features, which can be used to rank the items.
+
+## Example usage of GPPL
+
+In this example, we assume that you have a file, 'items.csv', that contains the feature data for some
+documents or other items that you wish to model.
 
 Start by loading in some data from a CSV file using numpy:
 ~~~

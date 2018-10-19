@@ -11,7 +11,7 @@ import os, sys
 
 data_root_dir = os.path.abspath(os.path.expanduser("./data/"))
 
-sys.path.append('../../git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python')
+sys.path.append(os.path.abspath('./git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python'))
 sys.path.append(os.path.expanduser('~/data/personalised_argumentation/embeddings/Siamese-CBOW/siamese-cbow'))
 sys.path.append(os.path.expanduser("~/data/personalised_argumentation/embeddings/skip-thoughts"))
 
@@ -33,7 +33,6 @@ def combine_lines_into_one_file(dataset_name, dirname=os.path.join(data_root_dir
         os.remove(outputfile)
     if os.path.isfile(output_argid_file):
         os.remove(output_argid_file)
-
 
     with open(outputfile, 'a') as ofh: 
         for filename in os.listdir(dirname):
@@ -179,7 +178,10 @@ def load_ling_features(dataset,
                        max_n_features=None):
 
     ling_dir = os.path.join(root_dir, ling_subdir)
-    print(("Looking for linguistic features in directory %s" % ling_dir)) 
+    if not os.path.exists(ling_dir):
+        os.mkdir(ling_dir)
+
+    print(("Looking for linguistic features in directory %s" % ling_dir))
     print('Loading linguistic features')
     ling_file = ling_dir + "/%s-libsvm.txt" % dataset
     argids_file = ling_dir + "/%s-libsvm.txt" % ("argids_%s" % dataset)
@@ -190,6 +192,7 @@ def load_ling_features(dataset,
                                                             )
     else:
         docids = np.genfromtxt(argids_file, str)
+        print('Reloaded %i docids from file. ' % len(docids))
         
     ling_feat_spmatrix, _ = load_svmlight_file(ling_file, n_features=max_n_features)
     return ling_feat_spmatrix, docids
