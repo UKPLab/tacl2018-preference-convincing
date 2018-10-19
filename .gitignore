@@ -138,7 +138,7 @@ outputdata/*.pkl
 **/*.out
 **/*.synctex.gz
 **/*.bak
-**/*.xml
+data/*.xml
 **/*.iml
 venv
 venv_linux/
@@ -172,3 +172,4 @@ documents/scalable_bayesian_preference_learning_from_crowds/related_work.tex~
 documents/scalable_bayesian_preference_learning_from_crowds/scalable_bayesian_preference_learning_from_crowds.tex~
 documents/scalable_bayesian_preference_learning_from_crowds/simpson_scalable_bayesian_pref_learning_from_crowds.bib~
 documents/scalable_bayesian_preference_learning_from_crowds/template.tex~
+**/*~
