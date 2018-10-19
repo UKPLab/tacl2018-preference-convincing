@@ -34,13 +34,20 @@ than if it has a shorter length-scale.
 Hence, it is important to set $l_f$ to correctly capture feature relevance.
 A computationally frugal option is the median heuristic: 
 \begin{flalign}
- l_{f,MH} = \frac{1}{F} \mathrm{median}( \{ |x_{i,f} - x_{j,f}| \forall i=1,..,N, \forall j=1,...,N\} ).
+ l_{f,MH} = F \mathrm{median}( \{ |x_{i,f} - x_{j,f}| \forall i=1,..,N, \forall j=1,...,N\} ).
 \end{flalign}
-Given enough samples of $x_f$, the median heuristic will capture the inherent scale 
-of a feature and has been shown to work reasonably well for the task of 
-comparing distributions~\citep{gretton2012optimal}. However, it is a simple heursitic
+The motivation is that the median will normalize the feature, so that features
+are equally weighted regardless of their scaling. By using a median to perform this 
+normalization, extreme values remain outliers with relatively large distances. 
+Multiplying the median by the number of features, $F$,
+prevents  the average covariance $k_{\bs \theta}(\bs x, \bs x')$ between items
+from increasing as we add more features using the 
+product kernel in Equation \ref{eq:kernel}.
+This heuristic has been shown to work reasonably well for the task of 
+comparing distributions~\citep{gretton2012optimal}, but is a simple heursitic
 with no guarantees of optimality. 
-Alternatively, we can choose $l_f$ by Bayesian model selection using 
+
+An alternative method for setting $l_f$ is Bayesian model selection using 
 the type II maximum likelihood method, 
 which chooses the value of $l_f$ that 
 maximizes the marginal likelihood, $p(\bs y | \bs \theta)$.
@@ -59,30 +66,41 @@ value of $l_f$ depends on the relevance of $f$.
 To optimize the length-scales efficiently, we turn to gradient-based methods
  such as L-BFGS-B~\citep{zhu1997algorithm}, which allow us to optimize
  all length-scales simultaneously, rather than one-by-one.
- For the single user model, the required gradients of $\mathcal{L}(q)$
-(Equation \ref{eq:lowerbound}) with respect to $l_f$ are as follows:
+ For the single user model, the required gradient of $\mathcal{L}(q)$
+(Equation \ref{eq:lowerbound}) with respect to $l_f$ is as follows:
 %Following the derivations in Appendix \ref{sec:vb_eqns}, Equation \ref{eq:gradient_ls},
 \begin{flalign}
-\nabla_{l_f}\mathcal{L}(q) & =  
- - \frac{1}{2}\bigg \{
- \mathbb{E}[s] \hat{\bs f}_{m}^T \bs K_{mm}^{-1} \frac{\partial \bs K_{mm}}{\partial l_f} \bs K_{mm}^{-1} \hat{\bs f}_{m} 
- \nonumber \\
-& \hspace{2.5cm} + \mathrm{Tr}\left(
-\mathbb{E}[s]\bs S^T\bs K_{mm}^{-1} - 1\right)
- \frac{\partial \bs K_{mm}}{\partial l_f} \bs K_{mm}^{-1}
-\bigg\}.
+& \nabla_{l_{\! f}} \mathcal{L} =  
+\frac{\partial \mathcal{L}}{\partial \hat{\bs f}_m} \frac{\partial \hat{\bs f}_m}{\partial l_f}
++ \frac{\partial \mathcal{L}}{\partial \bs S} \frac{\partial \bs S}{\partial l_f}
++ \frac{\partial \mathcal{L}}{\partial a} \frac{\partial a}{\partial l_f}
++ \frac{\partial \mathcal{L}}{\partial b} \frac{\partial b}{\partial l_f}
+\nonumber \\
+ & - \frac{1}{2}\! \bigg \{
+ \mathbb{E}[s] \hat{\bs f}_{\! m}^T \bs K_{\! mm}^{-1} 
+\frac{\partial \bs K_{\! mm}}{\partial l_f} \bs K_{\! mm}^{-1} \hat{\bs f}_{\! m} 
+ + \mathrm{tr}\left(
+\mathbb{E}[s]\bs S^T\bs K_{\! mm}^{-1} - \bs I \right)
+ \frac{\partial \bs K_{\! mm}}{\partial l_f} \bs K_{\! mm}^{-1}
+\! \bigg\}.
 \end{flalign}
-A number of terms in the lower bound (Equation \ref{eq:lowerbound})
- contain parameters of the 
-variational posteriors, i.e. $\bs f$, $\bs S$, $s$, $a$ and $b$.
-Through the variational updates, these terms depend indirectly on the length-scale. 
-The derivative of these terms with respect to the length-scale is:
+The first terms in the above equation arise because the parameters of the 
+variational parameters depend indirectly on the length-scale. 
+However, the partial derivatives of $\mathcal{L}$ with respect to these parameters 
+is zero when $\mathcal{L}$ is at a maximum. This occurs when the variational
+ inference algorithm has converged, hence these terms can be eliminated if we 
+ only compute the gradient $\nabla_{l_{\! f}} \mathcal{L}$ after convergence.
+Therefore, we run gradient-based optimization as an outside loop around the 
+variational algorithm defined in Section \ref{sec:inf}.
+Length-scale optimization begins with an initial guess for $l_f$,
+for example, in our experiments, we start with the median heuristic.
+Given the current value of $l_f$, the optimizer (e.g. L-BFGS-B)
+runs the VB algorithm to convergence, computes 
+$\mathcal{L}$ and $\nabla_{l_{\! f}} \mathcal{L}$,
+then uses them to propose a new candidate value of $l_f$.
+The process repeats until the optimizer converges or reaches a maximum number 
+of iterations, and returns the value of $l_f$ that maximized $\mathcal{L}$.
 
-If the variational algorithm has converged, the terms $?$ will be zero: the length-scale
-is at a maximum. Hence, these terms can be eliminated in this case. This leads to the
-
-
- cancel when the updates have converged...
 %*** The symbol f should be replaced with \varphi or f? due to clash with function f.
 
 Multi-user model.
