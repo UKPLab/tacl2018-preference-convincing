@@ -1,9 +1,72 @@
-\section{Experiments with Synthetic Data}\label{sec:synth}
-\section{Experiments with Real Data}\label{sec:real}
+\section{Experiments}\label{sec:expts}
 
-List of experiments to include:
+\subsection{Simulated Noisy Data}\label{sec:exp_synth}
+
+Dataset:
+
+Hypothesis: 
+
+\begin{figure}
+\caption{Recovering latent preference functions with increasing levels of noise
+in different scenarios: 
+(a) single user; 
+(b) ground truth function from crowdsourced labels; 
+(c) latent components from a crowd of users.
+}
+\end{figure}
+
+\section{Comparision of Alternative Methods on Real Data}\label{sec:exp_small}
+
+Dataset: Sushi
+
+Methods:
+
+Hypothesis: 
+
+\begin{table}
+\caption{
+Average test error for each method on Sushi-A dataset.
+}
+\end{table}
+
+\section{Scalability Experiments}\label{sec:exp_scale}
+
+Dataset:
+
+Hypothesis: 
+
+List of experiments to include -- need new plots for the crowd model:
 \begin{enumerate}
-\item Performance, computation time, memory vs no. inducing points
-\item Performance, computation time, memory vs update size
-\item Performance, computation time vs different initialisation methods for the inducing points; include different initialisations of K-means
+\item Performance, computation time vs. no. inducing points
+\item Computation time vs. dataset size, no. features
+%\item not done: memory vs no. inducing points, update size
+\item not done: Performance, computation time, vs update size
+%\item not done: performance, computation time vs different initialisation methods for the inducing points; include different initialisations of K-means
 \end{enumerate}
+
+\section{Performance on Large NLP Dataset}\label{sec:exp_nlp}
+
+We compare performance of several methods on the Dataset used in Section \ref{sec:exp_scale}.
+
+Methods: 
+
+Hypothesis: 
+
+\begin{figure}
+\caption{Performance when predicting consensus from crowdsourced argument convincingness judgements:
+(a) rank correlations; (b) pairwise label classification.
+}
+\end{figure}
+
+\begin{figure}
+\caption{Performance when predicting personal preferences: pairwise label classification for individual crowdworker
+convincingness judgements.
+}
+\end{figure}
+
+\begin{figure}
+\caption{Trade-off between performance gains and number of optimization rounds when using ARD:
+classification performance when predicting consensus for argument convincingness judgements. 
+}
+\end{figure}
+

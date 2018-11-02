@@ -23,7 +23,7 @@
 % TO ADD: Why does the variance in f cancel out when predicting the probability of a pairwise label?
 % TO ADD: Why does \sigma disappear if we learn the output scale.
 
-% We also estimate the output scale of the GPs, the latent factors, and item bias as part of the 
+% We also estimate the output scale of the GPs, the latent components, and item bias as part of the 
 % variational approximation allowing us to estimate these parameters in a Bayesian manner without 
 % resorting to maximum likelihood approaches.
 
@@ -74,7 +74,7 @@ A different view is to treat the errors as the result of random noise in the val
  \label{eq:thurstone}
 \end{align}
 where $\delta \sim \mathcal{N}(0, 0.5)$ is Gaussian-distributed noise.
-Integrating out the unknown values of $\delta_{i}$ and $\delta_{j}$,
+Integrating out the unknown values of $\delta_a$ and $\delta_b$,
 we get a probit likelihood:
 \begin{align}
 p( y(a \succ b) | f ) 
@@ -132,7 +132,7 @@ where $\bs f = \{f(\bs {x}_1),...,f(\bs {x}_N)\}$
 are the latent values for the $N$ items referred to by the pairwise labels 
 $\bs y$, and $\theta$, $\alpha_0$ and $\beta_0$ are hyper-parameters.
 
-\subsection{Latent Factors: Bayesian Matrix Factorization}
+\subsection{Latent components: Bayesian Matrix Factorization}
 
 % 0. Consider multiple users, each with a set of observed features.
 % 1. imagine augmenting the observed features with a number of latent features (this is kind of what Khan et al. do)
@@ -145,9 +145,10 @@ In a scenario with multiple users or label sources,
 we can represent preference values in a matrix, $\bs{F}$,
 where rows correspond to items, columns to users, and entries are preference values.
 If we factorize this matrix, we obtain two lower-dimensional matrices,
-one for users, $\bs{W} \in \mathcal{R}^{D \times U}$, 
-and one for the items, $\bs{V} \in \mathcal{R}^{N \times D}$,
-where $D$ is the latent dimensionality, $U$ is the number of users, and $N$ is
+one for users, $\bs{W} \in \mathcal{R}^{C \times U}$, 
+and one for the items, $\bs{V} \in \mathcal{R}^{N \times C}$,
+where $C$ is the number of latent components, 
+$U$ is the number of users, and $N$ is
 the number of items: $\bs{F} = \bs{V}^T \bs{W}$.
 Each row of $V$ matrices is a vector representation of an item, 
 while each row of $W$ is a vector representation of a user, 
@@ -163,15 +164,15 @@ and user features, $\bs u$.
 %There are two ways that observed features can be incorporated into the 
 %model: (1) as additional dimensions of V or W (each feature cannot be a member of %both); (2) as input features on which V and W depend. The advantage of the latter is that 
 In the single user model, we assumed a single latent value function, $f$, of the observed item features. 
-For the multi-user case, we assume that there are $D$ latent functions, $v_d$ over 
-item features and $D$ latent functions, $w_d$, over user features,
+For the multi-user case, we assume that there are $C$ latent functions, $v_c$ over 
+item features and $C$ latent functions, $w_c$, over user features,
 and thereby model the relationship between each observed feature and each of the latent features. 
 The matrices $V$ and $W$ are evaluations of these functions at the points corresponding to 
 the observed users and items.
 Therefore, the latent preference function, $f$, for a user with features $\bs u$ is 
 a weighted sum over latent functions:
 \begin{align}
-  f(\bs x_a, \bs u_j) = \sum_{d=1}^D w_d(\bs u_j) v_d(\bs x_a)
+  f(\bs x_a, \bs u_j) = \sum_{c=1}^C w_c(\bs u_j) v_c(\bs x_a)
 \end{align}
 %differently for each user and item. For example, the observed user feature 'age' may correlate with some latent interests of users, but certain users will deviate from their peer group. 
 % what happens if two users have identical features (say, the feature representation
@@ -179,17 +180,17 @@ a weighted sum over latent functions:
 % is variance in the GP at one location, so both can be drawn separately from the prior.
 To provide a Bayesian treatment to matrix factorization, we place Gaussian process priors over the latent functions:
 \begin{align}
-v_d \sim \mathcal{GP}(\bs 0, k_{\theta} /s_d) & & w_d \sim \mathcal{GP}(\bs 0, k_{\theta}).
+v_c \sim \mathcal{GP}(\bs 0, k_{\theta} /s_c) & & w_c \sim \mathcal{GP}(\bs 0, k_{\theta}).
 \end{align}
-It is not necessary to learn a separate scale for $w_d$, since $v_d$ and $w_d$ are multiplied with each other, making a single $s_d$ equivalent to the product of two separate scales. 
-The choice of $D$ can be treated as a hyperparameter, or modeled using a non-parametric prior, such as 
-the Indian Buffet Process, which assumes an infinite number of latent factors ~\citep{ding2010nonparametric}.
-For simplicity, we assume fixed values of $D$ in this paper, and allow the scale parameter $s_d \approx 0$ 
+It is not necessary to learn a separate scale for $w_c$, since $v_c$ and $w_c$ are multiplied with each other, making a single $s_c$ equivalent to the product of two separate scales. 
+The choice of $C$ can be treated as a hyperparameter, or modeled using a non-parametric prior, such as 
+the Indian Buffet Process, which assumes an infinite number of latent components ~\citep{ding2010nonparametric}.
+For simplicity, we assume fixed values of $C$ in this paper, and allow the scale parameter $s_c \approx 0$ 
 to effectively remove any dimensions that are not required to model the data.
 This section described a Bayesian matrix factorization model, 
 which we will subsequently extend to a preference learning model for crowds of users and label sources. 
 
-%TODO: include a mention of nonparametric IBP priors over infinite D. 
+%TODO: include a mention of nonparametric IBP priors over infinite C. 
 
 \subsection{Crowd Preference Learning} \label{sec:crowd_model}
 
@@ -198,7 +199,7 @@ which we will subsequently extend to a preference learning model for crowds of u
 
 We combine the matrix factorization method with the preference likelihood of Equation \ref{eq:plphi}
 to obtain a joint preference model for multiple users or label sources.
-In addition to the latent factors, we introduce a common value function over item features, 
+In addition to the latent components, we introduce a common value function over item features, 
 $t\sim \mathcal{GP}(\bs 0, k_{\theta} /\sigma_t)$, 
 that is shared across all users. 
 Its values $\bs t = \{t(\bs {x}_1),...,t(\bs {x}_N)\}$ represent a consensus between users,
@@ -207,13 +208,13 @@ Hence, $\bs t$ can model the underlying ground truth in crowdsourcing scenario, 
 multiple label sources to learn preferences for one individual.
 The joint distribution of this crowd model is:
 \begin{flalign}
-p\left( \bs{y}, \bs V, \bs W, \bs t, s_1, ..., s_D, \sigma_t | k_{\theta}, \alpha_0, \beta_0 \right) 
+p\left( \bs{y}, \bs V, \bs W, \bs t, s_1, ..., s_C, \sigma_t | k_{\theta}, \alpha_0, \beta_0 \right) 
 = & \prod_{p=1}^P \Phi\left( z_p \right) 
 \mathcal{N}(\bs t; \bs 0, \bs K_{t,\theta} /\sigma_t)
 \mathcal{G}({\sigma_t}; \alpha_0, \beta_0) \nonumber \\
-& \hspace{-2.6cm} \prod_{d=1}^D \left\{
-\mathcal{N}(\bs v_d; \bs 0, \bs K_{v,\theta} /s_d) 
-\mathcal{N}(\bs w_d; \bs 0, \bs K_{w,\theta}) \mathcal{G}(s_d; \alpha_0, \beta_0) \right\}, \\
+& \hspace{-2.6cm} \prod_{c=1}^C \left\{
+\mathcal{N}(\bs v_c; \bs 0, \bs K_{v,\theta} /s_c) 
+\mathcal{N}(\bs w_c; \bs 0, \bs K_{w,\theta}) \mathcal{G}(s_c; \alpha_0, \beta_0) \right\}, \\
 \textrm{where } z_p = &  \bs v_{.,a_p}^T \bs{w}_{.,j_p} - \bs v_{.,b_p}^T \bs{w}_{.,j_p}, &
 \label{eq:joint_crowd}
 \end{flalign}
