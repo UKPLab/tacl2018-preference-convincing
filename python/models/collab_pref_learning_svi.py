@@ -23,6 +23,7 @@ from sklearn.cluster import MiniBatchKMeans
 from collab_pref_learning_vb import CollabPrefLearningVB, expec_output_scale, expec_pdf_gaussian, expec_q_gaussian, \
     temper_extreme_probs, lnp_output_scale, lnq_output_scale
 
+
 def svi_update_gaussian(invQi_y, mu0_n, mu_u, K_mm, invK_mm, K_nm, Lambda_factor1, K_nn, invQi, prev_invS, prev_invSm,
                         vb_iter, delay, forgetting_rate, N, update_size):
     Lambda_i = Lambda_factor1.dot(invQi).dot(Lambda_factor1.T)
@@ -72,10 +73,9 @@ def inducing_to_observation_moments(Ks_mm, invK_mm, K_nm, fhat_mm, mu0, S=None, 
     fhat = covpair.dot(fhat_mm) + mu0
 
     if S is None:
-        covpairS = None
         C = None
     elif full_cov:
-        covpairS = covpair.dot(S) # C_nm
+        covpairS = covpair.dot(S)  # C_nm
 
         if K_nn is None:
             C = None
@@ -89,7 +89,7 @@ def inducing_to_observation_moments(Ks_mm, invK_mm, K_nm, fhat_mm, mu0, S=None, 
 
 class CollabPrefLearningSVI(CollabPrefLearningVB):
 
-    def __init__(self, nitem_features, nperson_features=0, shape_s0=1, rate_s0=1,
+    def __init__(self, nitem_features, nperson_features=0, mu0=0, shape_s0=1, rate_s0=1,
                  shape_ls=1, rate_ls=100, ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=20,
                  use_common_mean_t=True, kernel_func='matern_3_2',
                  max_update_size=500, ninducing=500, forgetting_rate=0.9, delay=1.0, use_lb=False):
@@ -99,9 +99,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         self.forgetting_rate = forgetting_rate
         self.delay = delay
 
-        self.conv_threshold_G = 1e-5
+        self.conv_threshold_G = 1e-2
 
-        self.t_mu0_u = 0
+        self.t_mu0 = mu0
 
         super(CollabPrefLearningSVI, self).__init__(nitem_features, nperson_features, shape_s0, rate_s0,
                                                     shape_ls, rate_ls, ls, shape_lsy, rate_lsy, lsy, verbose, nfactors, use_common_mean_t,
@@ -113,22 +113,12 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
     def _init_covariance(self):
         self.shape_sw = np.zeros(self.Nfactors) + self.shape_sw0
         self.rate_sw = np.zeros(self.Nfactors) + self.rate_sw0
-        self.shape_sy = np.zeros(self.Nfactors) + self.shape_sy0
-        self.rate_sy = np.zeros(self.Nfactors) + self.rate_sy0
 
     def _choose_inducing_points(self):
         # choose a set of inducing points -- for testing we can set these to the same as the observation points.
-        nobs = self.N
-
         self.update_size = self.max_update_size # number of observed points in each stochastic update
-        if self.update_size > nobs:
-            self.update_size = nobs
-
-        nobs = self.Npeople
-
-        self.y_update_size = self.max_update_size # number of observed points in each stochastic update
-        if self.y_update_size > nobs:
-            self.y_update_size = nobs
+        if self.update_size > self.nobs:
+            self.update_size = self.nobs
 
         # Inducing points for items -----------------------------------------------------------
 
@@ -153,45 +143,37 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         # Related to w, the item components ------------------------------------------------------------
         # posterior expected values
-        # self.w_u = np.zeros((self.ninducing, self.Nfactors))
-        self.w_u = mvn.rvs(np.zeros(self.ninducing), self.K_mm, self.Nfactors).reshape(self.Nfactors, self.N)
-        self.w_u /= (self.shape_sw / self.rate_sw)[:, None]
-        self.w_u = self.w_u.T
-        # self.w_u = np.zeros((self.ninducing, self.Nfactors))
+        # self.w_u = mvn.rvs(np.zeros(self.ninducing), self.K_mm, self.Nfactors).reshape(self.Nfactors, self.ninducing)
+        # self.w_u /= (self.shape_sw / self.rate_sw)[:, None]
+        # self.w_u = self.w_u.T
+        self.w_u = np.zeros((self.ninducing, self.Nfactors))
         # self.w_u[np.arange(self.ninducing), np.arange(self.ninducing)] = 1.0
-
-        # Prior covariance of w
-        blocks = [self.K_mm for _ in range(self.Nfactors)]
-        self.Kw_mm = block_diag(*blocks)
-        blocks = [self.invK_mm for _ in range(self.Nfactors)]
-        self.invKw_mm = block_diag(*blocks)
-        blocks = [self.K_nm for _ in range(self.Nfactors)]
-        self.Kw_nm = block_diag(*blocks)
 
         # moments of distributions over inducing points for convenience
         # posterior covariance
-        self.wS = self.Kw_mm / self.shape_sw0 * self.rate_sw0
-        self.winvS = self.invKw_mm * self.shape_sw0 / self.rate_sw0
-        self.winvSm = np.zeros((self.ninducing * self.Nfactors, 1))
+        self.winvS = np.array([self.invK_mm * self.shape_sw0 / self.rate_sw0 for _ in range(self.Nfactors)])
+        self.winvSm = np.zeros((self.ninducing, self.Nfactors))
 
         # Inducing points for people -------------------------------------------------------------------
         if self.person_features is None:
             self.y_ninducing = self.Npeople
 
-            # Kernel over people used to construct prior covariance for y
-            self.Ky_mm = np.eye(self.y_ninducing * self.Nfactors)
-
             # Prior covariance of y
             self.invKy_mm_block = np.eye(self.y_ninducing)
-            self.invKy_mm = self.Ky_mm
-
-            self.Ky_nm = self.Ky_mm
 
             # posterior covariance
-            self.yS = self.Ky_mm / self.shape_sy0 * self.rate_sy0
-            self.yinvS = self.invKy_mm * self.shape_sy0 / self.rate_sy0
-            self.yinvSm = np.zeros((self.y_ninducing * self.Nfactors, 1))
-            self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))
+            self.yS = np.array([self.Ky_mm_block for _ in range(self.Nfactors)])
+            self.yinvS = np.array([self.invKy_mm_block for _ in range(self.Nfactors)])
+            self.yinvSm = np.zeros((self.y_ninducing, self.Nfactors))
+
+            if self.y_ninducing <= self.Nfactors:
+                # give each person a factor of their own, with a little random noise so that identical users will
+                # eventually get clustered into the same set of factors.
+                self.y_u = np.zeros((self.Nfactors, self.y_ninducing))
+                self.y_u[:self.y_ninducing, :] = np.eye(self.y_ninducing)
+                self.y_u += np.random.rand(*self.y_u.shape) * 1e-6
+            else:
+                self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))
 
         else:
             self.y_ninducing = self.ninducing_preset
@@ -211,111 +193,121 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             # Kernel over people used to construct prior covariance for y
             self.Ky_mm_block = self.y_kernel_func(self.y_inducing_coords, self.lsy)
             self.Ky_mm_block += 1e-6 * np.eye(len(self.Ky_mm_block)) # jitter
-            blocks = [self.Ky_mm_block for _ in range(self.Nfactors)]
-            self.Ky_mm = block_diag(*blocks)
 
             # Prior covariance of y
             self.invKy_mm_block = np.linalg.inv(self.Ky_mm_block)
-            blocks = [self.invKy_mm_block for _ in range(self.Nfactors)]
-            self.invKy_mm = block_diag(*blocks)
 
             self.Ky_nm_block = self.y_kernel_func(self.person_features, self.lsy, self.y_inducing_coords)
-            blocks = [self.Ky_nm_block for _ in range(self.Nfactors)]
-            self.Ky_nm = block_diag(*blocks)
 
             # posterior covariance
-            self.yS = self.Ky_mm / self.shape_sy0 * self.rate_sy0
-            self.yinvS = self.invKy_mm * self.shape_sy0 / self.rate_sy0
-            self.yinvSm = np.zeros((self.y_ninducing * self.Nfactors, 1))
+            self.yS = np.array([self.Ky_mm_block for _ in range(self.Nfactors)])
+            self.yinvS = np.array([self.invKy_mm_block for _ in range(self.Nfactors)])
+            self.yinvSm = np.zeros((self.y_ninducing, self.Nfactors))
 
             # posterior means
-            self.y_u = mvn.rvs(np.zeros(self.y_ninducing), self.Ky_mm_block, self.Nfactors)
+            if self.y_ninducing <= self.Nfactors:
+                # give each person a factor of their own, with a little random noise so that identical users will
+                # eventually get clustered into the same set of factors.
+                self.y_u = np.zeros((self.Nfactors, self.y_ninducing))
+                self.y_u[:self.y_ninducing, :] = np.eye(self.y_ninducing)
+                self.y_u += np.random.rand(*self.y_u.shape) * 1e-6
+            else:
+                self.y_u = mvn.rvs(np.zeros(self.y_ninducing), self.Ky_mm_block, self.Nfactors)
 
         if self.Nfactors == 1:
             self.y_u = self.y_u[None, :]
-
-        self.y_u /= (self.shape_sy / self.rate_sy)[:, None]
 
         # Related to t, the item means -----------------------------------------------------------------
         self.t_u = np.zeros((self.ninducing, 1))  # posterior means
 
         if self.use_t:
-            self.t_invSm = np.zeros((self.ninducing, 1), dtype=float)# theta_1/posterior covariance dot means
-            self.t_invS = np.diag(np.ones(self.ninducing, dtype=float)) # theta_2/posterior covariance
-            self.tS = np.diag(np.ones(self.ninducing, dtype=float))  # theta_2/posterior covariance
-            self.t_mu0_u = np.zeros((self.ninducing, 1)) + self.t_mu0_u # prior means
+            self.tinvSm = np.zeros((self.ninducing, 1), dtype=float)# theta_1/posterior covariance dot means
+            self.tinvS = self.invK_mm * self.shape_st0 / self.rate_st0 # theta_2/posterior covariance
 
-            self.Kt_nm = np.tile(self.K_nm, (self.Npeople, 1))
 
-    def _scaled_Kwy(self, K, invK, K_nm, y_u_var, inv_scale):
-        """
-        We only use these matrices to estimate the observation noise. Therefore we can consider block-diagonal matrices
-        in terms of the users, since we only care about covariance between items that are being compared within each
-        individual pair.
-
-        :param K:
-        :param invK: precomputed inverse of parameter K
-        :param K_nm:
-        :param y_u:
-        :param y_u_cov:
-        :param y:
-        :param y_cov_nm:
-        :param inv_scale:
-        :return:
-        """
-        N = K.shape[0]
-
-        scaledK = np.zeros((N, N))
-        scaled_invK = np.zeros((N, N))
-        scaledK_nm = np.zeros((self.N * self.Npeople, N))
-
-        for f in range(self.Nfactors):
-            scaledK_f = K * y_u_var
-            scaledK_f /= inv_scale[f]
-            scaledK += scaledK_f # this step is slow
-
-            scaled_invK_f = invK / y_u_var
-            scaled_invK_f *= inv_scale[f]
-            scaled_invK += scaled_invK_f # this step is slow
-
-            scaledK_nm_f = K_nm * y_u_var
-            scaledK_nm_f = np.tile(scaledK_nm_f, (self.Npeople, 1))
-            scaledK_nm_f /= inv_scale[f]
-            scaledK_nm += scaledK_nm_f # this step is slow
-
-        return scaledK, scaled_invK, scaledK_nm
-
-    def _post_sample(self, K_star, um_minus_mu0, uS, invK_mm, v, u):
+    def _post_sample(self, K_nm, invK_mm, w_u, wS, t_u, tS,
+                     Ky_nm, invKy_mm, y_u, y_var, v, u, expectedlog=False):
 
         # sample the inducing points because we don't have full covariance matrix. In this case, f_cov should be Ks_nm
-        f_samples = mvn.rvs(mean=um_minus_mu0.flatten(), cov=uS, size=1000).T
-        f_samples = K_star.dot(invK_mm).dot(f_samples) # assume zero mean
+        nsamples = 500
 
-        # g_f = (f_samples[v, :] - f_samples[u, :])  / np.sqrt(2)
-        # phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the
+        if wS.ndim == 3:
+            w_samples = np.array([mvn.rvs(mean=w_u[:, f], cov=wS[f], size=(nsamples))
+                              for f in range(self.Nfactors)])
+
+            # w_samples = np.array([np.random.normal(loc=w_u[:, f:f+1], scale=np.sqrt(np.diag(wS[f]))[:, None],
+            #                       size=(w_u.shape[0], nsamples)).T
+            #                       for f in range(self.Nfactors)])
+        else:
+            w_samples = np.array([mvn.rvs(mean=w_u[:, f], cov=wS, size=(nsamples))
+                                  for f in range(self.Nfactors)])
+
+            # w_samples = np.array([np.random.normal(loc=w_u[:, f:f+1], scale=np.sqrt(np.diag(wS))[:, None],
+            #                       size=(w_u.shape[0], nsamples)).T
+            #                       for f in range(self.Nfactors)])
+
+        if self.use_t:
+            if np.isscalar(t_u):
+                t_u = np.zeros(tS.shape[0]) + t_u
+            else:
+                t_u = t_u.flatten()
+
+            t_samples = mvn.rvs(mean=t_u, cov=tS, size=(nsamples))
+            # cheat for the speedup. It increases the noise so the results can be overly conservative.
+            # t_samples = np.random.normal(loc=t_u[:, None], scale=np.sqrt(np.diag(tS))[:, None],
+            #                                                              size=(t_u.shape[0], nsamples)).T
+
+        N = y_u.shape[1]
+        if np.isscalar(y_var):
+            y_var = np.zeros((self.Nfactors * N)) + y_var
+        else:
+            y_var = y_var.flatten()
+
+        y_samples = np.random.normal(loc=y_u.flatten()[:, None], scale=np.sqrt(y_var)[:, None],
+                                     size=(N * self.Nfactors, nsamples)).reshape(self.Nfactors, N, nsamples)
+
+        # w_samples: F x nsamples x N
+        # t_samples: nsamples x N
+        # y_samples: F x Npeople x nsamples
+
+        if K_nm is not None:
+            w_samples = np.array([K_nm.dot(invK_mm).dot(w_samples[f].T).T for f in range(self.Nfactors)])  # assume zero mean
+            if self.use_t:
+                t_samples = K_nm.dot(invK_mm).dot(t_samples.T).T  # assume zero mean
+            y_samples = np.array([Ky_nm.dot(invKy_mm).dot(y_samples[f]) for f in range(self.Nfactors)])  # assume zero mean
+
+        f_samples = np.array([w_samples[:, s, :].T.dot(y_samples[:, :, s]).T for s in range(nsamples)])
+
+        if self.use_t:
+            f_samples += t_samples[:, None, :]
+
+        f_samples = f_samples.reshape(nsamples, self.N * self.Npeople).T
 
         phi = pref_likelihood(f_samples, v=v, u=u)
         phi = temper_extreme_probs(phi)
         notphi = 1 - phi
 
+        if expectedlog:
+            phi = np.log(phi)
+            notphi = np.log(notphi)
+
         m_post = np.mean(phi, axis=1)[:, np.newaxis]
         not_m_post = np.mean(notphi, axis=1)[:, np.newaxis]
         v_post = np.var(phi, axis=1)[:, np.newaxis]
         v_post = temper_extreme_probs(v_post, zero_only=True)
-        v_post[m_post * (
-                    1 - not_m_post) <= 1e-7] = 1e-8  # fixes extreme values to sensible values. Don't think this is needed and can lower variance?
+        # fix extreme values to sensible values. Don't think this is needed and can lower variance?
+        v_post[m_post * (1 - not_m_post) <= 1e-7] = 1e-8
 
         return m_post, not_m_post, v_post
 
-    def _estimate_obs_noise(self, K_mm, invK_mm, K_nm):
-
-        pref_v = self.tpref_v
-        pref_u = self.tpref_u
-        z = self.z
+    def _estimate_obs_noise(self):
 
         # to make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
-        m_prior, not_m_prior, v_prior = self._post_sample(K_nm, np.zeros((self.ninducing, 1)),
-                                                          K_mm, invK_mm, pref_v, pref_u)
+        m_prior, not_m_prior, v_prior = self._post_sample(self.K_nm, self.invK_mm,
+                np.zeros((self.ninducing, self.Nfactors)), self.K_mm * self.rate_sw0 / self.shape_sw0,
+                self.t_mu0, self.K_mm * self.rate_st0 / self.shape_st0,
+                self.Ky_nm_block, self.invKy_mm_block, np.zeros((self.Nfactors, self.y_ninducing)), 1,
+                self.pref_v, self.pref_u)
 
         # find the beta parameters
         a_plus_b = 1.0 / (v_prior / (m_prior*not_m_prior)) - 1
@@ -325,78 +317,41 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         nu0 = np.array([b, a])
         # Noise in observations
         nu0_total = np.sum(nu0, axis=0)
-        obs_mean = (z + nu0[1]) / (1 + nu0_total)
+        obs_mean = (self.z + nu0[1]) / (1 + nu0_total)
         var_obs_mean = obs_mean * (1 - obs_mean) / (1 + nu0_total + 1)  # uncertainty in obs_mean
         Q = (obs_mean * (1 - obs_mean) + var_obs_mean)
         Q = Q.flatten()
         return Q
 
     def _init_w(self):
-        self.sw_matrix = np.ones(self.Kw_mm.shape) * self.shape_sw0 / float(self.rate_sw0)
-        self.sw_nm = np.ones((self.Nfactors * self.N, self.Nfactors * self.ninducing)) * self.shape_sw0 \
-                     / float(self.rate_sw0)
-
         # initialise the factors randomly -- otherwise they can get stuck because there is nothing to differentiate them
         # i.e. the cluster identifiability problem
         # self.w = np.zeros((self.N, self.Nfactors))
         self.w = self.K_nm.dot(self.invK_mm).dot(self.w_u)
 
-        self.Sigma_w = np.zeros((self.ninducing, self.ninducing, self.Nfactors))
+        self.Sigma_w = np.zeros((self.Nfactors, self.ninducing, self.ninducing))
 
         if not self.new_obs:
             return
 
-        # intialise Q using the prior covariance. When estimating Q, we only need to draw samples for each person
-        # separately, so a block-diagonal covariance matrix is sufficient
-
-        if self.person_features is not None:
-            Kw_mm, invKw_mm, Kw_nm = self._scaled_Kwy(self.K_mm, self.invK_mm, self.K_nm,
-                              self.rate_sy0 / self.shape_sy0, self.shape_sw / self.rate_sw)
-        else:
-            scale = np.sum(1.0 / (self.shape_sw0 / self.rate_sw0 * self.shape_sy0 / self.rate_sy0))
-            Kw_mm = self.K_mm * scale
-            invKw_mm = self.invK_mm / scale
-            Kw_nm = self.K_nm * scale
-
-        self.Q = self._estimate_obs_noise(Kw_mm, invKw_mm, Kw_nm)
-
-        self.dummy_inducing_coords = np.empty((self.ninducing * self.y_ninducing, 1))
+        self.Q = self._estimate_obs_noise()
 
     def _init_t(self):
         self.t = np.zeros((self.N, 1))
         self.st = self.shape_st0 / self.rate_st0
 
-        self.t_mu0 = np.zeros((self.N, 1)) + self.t_mu0
-
         if not self.use_t:
             return
 
-        if self.new_obs:
-            self.t_gp = GPPrefLearning(self.nitem_features, 0, 1, 1, self.shape_ls, self.rate_ls, self.ls,
-                                       fixed_s=True, kernel_func='pre', use_svi=True,
-                                       delay=self.delay, forgetting_rate=self.forgetting_rate,
-                                       max_update_size=self.max_update_size)
-            self.t_gp.max_iter_VB_per_fit = 1
-            self.t_gp.min_iter_VB = 1
-            self.t_gp.max_iter_G = self.max_iter_G  # G needs to converge within each VB iteration otherwise q(t) is poor
-            self.t_gp.verbose = self.verbose
-            self.t_gp.conv_threshold = 1e-3
-            self.t_gp.conv_threshold_G = 1e-3
-            self.t_gp.conv_check_freq = 1
-
-        self.t_gp.vb_iter = 0
-        self.t_gp.init_inducing_points(np.empty((self.ninducing, 1)), self.K_mm, self.invK_mm, self.Kt_nm)
-
     def _init_y(self):
-        self.sy_matrix = np.ones(self.invKy_mm.shape) * self.shape_sy0 / float(self.rate_sy0)
-
         if self.person_features is None:
             self.y = self.y_u
         else:
             self.y = self.Ky_nm_block.dot(self.invKy_mm_block).dot(self.y_u.T).T
-        self.y_cov = np.zeros((self.Npeople, self.Nfactors, self.Nfactors))
-        self.y_cov[:, range(self.Nfactors), range(self.Nfactors)] = self.rate_sy0 / self.shape_sy0
-        self.Sigma_y = np.zeros((self.y_ninducing, self.y_ninducing, self.Nfactors))
+        self.y_var = np.ones((self.Nfactors, self.Npeople))
+        # self.y_cov = np.zeros((self.Npeople, self.Nfactors, self.Nfactors))
+        # self.y_cov[:, range(self.Nfactors), range(self.Nfactors)] = 1
+        self.Sigma_y = np.zeros((self.Nfactors, self.y_ninducing, self.y_ninducing))
 
     def _init_params(self):
         if self.Nfactors is None or self.Npeople < self.Nfactors:  # not enough items or people
@@ -409,9 +364,27 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         self.ls = np.zeros(self.nitem_features) + self.ls
 
+        self.G = -np.inf
+
         self._init_w()
         self._init_y()
         self._init_t()
+
+
+    def _compute_jacobian(self):
+        self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
+
+        phi, g_mean_f = pref_likelihood(self.obs_f, v=self.pref_v, u=self.pref_u, return_g_f=True)  # first order Taylor series approximation
+        J = 1 / (2 * np.pi) ** 0.5 * np.exp(-g_mean_f ** 2 / 2.0) * np.sqrt(0.5)
+        J = J[self.data_obs_idx_i, :]
+
+        s = (self.pref_v[self.data_obs_idx_i, None] == self.joint_idx_i[None, :]).astype(int) - \
+            (self.pref_u[self.data_obs_idx_i, None] == self.joint_idx_i[None, :]).astype(int)
+
+        J_df = J * s
+
+        return J_df
+
 
     def _expec_t(self):
 
@@ -422,14 +395,50 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         N = self.ninducing
 
-        mu0 = self.w.dot(self.y).T.reshape(self.N * self.Npeople, 1)
+        # self.t_gp.s = self.st
+        # self.t_gp.fit(self.pref_v, self.pref_u, self.dummy_obs_coords, self.preferences,
+        #               mu0=mu0, K=None, process_obs=self.new_obs, input_type=self.input_type)
 
-        self.t_gp.s = self.st
-        self.t_gp.fit(self.pref_v, self.pref_u, self.dummy_obs_coords, self.preferences,
-                      mu0=mu0, K=None, process_obs=self.new_obs, input_type=self.input_type)
+        rho_i = (self.vb_iter + self.delay) ** (-self.forgetting_rate)
+        w_i = self.nobs / float(self.update_size)
 
-        self.t_u = self.t_gp.um_minus_mu0
-        self.tS = self.t_gp.uS
+        self.prev_tinvS = self.tinvS
+        self.prev_tinvSm = self.tinvSm
+
+        covpair = self.invK_mm.dot(self.K_nm[self.w_idx_i].T)
+
+        for G_iter in range(self.max_iter_G):
+
+            oldG = self.G
+            self.G = self._compute_jacobian() # P_i x (N_i*Npeople_i)
+
+            # we need to map from the real Npeople points to the inducing points.
+            GinvQG = (self.G.T/self.Q[None, self.data_obs_idx_i]).dot(self.G)
+
+            self.Sigma_t = covpair.dot(GinvQG).dot(covpair.T)
+
+            # need to get invS for current iteration and merge using SVI weighted sum
+            self.tinvS = (1-rho_i) * self.prev_tinvS + rho_i * (self.invK_mm*self.shape_st/self.rate_st + w_i * self.Sigma_t)
+
+            z0 = pref_likelihood(self.obs_f, v=self.pref_v[self.data_obs_idx_i], u=self.pref_u[self.data_obs_idx_i]) \
+                 - self.G.dot(self.t[self.w_idx_i, :]) # P x NU_i
+
+            invQ_f = (self.G.T / self.Q[None, self.data_obs_idx_i]).dot(self.z[self.data_obs_idx_i] - z0)
+            x = covpair.dot(invQ_f)
+
+            # need to get x for current iteration and merge using SVI weighted sum
+            self.tinvSm = (1-rho_i) * self.prev_tinvSm + rho_i * w_i * x
+
+            self.tS = np.linalg.inv(self.tinvS)
+            self.t_u = self.tS.dot(self.tinvSm)
+
+            diff = np.max(np.abs(oldG - self.G))
+
+            if self.verbose:
+                logging.debug("expec_t: iter %i, G-diff=%f" % (G_iter, diff))
+
+            if diff < self.conv_threshold_G:
+                break
 
         self.t, _ = inducing_to_observation_moments(self.Kts_mm, self.invK_mm, self.K_nm, self.t_u, self.t_mu0)
 
@@ -438,19 +447,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                                                          f_cov=self.tS)
         self.st = self.shape_st / self.rate_st
 
-    def _compute_jacobian(self):
-        self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
-
-        phi, g_mean_f = pref_likelihood(self.obs_f, v=self.pref_v, u=self.pref_u, return_g_f=True)  # first order Taylor series approximation
-        J = 1 / (2 * np.pi) ** 0.5 * np.exp(-g_mean_f ** 2 / 2.0) * np.sqrt(0.5)
-        J = J[self.data_obs_idx_i, :]
-
-        s = (self.pref_v[self.data_obs_idx_i, None] == self.f_idx_i[None, :]).astype(int) - \
-            (self.pref_u[self.data_obs_idx_i, None] == self.f_idx_i[None, :]).astype(int)
-
-        J = J * s
-
-        return J
 
     def _expec_w(self):
         """
@@ -458,216 +454,180 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         """
         # Put a GP prior on w with covariance K/gamma and mean 0
         N = self.ninducing
-        Npeople = self.y_ninducing
 
         rho_i = (self.vb_iter + self.delay) ** (-self.forgetting_rate)
         w_i = self.nobs / float(self.update_size)
-
-        G = -np.inf
 
         self.prev_winvS = self.winvS
         self.prev_winvSm = self.winvSm
 
         covpair = self.invK_mm.dot(self.K_nm[self.w_idx_i].T)
-        Kw_var = np.tile((self.rate_sw/self.shape_sw)[:, None], (1, self.N)).flatten()
+
         for G_iter in range(self.max_iter_G):
 
-            oldG = G
-            G = self._compute_jacobian() # P_i x (N_i*Npeople_i)
+            oldG = self.G
+            self.G = self._compute_jacobian() # P_i x (N_i*Npeople_i)
 
             # we need to map from the real Npeople points to the inducing points.
-            invQ = (G.T / self.Q[None, self.data_obs_idx_i]).dot(G)
-            w_prec = np.zeros((N * self.Nfactors, N * self.Nfactors))
+            # invQ = (self.G.T / self.Q[None, self.data_obs_idx_i]).dot(self.G)
+            invQG = self.G.T/self.Q[None, self.data_obs_idx_i]
+
+            scaling = np.zeros((self.Nfactors, self.update_size))
 
             for f in range(self.Nfactors):
-                for g in range(self.Nfactors):
-                    #  is to update each factor in turn, which may do a better job of cancelling out unneeded factors.
-                    # yscaling = self.y_u[f:f+1, :].T.dot(self.y_u[g:g+1, :]) + self.yS[f * Npeople + np.arange(Npeople),
-                    #                                                           :][:, g * Npeople + np.arange(Npeople)]
-                    #
-                    # Sigma_f_g = np.sum(np.sum(yscaling[:, None, :, None] * Lambda, 2), 0)
+                # scale the precision by y
+                scaling_f = self.y[f:f+1, self.personIDs[self.data_obs_idx_i]]**2 + \
+                              self.y_var[f:f+1, self.personIDs[self.data_obs_idx_i]]
 
-                    # scale the precision by y
-                    scaling = self.y[f:f+1, self.y_idx_i]*self.y[g:g+1, self.y_idx_i] + self.y_cov[self.y_idx_i, f, g][None, :]
-                    invQ_scaled = scaling * invQ
+                scaling[f] = scaling_f
 
-                    Sigma_f_g = covpair.dot(invQ_scaled).dot(covpair.T)
+                invQ_scaled =  (scaling_f * invQG).dot(self.G)
 
-                    fidxs = np.tile(f * N + np.arange(N)[:, None], (1, N))
-                    gidxs = np.tile(g * N + np.arange(N)[None, :], (N, 1))
-                    w_prec[fidxs, gidxs] = Sigma_f_g
+                Sigma_f = covpair.dot(invQ_scaled).dot(covpair.T)
 
-                    if f == g:
-                        self.Sigma_w[:, :, f] = Sigma_f_g
+                self.Sigma_w[f, :, :] = Sigma_f
 
             # need to get invS for current iteration and merge using SVI weighted sum
-            self.winvS = (1-rho_i) * self.prev_winvS + rho_i * (self.invKw_mm * self.sw_matrix + w_i * w_prec)
+            self.winvS = (1-rho_i) * self.prev_winvS + rho_i * (self.invK_mm[None, :, :]*self.shape_sw[:, None, None]
+                            /self.rate_sw[:, None, None] + w_i * self.Sigma_w)
 
-            mu0_i = np.tile(self.t, (self.Npeople, 1))[self.f_idx_i, :]
             z0 = pref_likelihood(self.obs_f, v=self.pref_v[self.data_obs_idx_i], u=self.pref_u[self.data_obs_idx_i]) \
-                 + G.dot(mu0_i - self.obs_f[self.f_idx_i])
+                 - self.G.dot(self.w[self.w_idx_i, :] * self.y[:, self.y_idx_i].T) # P x NU_i
 
-            invQ_f = self.y[:, self.y_idx_i].T * (G.T / self.Q[None, self.data_obs_idx_i]).dot(
-                self.z[self.data_obs_idx_i] - z0) # Npoints_in_sample x Nfactors
-            x = covpair.dot(invQ_f).T # Nfactors x N
-            x = x.reshape(N * self.Nfactors, 1)
+            invQ_f = (self.G.T / self.Q[None, self.data_obs_idx_i]).dot(self.y[:, self.personIDs[self.data_obs_idx_i]].T
+                                                                   * (self.z[self.data_obs_idx_i] - z0))  # Npoints_in_sample x Nfactors
+            x = covpair.dot(invQ_f)
 
             # need to get x for current iteration and merge using SVI weighted sum
             self.winvSm = (1-rho_i) * self.prev_winvSm + rho_i * w_i * x
 
-            self.wS = np.linalg.inv(self.winvS)
-            self.w_u = self.wS.dot(self.winvSm)
+            self.wS = np.array([np.linalg.inv(self.winvS[f]) for f in range(self.Nfactors)])
+            self.w_u = np.array([self.wS[f].dot(self.winvSm[:, f]) for f in range(self.Nfactors)]).T
 
-            self.w, self.w_var = inducing_to_observation_moments(self.Kw_mm / self.sw_matrix, self.invKw_mm, self.Kw_nm,
-                                                                 self.w_u, 0, self.wS, Kw_var, full_cov=False)
+            for f in range(self.Nfactors):
+                self.w[:, f:f+1], _ = inducing_to_observation_moments(self.K_mm / self.shape_sw[f] * self.rate_sw[f],
+                                    self.invK_mm, self.K_nm, self.w_u[:, f:f+1], 0)
 
-            self.w_u = np.reshape(self.w_u, (self.Nfactors, N)).T  # w is N x Nfactors
-            self.w = np.reshape(self.w, (self.Nfactors, self.N)).T  # w is N x Nfactors
-            self.w_var = np.reshape(self.w_var, (self.Nfactors, self.N)).T
+            diff = np.max(np.abs(oldG - self.G))
 
-            diff = np.max(np.abs(oldG - G))
+            if self.verbose:
+                logging.debug("expec_w: iter %i, G-diff=%f" % (G_iter, diff))
+
             if diff < self.conv_threshold_G:
                 break
 
-            if self.verbose:
-                logging.debug("expec_w: iter %i, diff=%f" % (G_iter, diff))
+        Kw_i = self.kernel_func(self.obs_coords[self.n_idx_i, :], self.ls)
+        self.w_cov_i = []
+        self.w_i = []
 
         for f in range(self.Nfactors):
-            fidxs = np.arange(N) + (N * f)
+            Kw_i_f = Kw_i / self.shape_sw[f] * self.rate_sw[f]
+            w_i_f, w_cov_i_f = inducing_to_observation_moments(self.K_mm / self.shape_sw[f] * self.rate_sw[f],
+                self.invK_mm, self.K_nm[self.n_idx_i], self.w_u[:, f:f+1], 0, self.wS[f], Kw_i_f, full_cov=True)
+
+            self.w_i.append(w_i_f)
+            self.w_cov_i.append(w_cov_i_f)
+
+        self.w_i = np.array(self.w_i)
+
+        for f in range(self.Nfactors):
             self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, N,
                                                        self.invK_mm, self.w_u[:, f:f + 1], np.zeros((N, 1)),
-                                                       f_cov=self.wS[fidxs, :][:, fidxs])
+                                                       f_cov=self.wS[f])
 
-            self.sw_matrix[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]
-
-            fidxs = np.arange(self.N) + (self.N * f)
-            self.sw_nm[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]
 
     def _expec_y(self):
-
-        N = self.ninducing
-        Npeople = self.y_ninducing
-
         rho_i = (self.vb_iter + self.delay) ** (-self.forgetting_rate)
         w_i = np.sum(self.nobs) / float(self.update_size)
 
         self.prev_yinvSm = self.yinvSm
         self.prev_yinvS = self.yinvS
 
-        G = -np.inf
-
-        Npeople = self.y_ninducing
         if self.person_features is None:
             covpair = np.eye(self.Npeople)
         else:
-            covpair = self.invKy_mm_block.dot(self.Ky_nm_block.T)
-
-        w_covpair = self.invK_mm.dot(self.K_nm.T)
+            covpair = self.invKy_mm_block.dot(self.Ky_nm_block[self.y_idx_i].T)
 
         for G_iter in range(self.max_iter_G):
-            oldG = G
-            G = self._compute_jacobian()
+            oldG = self.G
 
-            invQ = (G.T / self.Q[None, self.data_obs_idx_i]).dot(G)
-            y_prec = np.zeros((self.Nfactors * Npeople, self.Nfactors * Npeople))
+            self.G = self._compute_jacobian()
 
-            # this is more complex than expec_w because the observations have dependencies between w values, hence we need
-            # to consider covariance between w values. We avoid computing w_cov by mapping to inducing points.
+            invQG =  self.G / self.Q[self.data_obs_idx_i, None]
 
-            for p in self.p_idx_i: # for all sampled people in the current iteration
-                pidxs = self.y_idx_i==p # the pair indexes belonging to this user
+            scaling = np.zeros((self.update_size, self.Nfactors))
 
-                w_covpair_p = w_covpair[:, self.w_idx_i[pidxs]] # get the mapping to w inducing points
+            for f in range(self.Nfactors):
+                # scale the precision by w
+                scaling_f = self.w[self.tpref_v[self.data_obs_idx_i], f]**2 \
+                  + self.w[self.tpref_u[self.data_obs_idx_i], f]**2 \
+                  - 2 * self.w[self.tpref_v[self.data_obs_idx_i], f] * self.w[self.tpref_u[self.data_obs_idx_i], f] \
+                  + self.w_cov_i[f][self.pref_u_w_idx, self.pref_u_w_idx] \
+                  + self.w_cov_i[f][self.pref_v_w_idx, self.pref_v_w_idx] \
+                  - 2 * self.w_cov_i[f][self.pref_v_w_idx, self.pref_u_w_idx]
 
-                invQ_u = w_covpair_p.dot(invQ[pidxs, :][:, pidxs]).dot(w_covpair_p.T)
+                scaling[:, f] = scaling_f
 
-                covpair_p = np.tile(covpair[:, p:p+1], (1, self.ninducing))
+                invQ_scaled = self.G.T.dot(scaling_f[:, None] * invQG)
 
-                for f in range(self.Nfactors):
-                    for g in range(self.Nfactors):
-                        wscaling = self.wS[f * N + np.arange(N), :][:, g * N + np.arange(N)] + \
-                               self.w_u[:, f:f+1].dot(self.w_u[:, g:g+1].T)
-
-                        invQ_scaled = wscaling * invQ_u
-                        #invQ_scaled = np.sum(invQ_scaled)
-
-                        Sigma_f_g = covpair_p.dot(invQ_scaled).dot(covpair_p.T)
-
-                        fidxs = np.tile(f * Npeople + np.arange(self.y_ninducing)[:, None], (1, Npeople))
-                        gidxs = np.tile(g * Npeople + np.arange(self.y_ninducing)[None, :], (Npeople, 1))
-                        y_prec[fidxs, gidxs] += Sigma_f_g
-
-                        if f == g:
-                            self.Sigma_y[:, :, f] += Sigma_f_g
+                self.Sigma_y[f, :, :] = covpair.dot(invQ_scaled).dot(covpair.T)
 
             # need to get invS for current iteration and merge using SVI weighted sum
-            self.yinvS = (1-rho_i) * self.prev_yinvS + rho_i * (self.invKy_mm * self.sy_matrix + w_i * y_prec)
+            self.yinvS = (1-rho_i) * self.prev_yinvS + rho_i * (self.invKy_mm_block[:, :] + w_i * self.Sigma_y)
 
-            mu0_i = np.tile(self.t, (self.Npeople, 1))[self.f_idx_i, :]
             z0 = pref_likelihood(self.obs_f, v=self.pref_v[self.data_obs_idx_i], u=self.pref_u[self.data_obs_idx_i]) \
-                 + G.dot(mu0_i - self.obs_f[self.f_idx_i])
+                 - self.G.dot(self.w[self.w_idx_i, :] * self.y[:, self.y_idx_i].T)
 
-            invQ_f = self.w[self.w_idx_i, :] * (G.T / self.Q[None, self.data_obs_idx_i]).dot(
-                self.z[self.data_obs_idx_i] - z0)
-            x = covpair[:, self.y_idx_i].dot(invQ_f).T
-            x = x.reshape(Npeople * self.Nfactors, 1)
+            invQ_f = (self.G.T / self.Q[None, self.data_obs_idx_i]).dot((self.w[self.tpref_v[self.data_obs_idx_i]]
+                            - self.w[self.tpref_u[self.data_obs_idx_i]]) * (self.z[self.data_obs_idx_i] - z0))
+
+            x = covpair.dot(invQ_f)
 
             # need to get x for current iteration and merge using SVI weighted sum
             self.yinvSm = (1-rho_i) * self.prev_yinvSm + rho_i * w_i * x
 
-            self.yS = np.linalg.inv(self.yinvS)
-            self.y_u = self.yS.dot(self.yinvSm)
+            self.yS = np.array([np.linalg.inv(self.yinvS[f]) for f in range(self.Nfactors)])
+            self.y_u = np.array([self.yS[f].dot(self.yinvSm)[:,f] for f in range(self.Nfactors)])
 
             if self.person_features is None:
                 self.y = self.y_u
-                self.y_var = np.diag(self.yS)
+                self.y_var = np.array([np.diag(self.yS[f]) for f in range(self.Nfactors)])
             else:
-                self.y, _ = inducing_to_observation_moments(self.Ky_mm / self.sy_matrix, self.invKy_mm,
-                                                                     self.Ky_nm, self.y_u, 0)
+                for f in range(self.Nfactors):
+                    yf, varyf = inducing_to_observation_moments(self.Ky_mm_block,
+                            self.invKy_mm_block, self.Ky_nm_block, self.y_u[f:f+1, :].T, 0, self.yS[f], 1, full_cov=False)
+                    self.y[f:f + 1] = yf.T
+                    self.y_var[f:f + 1] = varyf.T
 
-                for p in range(self.Npeople):
-                    pidxs = np.arange(self.Nfactors) * self.Npeople + p
-                    _, y_cov_p = inducing_to_observation_moments(self.Ky_mm / self.sy_matrix, self.invKy_mm,
-                                                                self.Ky_nm[pidxs, :], self.y_u, 0, self.yS,
-                                                                np.diag(self.rate_sy / self.shape_sy), full_cov=True)
-                    self.y_cov[p, :, :] = y_cov_p
+            diff = np.max(np.abs(oldG - self.G))
 
-            self.y_u = np.reshape(self.y_u, (self.Nfactors, Npeople))  # y is Npeople x Nfactors
-            self.y = np.reshape(self.y, (self.Nfactors, self.Npeople))  # y is Npeople x Nfactors
+            if self.verbose:
+                logging.debug("expec_y: iter %i, G-diff=%f" % (G_iter, diff))
 
-            diff = np.max(np.abs(oldG - G))
             if diff < self.conv_threshold_G:
                 break
 
-            if self.verbose:
-                logging.debug("expec_y: iter %i, diff=%f" % (G_iter, diff))
-
-        for f in range(self.Nfactors):
-            fidxs = np.arange(Npeople) + (Npeople * f)
-            self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, Npeople,
-                                                                   self.invKy_mm_block, self.y_u[f:f + 1, :].T,
-                                                                   np.zeros((Npeople, 1)),
-                                                                   f_cov=self.yS[fidxs, :][:, fidxs])
-
-            self.sy_matrix[fidxs, :] = self.shape_sy[f] / self.rate_sy[f]  # sy_rows
 
     def _update_sample_idxs(self):
-        self.n_idx_i = np.sort(np.random.choice(self.N, self.update_size, replace=False))
-        self.p_idx_i = np.sort(np.random.choice(self.Npeople, self.y_update_size, replace=False))
 
-        self.data_obs_idx_i = np.in1d(self.tpref_v, self.n_idx_i) &\
-                              np.in1d(self.tpref_u, self.n_idx_i) &\
-                              np.in1d(self.personIDs, self.p_idx_i)
+        self.data_obs_idx_i = np.sort(np.random.choice(self.nobs, self.update_size, replace=False))
 
         data_idx_i = np.zeros((self.N, self.Npeople), dtype=bool)
         data_idx_i[self.tpref_v[self.data_obs_idx_i], self.personIDs[self.data_obs_idx_i]] = True
         data_idx_i[self.tpref_u[self.data_obs_idx_i], self.personIDs[self.data_obs_idx_i]] = True
-        self.f_idx_i = data_idx_i.T.reshape(self.N * self.Npeople)
-        self.f_idx_i = np.argwhere(self.f_idx_i).flatten()
 
         separate_idx_i = np.argwhere(data_idx_i.T)
-        self.w_idx_i = separate_idx_i[:, 1]
         self.y_idx_i = separate_idx_i[:, 0]
+        self.w_idx_i = separate_idx_i[:, 1]
+        self.joint_idx_i = self.w_idx_i + (self.N * self.y_idx_i)
+
+        self.n_idx_i, pref_idxs = np.unique([self.tpref_v[self.data_obs_idx_i], self.tpref_u[self.data_obs_idx_i]],
+                                            return_inverse=True)
+        pref_idxs = pref_idxs.reshape(2, self.update_size)
+
+        # the index into n_idx_i for each of the selected prefs
+        self.pref_v_w_idx = pref_idxs[0]#np.array([np.argwhere(self.n_idx_i == n).flatten() for n in self.tpref_v[self.data_obs_idx_i]])
+        self.pref_u_w_idx = pref_idxs[1]#np.array([np.argwhere(self.n_idx_i == n).flatten() for n in self.tpref_u[self.data_obs_idx_i]])
 
     def _update_sample(self):
 
@@ -675,6 +635,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         if self.use_t:
             self.Kts_mm = self.K_mm / self.st
+
+        self.G = -np.inf # need to reset G because we have a new sample to compute it for
 
     def data_ll(self, logrho, lognotrho):
         bc = binom(np.ones(self.z.shape), self.z)
@@ -686,35 +648,11 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         return data_ll
 
     def _logpD(self):
-        fmean = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
-        rho = pref_likelihood(fmean, v=self.pref_v, u=self.pref_u) #self.predict(self.personIDs, self.tpref_v, self.tpref_u, self.obs_coords, self.person_features, no_var=True)
-        rho = temper_extreme_probs(rho)
-        logrho = np.log(rho)
-        lognotrho = np.log(1 - rho)
+        # K_star, um_minus_mu0, uS, invK_mm, v, u
+        logrho, lognotrho, _ = self._post_sample(self.K_nm, self.invK_mm, self.w_u, self.wS, self.t_u, self.tS,
+                                     self.Ky_nm_block, self.invKy_mm_block, self.y_u, self.y_var,
+                                     self.pref_v, self.pref_u, expectedlog=True)
 
-        prod_cov = 0
-        y_w_cov_y = 0
-        w_y_cov_w = 0
-        for f in range(self.Nfactors):
-
-            fidxs = np.arange(self.ninducing) + (self.ninducing * f)
-            w_cov = self.wS[fidxs, :][:, fidxs]
-
-            fidxs = np.arange(self.y_ninducing) + (self.y_ninducing * f)
-            y_cov = self.yS[fidxs, :][:, fidxs]
-
-            cov = w_cov[None, :, None, :] * y_cov[:, None, :, None]
-            cov = cov.reshape(self.ninducing * self.y_ninducing, self.ninducing * self.y_ninducing)
-
-            y_w_cov_y_f = w_cov[None, :, None, :] * self.y_u[f:f+1, :].T.dot(self.y_u[f:f+1, :])[:, None, :, None]
-            y_w_cov_y_f = y_w_cov_y_f.reshape(self.ninducing * self.y_ninducing, self.ninducing * self.y_ninducing)
-            y_w_cov_y += y_w_cov_y_f
-
-            w_y_cov_w_f = y_cov[:, None, :, None] * self.w_u[:, f:f+1].dot(self.w_u[:, f:f+1].T)[None, :, None, :]
-            w_y_cov_w_f = w_y_cov_w_f.reshape(self.ninducing * self.y_ninducing, self.ninducing * self.y_ninducing)
-            w_y_cov_w += w_y_cov_w_f
-
-            prod_cov += cov
 
         data_ll = self.data_ll(logrho, lognotrho)
 
@@ -725,7 +663,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         data_ll = self._logpD()
 
         Elnsw = psi(self.shape_sw) - np.log(self.rate_sw)
-        Elnsy = psi(self.shape_sy) - np.log(self.rate_sy)
         if self.use_t:
             Elnst = psi(self.shape_st) - np.log(self.rate_st)
             st = self.st
@@ -734,35 +671,34 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             st = 1
 
         sw = self.shape_sw / self.rate_sw
-        sy = self.shape_sy / self.rate_sy
 
         # the parameter N is not multiplied here by Nfactors because it will be multiplied by the s value for each
         # factor and summed inside the function
-        logpw = expec_pdf_gaussian(self.Kw_mm, self.invKw_mm, Elnsw, self.ninducing, self.sw_matrix,
-                                   self.w_u.T.reshape(self.ninducing * self.Nfactors, 1), 0, self.wS, 0)
-        logqw = expec_q_gaussian(self.wS, self.ninducing * self.Nfactors)
+        logpw = np.sum([expec_pdf_gaussian(self.K_mm, self.invK_mm, Elnsw[f], self.ninducing,
+                    self.shape_sw[f] / self.rate_sw[f], self.w_u[:, f:f+1], 0, self.wS[f], 0)
+                        for f in range(self.Nfactors)])
+
+        logqw = np.sum([expec_q_gaussian(self.wS[f], self.ninducing * self.Nfactors) for f in range(self.Nfactors)])
 
         if self.use_t:
-            logpt = expec_pdf_gaussian(self.K_mm, self.invK_mm, Elnst, self.ninducing, st, self.t_u, self.t_mu0_u,
+            logpt = expec_pdf_gaussian(self.K_mm, self.invK_mm, Elnst, self.ninducing, st, self.t_u, self.t_mu0,
                                        0, 0) - 0.5 * self.ninducing
             logqt = expec_q_gaussian(self.tS, self.ninducing)
         else:
             logpt = 0
             logqt = 0
 
-        logpy = expec_pdf_gaussian(self.Ky_mm, self.invKy_mm, Elnsy, self.y_ninducing, self.sy_matrix,
-                                   self.y_u.reshape(self.y_ninducing * self.Nfactors, 1), 0, self.yS, 0)
-        logqy = expec_q_gaussian(self.yS, self.y_ninducing * self.Nfactors)
+        logpy = np.sum([expec_pdf_gaussian(self.Ky_mm_block, self.invKy_mm_block, 0, self.y_ninducing, 1,
+                                   self.y_u[f:f+1, :].T, 0, self.yS[f], 0) for f in range(self.Nfactors)])
+        logqy = np.sum([expec_q_gaussian(self.yS[f], self.y_ninducing * self.Nfactors) for f in range(self.Nfactors)])
 
         # if self.nperson_features is not None:
         # else:
             # logpy = 0
             # for f in range(self.Nfactors):
-                # logpy += np.sum(norm.logpdf(self.y[f, :], scale=np.sqrt(self.rate_sy[f] / self.shape_sy[f])))
+                # logpy += np.sum(norm.logpdf(self.y[f, :], scale=1))
             # logqy = mvn.logpdf(self.y.flatten(), mean=self.y.flatten(), cov=self.y_cov)
 
-        logps_y = 0
-        logqs_y = 0
         logps_w = 0
         logqs_w = 0
         for f in range(self.Nfactors):
@@ -770,22 +706,17 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                                         Elnsw[f])
             logqs_w += lnq_output_scale(self.shape_sw[f], self.rate_sw[f], sw[f], Elnsw[f])
 
-            logps_y += lnp_output_scale(self.shape_sy0, self.rate_sy0, self.shape_sy[f], self.rate_sy[f], sy[f],
-                                        Elnsy[f])
-            logqs_y += lnq_output_scale(self.shape_sy[f], self.rate_sy[f], sy[f], Elnsy[f])
-
         logps_t = lnp_output_scale(self.shape_st0, self.rate_st0, self.shape_st, self.rate_st, st, Elnst)
         logqs_t = lnq_output_scale(self.shape_st, self.rate_st, st, Elnst)
 
         w_terms = logpw - logqw + logps_w - logqs_w
-        y_terms = logpy - logqy + logps_y - logqs_y
+        y_terms = logpy - logqy
         t_terms = logpt - logqt + logps_t - logqs_t
 
         lb = data_ll + t_terms + w_terms + y_terms
 
         if self.verbose:
             logging.debug('s_w=%s' % (self.shape_sw / self.rate_sw))
-            logging.debug('s_y=%s' % (self.shape_sy / self.rate_sy))
             logging.debug('s_t=%.2f' % (self.shape_st / self.rate_st))
 
         if self.verbose:
@@ -796,7 +727,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         if self.verbose:
             logging.debug("t: %.2f, %.2f" % (np.min(self.t), np.max(self.t)))
             logging.debug("w: %.2f, %.2f" % (np.min(self.w), np.max(self.w)))
-            logging.debug("y: %.2f, %.2f" % (np.min(self.y), np.max(self.y)))
+            logging.debug("y: %f, %f" % (np.min(self.y), np.max(self.y)))
 
         return lb
 
@@ -824,17 +755,59 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         cov_w = np.zeros((self.Nfactors, N, N))
         for f in range(self.Nfactors):
-            fidxs = np.arange(self.ninducing) + self.ninducing * f
             cov_w[f] = K_starstar  * self.rate_sw[f] / self.shape_sw[f] + \
-               covpair.dot(self.wS[fidxs, :][:, fidxs] - self.K_mm * self.rate_sw[f] / self.shape_sw[f]).dot(covpair.T)
+               covpair.dot(self.wS[f] - self.K_mm * self.rate_sw[f] / self.shape_sw[f]).dot(covpair.T)
 
         return t_out, w_out, cov_t, cov_w
 
+    def predict_t(self, item_features):
+        '''
+        Predict the common consensus function values using t
+        '''
+        if item_features is None:
+            # reuse the training points
+            t = self.t
+        else:
+            # kernel between pidxs and t
+            K = self.kernel_func(item_features, self.ls, self.inducing_coords)
+            N = item_features.shape[0]
+
+            # use kernel to compute t.
+            if self.use_t:
+                t = K.dot(self.invK_mm).dot(self.t_u)
+            else:
+                t = np.zeros((N, 1))
+
+        return t
+
+    def predict_common(self, item_features, item_0_idxs, item_1_idxs):
+        '''
+        Predict the common consensus pairwise labels using t.
+        '''
+        if not self.use_t:
+            return np.zeros(len(item_0_idxs))
+
+        K = self.kernel_func(item_features, self.ls, self.inducing_coords)
+        K_starstar = self.kernel_func(item_features, self.ls, item_features)
+        covpair = K.dot(self.invK_mm)
+        covpair_uS = covpair.dot(self.tS)
+
+        t_out = K.dot(self.invK_mm).dot(self.t_u)
+        cov_t = K_starstar * self.rate_st / self.shape_st + (covpair_uS - covpair.dot(self.Kts_mm)).dot(covpair.T)
+
+        predicted_prefs = pref_likelihood(t_out, cov_t[item_0_idxs, item_1_idxs]
+                                          + cov_t[item_0_idxs, item_1_idxs]
+                                          - cov_t[item_0_idxs, item_1_idxs]
+                                          - cov_t[item_0_idxs, item_1_idxs],
+                                          subset_idxs=[], v=item_0_idxs, u=item_1_idxs)
+
+        return predicted_prefs
+
     def _y_var(self):
-        _, v = inducing_to_observation_moments(self.Ky_mm / self.sy_matrix, self.invKy_mm, self.Ky_nm,
-                                               self.y_u.reshape(self.y_ninducing * self.Nfactors, 1), 0,
-                                               S=self.yS, K_nn=1.0 / np.diag(self.sy_matrix), full_cov=False)
-        return v
+        v = np.array([inducing_to_observation_moments(self.Ky_mm_block, self.invKy_mm_block, self.Ky_nm_block,
+                                               self.y_u[f:f+1, :].T, 0, S=self.yS[f], K_nn=1.0, full_cov=False)[0]
+                      for f in range(self.Nfactors)])
+        return v.flatten()
 
     def _predict_y(self, person_features):
 
@@ -842,14 +815,13 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
             cov_y = np.zeros((self.Nfactors, self.y_ninducing, self.y_ninducing))
             for f in range(self.Nfactors):
-                fidxs = np.arange(self.y_ninducing) + self.y_ninducing * f
-                cov_y[f] = self.yS[fidxs, :][:, fidxs]
+                cov_y[f] = self.yS[f]
             return self.y_u, cov_y
 
         elif person_features is None:
             person_features = self.person_features
             Ky = self.Ky_nm_block
-            Ky_starstar = self.Ky_nm.dot(self.invKy_mm_block).dot(self.Ky_nm_block.T)
+            Ky_starstar = self.Ky_nm_block.dot(self.invKy_mm_block).dot(self.Ky_nm_block.T)
 
         else:
             Ky = self.y_kernel_func(person_features, self.lsy, self.y_inducing_coords)
@@ -862,9 +834,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         cov_y = np.zeros((self.Nfactors, Npeople, Npeople))
         for f in range(self.Nfactors):
-            fidxs = np.arange(self.y_ninducing) + self.y_ninducing * f
-            cov_y[f] = Ky_starstar * self.rate_sy[f] / self.shape_sy[f] + covpair.dot(self.yS[fidxs, :][:, fidxs]
-                                                    - self.Ky_mm_block * self.rate_sy[f] / self.shape_sy[f]).dot(covpair.T)
+            cov_y[f] = Ky_starstar + covpair.dot(self.yS[f] - self.Ky_mm_block).dot(covpair.T)
 
         return y_out, cov_y
 
@@ -881,17 +851,14 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             dKdls = self.K_mm * self.kernel_der(self.inducing_coords, self.ls, dimension)
             # try to make the s scale cancel as much as possible
             invK_w = self.invK_mm.dot(self.w_u)
-            invKs_C = (self.invKw_mm * self.sw_matrix).dot(self.wS)
             N = self.ninducing
 
             for f in range(self.Nfactors):
-                fidxs = np.arange(N) + (N * f)
-
                 swf = self.shape_sw[f] / self.rate_sw[f]
-                invKs_Cf = invKs_C[fidxs, :][:, fidxs]
+                invKs_Cf = (self.invKw_mm * self.shape_sw[f] / self.rate_sw[f]).dot(self.wS)[f]
                 invK_wf = invK_w[:, f]
 
-                Sigma = self.Sigma_w[:, :, f]
+                Sigma = self.Sigma_w[f, :, :]
 
                 der_logpw_logqw += 0.5 * (invK_wf.T.dot(dKdls).dot(invK_wf) * swf -
                                     np.trace(invKs_Cf.dot(Sigma).dot(dKdls / swf)))
@@ -901,25 +868,20 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 invKs_C = self.invK_mm.dot(self.tS) * self.st
 
                 der_logpt_logqt = 0.5 * (invK_t.T.dot(dKdls).dot(invK_t) * self.st -
-                            np.trace(invKs_C.dot(self.t_gp.get_obs_precision()).dot(dKdls / self.st)))
+                            np.trace(invKs_C.dot(self.Sigma_t).dot(dKdls / self.st)))
 
         elif (lstype == 'person' or (lstype == 'both' and d >= self.nitem_features)) and self.person_features is not None:
             dKdls = self.Ky_mm_block * self.kernel_der(self.y_inducing_coords, self.lsy, dimension)
             invK_y = self.invKy_mm_block.dot(self.y_u.T)
 
-            invKs_C = (self.invKy_mm * self.sy_matrix).dot(self.yS)
             N = self.y_ninducing
 
             for f in range(self.Nfactors):
-                fidxs = np.arange(N) + (N * f)
-
-                syf = self.shape_sy[f] / self.rate_sy[f]
-                invKs_Cf = invKs_C[fidxs, :][:, fidxs]
+                invKs_Cf = self.invKy_mm_block.dot(self.yS[f])
                 invK_yf = invK_y[:, f]
 
-                Sigma = self.Sigma_y[:, :, f]
+                Sigma = self.Sigma_y[f, :, :]
 
-                der_logpy_logqy += 0.5 * (invK_yf.T.dot(dKdls).dot(invK_yf) * syf -
-                                    np.trace(invKs_Cf.dot(Sigma).dot(dKdls / syf)))
+                der_logpy_logqy += 0.5 * (invK_yf.T.dot(dKdls).dot(invK_yf) - np.trace(invKs_Cf.dot(Sigma).dot(dKdls)))
 
         return der_logpw_logqw + der_logpy_logqy + der_logpt_logqt + der_logpf_logqf

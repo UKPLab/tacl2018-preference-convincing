@@ -17,70 +17,218 @@ sys.path.append("./python/models")
 sys.path.append("./python/analysis/lukin_comparison")
 
 import numpy as np
-from gp_classifier_vb import matern_3_2_from_raw_vals, coord_arr_to_1d
-from scipy.stats import multivariate_normal as mvn
+from gp_classifier_vb import matern_3_2_from_raw_vals
+from scipy.stats import multivariate_normal as mvn, norm, bernoulli, kendalltau
 from scipy.linalg import block_diag
-from gp_pref_learning_test import gen_synthetic_prefs
 from collab_pref_learning_vb import CollabPrefLearningVB
 from collab_pref_learning_svi import CollabPrefLearningSVI
+from sklearn.metrics import f1_score, roc_auc_score
 
+def evaluate_models_common_mean(model, item_features, person_features, f,
+                    pair1idxs_tr, pair2idxs_tr, personidxs_tr, prefs_tr, train_points,
+                    pair1idxs_test, pair2idxs_test, test_points):
+    '''
+    Test performance in predicting the ground truth or common mean preference function
+    from multi-user labels.
+    '''
 
-def gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, s, lsy, Npeoplefeatures=4):
+    model.fit(
+        personidxs_tr,
+        pair1idxs_tr,
+        pair2idxs_tr,
+        item_features,
+        prefs_tr,
+        person_features,
+        optimize=False,
+        use_median_ls=True
+    )
 
-    pair1idxs = []
-    pair2idxs = []
-    prefs = []
-    personids = []
+    print(("Final lower bound: %f" % model.lowerbound()))
 
-    # generate a common prior:
-    xvals = np.tile(np.arange(nx)[:, np.newaxis], (1, ny)).flatten().astype(float)
-    yvals = np.tile(np.arange(ny)[np.newaxis, :], (nx, 1)).flatten().astype(float)
-    Kt = matern_3_2_from_raw_vals(np.concatenate((xvals[:, np.newaxis], yvals[:, np.newaxis]), axis=1), ls) / s
-    # t = np.zeros((nx * ny, 1))#
-    t = mvn.rvs(cov=Kt).reshape(nx * ny, 1)
+    # Predict at all locations
+    fpred = model.predict_t(item_features)
+
+    tau_obs = kendalltau(f[train_points], fpred[train_points])[0]
+    print("Kendall's tau (observations): %.3f" % tau_obs)
+
+    # Evaluate the accuracy of the predictions
+    # print("RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
+    # print("NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
+    tau_test = kendalltau(f[test_points], fpred[test_points])[0]
+    print("Kendall's tau (test): %.3f" % tau_test)
+
+    # noise rate in the pairwise data -- how many of the training pairs conflict with the ordering suggested by f?
+    prefs_tr_noisefree = (f[pair1idxs_tr] > f[pair2idxs_tr]).astype(float)
+    noise_rate = 1.0 - np.mean(prefs_tr == prefs_tr_noisefree)
+    print('Noise rate in the pairwise training labels: %f' % noise_rate)
+
+    t = (f[pair1idxs_test] > f[pair2idxs_test]).astype(int)
+    rho_pred = model.predict_common(item_features, pair1idxs_test, pair2idxs_test)
+    rho_pred = rho_pred.flatten()
+    t_pred = np.round(rho_pred)
+
+    brier = np.sqrt(np.mean((t - rho_pred) ** 2))
+    print("Brier score of %.3f" % brier)
+    rho_pred[rho_pred < 1e-5] = 1e-5
+    rho_pred[rho_pred > 1-1e-5] = 1-1e-5
+    cee = -np.mean(t * np.log(rho_pred) + (1 - t) * np.log(1 - rho_pred))
+    print("Cross entropy error of %.3f" % cee)
+
+    f1 = f1_score(t, t_pred)
+    print("F1 score of %.3f" % f1)
+    acc = np.mean(t == t_pred)
+    print("Accuracy of %.3f" % acc)
+    roc = roc_auc_score(t, rho_pred)
+    print("ROC of %.3f" % roc)
+
+    return noise_rate, tau_obs, tau_test, brier, cee, f1, acc, roc
+
+def evaluate_models_per_user(model, item_features, person_features, F,
+                    Ftrain, pair1idxs_tr, pair2idxs_tr, personidxs_tr, prefs_tr, train_points,
+                    Ftest, pair1idxs_test, pair2idxs_test, personidxs_test, test_points):
+    '''
+    Tests the performance in predicting each individual user's preferences.
+    '''
+
+    model.fit(
+        personidxs_tr,
+        pair1idxs_tr,
+        pair2idxs_tr,
+        item_features,
+        prefs_tr,
+        person_features,
+        optimize=False,
+        use_median_ls=True
+    )
+
+    print(("Final lower bound: %f" % model.lowerbound()))
+
+    # Predict at all locations
+    Fpred = model.predict_f(item_features, person_features)
+
+    tau_obs = kendalltau(Ftrain, Fpred[train_points])[0]
+    print("Kendall's tau (observations): %.3f" % tau_obs)
+
+    # Evaluate the accuracy of the predictions
+    # print("RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
+    # print("NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
+    tau_test = kendalltau(Ftest, Fpred[test_points])[0]
+    print("Kendall's tau (test): %.3f" % tau_test)
+
+    # noise rate in the pairwise data -- how many of the training pairs conflict with the ordering suggested by f?
+    prefs_tr_noisefree = (F[pair1idxs_tr, personidxs_tr] > F[pair2idxs_tr, personidxs_tr]).astype(float)
+    noise_rate = 1.0 - np.mean(prefs_tr == prefs_tr_noisefree)
+    print('Noise rate in the pairwise training labels: %f' % noise_rate)
+
+    t = (F[pair1idxs_test, personidxs_test] > F[pair2idxs_test, personidxs_test]).astype(int)
+    rho_pred = model.predict(personidxs_test, pair1idxs_test, pair2idxs_test, item_features, person_features)
+    rho_pred = rho_pred.flatten()
+    t_pred = np.round(rho_pred)
+
+    brier = np.sqrt(np.mean((t - rho_pred) ** 2))
+    print("Brier score of %.3f" % brier)
+    cee = -np.sum(t * np.log(rho_pred) + (1 - t) * np.log(1 - rho_pred))
+    print("Cross entropy error of %.3f" % cee)
+
+    f1 = f1_score(t, t_pred)
+    print("F1 score of %.3f" % f1)
+    acc = np.mean(t == t_pred)
+    print("Accuracy of %.3f" % acc)
+    roc = roc_auc_score(t, rho_pred)
+    print("ROC of %.3f" % roc)
+
+    return noise_rate, tau_obs, tau_test, brier, cee, f1, acc, roc
+
+def split_dataset(N, F, pair1idxs, pair2idxs, personidxs, prefs):
+    # test set size
+    test_size = 0.1
+
+    P = len(prefs)
+
+    # select some data points as test only
+    Ntest = int(test_size * N)
+    test_points = np.random.choice(N, Ntest, replace=False)
+    test_points = np.in1d(np.arange(N), test_points)
+    train_points = np.invert(test_points)
+
+    Ftrain = F[train_points]
+    Ftest = F[test_points]
+
+    train_pairs = train_points[pair1idxs] & train_points[pair2idxs]
+    Ptrain = np.sum(train_pairs)
+    pair1idxs_tr = pair1idxs[train_pairs]
+    pair2idxs_tr = pair2idxs[train_pairs]
+    prefs_tr = prefs[train_pairs]
+    personidxs_tr = personidxs[train_pairs]
+
+    test_pairs = test_points[pair1idxs] & test_points[pair2idxs]
+    Ptest = np.sum(test_pairs)
+    pair1idxs_test = pair1idxs[test_pairs]
+    pair2idxs_test = pair2idxs[test_pairs]
+    prefs_test = prefs[test_pairs]
+    personidxs_test = personidxs[test_pairs]
+
+    # some pairs with one train and one test item will be discarded
+    print("No. training pairs: %i" % Ptrain)
+    print("No. test pairs: %i" % Ptest)
+
+    return Ftrain, pair1idxs_tr, pair2idxs_tr, personidxs_tr, prefs_tr, train_points, Ftest, \
+           pair1idxs_test, pair2idxs_test, personidxs_test, prefs_test, test_points
+
+def gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, sigma, s, lsy, Npeoplefeatures=4):
+    if N > nx * ny:
+        N = nx * ny  # can't have more locations than there are grid squares (only using discrete values here)
+
+    # Some random feature values
+    xvals = np.random.choice(nx, N, replace=True)[:, np.newaxis]
+    yvals = np.random.choice(ny, N, replace=True)[:, np.newaxis]
+
+    # remove repeated coordinates
+    for coord in range(N):
+
+        while np.sum((xvals == xvals[coord]) & (yvals == yvals[coord])) > 1:
+            xvals[coord] = np.random.choice(nx, 1)
+            yvals[coord] = np.random.choice(ny, 1)
+
+    Kt = matern_3_2_from_raw_vals(np.concatenate((xvals.astype(float), yvals.astype(float)), axis=1), ls)
+    t = mvn.rvs(cov=Kt/sigma).reshape(nx * ny, 1)
 
     Kw = [Kt for _ in range(Nfactors)]
     Kw = block_diag(*Kw)
-    w = mvn.rvs(cov=Kw).reshape(Nfactors, nx * ny).T
+    w = mvn.rvs(cov=Kw/s).reshape(Nfactors, nx * ny).T
 
     # person_features = None
-    person_features = np.zeros((Npeoplefeatures, Npeople))
+    person_features = np.zeros((Npeople, Npeoplefeatures))
     for i in range(Npeoplefeatures):
-        person_features[i, :int(Npeople / 2)] = -0.2
-        person_features[i, int(Npeople / 2):] = 0.2
-        person_features[i, :] += np.arange(Npeople)
+        person_features[:, i] = np.random.choice(10, Npeople, replace=True)
 
-    Ky = matern_3_2_from_raw_vals(person_features.T, lsy) / s
+    Ky = matern_3_2_from_raw_vals(person_features, lsy)
     Ky = [Ky for _ in range(Nfactors)]
     Ky = block_diag(*Ky)
     y = mvn.rvs(cov=Ky).reshape(Nfactors, Npeople)
 
     f_all = w.dot(y) + t
 
-    for p in range(Npeople):
-        f_p = f_all[:, p].reshape(nx, ny)
+    # divide P between people
+    personidxs = np.random.choice(Npeople, P, replace=True)
 
-        if p == 0:
-            _, prefs_p, item_features, pair1idxs_p, pair2idxs_p, _, K = gen_synthetic_prefs(f_pre=f_p, nx=nx, ny=ny, N=N,
-                                                                                            P=P, s=s, ls=ls)
-        else:
-            _, prefs_p, _, pair1idxs_p, pair2idxs_p, _, K = gen_synthetic_prefs(f_pre=f_p, nx=nx, ny=ny, N=N, P=P,
-                                                                                s=s, ls=ls, item_features=item_features)
+    # generate pairs indices
+    pair1idxs = np.random.choice(N, P, replace=True)
+    pair2idxs = np.random.choice(N, P, replace=True)
 
-        pair1idxs = np.concatenate((pair1idxs, pair1idxs_p)).astype(int)
-        pair2idxs = np.concatenate((pair2idxs, pair2idxs_p)).astype(int)
-        prefs = np.concatenate((prefs, prefs_p)).astype(int)
-        personids = np.concatenate((personids, np.zeros(len(pair1idxs_p)) + p)).astype(int)
+    # remove indexes of pairs that compare the same data points -- the correct answer is trivial
+    while(np.sum(pair1idxs==pair2idxs)):
+        matchingidxs = pair1idxs==pair2idxs
+        pair2idxs[matchingidxs] = np.random.choice(N, np.sum(matchingidxs), replace=True)
 
-    _, uidxs, inverseidxs = np.unique(coord_arr_to_1d(item_features), return_index=True, return_inverse=True)
-    item_features = item_features[uidxs]
-    pair1idxs = inverseidxs[pair1idxs]
-    pair2idxs = inverseidxs[pair2idxs]
+    # generate the discrete labels from the noisy preferences
+    g_f = (f_all[pair1idxs, personidxs] - f_all[pair2idxs, personidxs]) / np.sqrt(2)
+    phi = norm.cdf(g_f)
+    prefs = bernoulli.rvs(phi)
 
-    # return t as a grid
-    t = t.reshape(nx, ny)
+    item_features = np.concatenate((xvals, yvals), axis=1)
 
-    return prefs, item_features, person_features, pair1idxs, pair2idxs, personids, f_all, w, t, y
+    return prefs, item_features, person_features, pair1idxs, pair2idxs, personidxs, f_all, w, t.flatten(), y
 
 if __name__ == '__main__':
     
@@ -115,12 +263,16 @@ if __name__ == '__main__':
 
         Npeoplefeatures = 3
         ls = [10, 5]
-        s = 0.0001
+        s = 0.1
+        sigma = 0.1
         lsy = 2 + np.zeros(Npeoplefeatures)
         Nfactors = 2
 
         prefs, item_features, person_features, pair1idxs, pair2idxs, personids, latent_f, w, t, y = \
-            gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, s, lsy, Npeoplefeatures)
+            gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, sigma, s, lsy, Npeoplefeatures)
+
+        # return t as a grid
+        t = t.reshape(nx, ny)
 
         Ptest_percent = 0.2
         Ptest = int(Ptest_percent * pair1idxs.size)

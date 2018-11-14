@@ -82,7 +82,9 @@ about the expected value of $\bs f$:
 \Phi(\bs z) &\approx \tilde{\Phi}(\bs z) = \bs G (\bs f-\mathbb{E}[\bs f]) + \Phi(\mathbb{E}[\bs z]), \\
 G_{p,i} &= \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p])) (2y_p - 1)( [i = a_p] - [i = b_p]) 
 \end{flalign}
-where $\bs G$ is the Jacobian matrix of the pairwise likelihood with elements $G_{p,i}$. 
+where $\bs G$ is a matrix containing elements $G_{p,i}$, which are the
+partial derivatives of the pairwise likelihood with respect to each of 
+the latent function values, $\bs f$.
 This creates a dependency between the posterior mean of $\bs f$ and the linearization terms in the likelihood,
 which can be estimated iteratively using variational inference~\citep{steinberg2014extended},
 as we will describe below.
@@ -197,7 +199,7 @@ For the $i$th update, we randomly select observations $\bs y_i = \{ y_p \forall 
 Rather than using the complete matrices, we perform updates using subsets:
 $\bs Q_i$ contains rows and columns for observations in $\bs P_i$,
 $\bs K_{im}$ and $\bs A_i$ contain only rows referred to by $y_p \forall p \in \bs P_i$,
-$\bs G_i$ contains rows in $\bs P_i$ and columns referred to by $y_p \forall p \in \bs P_i$,
+$\bs G_i$ contains rows in $\bs P_i$ and columns referred to by $a_p \forall p \in \bs P_i$ and $b_p \forall p \in \bs P_i$,
 and $\hat{\bs z}_i = \{ \mathbb{E}[\bs z_p] \forall p \in P_i \}$.
 %All matrices with subscript $_i$ contain only the subset of elements relating to 
 %observations in $\bs P_i$.
@@ -284,8 +286,8 @@ to approximate the crowd model defined in Equation \ref{eq:joint_crowd}.
 & \hspace{3.2cm} q(\bs V)q(\bs W)q(\bs t)q(\bs V_m)q(\bs W_m)q(\bs t_m)\prod_{c=1}^{C}q(s_c)q(\sigma), &
 \end{flalign}
 where $\bs u_m$ are the feature vectors of inducing points for the users.
-This approximation factorizes the joint distribution between the latent item factors, $\bs V$, the latent user factors, $\bs W$, and the common means, $\bs t$, 
-but does not requiring factorization across the latent dimensions $\bs w_1,...,\bs w_C$ and $\bs v_1,...,\bs v_C$.
+This approximation factorizes the joint distribution between the latent item factors, $\bs V$, the latent user factors, $\bs W$, and the common means, $\bs t$. 
+%but does not requiring factorization across the latent dimensions $\bs w_1,...,\bs w_C$ and $\bs v_1,...,\bs v_C$.
 The variational factors for the inducing points can be obtained by deriving expectations as follows, beginning with the latent item factors:
 %TODO make the vectors all lower case for V_c and W_c
 %TODO do something to make sure all the block diags are properly indiciated including A_v... but actually I think they are useless because the off-diagonal blocks only affect the collapsed posterior covariance and are never used in computing any other variables.
@@ -298,17 +300,31 @@ The variational factors for the inducing points can be obtained by deriving expe
 & + \sum_{c=1}^C \log\mathcal{N}(\bs v_{m,c}; \bs 0, \bs K_{v,mm}/\mathbb{E}[s_c]) 
 + \textrm{const} & \nonumber \\
 % are the dimensions collapsed to a single MVN?
-= \;& \sum_{c=1}^C \log \mathcal{N}(\bs v_{m,c}; \hat{\bs v}_{m,c}, \bs S_{v,c}) & \\
-\bs S_{v,c}^{-1} = \;\;& \bs K^{-1}_{v,mm}/\mathbb{E}[s_c] 
-+ \bs A_v^T \bs G^T \textrm{diag}(\hat{\bs w}_{c,\bs j}^2 + \bs\Sigma_{c,\bs j,\bs j})\bs Q^{-1} \bs G \bs A_v & \\
-\hat{\bs v}_{m,c} = \;\;& \bs S_{v,c} \bs A_v^T \bs G^T \textrm{diag}(\hat{\bs w}_{c,\bs j}) \bs Q^{-1}(\bs y - \Phi\left(\mathbb{E}[\bs z]) + \bs G(\hat{\bs v}_c^T \hat{\bs w}_c)\right), &
+= \;& \sum_{c=1}^C \log \mathcal{N}(\bs v_{m,c}; \hat{\bs v}_{m,c}, \bs S_{v,c}). &
 \end{flalign}
-where $\bs A_v = \bs K_{v,nm} \bs K_{v,mm}^{-1}$
-and $\hat{\bs w}_{c}$ and $\bs\Sigma_{c}$ are the posterior mean and covariance of the $c$th latent user component
-and the subscript $._{\bs j} = \{ ._{j_p} \forall p \in 1,...,P \}$ contains rows that correspond to the 
-users indicated in the observations, $\bs y$. 
-The matrix $\textrm{diag}(\hat{\bs W}_{c,\bs j}^2 + \bs\Sigma_{c,\bs j})$ therefore
+where the precision is given by:
+\begin{flalign}
+\bs S_{v,c}^{-1} = \;\;& \bs K^{-1}_{v,mm}/\mathbb{E}[s_c] 
++ \bs A_v^T \bs G^T \textrm{diag}(\hat{\bs w}_{c,\bs u}^2 + \bs\Sigma_{c,\bs u,\bs u})\bs Q^{-1} \bs G \bs A_v, &
+\end{flalign}
+where $\bs A_v = \bs K_{v,nm} \bs K_{v,mm}^{-1}$, 
+$\hat{\bs w}_{c}$ and $\bs\Sigma_{c}$ are the variational mean and covariance of the $c$th latent user component (defined below in Equations \ref{eq:what} and \ref{eq:Sigma}),
+and the subscript ${\bs u} = \{ u_p \forall p \in 1,...,P \}$ is the vector of user indexes in the observations, $\bs y$.
+The term $\textrm{diag}(\hat{\bs W}_{c,\bs j}^2 + \bs\Sigma_{c,\bs j})$ 
 scales the diagonal observation precision, $\bs Q^{-1}$, by the latent user factors.
+We use $\bs S_{v,c}^{-1}$ to compute the variational means for each row of $\bs V_m$ as follows:
+\begin{flalign}
+\hat{\bs v}_{m,c} = \;\;& \bs S_{v,c} \bs A_v^T \bs G^T \textrm{diag}(\hat{\bs w}_{c,\bs j}) \bs Q^{-1}\left(\bs y - \Phi(\mathbb{E}[\bs z]) + \sum_{j=1}^U \bs H_{j}(\hat{\bs v}_c^T \hat{\bs w}_{c,j})\right), &
+\end{flalign}
+where $\bs H_j \in P \times N$ contains partial derivatives of the pairwise likelihood
+with respect to $F_{i,j} = \hat{v}_{c,i} \hat{w}_{c,j}$, 
+with elements given by:
+\begin{flalign}
+H_{j,p,i} &= \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p])) (2y_p - 1)( [i = a_p] - [i = b_p]) [j = u_p].
+\end{flalign}
+This is needed to replace $\bs G$ in the single-user model, since the vector of latent function values,
+$\bs f$, has been replaced by the matrix $\bs F$, where each column of $\bs F$ corresponds to a single user.
+
 The variational component for the inducing points of the common item mean follows a similar pattern:
 \begin{flalign}
 \log q(\bs t_m) = \;\;& \mathbb{E}_{q(\bs V)q(\bs W)}[\log \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right)] 
@@ -321,25 +337,34 @@ The variational component for the inducing points of the common item mean follow
 \left(\bs y - \Phi(\mathbb{E}[\bs z]) + \bs G(\hat{\bs t})\right), &
 \end{flalign}
 where $\bs A_t = \bs K_{t,nm} \bs K_{t,mm}^{-1}$.
-Finally, the variational component for the inducing points of the latent user factors
-requires a different linearization term, $\bs H \in P \times U$, to sum over items rather than users:
+
+***TODO: this is not right -- the G term should be the same for all cases. But it is 
+actually the H term specific above, except we sum over either users or 
+item (these are multiple data points)*** 
+Finally, the latent user factors, $\bs W$,
+require a different linearization matrix, $\bs J \in P \times U$, containing partial derivatives 
+of the pairwise likelihood with respect to $\hat{w}_c$. Its elements are given by:
 \begin{flalign}
-H_{p,k} = \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p]) (2y_p - 1) [u_p = k] % needs to be added or subtracted depending on a or b
+J_{p,j} = \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p]) (2y_p - 1) [u_p = j] % needs to be added or subtracted depending on a or b
 \end{flalign} 
 %now multiply by V. What about covariances between v?
-The variational component is then as follows:
+The variational distribution for the inducing points is then as follows:
 \begin{flalign}
 \log q(\bs W_m) = \;\;& \mathbb{E}_{q(\bs V)q(\bs t)}[\log \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right)] 
 + \sum_{c=1}^C \mathbb{E}[\log\mathcal{N}(\bs w_c; \bs 0, \bs K_{w,mm})]
 + \textrm{const} & \nonumber \\
-= \;\;& \sum_{c=1}^C \log \mathcal{N}\left( \bs w_c; \hat{\bs w}_c, \bs \Sigma \right) & \\
+= \;\;& \sum_{c=1}^C \log \mathcal{N}\left( \bs w_c; \hat{\bs w}_c, \bs \Sigma \right), & 
+\end{flalign}
+where the variational parameters are:
+\begin{flalign}
 \bs \Sigma^{-1}_{c} = \;\;& \bs K^{-1}_{w,mm}
-+ \bs A_w^T \left( \bs H^T \textrm{diag}(\hat{\bs v}_{c,\bs a}^2 + \bs S_{c,\bs a, \bs a}) \bs Q^{-1} \bs H^T \right. & \nonumber \\
-& \left. + \bs H^T \textrm{diag}(\hat{\bs v}_{c,\bs b}^2 + \bs S_{c,\bs b, \bs b}) 
-   \bs Q^{-1} \bs H^T \right) \bs A_w & \\
++ \bs A_w^T \left( \bs J^T \textrm{diag}\left(\hat{\bs v}_{c,\bs a}^2 + \bs S_{c,\bs a, \bs a} + 
+\hat{\bs v}_{c,\bs b}^2 + \bs S_{c,\bs b, \bs b} \right.\right. & \nonumber \\
+& \left.\left.  - 2\hat{\bs v}_{c,\bs a}\hat{\bs v}_{c,\bs b} - 2\bs S_{c,\bs a, \bs b} \right) \bs Q^{-1} \bs J^T \right) \bs A_w & \label{eq:Sigma} \\
+%%%%
 \hat{\bs w}_{m,c} = \;\;& \bs \Sigma_{c} \bs A_w^T 
-\left( \bs H^T\textrm{diag}(\hat{\bs v}_{c,\bs a}) - \bs H^T\textrm{diag}(\hat{\bs v}_{c,\bs b}) \right) \bs Q^{-1} & \nonumber \\
-& \left(\bs y - \Phi(\mathbb{E}[\bs z]) + \bs G(\hat{\bs v}_c^T \hat{\bs w}_c)\right), &
+\left( \bs J^T\textrm{diag}(\hat{\bs v}_{c,\bs a}) - \bs J^T\textrm{diag}(\hat{\bs v}_{c,\bs b}) \right) \bs Q^{-1} & \nonumber \\
+& \left(\bs y - \Phi(\mathbb{E}[\bs z]) + \sum_{j=1}^U \bs H_u (\hat{\bs v}_c^T \hat{\bs w}_{c,j})\right), & \label{eq:what}
 \end{flalign}
 where the subscripts $._{\bs a} = \{ ._{a_p} \forall p \in 1,...,P \}$
 and  $._{\bs b} = \{ ._{b_p} \forall p \in 1,...,P \}$ are lists of indices to the first and 

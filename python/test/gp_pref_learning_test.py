@@ -6,13 +6,13 @@ Created on 3 Mar 2017
 '''
 from scipy.stats import multivariate_normal as mvn, kendalltau, norm, bernoulli
 import numpy as np
-from gp_classifier_vb import matern_3_2_from_raw_vals, coord_arr_to_1d
+from gp_classifier_vb import matern_3_2_from_raw_vals
 from gp_pref_learning import GPPrefLearning
 import logging
 logging.basicConfig(level=logging.DEBUG)
 from sklearn.metrics import f1_score, roc_auc_score
 
-def gen_synthetic_prefs(f_prior_mean=None, f_pre=None, nx=10, ny=10, N=100, P=5000, ls=[1, 40], s=100, item_features=None):
+def gen_synthetic_prefs(nx=10, ny=10, N=100, P=5000, ls=[1, 40], s=100):
     # f_prior_mean should contain the means for all the grid squares
     # P is number of pairs for training
     # s is inverse precision scale for the latent function.
@@ -23,12 +23,8 @@ def gen_synthetic_prefs(f_prior_mean=None, f_pre=None, nx=10, ny=10, N=100, P=50
         N = nx * ny # can't have more locations than there are grid squares (only using discrete values here)
     
     # Some random feature values
-    if item_features is not None:
-        xvals = item_features[:, 0:1]
-        yvals = item_features[:, 1:2]
-    else:
-        xvals = np.random.choice(nx, N, replace=True)[:, np.newaxis]
-        yvals = np.random.choice(ny, N, replace=True)[:, np.newaxis]
+    xvals = np.random.choice(nx, N, replace=True)[:, np.newaxis]
+    yvals = np.random.choice(ny, N, replace=True)[:, np.newaxis]
 
     # remove repeated coordinates
     for coord in range(N):
@@ -38,15 +34,8 @@ def gen_synthetic_prefs(f_prior_mean=None, f_pre=None, nx=10, ny=10, N=100, P=50
             yvals[coord] = np.random.choice(ny, 1)           
         
     K = matern_3_2_from_raw_vals(np.concatenate((xvals.astype(float), yvals.astype(float)), axis=1), ls)
+    f = mvn.rvs(cov=K/s) # zero mean. # generate the function values for the pairs
 
-    # generate the function values for the pairs
-    if f_pre is not None:
-        f = f_pre[xvals, yvals].flatten()
-    elif f_prior_mean is None:
-        f = mvn.rvs(cov=K/s) # zero mean        
-    else:
-        f = mvn.rvs(mean=f_prior_mean[xvals, yvals].flatten(), cov=K/s) # zero mean
-    
     # generate pairs indices
     pair1idxs = np.random.choice(N, P, replace=True)
     pair2idxs = np.random.choice(N, P, replace=True)
@@ -63,7 +52,92 @@ def gen_synthetic_prefs(f_prior_mean=None, f_pre=None, nx=10, ny=10, N=100, P=50
 
     item_features = np.concatenate((xvals, yvals), axis=1)
 
-    return N, prefs, item_features, pair1idxs, pair2idxs, f, K
+    return prefs, item_features, pair1idxs, pair2idxs, f
+
+def split_dataset(N, f, pair1idxs, pair2idxs, prefs):
+    # test set size
+    test_size = 0.1
+
+    P = len(prefs)
+
+    # select some data points as test only
+    Ntest = int(test_size * N)
+    test_points = np.random.choice(N, Ntest, replace=False)
+    test_points = np.in1d(np.arange(N), test_points)
+    train_points = np.invert(test_points)
+
+    ftrain = f[train_points]
+    ftest = f[test_points]
+
+    train_pairs = train_points[pair1idxs] & train_points[pair2idxs]
+    Ptrain = np.sum(train_pairs)
+    pair1idxs_tr = pair1idxs[train_pairs]
+    pair2idxs_tr = pair2idxs[train_pairs]
+    prefs_tr = prefs[train_pairs]
+
+    test_pairs = test_points[pair1idxs] & test_points[pair2idxs]
+    Ptest = np.sum(test_pairs)
+    pair1idxs_test = pair1idxs[test_pairs]
+    pair2idxs_test = pair2idxs[test_pairs]
+    prefs_test = prefs[test_pairs]
+
+    # some pairs with one train and one test item will be discarded
+    print("No. training pairs: %i" % Ptrain)
+    print("No. test pairs: %i" % Ptest)
+
+    return ftrain, pair1idxs_tr, pair2idxs_tr, prefs_tr, train_points, ftest, \
+           pair1idxs_test, pair2idxs_test, prefs_test, test_points
+
+def evaluate_models(model, item_features, f,
+                    ftrain, pair1idxs_tr, pair2idxs_tr, prefs_tr, train_points,
+                    ftest, pair1idxs_test, pair2idxs_test, test_points):
+
+    model.fit(
+        pair1idxs_tr,
+        pair2idxs_tr,
+        item_features,
+        prefs_tr,
+        optimize=False,
+        use_median_ls=True
+    )
+
+    print(("Final lower bound: %f" % model.lowerbound()))
+
+    # Predict at all locations
+    fpred, vpred = model.predict_f(item_features)
+
+    tau_obs = kendalltau(ftrain, fpred[train_points])[0]
+    print("Kendall's tau (observations): %.3f" % tau_obs)
+
+    # Evaluate the accuracy of the predictions
+    # print("RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
+    # print("NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
+    tau_test = kendalltau(ftest, fpred[test_points])[0]
+    print("Kendall's tau (test): %.3f" % tau_test)
+
+    # noise rate in the pairwise data -- how many of the training pairs conflict with the ordering suggested by f?
+    prefs_tr_noisefree = (f[pair1idxs_tr] > f[pair2idxs_tr]).astype(float)
+    noise_rate = 1.0 - np.mean(prefs_tr == prefs_tr_noisefree)
+    print('Noise rate in the pairwise training labels: %f' % noise_rate)
+
+    t = (f[pair1idxs_test] > f[pair2idxs_test]).astype(int)
+    rho_pred, var_rho_pred = model.predict(item_features, pair1idxs_test, pair2idxs_test)
+    rho_pred = rho_pred.flatten()
+    t_pred = np.round(rho_pred)
+
+    brier = np.sqrt(np.mean((t - rho_pred) ** 2))
+    print("Brier score of %.3f" % brier)
+    cee = -np.sum(t * np.log(rho_pred) + (1 - t) * np.log(1 - rho_pred))
+    print("Cross entropy error of %.3f" % cee)
+
+    f1 = f1_score(t, t_pred)
+    print("F1 score of %.3f" % f1)
+    acc = np.mean(t == t_pred)
+    print("Accuracy of %.3f" % acc)
+    roc = roc_auc_score(t, rho_pred)
+    print("ROC of %.3f" % roc)
+
+    return noise_rate, tau_obs, tau_test, brier, cee, f1, acc, roc
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)    
@@ -73,76 +147,42 @@ if __name__ == '__main__':
     # make sure the simulation is repeatable
     if fix_seeds:
         np.random.seed(1)
-    
-    N, prefs, item_features, pair1idxs, pair2idxs, f, _ = gen_synthetic_prefs()
 
-    # separate training and test data
-    Ptest = int(len(prefs) * 0.1)
-    testpairs = np.random.choice(pair1idxs.shape[0], Ptest, replace=False)
-    testidxs = np.zeros(pair1idxs.shape[0], dtype=bool)
-    testidxs[testpairs] = True
-    trainidxs = np.invert(testidxs)
+    ls = [np.random.rand() * 20, np.random.rand() * 20]
 
-    f_test = f
-    
+    N = 100
+
+    prefs, item_features, pair1idxs, pair2idxs, f = gen_synthetic_prefs(
+        nx=10,
+        ny=10,
+        N=N,
+        P=5000,
+        ls=ls,
+        s=0.1
+    )
+
+    ftrain, pair1idxs_tr, pair2idxs_tr, prefs_tr, train_points, \
+    ftest, pair1idxs_test, pair2idxs_test, prefs_test, test_points = \
+        split_dataset(N, f, pair1idxs, pair2idxs, prefs)
+
     models = {}
-    
-    #initial_ls = [5, 10]
-    initial_ls = [100, 100]
 
     if fix_seeds:
         np.random.seed() # do this if we want to use a different seed each time to test the variation in results
 
     # # Create a GPPrefLearning model
-    model = GPPrefLearning(2, mu0=0, shape_s0=100, rate_s0=100, ls_initial=initial_ls, use_svi=True, ninducing=50,
-                           max_update_size=100, forgetting_rate=0.9)
-    model.verbose = True
-
+    model = GPPrefLearning(2, mu0=0, shape_s0=100, rate_s0=100, ls_initial=None, use_svi=True, ninducing=50,
+                           max_update_size=100, forgetting_rate=0.9, verbose=True)
     models['SVI'] = model
     
     # Create a GPPrefLearning model
-    model = GPPrefLearning(2, mu0=0, shape_s0=100, rate_s0=100, ls_initial=initial_ls, use_svi=False)
+    model = GPPrefLearning(2, mu0=0, shape_s0=100, rate_s0=100, ls_initial=None, use_svi=False)
     model.verbose = True
 
     #models['VB'] = model
 
-    f_means = {}
-    
     for modelkey in models:
         model = models[modelkey]
-        
         print(("--- Running model %s ---" % modelkey))
-        
-        model.fit(pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], optimize=False)
-        print(("Final lower bound: %f" % model.lowerbound()))
-        
-        f_means[modelkey] = model.obs_f
-        
-        # Predict at all locations
-        fpred, vpred = model.predict_f(item_features)
-        
-        # Compare the observation point values with the ground truth
-        obs_coords_1d = coord_arr_to_1d(model.obs_coords)
-        test_coords_1d = coord_arr_to_1d(item_features)
-        f_obs = [f[(test_coords_1d==obs_coords_1d[i]).flatten()][0] for i in range(model.obs_coords.shape[0])]
-        print(("Kendall's tau (observations): %.3f" % kendalltau(f_obs, model.obs_f.flatten())[0]))
-            
-        # Evaluate the accuracy of the predictions
-        #print("RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
-        #print("NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
-        print(("Kendall's tau (test): %.3f" % kendalltau(f_test, fpred)[0] ))
-            
-        t = (f[pair1idxs[testidxs]] > f[pair2idxs[testidxs]]).astype(int)
-        rho_pred, var_rho_pred = model.predict(item_features, pair1idxs[testidxs], pair2idxs[testidxs])
-        rho_pred = rho_pred.flatten()
-        t_pred = np.round(rho_pred)
-        
-        print(("Brier score of %.3f" % np.sqrt(np.mean((t-rho_pred)**2))))
-        print(("Cross entropy error of %.3f" % -np.sum(t * np.log(rho_pred) + (1-t) * np.log(1 - rho_pred)) ))
-
-        print(("F1 score of %.3f" % f1_score(t, t_pred)))
-        print(("Accuracy of %.3f" % np.mean(t==t_pred)))
-        print(("ROC of %.3f" % roc_auc_score(t, rho_pred)))
-        
-        # looks like we don't correct the modified order of points in predict() that occurs in the unique locations function 
-        
+        evaluate_models(model, item_features, f, ftrain, pair1idxs_tr, pair2idxs_tr, prefs_tr, train_points,
+                        ftest, pair1idxs_test, pair2idxs_test, test_points)

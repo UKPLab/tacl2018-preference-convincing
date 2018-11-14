@@ -204,7 +204,7 @@ $t\sim \mathcal{GP}(\bs 0, k_{\theta} /\sigma_t)$,
 that is shared across all users. 
 Its values $\bs t = \{t(\bs {x}_1),...,t(\bs {x}_N)\}$ represent a consensus between users,
 if present, while allowing individual users' preferences to deviate from this value through $\bs V^T \bs W$. 
-Hence, $\bs t$ can model the underlying ground truth in crowdsourcing scenario, or when using
+Hence, $\bs t$ can model the underlying ground truth or consensus in crowdsourcing scenarios, or when using
 multiple label sources to learn preferences for one individual.
 The joint distribution of this crowd model is:
 \begin{flalign}
@@ -215,8 +215,9 @@ p\left( \bs{y}, \bs V, \bs W, \bs t, s_1, ..., s_C, \sigma_t | k_{\theta}, \alph
 & \hspace{-2.6cm} \prod_{c=1}^C \left\{
 \mathcal{N}(\bs v_c; \bs 0, \bs K_{v,\theta} /s_c) 
 \mathcal{N}(\bs w_c; \bs 0, \bs K_{w,\theta}) \mathcal{G}(s_c; \alpha_0, \beta_0) \right\}, \\
-\textrm{where } z_p = &  \bs v_{.,a_p}^T \bs{w}_{.,j_p} - \bs v_{.,b_p}^T \bs{w}_{.,j_p}, &
+\textrm{where } z_p = &  \bs v_{.,a_p}^T \bs{w}_{.,u_p} + t_{a_p} - \bs v_{.,b_p}^T \bs{w}_{.,u_p} - t_{b_p} , &
 \label{eq:joint_crowd}
 \end{flalign}
 and $\sigma_t$ is the inverse scale of $t$.
-The index $p$ now refers to a tuple, $\{j_p, a_p, b_p \}$ that identifies the user and a pair of items.
+The index $p$, which identifies one observation,
+ now refers to a tuple, $\{u_p, a_p, b_p \}$ that identifies the user and a pair of items.

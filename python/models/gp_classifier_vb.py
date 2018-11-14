@@ -930,7 +930,7 @@ class GPClassifierVB(object):
             self._init_params(mu0, False, K)  # don't reset the parameters, but make sure mu0 is updated
 
         if not process_obs:
-            self.max_iter_VB += self.max_iter_VB_per_fit
+            self.max_iter_VB = self.vb_iter + self.max_iter_VB_per_fit
 
         if not len(self.obs_coords):
             return

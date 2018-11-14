@@ -62,7 +62,7 @@ from sklearn.decomposition import FactorAnalysis
 from scipy.stats import multivariate_normal as mvn, norm
 import logging
 from gp_classifier_vb import matern_3_2_from_raw_vals, derivfactor_matern_3_2_from_raw_vals, temper_extreme_probs, \
-    check_convergence, diagonal_from_raw_vals
+    check_convergence, diagonal_from_raw_vals, compute_median_lengthscales
 from gp_pref_learning import GPPrefLearning, get_unique_locations, pref_likelihood
 from scipy.linalg import block_diag
 from scipy.special import gammaln, psi
@@ -390,8 +390,7 @@ class CollabPrefLearningVB(object):
         self.y = mvn.rvs(np.zeros(self.Npeople), self.Ky_block, self.Nfactors).reshape(self.Nfactors, self.Npeople)
         self.y /= (self.shape_sy/self.rate_sy)[:, None]
 
-        self.sy_matrix = np.ones(self.invKy.shape) * (self.shape_sy0 / float(self.rate_sy0))
-        self.y_cov = self.Ky / self.sy_matrix
+        self.y_cov = self.Ky
 
         self.Sigma_y = np.zeros((self.Npeople, self.Npeople, self.Nfactors))
 
@@ -448,7 +447,7 @@ class CollabPrefLearningVB(object):
                 pref_u = np.array(items_2_coords, copy=False)
             self.N = self.obs_coords.shape[0]
 
-            self.personIDs = personIDs
+            self.personIDs = np.array(personIDs)
             if person_features is not None:
                 self.person_features = np.array(person_features,
                                                 copy=False)  # rows per person, columns for feature values
@@ -483,7 +482,7 @@ class CollabPrefLearningVB(object):
 
     def fit(self, personIDs=None, items_1_coords=None, items_2_coords=None, item_features=None,
             preferences=None, person_features=None, optimize=False, maxfun=20, use_MAP=False, nrestarts=1,
-            input_type='binary'):
+            input_type='binary', use_median_ls=False):
         """
         Learn the model with data using variational Bayes.
 
@@ -511,8 +510,13 @@ class CollabPrefLearningVB(object):
                                   person_features,
                                   maxfun, use_MAP, nrestarts, input_type)
 
+        # if personIDs is not none, we assume this is new data being passed in
         self._process_observations(personIDs, items_1_coords, items_2_coords, item_features, preferences,
                                    person_features, input_type)
+
+        if use_median_ls and personIDs is not None:
+            self.ls = compute_median_lengthscales(self.obs_coords)
+            self.lsy = compute_median_lengthscales(self.person_features)
 
         self._init_params()
 
@@ -693,7 +697,7 @@ class CollabPrefLearningVB(object):
         x = self.w.T.dot(invQ_f.reshape(self.Npeople, self.N).T) # here we sum over items
         x = x.reshape(self.Npeople * self.Nfactors, 1)
 
-        self.y, self.y_cov = update_gaussian(self.invKy, self.sy_matrix, y_prec, x)
+        self.y, self.y_cov = update_gaussian(self.invKy, 1, y_prec, x)
         self.y = np.reshape(self.y, (self.Nfactors, self.Npeople))  # y is Npeople x Nfactors
 
         for f in range(self.Nfactors):
@@ -702,8 +706,6 @@ class CollabPrefLearningVB(object):
                                                                    self.invKy_block, self.y[f:f + 1, :].T,
                                                                    np.zeros((self.Npeople, 1)),
                                                                    f_cov=self.y_cov[fidxs, :][:, fidxs])
-
-            self.sy_matrix[fidxs, :] = self.shape_sy[f] / self.rate_sy[f]  # sy_rows
 
     def _logpD(self):
         fmean = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
@@ -778,7 +780,7 @@ class CollabPrefLearningVB(object):
             logpt = 0
             logqt = 0
 
-        logpy = expec_pdf_gaussian(self.Ky, self.invKy, Elnsy, self.Npeople, self.sy_matrix,
+        logpy = expec_pdf_gaussian(self.Ky, self.invKy, Elnsy, self.Npeople, 1,
                    self.y.reshape(self.Npeople * self.Nfactors, 1), 0, self.y_cov, 0)
         logqy = expec_q_gaussian(self.y_cov, self.Npeople * self.Nfactors)
 
@@ -896,7 +898,7 @@ class CollabPrefLearningVB(object):
             logpt = 0
             logqt = 0
 
-        logpy = expec_pdf_gaussian(self.Ky, self.invKy, Elnsy, self.Npeople, self.sy_matrix,
+        logpy = expec_pdf_gaussian(self.Ky, self.invKy, Elnsy, self.Npeople, 1,
                    self.y.reshape(self.Npeople * self.Nfactors, 1), 0, self.y_cov, 0) #- 0.5 * self.Npeople# * self.N
         # f_cov=self.y_cov not needed because it simplifies with a term in the likelihood to D
         logqy = expec_q_gaussian(self.y_cov, self.Npeople * self.Nfactors)
@@ -1086,7 +1088,7 @@ class CollabPrefLearningVB(object):
             invKt = self.invK.dot(self.t)
             t_out = K.dot(invKt)
 
-            cov_t = K_starstar + covpair.dot(self.t_cov + self.K * self.st).dot(covpair.T)
+            cov_t = K_starstar * self.rate_st / self.shape_st + covpair.dot(self.t_cov + self.K * self.st).dot(covpair.T)
         else:
             t_out = np.zeros((N, 1))
 
@@ -1101,6 +1103,29 @@ class CollabPrefLearningVB(object):
                covpair.dot(self.w_cov[fidxs, :][:, fidxs] - self.K * self.rate_sw[f] / self.shape_sw[f]).dot(covpair.T)
 
         return t_out, w_out, cov_t, cov_w
+
+    def predict_common(self, item_features, item_0_idxs, item_1_idxs):
+        '''
+        Predict the common consensus values using t.
+        '''
+        if not self.use_t:
+            return np.zeros(len(item_0_idxs))
+
+        K = self.kernel_func(item_features, self.ls, self.obs_coords)
+        K_starstar = self.kernel_func(item_features, self.ls, item_features)
+        covpair = K.dot(self.invK)
+        invKt = self.invK.dot(self.t)
+
+        t_out = K.dot(invKt)
+        cov_t = K_starstar * self.rate_st / self.shape_st + covpair.dot(self.t_cov + self.K * self.st).dot(covpair.T)
+
+        predicted_prefs = pref_likelihood(t_out, cov_t[item_0_idxs, item_1_idxs]
+                                          + cov_t[item_0_idxs, item_1_idxs]
+                                          - cov_t[item_0_idxs, item_1_idxs]
+                                          - cov_t[item_0_idxs, item_1_idxs],
+                                          subset_idxs=[], v=item_0_idxs, u=item_1_idxs)
+
+        return predicted_prefs
 
     def _predict_y(self, person_features):
 
