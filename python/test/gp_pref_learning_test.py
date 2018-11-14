@@ -90,7 +90,7 @@ def split_dataset(N, f, pair1idxs, pair2idxs, prefs):
 
 def evaluate_models(model, item_features, f,
                     ftrain, pair1idxs_tr, pair2idxs_tr, prefs_tr, train_points,
-                    ftest, pair1idxs_test, pair2idxs_test, test_points):
+                    ftest, pair1idxs_test, pair2idxs_test, test_points, personidxs_tr=None, personidxs_test=None):
 
     model.fit(
         pair1idxs_tr,
@@ -116,11 +116,19 @@ def evaluate_models(model, item_features, f,
     print("Kendall's tau (test): %.3f" % tau_test)
 
     # noise rate in the pairwise data -- how many of the training pairs conflict with the ordering suggested by f?
-    prefs_tr_noisefree = (f[pair1idxs_tr] > f[pair2idxs_tr]).astype(float)
+    if personidxs_tr is None:
+        prefs_tr_noisefree = (f[pair1idxs_tr] > f[pair2idxs_tr]).astype(float)
+    else:
+        prefs_tr_noisefree = (f[pair1idxs_tr, personidxs_tr] > f[pair2idxs_tr, personidxs_tr]).astype(float)
+
     noise_rate = 1.0 - np.mean(prefs_tr == prefs_tr_noisefree)
     print('Noise rate in the pairwise training labels: %f' % noise_rate)
 
-    t = (f[pair1idxs_test] > f[pair2idxs_test]).astype(int)
+    if personidxs_test is None:
+        t = (f[pair1idxs_test] > f[pair2idxs_test]).astype(int)
+    else:
+        t = (f[pair1idxs_test, personidxs_test] > f[pair2idxs_test, personidxs_test]).astype(int)
+
     rho_pred, var_rho_pred = model.predict(item_features, pair1idxs_test, pair2idxs_test)
     rho_pred = rho_pred.flatten()
     t_pred = np.round(rho_pred)

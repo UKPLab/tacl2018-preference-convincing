@@ -24,6 +24,65 @@ from collab_pref_learning_vb import CollabPrefLearningVB
 from collab_pref_learning_svi import CollabPrefLearningSVI
 from sklearn.metrics import f1_score, roc_auc_score
 
+def evaluate_models_personal(model, item_features, person_features, F,
+                             pair1idxs_tr, pair2idxs_tr, personidxs_tr, prefs_tr, train_points,
+                             pair1idxs_test, pair2idxs_test, personidxs_test, test_points):
+    '''
+    Test performance in predicting the ground truth or common mean preference function
+    from multi-user labels.
+    '''
+
+    model.fit(
+        personidxs_tr,
+        pair1idxs_tr,
+        pair2idxs_tr,
+        item_features,
+        prefs_tr,
+        person_features,
+        optimize=False,
+        use_median_ls=True
+    )
+
+    print(("Final lower bound: %f" % model.lowerbound()))
+
+    # Predict at all locations
+    Fpred = model.predict_f(item_features, person_features)
+
+    tau_obs = kendalltau(F[train_points], Fpred[train_points])[0]
+    print("Kendall's tau (observations): %.3f" % tau_obs)
+
+    # Evaluate the accuracy of the predictions
+    # print("RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
+    # print("NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
+    tau_test = kendalltau(F[test_points], Fpred[test_points])[0]
+    print("Kendall's tau (test): %.3f" % tau_test)
+
+    # noise rate in the pairwise data -- how many of the training pairs conflict with the ordering suggested by f?
+    prefs_tr_noisefree = (F[pair1idxs_tr, personidxs_tr] > F[pair2idxs_tr, personidxs_tr]).astype(float)
+    noise_rate = 1.0 - np.mean(prefs_tr == prefs_tr_noisefree)
+    print('Noise rate in the pairwise training labels: %f' % noise_rate)
+
+    t = (F[pair1idxs_test, personidxs_test] > F[pair2idxs_test, personidxs_test]).astype(int)
+    rho_pred = model.predict(personidxs_test, pair1idxs_test, pair2idxs_test, item_features, person_features)
+    rho_pred = rho_pred.flatten()
+    t_pred = np.round(rho_pred)
+
+    brier = np.sqrt(np.mean((t - rho_pred) ** 2))
+    print("Brier score of %.3f" % brier)
+    rho_pred[rho_pred < 1e-5] = 1e-5
+    rho_pred[rho_pred > 1-1e-5] = 1-1e-5
+    cee = -np.mean(t * np.log(rho_pred) + (1 - t) * np.log(1 - rho_pred))
+    print("Cross entropy error of %.3f" % cee)
+
+    f1 = f1_score(t, t_pred)
+    print("F1 score of %.3f" % f1)
+    acc = np.mean(t == t_pred)
+    print("Accuracy of %.3f" % acc)
+    roc = roc_auc_score(t, rho_pred)
+    print("ROC of %.3f" % roc)
+
+    return noise_rate, tau_obs, tau_test, brier, cee, f1, acc, roc
+
 def evaluate_models_common_mean(model, item_features, person_features, f,
                     pair1idxs_tr, pair2idxs_tr, personidxs_tr, prefs_tr, train_points,
                     pair1idxs_test, pair2idxs_test, test_points):
@@ -83,61 +142,6 @@ def evaluate_models_common_mean(model, item_features, person_features, f,
 
     return noise_rate, tau_obs, tau_test, brier, cee, f1, acc, roc
 
-def evaluate_models_per_user(model, item_features, person_features, F,
-                    Ftrain, pair1idxs_tr, pair2idxs_tr, personidxs_tr, prefs_tr, train_points,
-                    Ftest, pair1idxs_test, pair2idxs_test, personidxs_test, test_points):
-    '''
-    Tests the performance in predicting each individual user's preferences.
-    '''
-
-    model.fit(
-        personidxs_tr,
-        pair1idxs_tr,
-        pair2idxs_tr,
-        item_features,
-        prefs_tr,
-        person_features,
-        optimize=False,
-        use_median_ls=True
-    )
-
-    print(("Final lower bound: %f" % model.lowerbound()))
-
-    # Predict at all locations
-    Fpred = model.predict_f(item_features, person_features)
-
-    tau_obs = kendalltau(Ftrain, Fpred[train_points])[0]
-    print("Kendall's tau (observations): %.3f" % tau_obs)
-
-    # Evaluate the accuracy of the predictions
-    # print("RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
-    # print("NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
-    tau_test = kendalltau(Ftest, Fpred[test_points])[0]
-    print("Kendall's tau (test): %.3f" % tau_test)
-
-    # noise rate in the pairwise data -- how many of the training pairs conflict with the ordering suggested by f?
-    prefs_tr_noisefree = (F[pair1idxs_tr, personidxs_tr] > F[pair2idxs_tr, personidxs_tr]).astype(float)
-    noise_rate = 1.0 - np.mean(prefs_tr == prefs_tr_noisefree)
-    print('Noise rate in the pairwise training labels: %f' % noise_rate)
-
-    t = (F[pair1idxs_test, personidxs_test] > F[pair2idxs_test, personidxs_test]).astype(int)
-    rho_pred = model.predict(personidxs_test, pair1idxs_test, pair2idxs_test, item_features, person_features)
-    rho_pred = rho_pred.flatten()
-    t_pred = np.round(rho_pred)
-
-    brier = np.sqrt(np.mean((t - rho_pred) ** 2))
-    print("Brier score of %.3f" % brier)
-    cee = -np.sum(t * np.log(rho_pred) + (1 - t) * np.log(1 - rho_pred))
-    print("Cross entropy error of %.3f" % cee)
-
-    f1 = f1_score(t, t_pred)
-    print("F1 score of %.3f" % f1)
-    acc = np.mean(t == t_pred)
-    print("Accuracy of %.3f" % acc)
-    roc = roc_auc_score(t, rho_pred)
-    print("ROC of %.3f" % roc)
-
-    return noise_rate, tau_obs, tau_test, brier, cee, f1, acc, roc
 
 def split_dataset(N, F, pair1idxs, pair2idxs, personidxs, prefs):
     # test set size
@@ -174,6 +178,7 @@ def split_dataset(N, F, pair1idxs, pair2idxs, personidxs, prefs):
 
     return Ftrain, pair1idxs_tr, pair2idxs_tr, personidxs_tr, prefs_tr, train_points, Ftest, \
            pair1idxs_test, pair2idxs_test, personidxs_test, prefs_test, test_points
+
 
 def gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, sigma, s, lsy, Npeoplefeatures=4):
     if N > nx * ny:
@@ -229,6 +234,7 @@ def gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, sigma, s, 
     item_features = np.concatenate((xvals, yvals), axis=1)
 
     return prefs, item_features, person_features, pair1idxs, pair2idxs, personidxs, f_all, w, t.flatten(), y
+
 
 if __name__ == '__main__':
     
