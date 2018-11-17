@@ -71,6 +71,7 @@ userids, items1, items2, prefs = extract_pairs_from_ranking(ranking_data.values[
 
 nusers = len(np.unique(userids))
 active_items = np.unique(np.array([items1, items2]))
+item_features = item_features[:np.max(active_items)+1, :]
 nitems = len(active_items)
 print('Found %i users, %i items, and %i pairs per user.' % (nusers, nitems, prefs.shape[0]/nusers))
 
@@ -83,7 +84,7 @@ print('User features: %i users, %i features.'% (user_features.shape[0], user_fea
 # items1 = items1[:ndebug]
 # items2 = items2[:ndebug]
 # prefs = prefs[:ndebug]
-# 
+#
 # # need to do this in case the sample only contains ones or zeros in the test set.
 # idxs_to_flip = np.random.choice(ndebug, int(0.5 * ndebug), replace=False)
 # tmp = items1[idxs_to_flip]
