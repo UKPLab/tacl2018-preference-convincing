@@ -159,7 +159,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.y_ninducing = self.Npeople
 
             # Prior covariance of y
-            self.invKy_mm_block = np.eye(self.y_ninducing)
+            self.Ky_mm_block = np.eye(self.y_ninducing)
+            self.invKy_mm_block = self.Ky_mm_block
+            self.Ky_nm_block = self.Ky_mm_block
 
             # posterior covariance
             self.yS = np.array([self.Ky_mm_block for _ in range(self.Nfactors)])
@@ -219,6 +221,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         # Related to t, the item means -----------------------------------------------------------------
         self.t_u = np.zeros((self.ninducing, 1))  # posterior means
+        self.tS = None
 
         if self.use_t:
             self.tinvSm = np.zeros((self.ninducing, 1), dtype=float)# theta_1/posterior covariance dot means
@@ -276,10 +279,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 t_samples = K_nm.dot(invK_mm).dot(t_samples.T).T  # assume zero mean
             y_samples = np.array([Ky_nm.dot(invKy_mm).dot(y_samples[f]) for f in range(self.Nfactors)])  # assume zero mean
 
-        f_samples = np.array([w_samples[:, s, :].T.dot(y_samples[:, :, s]).T for s in range(nsamples)])
-
         if self.use_t:
-            f_samples += t_samples[:, None, :]
+            f_samples = np.array([w_samples[:, s, :].T.dot(y_samples[:, :, s]).T + t_samples[s][None, :]for s in range(nsamples)])
+        else:
+            f_samples = np.array([w_samples[:, s, :].T.dot(y_samples[:, :, s]).T for s in range(nsamples)])
 
         f_samples = f_samples.reshape(nsamples, self.N * self.Npeople).T
 
@@ -543,10 +546,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         self.prev_yinvSm = self.yinvSm
         self.prev_yinvS = self.yinvS
 
-        if self.person_features is None:
-            covpair = np.eye(self.Npeople)
-        else:
-            covpair = self.invKy_mm_block.dot(self.Ky_nm_block[self.y_idx_i].T)
+        covpair = self.invKy_mm_block.dot(self.Ky_nm_block[self.y_idx_i].T)
 
         for G_iter in range(self.max_iter_G):
             oldG = self.G
@@ -650,7 +650,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
     def _logpD(self):
         # K_star, um_minus_mu0, uS, invK_mm, v, u
         logrho, lognotrho, _ = self._post_sample(self.K_nm, self.invK_mm, self.w_u, self.wS, self.t_u, self.tS,
-                                     self.Ky_nm_block, self.invKy_mm_block, self.y_u, self.y_var,
+                                     self.Ky_nm_block, self.invKy_mm_block, self.y_u,
+                                     np.array([np.diag(self.yS[f]) for f in range(self.Nfactors)]),
                                      self.pref_v, self.pref_u, expectedlog=True)
 
 
@@ -805,9 +806,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
     def _y_var(self):
         v = np.array([inducing_to_observation_moments(self.Ky_mm_block, self.invKy_mm_block, self.Ky_nm_block,
-                                               self.y_u[f:f+1, :].T, 0, S=self.yS[f], K_nn=1.0, full_cov=False)[0]
+                                       self.y_u[f:f+1, :].T, 0, S=self.yS[f], K_nn=1.0, full_cov=False)[1]
                       for f in range(self.Nfactors)])
-        return v.flatten()
+        return v
 
     def _predict_y(self, person_features):
 

@@ -58,11 +58,11 @@ Created on 2 Jun 2016
 """
 
 import numpy as np
-from sklearn.decomposition import FactorAnalysis
+# from sklearn.decomposition import FactorAnalysis
 from scipy.stats import multivariate_normal as mvn, norm
 import logging
 from gp_classifier_vb import matern_3_2_from_raw_vals, derivfactor_matern_3_2_from_raw_vals, temper_extreme_probs, \
-    check_convergence, diagonal_from_raw_vals, compute_median_lengthscales
+    check_convergence, diagonal_from_raw_vals, compute_median_lengthscales, derivfactor_diag_from_raw_vals
 from gp_pref_learning import GPPrefLearning, get_unique_locations, pref_likelihood
 from scipy.linalg import block_diag
 from scipy.special import gammaln, psi
@@ -223,7 +223,7 @@ class CollabPrefLearningVB(object):
         else:
             self.conv_threshold = 1e-1
 
-        self.max_iter_G = 50
+        self.max_iter_G = 5
         self.max_iter = 1000
         self.min_iter = 1
         self.n_converged = 3  # number of iterations while apparently converged (avoids numerical errors)
@@ -243,6 +243,9 @@ class CollabPrefLearningVB(object):
             self.kernel_func = matern_3_2_from_raw_vals
             self.kernel_der = derivfactor_matern_3_2_from_raw_vals
         # the other kernels no longer work because they need to use kernel functions that work with the raw values
+        elif cov_type == 'diagonal':
+            self.kernel_func = diagonal_from_raw_vals
+            self.kernel_der = derivfactor_diag_from_raw_vals
         else:
             logging.error('PreferenceComponents: Invalid covariance type %s' % cov_type)
 
@@ -477,7 +480,7 @@ class CollabPrefLearningVB(object):
 
         self.input_type = input_type
 
-        self.z = preferences[:, np.newaxis].astype(float)
+        self.z = preferences.flatten()[:, np.newaxis].astype(float)
         self.nobs = self.z.shape[0]
 
     def fit(self, personIDs=None, items_1_coords=None, items_2_coords=None, item_features=None,
@@ -516,7 +519,8 @@ class CollabPrefLearningVB(object):
 
         if use_median_ls and personIDs is not None:
             self.ls = compute_median_lengthscales(self.obs_coords)
-            self.lsy = compute_median_lengthscales(self.person_features)
+            if self.person_features is not None:
+                self.lsy = compute_median_lengthscales(self.person_features)
 
         self._init_params()
 
@@ -971,7 +975,6 @@ class CollabPrefLearningVB(object):
         # set personids and itemids to None to compute all pairs
         mu, f_cov, personids = self.predict_f(item_features, person_features, personids, return_cov=True, return_personids=True)
         mu = mu.T.reshape(N * Npeople, 1)
-
         pref_v = item_0_idxs + (N * personids)
         pref_u = item_1_idxs + (N * personids)
 
@@ -981,8 +984,12 @@ class CollabPrefLearningVB(object):
         if no_var:
             predicted_prefs = pref_likelihood(mu, subset_idxs=[], v=pref_v, u=pref_u)
         else:
-            predicted_prefs = pref_likelihood(mu, f_cov[pref_v, pref_v] + f_cov[pref_u, pref_u] - f_cov[pref_v, pref_u]
-                                          - f_cov[pref_u, pref_v], subset_idxs=[], v=pref_v, u=pref_u)
+
+            predicted_prefs = pref_likelihood(mu, f_cov[personids, item_0_idxs, item_0_idxs]
+                                              + f_cov[personids, item_1_idxs, item_1_idxs]
+                                              - f_cov[personids, item_0_idxs, item_1_idxs]
+                                              - f_cov[personids, item_1_idxs, item_0_idxs],
+                                              subset_idxs=[], v=pref_v, u=pref_u)
 
         return predicted_prefs
 
@@ -1007,21 +1014,19 @@ class CollabPrefLearningVB(object):
             # reuse the training points
             y = np.zeros((self.Nfactors, Npeople))
 
-            cov_y = np.tile((np.eye(Npeople))[None, :, :], (self.Nfactors, 1, 1)) * \
-                    (self.rate_sy / self.shape_sy)[:, None, None]
+            cov_y = np.tile((np.eye(Npeople))[None, :, :], (self.Nfactors, 1, 1))
 
             # for any people IDs we have seen before, we use the posterior mean and variance
             people_from_training = np.in1d(upeople, self.personIDs)
 
             y_var = self._y_var()
 
-            if np.any(people_from_training) and self.person_features is not None: # reuse any previously-seen people
+            if np.any(people_from_training): # reuse any previously-seen people
                 # copy in the posterior means
                 y[:, people_from_training] = self.y[:, upeople[people_from_training]]
 
                 for f in range(self.Nfactors):
-                    fidxs = upeople[people_from_training] + self.Npeople * f
-                    cov_y[f, people_from_training, people_from_training] = y_var[fidxs]
+                    cov_y[f, people_from_training, people_from_training] = y_var[f, upeople[people_from_training]]
 
         else:
             y, cov_y = self._predict_y(person_features)
@@ -1054,19 +1059,17 @@ class CollabPrefLearningVB(object):
             else:
                 return predicted_f, personids
 
-        cov_f = np.tile(cov_t, (Npeople, Npeople))
+        cov_f = np.zeros((Npeople, N, N))
 
         # covariance of a product of two independent gaussians (product-Gaussian distribution)
         for f in range(self.Nfactors):
-            cov_f += (cov_y[f][:, None, :, None] * cov_w[f][None, :, None, :]).reshape(N * Npeople, N * Npeople)
+            cov_f += (np.diag(cov_y[f])[:, None, None] * cov_w[f][None, :, :])
 
-            yscaling = y[f:f + 1, :].T.dot(y[f:f + 1, :])
-            cov_wf = cov_w[f][None, :, None, :] * yscaling[:, None, :, None]
-            cov_wf = cov_wf.reshape(N * Npeople, Npeople * N)
+            yscaling = y[f, :]**2
+            cov_wf = cov_w[f][None, :, :] * yscaling[:, None, None]
 
             wscaling = (w[:, f:f + 1].dot(w[:, f:f + 1].T))
-            cov_yf = cov_y[f][:, None, :, None,] * wscaling[None, :, None, :]
-            cov_yf = cov_yf.reshape(N * Npeople, Npeople * N)
+            cov_yf = np.diag(cov_y[f])[:, None, None] * wscaling[None, :, :]
 
             cov_f += cov_wf + cov_yf
 

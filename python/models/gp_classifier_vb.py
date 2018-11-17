@@ -78,7 +78,7 @@ def diagonal_from_raw_vals(vals, ls, vals2=None, operator='*'):
     K = np.zeros((vals.shape[0], vals2.shape[0]), dtype=float)
     for i in range(vals.shape[0]):
         # check for the same locations.
-        K[i, :] = np.sum(np.abs(vals[i:i + 1, :] - vals2), axis=1) == 0
+        K[i, :] = (np.sum(np.abs(vals[i:i + 1, :] - vals2), axis=1) == 0).astype(float)
     return K
 
 
@@ -595,7 +595,7 @@ class GPClassifierVB(object):
                 totals = np.ones(n_obs)
             else:  # obs_values given as two columns: first is positive counts, second is total counts.
                 totals = obs_values[:, 1]
-        elif (obs_values.shape[1] == 2):
+        elif (obs_values.ndim > 1) and (obs_values.shape[1] == 2):
             logging.warning(
                 'GPClassifierVB received two sets of totals; ignoring the second column of the obs_values argument')
 

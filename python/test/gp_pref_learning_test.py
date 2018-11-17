@@ -106,13 +106,20 @@ def evaluate_models(model, item_features, f,
     # Predict at all locations
     fpred, vpred = model.predict_f(item_features)
 
-    tau_obs = kendalltau(ftrain, fpred[train_points])[0]
+    if ftrain.ndim == 2:
+        # Ftrain contains values for multiple functions (columns), but the predictions are only one column
+        tau_obs = kendalltau(ftrain, np.tile(fpred[train_points], (1, ftrain.shape[1]) ))[0]
+    else:
+        tau_obs = kendalltau(ftrain, fpred[train_points])[0]
     print("Kendall's tau (observations): %.3f" % tau_obs)
 
     # Evaluate the accuracy of the predictions
     # print("RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
     # print("NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
-    tau_test = kendalltau(ftest, fpred[test_points])[0]
+    if ftest.ndim == 2:
+        tau_test = kendalltau(ftest, np.tile(fpred[test_points], (1,ftest.shape[1]) ))[0]
+    else:
+        tau_test = kendalltau(ftest, fpred[test_points])[0]
     print("Kendall's tau (test): %.3f" % tau_test)
 
     # noise rate in the pairwise data -- how many of the training pairs conflict with the ordering suggested by f?

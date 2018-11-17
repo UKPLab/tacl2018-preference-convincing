@@ -1,5 +1,29 @@
 \section{Experiments}\label{sec:expts}
 
+
+\subsection{Methods Compared}
+
+We refer to the multi-user variant of our model as \emph{crowd-GPPL}.
+As baselines, we use GPPL to learn a single preference function from all users' preference labels, (\emph{GPPL-pooled}), and a Gaussian process over the joint feature space of users and items 
+(\emph{GPPL-joint}), as proposed by \citet{guo2010gaussian}.
+For datasets up to 100 users (simulated data, subsamples of the real datasets), 
+we also test separate GPPL instances per user with no collaborative
+learning (\emph{GPPL-per-user}), but this could not be applied to the real datasets as the 
+computation costs were too high.
+To test the benefit of using GPs to model item and user features,
+we also test two further baselines: 
+\emph{crowd-GPPL$\mathbf{\setminus \bs u}$}, which ignores the user features,
+and \emph{crowd-BMF}, which ignores both user and item features and so does not use GPs at all. 
+For both of these methods, the user covariance matrix, $\bs K_w$, in the crowd-GPPL model is replaced by the identity matrix, and for \emph{crowd-BMF}, the item covariance matrices, $\bs K_v$ and $\bs K_t$ are also replaced by the identity matrix.
+
+% Ranking-SVM baseline -- only easy to compare in the single user case. My GPPL paper perhaps needs
+% this adding in any follow up works.
+
+% Houlsby tests: with/without user features (without is better with few users). + a hierarchical 
+% model, BI (multi task preference learning, Birlitiu et al), and the GPPL-joint model. None of 
+% these are done at scale, which we can do with our inference method --> *this is a new claim i.e. 
+% new empirical results*. They also test a per-user model.
+
 \subsection{Simulated Noisy Data}\label{sec:exp_synth}
 
 Dataset:
@@ -18,16 +42,60 @@ in different scenarios:
 \section{Comparision of Alternative Methods on Real Data}\label{sec:exp_small}
 
 Dataset: Sushi
-
-Methods:
+% Houlsby results: for comparison against a different inference technique on small data, include
+% the test error results from their paper.
+% Guo results: not directly comparable. We will rerun a similar approach but with our inference method.
+% Khan results: for a different model that separates the latent features from the item/user features.
+% Abbasnejad results (community-based preference learning): sushi data with 10 items; 60/40 train/test split of each user's preference pairs. This means the result is based on 27 pairs training.
+% don't worry about this though, it doesn't seem to work very well in their results.
 
 Hypothesis: 
+% Number of users affects value of including user features.
+% Plot results on increasing dataset size.
 
-\begin{table}
+% [10] T. Kamishima. Nantonac collaborative filtering:
+% Recommendation based on order responses. In
+% ACM SIGKDD 9th Int. Conf. Knowledge Discov-
+% ery and Data Mining, 2003.
+
+Setup:
+
+Run 25 repeats of random train/test splits with:
+% Exclude these two as we focus on bigger datasets in this paper. Cutting these creates the space 
+% for including three metrics.
+% Downside: cannot test whether increasing no. users imroves performance through better collaborative learning. 
+% 
+% 100 (a la Houlsby 20 pairs per user), 
+% 200 (a la Khan, 3 training, 1 test, P=600, P_test=200), 
+% For small datasets, we may want to test on the argumentation data so we can assess the crowd
+% consensus results with small data. That dataset is more interesting here because lots of items,
+% small data is a new scenario.
+[a] 1000 (a la Houlsby 15 training, 5 test pairs per user, $P=15000,P_{test}=5000$), Sushi-A (10 items), 
+and [b] 5000 users (a la Khan, 10 training, 1 test pairs per user, $P=50000, P_{test}=5000$), Sushi-B (100 items).
+Evaluate on parwise labelling error, pairwise label logloss, spearman rank correlation,
+and runtime.
+% could use normalized mean loss from guo, but not sure where the utilities come from -- ranking?
+
+% 25 random train/test splits on all 5000 users with varying no. (1, 5, 10, 20, 40) pairs per user.
+
+% Can put in the Houlsby (100/1000 users, 20 pairs each, labelling error) and Khan (200 users, 3 pairs each, logloss) results.
+% Khan also provide code, so could be rerun to get classification error.
+
+% Also consider whether we can show more results in a table format?
+
+In all cases, we use the no. pairs per user and no. users to select the subset of data used for training, then test on the remainder.
+
+\begin{figure}
 \caption{
 Average test error for each method on Sushi-A dataset.
+The above experiments would generate 2 (sushi-A and sushi-B) x 3 ( 2 x varying no. users +
+1 x varying no. pairs) x 3 (two pairwise metrics, one ranking) = 18 plots. This needs trimming!
+Suggest we resort to:
+1 (sushi-A) x 2 (varying no users with two different no. pairs) x 1 = 2 plots. Then we can put
+any missing results in the text for comparison with other methods, i.e. either logloss or 
+classification error.
 }
-\end{table}
+\end{figure}
 
 \section{Scalability Experiments}\label{sec:exp_scale}
 
@@ -69,4 +137,3 @@ convincingness judgements.
 classification performance when predicting consensus for argument convincingness judgements. 
 }
 \end{figure}
-

@@ -69,10 +69,10 @@ if __name__ == '__main__':
 
     # SETTINGS FOR ALL THE NOISE TESTS
     nreps = 25
-    nx = 10
-    ny = 10
-    N = 100
-    P = 5000
+    nx = 2#10
+    ny = 2#10
+    N = nx * ny
+    P = 5#000
 
     # the independent variable that we adjust:
     inverse_scales = [0.001, 0.01, 0.05, 0.1, 0.2, 1, 10, 100]
