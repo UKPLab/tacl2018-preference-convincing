@@ -128,10 +128,16 @@ def expec_pdf_gaussian(K, invK, Elns, N, s, f, mu, f_cov, mu_cov):
     :param f_cov : covariance of the function values
     :param mu_cov : covariance of the mean parameters; this is needed if the mean is a model parameter inferred using VB
     """
-    _, logdet_K = np.linalg.slogdet(K)
+    if K.ndim == 1:
+        logdet_K = np.sum(np.log(K))
+        invK_expecF = (s * invK) * np.diag(f_cov + (f - mu).dot((f - mu).T) + mu_cov)
+        tr_invK_expecF = np.sum(invK_expecF)
+    else:
+        _, logdet_K = np.linalg.slogdet(K)
+        invK_expecF = (s * invK).dot(f_cov + (f - mu).dot((f - mu).T) + mu_cov)
+        tr_invK_expecF = np.trace(invK_expecF)
     logdet_Ks = - np.sum(N * Elns) + logdet_K
-    invK_expecF = (s * invK).dot(f_cov + (f - mu).dot((f - mu).T) + mu_cov)
-    logpf = 0.5 * (- np.log(2 * np.pi) * N - logdet_Ks - np.trace(invK_expecF))
+    logpf = 0.5 * (- np.log(2 * np.pi) * N - logdet_Ks - tr_invK_expecF)
 
     return logpf
 
@@ -143,7 +149,10 @@ def expec_q_gaussian(f_cov, D):
     :param D:
     :return:
     """
-    _, logdet_C = np.linalg.slogdet(f_cov)
+    if f_cov.ndim == 1:
+        logdet_C = np.sum(np.log(f_cov))
+    else:
+        _, logdet_C = np.linalg.slogdet(f_cov)
     logqf = 0.5 * (- np.log(2 * np.pi) * D - logdet_C - D)
     return logqf
 
@@ -510,8 +519,7 @@ class CollabPrefLearningVB(object):
         """
         if optimize:
             return self._optimize(personIDs, items_1_coords, items_2_coords, item_features, preferences,
-                                  person_features,
-                                  maxfun, use_MAP, nrestarts, input_type)
+                                  person_features, maxfun, use_MAP, nrestarts, input_type, use_median_ls)
 
         # if personIDs is not none, we assume this is new data being passed in
         self._process_observations(personIDs, items_1_coords, items_2_coords, item_features, preferences,
@@ -1151,12 +1159,12 @@ class CollabPrefLearningVB(object):
     # OPTIMIZATION ------------------------------------------------------------------------------------------------
 
     def _optimize(self, personIDs, items_1_coords, items_2_coords, item_features, preferences, person_features=None,
-                  maxfun=20, use_MAP=False, nrestarts=1, input_type='binary'):
+                  maxfun=20, use_MAP=False, nrestarts=1, input_type='binary', use_median_ls=False):
 
         max_iter = self.max_iter
         self.max_iter = 1
         self.fit(personIDs, items_1_coords, items_2_coords, item_features, preferences, person_features,
-                 input_type=input_type)
+                 input_type=input_type, use_median_ls=use_median_ls)
         self.max_iter = max_iter
 
         min_nlml = np.inf
@@ -1184,7 +1192,7 @@ class CollabPrefLearningVB(object):
                 logging.debug("Initial item length-scale guess in restart %i: %s" % (r, self.ls))
                 logging.debug("Initial person length-scale guess in restart %i: %s" % (r, self.lsy))
                 res = minimize(self.neg_marginal_likelihood, initialguess, args=('both', -1, use_MAP,),
-                               jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter': maxfun, ftol : 1e-3,
+                               jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter': maxfun, 'ftol' : 1e-3,
                                                 'gtol': 10 ** (-self.nitem_features-self.nperson_features - 1)})
 
             opt_hyperparams = res['x']
@@ -1258,8 +1266,6 @@ class CollabPrefLearningVB(object):
             return np.inf
 
         # make sure we start again -- fit should set the value of parameters back to the initial guess
-        if lstype != 'fa' or new_Nfactors != self.Nfactors:  # don't rerun if the number of factors is same.
-            self.fit()
         marginal_log_likelihood = self.lowerbound()
         if use_MAP:
             log_model_prior = self.ln_modelprior()
@@ -1342,8 +1348,6 @@ class CollabPrefLearningVB(object):
         if np.any(np.isnan(hyperparams)):
             return np.inf
 
-        needs_fitting = self.new_obs
-
         if lstype == 'item':
             if dimension == -1 or self.n_wlengthscales == 1:
                 if np.any(np.abs(self.ls - np.exp(hyperparams)) > 1e-4):
@@ -1387,10 +1391,6 @@ class CollabPrefLearningVB(object):
             return np.inf
         if np.any(np.isinf(self.lsy)):
             return np.inf
-
-        # make sure we start again -- fit should set the value of parameters back to the initial guess
-        if needs_fitting:
-            self.fit()
 
         # num_jobs = multiprocessing.cpu_count()
         # mll_jac = Parallel(n_jobs=num_jobs)(delayed(self._gradient_dim)(lstype, d, dim)

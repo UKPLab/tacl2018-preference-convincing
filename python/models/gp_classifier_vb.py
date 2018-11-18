@@ -910,7 +910,8 @@ class GPClassifierVB(object):
             self.features = features
 
         if optimize:
-            return self._optimize(obs_coords, obs_values, totals, process_obs, mu0, K, maxfun, use_MAP, nrestarts)
+            return self._optimize(obs_coords, obs_values, totals, process_obs, mu0, K, maxfun, use_MAP, nrestarts,
+                                  use_median_ls)
 
         # Initialise the objects that store the observation data
         if process_obs:
@@ -960,11 +961,15 @@ class GPClassifierVB(object):
             logging.debug("GP fit complete. Inverse output scale=%.5f" % self.s)
 
     def _optimize(self, obs_coords, obs_values, totals=None, process_obs=True, mu0=None, K=None, maxfun=25,
-                  use_MAP=False, nrestarts=1):
+                  use_MAP=False, nrestarts=1, use_median_ls=True):
 
         if process_obs:
-            self._process_observations(obs_coords, obs_values,
-                                       totals)  # process the data here so we don't repeat each call
+            self._process_observations(obs_coords, obs_values, totals)  # process the data here so we don't repeat each call
+
+            if use_median_ls:
+                self.ls = compute_median_lengthscales(self.obs_coords)
+
+            self.vb_iter = 0 # reset if we have processed new observations
             self._init_params(mu0, True, K)
             max_iter = self.max_iter_VB_per_fit
             self.max_iter_VB_per_fit = 1
