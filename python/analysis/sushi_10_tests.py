@@ -111,7 +111,7 @@ print('Item features: %i items, %i features.' % (item_features.shape[0], item_fe
 print('User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
 
 # for debugging --------------------------------------------------------------------------------------------------------
-debug_small = True
+debug_small = False
 
 if debug_small:
     ndebug = 50
