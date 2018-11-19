@@ -49,18 +49,55 @@ def extract_pairs_from_ranking(ranked_items):
 
     return userids, items1, items2, prefs
 
-# Load SUSHI-A dataset -------------------------------------------------------------------------------------------------
+# Load feature data ----------------------------------------------------------------------------
 
-sushi_prefs_file = './data/sushi3-2016/sushi3a.5000.10.order'
+def convert_discrete_to_continuous(features, cols_to_convert):
+
+    new_features = None
+
+    for col in np.arange(features.shape[1]):
+
+        if col not in cols_to_convert:
+            if new_features is None:
+                new_features = features[:, col:col+1]
+            else:
+                new_features = np.concatenate((new_features, features[:, col:col+1]), axis=1)
+            continue
+
+        maxval = np.max(features[:, col])
+        minval = np.min(features[:, col])
+
+        nvals = maxval - minval + 1
+        vals = np.arange(nvals) + minval
+
+        disc_vecs = None
+        for val in vals:
+            if disc_vecs is None:
+                disc_vecs = (features[:, col] == val)[:, None]
+            else:
+                disc_vecs = np.concatenate((disc_vecs, (features[:, col]==val)[:, None]), axis=1)
+
+        if new_features is None:
+            new_features = disc_vecs
+        else:
+            new_features = np.concatenate((new_features, disc_vecs), axis=1)
+
+    return new_features
+
 item_feat_file = './data/sushi3-2016/sushi3.idata'
 user_feat_file = './data/sushi3-2016/sushi3.udata'
 
 item_data = pd.read_csv(item_feat_file, sep='\t', index_col=0, header=None)
 item_features = item_data.values[:, 1:].astype(float)
+item_features = convert_discrete_to_continuous(item_features, cols_to_convert=[2])
 
 user_data = pd.read_csv(user_feat_file, sep='\t', index_col=0, header=None)
 user_features = user_data.values.astype(float)
+user_features = convert_discrete_to_continuous(user_features, cols_to_convert=[0, 3, 4, 6, 7])
 
+# Load SUSHI-A dataset -------------------------------------------------------------------------------------------------
+
+sushi_prefs_file = './data/sushi3-2016/sushi3a.5000.10.order'
 ranking_data = pd.read_csv(sushi_prefs_file, sep=' ', skiprows=1, header=None)
 
 userids, items1, items2, prefs = extract_pairs_from_ranking(ranking_data.values[:, 2:].astype(int))
@@ -74,7 +111,7 @@ print('Item features: %i items, %i features.' % (item_features.shape[0], item_fe
 print('User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
 
 # for debugging --------------------------------------------------------------------------------------------------------
-debug_small = False
+debug_small = True
 
 if debug_small:
     ndebug = 50
@@ -429,8 +466,8 @@ methods = [
            'GPPL-pooled',
            'GPPL-joint',
            'GPPL-per-user',
-           'crowd-GPPL\\u',
-           'crowd-BMF',
+           # 'crowd-GPPL\\u',
+           # 'crowd-BMF',
            'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
            ]
@@ -455,7 +492,7 @@ methods = [
            'GPPL-pooled',
            'GPPL-joint',
            # 'GPPL-per-user',
-           'crowd-GPPL\\u',
+           # 'crowd-GPPL\\u',
            # 'crowd-BMF',
            # 'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
@@ -472,15 +509,6 @@ run_sushi_expt(methods, 'sushi_10_opt')
 # Load SUSHI-B dataset -------------------------------------------------------------------------------------------------
 
 sushi_prefs_file = './data/sushi3-2016/sushi3b.5000.10.order'
-item_feat_file = './data/sushi3-2016/sushi3.idata'
-user_feat_file = './data/sushi3-2016/sushi3.udata'
-
-item_data = pd.read_csv(item_feat_file, sep='\t', index_col=0, header=None)
-item_features = item_data.values[:, 1:].astype(float)
-
-user_data = pd.read_csv(user_feat_file, sep='\t', index_col=0, header=None)
-user_features = user_data.values.astype(float)
-
 ranking_data = pd.read_csv(sushi_prefs_file, sep=' ', skiprows=1, header=None)
 
 userids, items1, items2, prefs = extract_pairs_from_ranking(ranking_data.values[:, 2:].astype(int))
@@ -522,8 +550,8 @@ methods = [
            'GPPL-pooled',
            'GPPL-joint',
            'GPPL-per-user',
-           'crowd-GPPL\\u',
-           'crowd-BMF',
+           # 'crowd-GPPL\\u',
+           # 'crowd-BMF',
            'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
            ]
@@ -543,7 +571,7 @@ methods = [
            'GPPL-pooled',
            'GPPL-joint',
            # 'GPPL-per-user',
-           'crowd-GPPL\\u',
+           # 'crowd-GPPL\\u',
            # 'crowd-BMF',
            # 'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
