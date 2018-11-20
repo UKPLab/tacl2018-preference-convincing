@@ -347,7 +347,7 @@ def subsample_data():
         npairs_test = 5
 
     # select 1000 random users
-    chosen_users = np.random.choice(userids.size, nusers_tr, replace=False)
+    chosen_users = np.random.choice(nusers, nusers_tr, replace=False)
 
     user_pairidxs_tr = np.random.choice(int(prefs.shape[0] / nusers), size=npairs_tr, replace=False)
     user_pairidxs_test = np.random.choice(int(prefs.shape[0] / nusers), size=npairs_test, replace=False)
@@ -548,12 +548,12 @@ sushiB = False
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
-# print('Optimizing function scales ...')
-# np.random.seed(2309234)
-# u_tr, i1_tr, i2_tr, prefs_tr, _, _, _, _, _, _ = subsample_data()
-# shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
-#                                          item_features, user_features, prefs_tr)
-# print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
+print('Optimizing function scales ...')
+np.random.seed(2309234)
+u_tr, i1_tr, i2_tr, prefs_tr, _, _, _, _, _, _ = subsample_data()
+shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
+                                         item_features, user_features, prefs_tr)
+print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
 
 # Experiment name tag
 tag = '_3'
