@@ -1,4 +1,7 @@
+import multiprocessing
+
 import numpy as np
+from joblib import Parallel, delayed
 from scipy.stats import norm
 
 from gp_pref_learning import GPPrefLearning
@@ -9,11 +12,12 @@ class GPPrefPerUser():
     Runs a separate preference learning model for each user. I.e. multiple users but no collaborative learning.
     '''
 
-    def __init__(self, Npeople, max_update_size, shape_s0, rate_s0, nitem_feats=2):
+    def __init__(self, Npeople, max_update_size, shape_s0, rate_s0, nitem_feats=2, ninducing=50):
         self.user_models = []
         self.Npeople = Npeople
         for p in range(Npeople):
-            model_p = GPPrefLearning(nitem_feats, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None, use_svi=True, ninducing=50,
+            model_p = GPPrefLearning(nitem_feats, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None,
+                                     use_svi=True, ninducing=ninducing,
                                      max_update_size=max_update_size, forgetting_rate=0.9, verbose=True)
 
             self.user_models.append(model_p)
@@ -36,22 +40,23 @@ class GPPrefPerUser():
 
     def predict_f(self, item_features, chosen_users=None):
 
-        fpred = []
-
         if chosen_users is None:
             chosen_users = range(self.Npeople)
 
-        for u in chosen_users:
-
-            if self.user_models[u].vb_iter == 0:
+        def usermodel_predict_f(model, item_features):
+            if model.vb_iter == 0:
                 # not trained, skip it
                 fpredu = np.zeros((item_features.shape[0], 1))
             else:
-                fpredu, _ = self.user_models[u].predict_f(item_features)
+                fpredu, _ = model.predict_f(item_features)
 
-            fpred.append(fpredu)
+            return fpredu
 
-        fpred = np.concatenate(fpred, axis=1)
+        num_jobs = multiprocessing.cpu_count()
+        fpredus = Parallel(n_jobs=num_jobs, backend='threading')(delayed(usermodel_predict_f)(
+            self.user_models[u], item_features) for u in chosen_users)
+
+        fpred = np.concatenate(fpredus, axis=1)
 
         return fpred
 

@@ -23,6 +23,7 @@ from collab_pref_learning_test import gen_synthetic_personal_prefs as gen_multi,
     split_dataset as split_multiuser_dataset, evaluate_models_common_mean as evaluate_multiuser_consensus, \
     evaluate_models_personal as evaluate_multiuser_personal
 from per_user_pref_learning import GPPrefPerUser
+from joblib import Parallel, delayed
 
 markers = ['o', 'x', '+', '>', '<', '*']
 

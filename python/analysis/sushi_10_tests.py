@@ -8,6 +8,8 @@ import sys
 # include the paths for the other directories
 import time
 
+from scipy.optimize._minimize import minimize
+
 sys.path.append("./python")
 sys.path.append("./python/analysis")
 sys.path.append("./python/models")
@@ -24,6 +26,7 @@ from sklearn.metrics import accuracy_score, log_loss
 from collab_pref_learning_svi import CollabPrefLearningSVI
 from gp_pref_learning import GPPrefLearning
 from per_user_pref_learning import GPPrefPerUser
+
 
 def extract_pairs_from_ranking(ranked_items):
 
@@ -49,7 +52,6 @@ def extract_pairs_from_ranking(ranked_items):
 
     return userids, items1, items2, prefs
 
-# Load feature data ----------------------------------------------------------------------------
 
 def convert_discrete_to_continuous(features, cols_to_convert):
 
@@ -84,54 +86,9 @@ def convert_discrete_to_continuous(features, cols_to_convert):
 
     return new_features
 
-item_feat_file = './data/sushi3-2016/sushi3.idata'
-user_feat_file = './data/sushi3-2016/sushi3.udata'
 
-item_data = pd.read_csv(item_feat_file, sep='\t', index_col=0, header=None)
-item_features = item_data.values[:, 1:].astype(float)
-item_features = convert_discrete_to_continuous(item_features, cols_to_convert=[2])
-
-user_data = pd.read_csv(user_feat_file, sep='\t', index_col=0, header=None)
-user_features = user_data.values.astype(float)
-user_features = convert_discrete_to_continuous(user_features, cols_to_convert=[0, 3, 4, 6, 7])
-
-# Load SUSHI-A dataset -------------------------------------------------------------------------------------------------
-
-sushi_prefs_file = './data/sushi3-2016/sushi3a.5000.10.order'
-ranking_data = pd.read_csv(sushi_prefs_file, sep=' ', skiprows=1, header=None)
-
-userids, items1, items2, prefs = extract_pairs_from_ranking(ranking_data.values[:, 2:].astype(int))
-
-nusers = len(np.unique(userids))
-active_items = np.unique(np.array([items1, items2]))
-item_features = item_features[:np.max(active_items)+1, :]
-nitems = len(active_items)
-print('Found %i users, %i items, and %i pairs per user.' % (nusers, nitems, prefs.shape[0]/nusers))
-print('Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
-print('User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
-
-# for debugging --------------------------------------------------------------------------------------------------------
-debug_small = False
-
-if debug_small:
-    ndebug = 50
-    userids = userids[:ndebug]
-    items1 = items1[:ndebug]
-    items2 = items2[:ndebug]
-    prefs = prefs[:ndebug]
-
-    nusers = len(np.unique(userids))
-    nitems = len(np.unique(np.array([items1, items2])))
-    item_features = item_features[:20, :] # np.unique(np.array([items1, items2]))]
-    user_features = user_features[np.unique(userids)]
-
-    print('Debug: Found %i users, %i items, and %i pairs per user.' % (nusers, nitems, prefs.shape[0]/nusers))
-    print('Debug: Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
-    print('Debug: User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ufeats_test):
+def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
+                   u_test=None, i1_test=None, i2_test=None, ufeats_test=None):
 
     Nfactors = ufeats.shape[0]
     if Nfactors > 50:
@@ -143,11 +100,15 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test
 
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
 
+    if u_test is None:
+        return model
+
     fpred = model.predict_f(ifeats[active_items], ufeats_test)
     rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, ufeats)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred
+
 
 def run_GPPL_pooled(_, i1_tr, i2_tr, ifeats, __, prefs_tr, ___, i1_test, i2_test, ufeats_test):
     model = GPPrefLearning(ifeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None, use_svi=True,
@@ -160,6 +121,7 @@ def run_GPPL_pooled(_, i1_tr, i2_tr, ifeats, __, prefs_tr, ___, i1_test, i2_test
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred
+
 
 def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ufeats_test):
     model = GPPrefLearning(ifeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None, use_svi=True,
@@ -206,8 +168,9 @@ def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred
 
+
 def run_GPPL_per_user(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, chosen_users):
-    model = GPPrefPerUser(ufeats.shape[0], max_update_size, shape_s0, rate_s0, ifeats.shape[1])
+    model = GPPrefPerUser(ufeats.shape[0], max_update_size, shape_s0, rate_s0, ifeats.shape[1], ninducing)
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
     fpred = model.predict_f(ifeats[active_items], chosen_users)
@@ -215,6 +178,7 @@ def run_GPPL_per_user(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_t
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred
+
 
 def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, chosen_users):
 
@@ -228,11 +192,13 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
 
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
-    fpred = model.predict_f(ifeats[active_items], person_features=None, personids=chosen_users)
+    fpred = model.predict_f(ifeats[active_items], person_features=None)
+    fpred = fpred[:, chosen_users]
     rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, None)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred
+
 
 def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, chosen_users):
     Nfactors = ufeats.shape[0]
@@ -245,11 +211,13 @@ def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test,
 
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
-    fpred = model.predict_f(ifeats[active_items], person_features=None, personids=chosen_users)
+    fpred = model.predict_f(ifeats[active_items], person_features=None)
+    fpred = fpred[:, chosen_users]
     rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, None)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred
+
 
 def run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ufeats_test):
     Nfactors = ufeats.shape[0]
@@ -268,6 +236,7 @@ def run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_tes
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred
 
+
 # def run_GPPL_separate_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ufeats_test):
 #     Nfactors = ufeats.shape[0]
 #     if Nfactors > 50:
@@ -284,6 +253,61 @@ def run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_tes
 #
 #     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
 #     return fpred, rho_pred
+
+
+def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr):
+    '''
+    Optimize the function scale to select values of shape_s0 and rate_s0 using Bayesian model selection.
+
+    :return: optimal values of shape_s0 and rate_s0
+    '''
+
+    def run_crowd_GPPL_wrapper(loghypers, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr):
+        global shape_s0
+        global rate_s0
+        global optimize
+
+        shape_s0 = np.exp(loghypers[0])
+        rate_s0 = np.exp(loghypers[1])
+        optimize = True # ensures we use the optimal length-scales when finding the optimal scale hyperparameters
+
+        print('Running with shape_s0 = %f and rate_s0 = %f' % (shape_s0, rate_s0))
+        model = run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr)
+        lb = model.lowerbound()
+        print('Obtained lower bound %f with shape_s0 = %f and rate_s0 = %f' % (lb, shape_s0, rate_s0))
+        return -lb
+
+    # initialguess = np.log([shape_s0, rate_s0])
+    # args = (u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr)
+    # res = minimize(run_crowd_GPPL_wrapper, initialguess, args=args,
+    #                method='Nelder-Mead', options={'maxiter': 100, 'fatol': 1e-3, 'gatol': 1e10})
+    # opt_hyperparams = res['x']
+    # shape_s0 = np.exp(opt_hyperparams[0])
+    # rate_s0 = np.exp(opt_hyperparams[1])
+
+    sh_vals = [0.1, 1, 10, 100, 1000]
+    r_vals = [0.1, 1, 10, 100, 1000]
+
+    minval = np.inf
+    min_sh_idx = -1
+    min_r_idx = -1
+
+    for sh, shape_s0 in enumerate(sh_vals):
+        for r, rate_s0 in enumerate(r_vals):
+            lb = run_crowd_GPPL_wrapper([np.log(sh), np.log(r)], u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr)
+            if lb < minval:
+                minval = lb
+                min_sh_idx = sh
+                min_r_idx = r
+                print('New best value: %f, with hypers %f and %f' % (-lb, sh, r))
+
+    shape_s0 = sh_vals[min_sh_idx]
+    rate_s0 = r_vals[min_r_idx]
+
+    print('Final best value: %f, with hypers %f and %f' % (-minval, shape_s0, rate_s0))
+
+    return shape_s0, rate_s0
+
 
 def train_test(method_name, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, chosen_users):
 
@@ -306,6 +330,7 @@ def train_test(method_name, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test
     # elif method_name == 'GPPL+BMF': # like Khan. Not implemented yet -- get results from Khan paper where possible.
     #     return run_GPPL_separate_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ufeats_test)
 
+
 def subsample_data():
 
     if debug_small:
@@ -322,7 +347,7 @@ def subsample_data():
         npairs_test = 5
 
     # select 1000 random users
-    chosen_users = np.random.choice(userids, size=nusers_tr, replace=False)
+    chosen_users = np.random.choice(userids.size, nusers_tr, replace=False)
 
     user_pairidxs_tr = np.random.choice(int(prefs.shape[0] / nusers), size=npairs_tr, replace=False)
     user_pairidxs_test = np.random.choice(int(prefs.shape[0] / nusers), size=npairs_test, replace=False)
@@ -359,8 +384,9 @@ def subsample_data():
 
     return u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, scores, chosen_users
 
+
 def run_sushi_expt(methods, expt_name):
-    nreps = 25
+    nreps = 1
 
     # predictions from all reps and methods
     fpred_all = []
@@ -427,8 +453,8 @@ def run_sushi_expt(methods, expt_name):
         times_all.append(times_r)
 
         # save predictions to file
-        pd.DataFrame(fpred_all).to_csv(results_path + '/fpred_rep%i.csv' % rep, sep=',', header=False)
-        pd.DataFrame(rho_pred_all).to_csv(results_path + '/rho_pred_rep%i.csv' % rep, sep=',')
+        np.savetxt(results_path + '/fpred_rep%i.csv' % rep, fpred_r, delimiter=',', fmt='%f')
+        np.savetxt(results_path + '/rho_pred_rep%i.csv' % rep, rho_pred_r, delimiter=',', fmt='%f')
 
     # Compute means and stds of metrics (or medians/quartiles for plots?)
     acc_mean = np.mean(np.array(acc_all), axis=0)
@@ -444,19 +470,95 @@ def run_sushi_expt(methods, expt_name):
     # Print means and stds of metrics in Latex format ready for copying into a table
     print('Table of results:')
 
-    line = 'Method & Acc. & CEE & r \\'
+    line = 'Method & Acc. & CEE & r & runtime (s)\\\\ \n'
     print(line)
     lines = [line]
 
     for m, method in enumerate(methods):
         line = method + ' & '
-        line += '%.2f (%.2f) & %.2f (%.2f) & %.2f (%.2f) & %.2f (%.2f) \\' % (acc_mean[m], acc_std[m], logloss_mean[m],
+        line += '%.2f (%.2f) & %.2f (%.2f) & %.2f (%.2f) & %.2f (%.2f) \\\\ \n' % (acc_mean[m], acc_std[m], logloss_mean[m],
                                         logloss_std[m], spearman_mean[m], spearman_std[m], times_mean[m], times_std[m])
         print(line)
         lines.append(line)
 
     with open(results_path + '/results.tex', 'w') as fh:
         fh.writelines(lines)
+
+# Load feature data ----------------------------------------------------------------------------
+
+item_feat_file = './data/sushi3-2016/sushi3.idata'
+user_feat_file = './data/sushi3-2016/sushi3.udata'
+
+item_data = pd.read_csv(item_feat_file, sep='\t', index_col=0, header=None)
+item_features = item_data.values[:, 1:].astype(float)
+item_features = convert_discrete_to_continuous(item_features, cols_to_convert=[2])
+
+user_data = pd.read_csv(user_feat_file, sep='\t', index_col=0, header=None)
+user_features = user_data.values.astype(float)
+user_features = convert_discrete_to_continuous(user_features, cols_to_convert=[0, 3, 4, 6, 7])
+
+
+# Load SUSHI-A dataset -------------------------------------------------------------------------------------------------
+
+sushi_prefs_file = './data/sushi3-2016/sushi3a.5000.10.order'
+ranking_data = pd.read_csv(sushi_prefs_file, sep=' ', skiprows=1, header=None)
+
+userids, items1, items2, prefs = extract_pairs_from_ranking(ranking_data.values[:, 2:].astype(int))
+
+nusers = len(np.unique(userids))
+active_items = np.unique(np.array([items1, items2]))
+item_features = item_features[:np.max(active_items)+1, :]
+nitems = len(active_items)
+print('Found %i users, %i items, and %i pairs per user.' % (nusers, nitems, prefs.shape[0]/nusers))
+print('Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
+print('User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
+
+
+# for debugging --------------------------------------------------------------------------------------------------------
+
+debug_small = False
+
+if debug_small:
+    ndebug = 50
+    userids = userids[:ndebug]
+    items1 = items1[:ndebug]
+    items2 = items2[:ndebug]
+    prefs = prefs[:ndebug]
+
+    nusers = len(np.unique(userids))
+    nitems = len(np.unique(np.array([items1, items2])))
+    item_features = item_features[:20, :] # np.unique(np.array([items1, items2]))]
+    user_features = user_features[np.unique(userids)]
+
+    print('Debug: Found %i users, %i items, and %i pairs per user.' % (nusers, nitems, prefs.shape[0]/nusers))
+    print('Debug: Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
+    print('Debug: User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
+
+
+
+# Hyperparameters common to most models --------------------------------------------------------------------------------
+
+shape_s0 = 0.1
+rate_s0 = 0.1
+max_update_size = 1000
+ninducing = 500
+forgetting_rate = 0.9
+
+sushiB = False
+
+# OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
+
+# print('Optimizing function scales ...')
+# np.random.seed(2309234)
+# u_tr, i1_tr, i2_tr, prefs_tr, _, _, _, _, _, _ = subsample_data()
+# shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
+#                                          item_features, user_features, prefs_tr)
+# print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
+
+# Experiment name tag
+tag = '_3'
+
+np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
 
 # Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
 
@@ -466,23 +568,15 @@ methods = [
            'GPPL-pooled',
            'GPPL-joint',
            'GPPL-per-user',
-           # 'crowd-GPPL\\u',
-           # 'crowd-BMF',
+           'crowd-GPPL\\u',
+           'crowd-BMF',
            'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
            ]
 
-# hyperparameters common to most models
-shape_s0 = 0.1
-rate_s0 = 0.1
-max_update_size = 1000
-ninducing = 50
-forgetting_rate = 0.9
 optimize = False
-
 sushiB = False
-
-run_sushi_expt(methods, 'sushi_10_2')
+run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
@@ -492,7 +586,7 @@ methods = [
            'GPPL-pooled',
            'GPPL-joint',
            # 'GPPL-per-user',
-           # 'crowd-GPPL\\u',
+           'crowd-GPPL\\u',
            # 'crowd-BMF',
            # 'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
@@ -500,11 +594,8 @@ methods = [
 
 # hyperparameters common to most models
 optimize = True
-
 sushiB = False
-
-run_sushi_expt(methods, 'sushi_10_opt')
-
+run_sushi_expt(methods, 'sushi_10_opt' + tag)
 
 # Load SUSHI-B dataset -------------------------------------------------------------------------------------------------
 
@@ -522,6 +613,7 @@ print('Item features: %i items, %i features.' % (item_features.shape[0], item_fe
 print('User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
 
 # for debugging --------------------------------------------------------------------------------------------------------
+
 debug_small = False
 
 if debug_small:
@@ -540,8 +632,6 @@ if debug_small:
     print('Debug: Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
     print('Debug: User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
 
-# ----------------------------------------------------------------------------------------------------------------------
-
 # SUSHI B dataset, no opt. ---------------------------------------------------------------------------------------------
 
 # Repeat 25 times... Run each method and compute its metrics.
@@ -550,18 +640,16 @@ methods = [
            'GPPL-pooled',
            'GPPL-joint',
            'GPPL-per-user',
-           # 'crowd-GPPL\\u',
-           # 'crowd-BMF',
+           'crowd-GPPL\\u',
+           'crowd-BMF',
            'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
            ]
 
 # hyperparameters common to most models
 optimize = False
-
 sushiB = True
-
-run_sushi_expt(methods, 'sushi_100')
+run_sushi_expt(methods, 'sushi_100' + tag)
 
 # SUSHI B dataset, ARD -------------------------------------------------------------------------------------------------
 
@@ -571,7 +659,7 @@ methods = [
            'GPPL-pooled',
            'GPPL-joint',
            # 'GPPL-per-user',
-           # 'crowd-GPPL\\u',
+           'crowd-GPPL\\u',
            # 'crowd-BMF',
            # 'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
@@ -579,7 +667,5 @@ methods = [
 
 # hyperparameters common to most models
 optimize = True
-
 sushiB = True
-
-run_sushi_expt(methods, 'sushi_100_opt')
+run_sushi_expt(methods, 'sushi_100_opt' + tag)

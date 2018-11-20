@@ -866,7 +866,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         der_logpw_logqw = 0
         der_logpy_logqy = 0
         der_logpt_logqt = 0
-        der_logpf_logqf = 0
 
         # compute the gradient. This should follow the MAP estimate from chu and ghahramani.
         # Terms that don't involve the hyperparameter are zero; implicit dependencies drop out if we only calculate
@@ -875,11 +874,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             dKdls = self.K_mm * self.kernel_der(self.inducing_coords, self.ls, dimension)
             # try to make the s scale cancel as much as possible
             invK_w = self.invK_mm.dot(self.w_u)
-            N = self.ninducing
 
             for f in range(self.Nfactors):
                 swf = self.shape_sw[f] / self.rate_sw[f]
-                invKs_Cf = (self.invK_mm * self.shape_sw[f] / self.rate_sw[f]).dot(self.wS)[f]
+                invKs_Cf = (self.invK_mm * self.shape_sw[f] / self.rate_sw[f]).dot(self.wS[f])
                 invK_wf = invK_w[:, f]
 
                 Sigma = self.Sigma_w[f, :, :]
@@ -898,8 +896,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             dKdls = self.Ky_mm_block * self.kernel_der(self.y_inducing_coords, self.lsy, dimension)
             invK_y = self.invKy_mm_block.dot(self.y_u.T)
 
-            N = self.y_ninducing
-
             for f in range(self.Nfactors):
                 invKs_Cf = self.invKy_mm_block.dot(self.yS[f])
                 invK_yf = invK_y[:, f]
@@ -908,4 +904,4 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
                 der_logpy_logqy += 0.5 * (invK_yf.T.dot(dKdls).dot(invK_yf) - np.trace(invKs_Cf.dot(Sigma).dot(dKdls)))
 
-        return der_logpw_logqw + der_logpy_logqy + der_logpt_logqt + der_logpf_logqf
+        return der_logpw_logqw + der_logpy_logqy + der_logpt_logqt

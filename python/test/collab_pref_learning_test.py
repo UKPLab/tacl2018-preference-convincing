@@ -147,10 +147,10 @@ def split_dataset(N, F, pair1idxs, pair2idxs, personidxs, prefs):
     # test set size
     test_size = 0.1
 
-    P = len(prefs)
-
     # select some data points as test only
-    Ntest = int(test_size * N)
+    Ntest = int(np.ceil(test_size * N))
+    if Ntest < 2: Ntest = 2 # need to have at least one pair!
+
     test_points = np.random.choice(N, Ntest, replace=False)
     test_points = np.in1d(np.arange(N), test_points)
     train_points = np.invert(test_points)

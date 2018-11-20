@@ -234,12 +234,15 @@ def _dists_f(items_feat_sample, f):
         logging.info('computed lengthscale for feature %i' % f)
     dists = np.abs(items_feat_sample[:, np.newaxis] - items_feat_sample[np.newaxis, :])
     # we exclude the zero distances. With sparse features, these would likely downplay the lengthscale.
-    if np.any(dists > 0):
+    if len(np.unique(dists)) == 2:
+        # switch to the mean. Probably a case of binary feature values.
+        med = np.mean(dists)
+    elif np.any(dists > 0):
         med = np.median(dists[dists > 0])
     else:
         med = 1.0
 
-    if np.isnan(med):
+    if np.isnan(med) or med == 0:
         med = 1.0
     return med
 

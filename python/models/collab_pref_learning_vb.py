@@ -1011,7 +1011,7 @@ class CollabPrefLearningVB(object):
 
     def predict_f(self, item_features=None, person_features=None, personids=None, return_cov=False, return_personids=False):
 
-        if person_features is None:
+        if person_features is None and personids is not None:
             '''
             This is the case for where we do not have any person features in training or testing. 
             In this case we assume diagonal covariance between people. 
@@ -1027,30 +1027,42 @@ class CollabPrefLearningVB(object):
             # for any people IDs we have seen before, we use the posterior mean and variance
             people_from_training = np.in1d(upeople, self.personIDs)
 
-            y_var = self._y_var()
+            if return_cov:
+                y_var = self._y_var()
 
             if np.any(people_from_training): # reuse any previously-seen people
                 # copy in the posterior means
                 y[:, people_from_training] = self.y[:, upeople[people_from_training]]
 
+                if return_cov:
+                    for f in range(self.Nfactors):
+                        cov_y[f, people_from_training, people_from_training] = y_var[f, upeople[people_from_training]]
+
+        elif person_features is None and personids is None:
+            y = self.y
+            Npeople = self.y.shape[1]
+            if return_cov:
+                cov_y = np.tile((np.eye(Npeople))[None, :, :], (self.Nfactors, 1, 1))
+                y_var = self._y_var()
                 for f in range(self.Nfactors):
-                    cov_y[f, people_from_training, people_from_training] = y_var[f, upeople[people_from_training]]
+                    cov_y[f,:, :] = np.diag(y_var[f, :])
 
         else:
-            y, cov_y = self._predict_y(person_features)
+            y, cov_y = self._predict_y(person_features, return_cov)
 
         if item_features is None:
             # reuse the training points
             t = self.t
             w = self.w
 
-            cov_w = np.zeros((self.Nfactors, self.N, self.N))
-            for f in range(self.Nfactors):
-                fidxs = np.arange(self.N) + self.N * f
-                cov_w[f] = self.w_cov[fidxs, :][:, fidxs]
-            cov_t = self.t_cov
+            if return_cov:
+                cov_w = np.zeros((self.Nfactors, self.N, self.N))
+                for f in range(self.Nfactors):
+                    fidxs = np.arange(self.N) + self.N * f
+                    cov_w[f] = self.w_cov[fidxs, :][:, fidxs]
+                cov_t = self.t_cov
         else:
-            t, w, cov_t, cov_w = self._predict_w_t(item_features)
+            t, w, cov_t, cov_w = self._predict_w_t(item_features, return_cov)
 
         N = item_features.shape[0]
         Npeople = y.shape[1]
@@ -1067,7 +1079,7 @@ class CollabPrefLearningVB(object):
             else:
                 return predicted_f, personids
 
-        cov_f = np.zeros((Npeople, N, N))
+        cov_f = np.zeros((Npeople, N, N)) + cov_t[None, :, :]
 
         # covariance of a product of two independent gaussians (product-Gaussian distribution)
         for f in range(self.Nfactors):
@@ -1087,7 +1099,7 @@ class CollabPrefLearningVB(object):
         else:
             return predicted_f, cov_f, personids
 
-    def _predict_w_t(self, coords_1):
+    def _predict_w_t(self, coords_1, return_cov=True):
         # kernel between pidxs and t
         K = self.kernel_func(coords_1, self.ls, self.obs_coords)
         K_starstar = self.kernel_func(coords_1, self.ls, coords_1)
@@ -1099,19 +1111,28 @@ class CollabPrefLearningVB(object):
             invKt = self.invK.dot(self.t)
             t_out = K.dot(invKt)
 
-            cov_t = K_starstar * self.rate_st / self.shape_st + covpair.dot(self.t_cov + self.K * self.st).dot(covpair.T)
+            if return_cov:
+                cov_t = K_starstar * self.rate_st / self.shape_st + covpair.dot(self.t_cov + self.K * self.st).dot(covpair.T)
+            else:
+                cov_t = None
         else:
             t_out = np.zeros((N, 1))
 
-            cov_t = np.zeros((N, N))
+            if return_cov:
+                cov_t = np.zeros((N, N))
+            else:
+                cov_t = None
 
         w_out = K.dot(self.invK.dot(self.w))  # N x Nfactors
 
-        cov_w = np.zeros((self.Nfactors, N, N))
-        for f in range(self.Nfactors):
-            fidxs = np.arange(self.N) + self.N * f
-            cov_w[f] = K_starstar  * self.rate_sw[f] / self.shape_sw[f] + \
-               covpair.dot(self.w_cov[fidxs, :][:, fidxs] - self.K * self.rate_sw[f] / self.shape_sw[f]).dot(covpair.T)
+        if return_cov:
+            cov_w = np.zeros((self.Nfactors, N, N))
+            for f in range(self.Nfactors):
+                fidxs = np.arange(self.N) + self.N * f
+                cov_w[f] = K_starstar  * self.rate_sw[f] / self.shape_sw[f] + covpair.dot(self.w_cov[fidxs, :][:, fidxs]
+                                                        - self.K * self.rate_sw[f] / self.shape_sw[f]).dot(covpair.T)
+        else:
+            cov_w = None
 
         return t_out, w_out, cov_t, cov_w
 
@@ -1138,7 +1159,7 @@ class CollabPrefLearningVB(object):
 
         return predicted_prefs
 
-    def _predict_y(self, person_features):
+    def _predict_y(self, person_features, return_cov=True):
 
         Ky = self.y_kernel_func(person_features, self.lsy, self.person_features)
         Ky_starstar = self.y_kernel_func(person_features, self.lsy, person_features)
@@ -1148,11 +1169,14 @@ class CollabPrefLearningVB(object):
 
         y_out = Ky.dot(self.invKy_block.dot(self.y.T)).T  # Nfactors x N
 
-        cov_y = np.zeros((self.Nfactors, Npeople, Npeople))
-        for f in range(self.Nfactors):
-            fidxs = np.arange(self.Npeople) + self.Npeople * f
-            cov_y[f] = Ky_starstar * self.rate_sy[f] / self.shape_sy[f] + covpair.dot(self.y_cov[fidxs, :][:, fidxs]
+        if return_cov:
+            cov_y = np.zeros((self.Nfactors, Npeople, Npeople))
+            for f in range(self.Nfactors):
+                fidxs = np.arange(self.Npeople) + self.Npeople * f
+                cov_y[f] = Ky_starstar * self.rate_sy[f] / self.shape_sy[f] + covpair.dot(self.y_cov[fidxs, :][:, fidxs]
                                                     - self.Ky_block * self.rate_sy[f] / self.shape_sy[f]).dot(covpair.T)
+        else:
+            cov_y = None
 
         return y_out, cov_y
 
