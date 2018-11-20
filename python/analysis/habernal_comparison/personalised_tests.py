@@ -10,6 +10,7 @@ Created on 19 Jun 2017
 
 @author: simpson
 '''
+import os
 import sys
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -19,7 +20,7 @@ from collab_pref_learning_vb import CollabPrefLearningVB #, PreferenceComponents
 from collab_pref_learning_svi import CollabPrefLearningSVI
 import numpy as np
 
-nfactors = 10
+nfactors = 50
 
 class PersonalisedTestRunner(TestRunner):
 
@@ -48,7 +49,10 @@ class PersonalisedTestRunner(TestRunner):
         
         self.model.fit(self.person_train, self.a1_train, self.a2_train, self.items_feat, zero_centered_prefs, 
                   optimize=self.optimize_hyper, nrestarts=1, input_type='zero-centered')
-        
+
+        if vscales is not None:
+            vscales.append(np.sort(self.model.rate_sw / self.model.shape_sw)[::-1])
+
         proba = self.model.predict(self.person_test, self.a1_test, self.a2_test, self.items_feat)
         if self.a_rank_test is not None:
             predicted_f = self.model.predict_f_item_person(self.a_rank_test, self.person_rank_test, self.items_feat)
@@ -75,12 +79,45 @@ if __name__ == '__main__':
     feature_types = ['debug'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
 
     methods = [
-        'PersPrefGP_commonmean_noOpt', 'PersPrefGP_noOpt',
+        'PersPrefGP_commonmean_noOpt', #'PersPrefGP_noOpt',
         #'PersPrefGP_fa_noOpt' 'IndPrefGP_noOpt',
                ]  
     embeddings_types = ['word_mean']#, 'skipthoughts'] # 'siamese-cbow'] 
     
     #if 'runner' not in globals():
+
+    vscales = [] # record the latent factor scales
+
     runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods,
-                                        dataset_increment, )
+                                        dataset_increment)
     runner.run_test_set(min_no_folds=0, max_no_folds=1)
+
+    vscales = np.mean(vscales, axis=0)
+
+    logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
+
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure(figsize=(5, 4))
+
+    markers = ['o', 'x', '+', '>', '<', '*']
+
+    plt.plot(np.arange(vscales.shape[0]), vscales, marker=markers[0], label='UKPConvArgCrowdSample',
+             linewidth=2, markersize=8)
+
+    plt.ylabel('Inverse scale 1/s')
+    plt.xlabel('Factor ID')
+
+    plt.grid('on', axis='y')
+    plt.legend(loc='best')
+    plt.tight_layout()
+
+    figure_root_path = './results/conv_factors'
+    if not os.path.exists(figure_root_path):
+        os.mkdir(figure_root_path)
+
+    plt.savefig(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.pdf')
+
+    np.savetxt(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.csv', vscales, delimiter=',', fmt='%f')
+
+    logging.basicConfig(level=logging.DEBUG)  # switch back to the debug output

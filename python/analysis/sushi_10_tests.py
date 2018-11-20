@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
 from sklearn.metrics import accuracy_score, log_loss
+import matplotlib.pyplot as plt
 
 from collab_pref_learning_svi import CollabPrefLearningSVI
 from gp_pref_learning import GPPrefLearning
@@ -99,6 +100,9 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
                                   verbose=True, use_lb=True)
 
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
+
+    if vscales is not None:
+        vscales.append(np.sort(model.rate_sw / model.shape_sw)[::-1])
 
     if u_test is None:
         return model
@@ -562,6 +566,8 @@ np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fm
 
 # Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
 
+vscales = None # don't record the v scale factors
+
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
@@ -580,6 +586,8 @@ run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
+vscales = []
+
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
@@ -596,6 +604,9 @@ methods = [
 optimize = True
 sushiB = False
 run_sushi_expt(methods, 'sushi_10_opt' + tag)
+
+vscales_A = vscales
+vscales = None
 
 # Load SUSHI-B dataset -------------------------------------------------------------------------------------------------
 
@@ -634,6 +645,8 @@ if debug_small:
 
 # SUSHI B dataset, no opt. ---------------------------------------------------------------------------------------------
 
+vscales = None # don't record the v factor scale factors
+
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
@@ -653,6 +666,8 @@ run_sushi_expt(methods, 'sushi_100' + tag)
 
 # SUSHI B dataset, ARD -------------------------------------------------------------------------------------------------
 
+vscales = []
+
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
@@ -669,3 +684,37 @@ methods = [
 optimize = True
 sushiB = True
 run_sushi_expt(methods, 'sushi_100_opt' + tag)
+
+vscales_B = vscales
+
+# Plot the latent factor scales ----------------------------------------------------------------------------------------
+
+vscales_A = np.mean(vscales_A, axis=0)
+vscales_B = np.mean(vscales_B, axis=0)
+
+logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
+
+fig = plt.figure(figsize=(5, 4))
+
+markers = ['o', 'x', '+', '>', '<', '*']
+
+plt.plot(np.arange(vscales_A.shape[0]), vscales_A, marker=markers[0], label='Sushi A', linewidth=2, markersize=8)
+plt.plot(np.arange(vscales_B.shape[0]), vscales_B, marker=markers[1], label='Sushi B', linewidth=2, markersize=8)
+
+plt.ylabel('Inverse scale 1/s')
+plt.xlabel('Factor ID')
+
+plt.grid('on', axis='y')
+plt.legend(loc='best')
+plt.tight_layout()
+
+figure_root_path = './results/sushi_factors'
+if not os.path.exists(figure_root_path):
+    os.mkdir(figure_root_path)
+
+plt.savefig(figure_root_path + '/sushi_factor_scales.pdf')
+
+np.savetxt(figure_root_path + '/sushi_A_factor_scales.csv', vscales_A, delimiter=',', fmt='%f')
+np.savetxt(figure_root_path + '/sushi_B_factor_scales.csv', vscales_B, delimiter=',', fmt='%f')
+
+logging.basicConfig(level=logging.DEBUG)  # switch back to the debug output
