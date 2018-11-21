@@ -304,7 +304,9 @@ class TestRunner:
         self.embeddings_types = embeddings_types
         self.methods = methods
         self.dataset_increment = dataset_increment
-        
+
+        self.vscales = []  # record the latent factor scales
+
     def load_features(self, feature_type, embeddings_type, a1_train, a2_train, uids, utexts=None):
         '''
         Load all the features specified by the type into an items_feat object. Remove any features where the values are all

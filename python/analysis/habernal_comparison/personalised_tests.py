@@ -62,8 +62,8 @@ class PersonalisedTestRunner(TestRunner):
         self.model.fit(self.person_train, self.a1_train, self.a2_train, self.items_feat, zero_centered_prefs, 
                   optimize=self.optimize_hyper, nrestarts=1, input_type='zero-centered')
 
-        if vscales is not None:
-            vscales.append(np.sort(self.model.rate_sw / self.model.shape_sw)[::-1])
+        if self.vscales is not None:
+            self.vscales.append(np.sort(self.model.rate_sw / self.model.shape_sw)[::-1])
 
         proba = self.model.predict(self.person_test, self.a1_test, self.a2_test, self.items_feat)
         if self.a_rank_test is not None:
@@ -95,14 +95,13 @@ if __name__ == '__main__':
             ]
     embeddings_types = ['word_mean']
 
-    vscales = [] # record the latent factor scales
 
     if 'runner' not in globals():
         runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods,
                                         dataset_increment)
     runner.run_test_set(min_no_folds=0, max_no_folds=1)
 
-    vscales = np.mean(vscales, axis=0)
+    vscales = np.mean(runner.vscales, axis=0)
 
     logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
 
