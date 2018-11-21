@@ -752,7 +752,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         return lb
 
-    def _predict_w_t(self, coords_1):
+    def _predict_w_t(self, coords_1, return_cov=True):
 
         # kernel between pidxs and t
         K = self.kernel_func(coords_1, self.ls, self.inducing_coords)
@@ -765,20 +765,29 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             t_out = K.dot(self.invK_mm).dot(self.t_u)
 
             covpair_uS = covpair.dot(self.tS)
-            cov_t = K_starstar * self.rate_st / self.shape_st + (covpair_uS - covpair.dot(self.Kts_mm)).dot(covpair.T)
+            if return_cov:
+                cov_t = K_starstar * self.rate_st / self.shape_st + (covpair_uS -
+                                                                     covpair.dot(self.Kts_mm)).dot(covpair.T)
+            else:
+                cov_t = None
         else:
             t_out = np.zeros((N, 1))
-
-            cov_t = np.zeros((N, N))
+            if return_cov:
+                cov_t = np.zeros((N, N))
+            else:
+                cov_t = None
 
         # kernel between pidxs and w -- use kernel to compute w. Don't need Kw_mm block-diagonal matrix
         w_out = K.dot(self.invK_mm).dot(self.w_u)
 
-        cov_w = np.zeros((self.Nfactors, N, N))
-        for f in range(self.Nfactors):
-            cov_w[f] = K_starstar  * self.rate_sw[f] / self.shape_sw[f] + \
-               covpair.dot(self.wS[f] - self.K_mm * self.rate_sw[f] / self.shape_sw[f]).dot(covpair.T)
-
+        if return_cov:
+            cov_w = np.zeros((self.Nfactors, N, N))
+            for f in range(self.Nfactors):
+                cov_w[f] = K_starstar  * self.rate_sw[f] / self.shape_sw[f] + \
+                                covpair.dot(self.wS[f] - self.K_mm * self.rate_sw[f] / self.shape_sw[f]).dot(covpair.T)
+        else:
+            cov_w = None
+            
         return t_out, w_out, cov_t, cov_w
 
     def predict_t(self, item_features):
@@ -833,13 +842,17 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                       for f in range(self.Nfactors)])
         return v
 
-    def _predict_y(self, person_features):
+    def _predict_y(self, person_features, return_cov=True):
 
         if person_features is None and self.person_features is None:
 
-            cov_y = np.zeros((self.Nfactors, self.y_ninducing, self.y_ninducing))
-            for f in range(self.Nfactors):
-                cov_y[f] = self.yS[f]
+            if return_cov:
+                cov_y = np.zeros((self.Nfactors, self.y_ninducing, self.y_ninducing))
+                for f in range(self.Nfactors):
+                    cov_y[f] = self.yS[f]
+            else:
+                cov_y = None
+
             return self.y_u, cov_y
 
         elif person_features is None:
@@ -856,9 +869,12 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         y_out = Ky.dot(self.invKy_mm_block).dot(self.y_u.T).T
 
-        cov_y = np.zeros((self.Nfactors, Npeople, Npeople))
-        for f in range(self.Nfactors):
-            cov_y[f] = Ky_starstar + covpair.dot(self.yS[f] - self.Ky_mm_block).dot(covpair.T)
+        if return_cov:
+            cov_y = np.zeros((self.Nfactors, Npeople, Npeople))
+            for f in range(self.Nfactors):
+                cov_y[f] = Ky_starstar + covpair.dot(self.yS[f] - self.Ky_mm_block).dot(covpair.T)
+        else:
+            cov_y = None
 
         return y_out, cov_y
 
