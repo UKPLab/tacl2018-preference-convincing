@@ -558,6 +558,7 @@ ninducing = 500
 forgetting_rate = 0.9
 
 sushiB = False
+vscales = None
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
