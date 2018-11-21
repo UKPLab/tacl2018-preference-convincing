@@ -284,7 +284,7 @@ def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, 
         #return -lb
         rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, ufeats)
         acc_m = accuracy_score(prefs_test, np.round(rho_pred))
-        
+
         print('Accuracy of %f with shape = %f and rate = %f' % (acc_m, shape_s0, rate_s0))
 
         return -acc_m
@@ -306,7 +306,8 @@ def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, 
 
     for sh, shape_s0 in enumerate(sh_vals):
         for r, rate_s0 in enumerate(r_vals):
-            lb = run_crowd_GPPL_wrapper([np.log(shape_s0), np.log(rate_s0)], u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr)
+            lb = run_crowd_GPPL_wrapper([np.log(shape_s0), np.log(rate_s0)], u_tr, i1_tr, i2_tr, ifeats, ufeats,
+                                        prefs_tr, u_test, i1_test, i2_test, prefs_test)
             if lb < minval:
                 minval = lb
                 min_sh_idx = sh
