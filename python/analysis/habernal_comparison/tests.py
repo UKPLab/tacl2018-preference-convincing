@@ -64,7 +64,7 @@ from data_loading import load_train_test_data, load_embeddings, load_ling_featur
 import numpy as np
     
 ndebug_features = 10
-verbose = False
+verbose = True
     
 def save_fold_order(resultsdir, folds=None, dataset=None):
     if folds is None and dataset is not None:
