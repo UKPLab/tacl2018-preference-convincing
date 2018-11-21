@@ -1,4 +1,4 @@
-from tests import TestRunner
+from personalised_tests import PersonalisedTestRunner as TestRunner
 
 if __name__ == '__main__':
 

@@ -12,7 +12,7 @@ from sklearn.metrics.classification import accuracy_score
 import matplotlib.pyplot as plt
 import compute_metrics
 
-figure_save_path = './documents/pref_learning_for_convincingness/figures/scalability'
+figure_save_path = './results/scalability'
 if not os.path.isdir(figure_save_path):
     os.mkdir(figure_save_path)
 
