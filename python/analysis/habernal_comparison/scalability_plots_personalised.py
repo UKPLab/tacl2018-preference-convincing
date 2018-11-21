@@ -27,7 +27,7 @@ if __name__ == '__main__':
     expt_settings['foldorderfile'] = None    
     data_root_dir = os.path.abspath("./data/personalised_argumentation/")
     resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
-    foldername = 'crowd_arg_personalised_expts'
+    foldername = 'personalised'
 
     expt_settings['dataset'] = 'UKPConvArgCrowdSample_evalMACE'
     expt_settings['acc'] = 1.0
@@ -53,9 +53,7 @@ if __name__ == '__main__':
                 'PersPrefGP_commonmean_noOpt_M500',
                 'PersPrefGP_commonmean_noOpt_M600',
                 'PersPrefGP_commonmean_noOpt_M700',
-                'SVM', 'BI-LSTM', #'SinglePrefGP_weaksprior',
                 ]
-
 
     # Load the results for accuracy and runtime vs. no. inducing points with both feature sets
     expt_settings['feature_type'] = 'both'
@@ -282,7 +280,7 @@ if __name__ == '__main__':
     runtimes_N = np.zeros((len(methods), len(Nvals)))
 
     for n, N in enumerate(Nvals):
-        foldername = 'crowd_arg_personalised_expts_%i/' % N
+        foldername = 'personalised_%i/' % N
 
         for m, expt_settings['method'] in enumerate(methods):
             print("Processing method %s" % expt_settings['method'])
@@ -356,7 +354,7 @@ if __name__ == '__main__':
     # Fourth plot: no. features versus runtime -------------------------------------------------------------------------
     expt_settings['feature_type'] = 'debug'
     for n, dim in enumerate(['30feats', '', '3000feats']):
-        foldername = 'crowd_arg_personalised_expts_%s/' % dim
+        foldername = 'personalised_%s/' % dim
         print("Processing %s" % dim)
         for m, expt_settings['method'] in enumerate(dims_methods):
             print("Processing method %s" % expt_settings['method'])
