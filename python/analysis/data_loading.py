@@ -9,7 +9,7 @@ Created on 10 Jun 2017
 '''
 import os, sys
 
-data_root_dir = os.path.abspath(os.path.expanduser("./data/"))
+data_root_dir = os.path.abspath("./data/")
 
 sys.path.append(os.path.abspath('./git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python'))
 sys.path.append(os.path.expanduser('~/data/personalised_argumentation/embeddings/Siamese-CBOW/siamese-cbow'))

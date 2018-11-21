@@ -5,14 +5,95 @@ if __name__ == '__main__':
     acc = 1.0
     dataset_increment = 0
 
-    # Classifications task
+    # For plots 1 and 2 ------------------------------------------------------------------------------------------------
     datasets = ['UKPConvArgCrowdSample_evalMACE']
-
-    # Create a plot for the runtime/accuracy against M + include other methods with ling + Glove features
-    methods = ['SinglePrefGP_noOpt_weaksprior', 'SVM', 'BI-LSTM', 'PersPrefGP_commonmean_noOpt', ]
-    feature_types = ['both'] # 'both'
+    methods = ['SinglePrefGP_noOpt_weaksprior_M2',
+               'SinglePrefGP_noOpt_weaksprior_M10',
+               'SinglePrefGP_noOpt_weaksprior_M100',
+               'SinglePrefGP_noOpt_weaksprior_M200',
+               'SinglePrefGP_noOpt_weaksprior_M300',
+               'SinglePrefGP_noOpt_weaksprior_M400'
+               'SinglePrefGP_noOpt_weaksprior_M500',
+               'PersPrefGP_commonmean_noOpt_weaksprior_M2',
+               'PersPrefGP_commonmean_noOpt_weaksprior_M10',
+               'PersPrefGP_commonmean_noOpt_weaksprior_M100',
+               'PersPrefGP_commonmean_noOpt_weaksprior_M200',
+               'PersPrefGP_commonmean_noOpt_weaksprior_M300',
+               'PersPrefGP_commonmean_noOpt_weaksprior_M400',
+               'PersPrefGP_commonmean_noOpt_weaksprior_M500',
+               'BI-LSTM',
+               'SVM'
+            ]
+    feature_types = ['both', 'embeddings']
     embeddings_types = ['word_mean']
 
-    runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods,
+    runner = TestRunner('crowd_arg_personalised_expts', datasets, feature_types, embeddings_types, methods,
                         dataset_increment)
-    runner.run_test_set()
+    runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0)
+
+    # For Plot 3: Scaling with N_tr ------------------------------------------------------------------------------------
+    datasets = ['UKPConvArgCrowdSampl_evalMACE']
+    methods = ['SinglePrefGP_noOpt_weaksprior_M0', 'SinglePrefGP_noOpt_weaksprior_M100',
+               'PersPrefGP_noOpt_weaksprior_M0', 'PersPrefGP_noOpt_weaksprior_M100',
+               'SVM', 'BI-LSTM' ] # M0 will mean no SVI
+    feature_types = ['embeddings']
+    embeddings_types = ['word_mean']
+
+    runner = TestRunner('crowd_arg_personalised_expts_50', datasets, feature_types, embeddings_types, methods,
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=50)
+
+    runner = TestRunner('crowd_arg_personalised_expts_100', datasets, feature_types, embeddings_types, methods,
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=100)
+
+    runner = TestRunner('crowd_arg_personalised_expts_200', datasets, feature_types, embeddings_types, methods,
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=200)
+
+    runner = TestRunner('crowd_arg_personalised_expts_300', datasets, feature_types, embeddings_types, methods,
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=300)
+
+    runner = TestRunner('crowd_arg_personalised_expts_400', datasets, feature_types, embeddings_types, methods,
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=400)
+
+    runner = TestRunner('crowd_arg_personalised_expts_500', datasets, feature_types, embeddings_types, methods,
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=0, subsample_tr=500)
+
+    # For plot 4: no. features versus runtime --------------------------------------------------------------------------
+
+    datasets = ['UKPConvArgCrowdSample_evalMACE']
+    methods = ['SinglePrefGP_noOpt_weaksprior_M500', 'PersPrefGP_noOpt_weaksprior_M500', 'SVM', 'BI-LSTM']
+    feature_types = ['debug']
+    ndebug_features = 30
+    embeddings_types = ['word_mean']
+
+    if not 'runner' in globals():
+        runner = TestRunner('crowd_arg_personalised_expts_30feats', datasets, feature_types, embeddings_types, methods,
+                                dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0)
+
+    datasets = ['UKPConvArgCrowdSample_evalMACE']
+    methods = ['SinglePrefGP_noOpt_weaksprior_M500', 'PersPrefGP_noOpt_weaksprior_M500', 'SVM', 'BI-LSTM']
+    feature_types = ['debug']
+    ndebug_features = 300
+    embeddings_types = ['word_mean']
+
+    if not 'runner' in globals():
+        runner = TestRunner('crowd_arg_personalised_expts_300feats', datasets, feature_types, embeddings_types, methods,
+                                dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0)
+
+    datasets = ['UKPConvArgCrowdSample_evalMACE']
+    methods = ['SinglePrefGP_noOpt_weaksprior_M500', 'PersPrefGP_noOpt_weaksprior_M500', 'SVM', 'BI-LSTM']
+    feature_types = ['debug']
+    ndebug_features = 3000
+    embeddings_types = ['word_mean']
+
+    if not 'runner' in globals():
+        runner = TestRunner('crowd_arg_personalised_expts_3000feats', datasets, feature_types, embeddings_types, methods,
+                                dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0)

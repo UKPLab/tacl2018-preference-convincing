@@ -31,18 +31,30 @@ class PersonalisedTestRunner(TestRunner):
         if '_commonmean' in self.method:
             common_mean = True
             
-        if '_fa' in self.method:
-            model_class = PreferenceComponentsFA
-        elif 'IndPrefGP' in self.method:
-            model_class = PreferenceNoComponentFactors
-        elif '_nofactorsvi' in self.method:
-            model_class = CollabPrefLearningVB
+        if 'weaksprior' in self.method:
+            shape_s0 = 2.0
+            rate_s0 = 200.0
+        elif 'lowsprior' in self.method:
+            shape_s0 = 1.0
+            rate_s0 = 1.0
+        elif 'weakersprior' in self.method:
+            shape_s0 = 2.0
+            rate_s0 = 2000.0
         else:
-            model_class = CollabPrefLearningSVI
-    
-        self.model = model_class(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose, 
+            shape_s0 = 200.0
+            rate_s0 = 20000.0
+
+        if '_M' in self.method:
+            validx = self.method.find('_M') + 2
+            M = int(self.method[validx:])
+        else:
+            M = 500
+
+        self.model = CollabPrefLearningSVI(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose,
                      nfactors=nfactors, rate_ls = 1.0 / np.mean(self.ls_initial),
-                     use_common_mean_t=common_mean, max_update_size=1000, use_lb=True)
+                     use_common_mean_t=common_mean, max_update_size=1000, use_lb=True,
+                     shape_s0=shape_s0, rate_s0=rate_s0, ninducing=M)
+
         self.model.max_iter = 200
         
         zero_centered_prefs = np.array(self.prefs_train, dtype=float)-1
@@ -79,16 +91,14 @@ if __name__ == '__main__':
     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
 
     methods = [
-        'PersPrefGP_commonmean_noOpt', 'PersPrefGP_commonmean'#'PersPrefGP_noOpt',
-        #'PersPrefGP_fa_noOpt' 'IndPrefGP_noOpt',
-               ]  
-    embeddings_types = ['word_mean']#, 'skipthoughts'] # 'siamese-cbow'] 
-    
-    #if 'runner' not in globals():
+               'PersPrefGP_commonmean_noOpt_weaksprior', 'PersPrefGP_commonmean_weaksprior'
+            ]
+    embeddings_types = ['word_mean']
 
     vscales = [] # record the latent factor scales
 
-    runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods,
+    if 'runner' not in globals():
+        runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods,
                                         dataset_increment)
     runner.run_test_set(min_no_folds=0, max_no_folds=1)
 
