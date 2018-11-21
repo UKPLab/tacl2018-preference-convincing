@@ -260,10 +260,12 @@ def compute_median_lengthscales(items_feat, multiply_heuristic_power=1.0, N_max=
 
     ls_initial_guess = np.ones(ndims) * default_ls_value
 
-    logging.info(
-        'I am using a heuristic multiplier for the length-scale because median is too low to work in high-D spaces')
-    # ls_initial_guess *= 1000 # this worked reasonably well but was plucked out of thin air
-    ls_initial_guess *= items_feat.shape[
+
+    if items_feat.shape[1] > 200:
+        logging.info('I am using a heuristic multiplier for the length-scale '
+                     'because median is too low to work in high-D spaces')
+        # ls_initial_guess *= 1000 # this worked reasonably well but was plucked out of thin air
+        ls_initial_guess *= items_feat.shape[
                             1] ** multiply_heuristic_power  # this is a heuristic, see e.g. "On the High-dimensional
     # Power of Linear-time Kernel Two-Sample Testing under Mean-difference Alternatives" by Ramdas et al. 2014. In that
     # paper they refer to root(no. dimensions) because they square the lengthscale in the kernel function.

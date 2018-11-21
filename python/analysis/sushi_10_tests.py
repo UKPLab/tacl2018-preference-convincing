@@ -259,14 +259,16 @@ def run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_tes
 #     return fpred, rho_pred
 
 
-def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr):
+def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
+                         u_test, i1_test, i2_test, prefs_test):
     '''
     Optimize the function scale to select values of shape_s0 and rate_s0 using Bayesian model selection.
 
     :return: optimal values of shape_s0 and rate_s0
     '''
 
-    def run_crowd_GPPL_wrapper(loghypers, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr):
+    def run_crowd_GPPL_wrapper(loghypers, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
+                               u_test, i1_test, i2_test, prefs_test):
         global shape_s0
         global rate_s0
         global optimize
@@ -277,9 +279,15 @@ def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, 
 
         print('Running with shape_s0 = %f and rate_s0 = %f' % (shape_s0, rate_s0))
         model = run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr)
-        lb = model.lowerbound()
-        print('Obtained lower bound %f with shape_s0 = %f and rate_s0 = %f' % (lb, shape_s0, rate_s0))
-        return -lb
+        #lb = model.lowerbound()
+        #print('Obtained lower bound %f with shape_s0 = %f and rate_s0 = %f' % (lb, shape_s0, rate_s0))
+        #return -lb
+        rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, ufeats)
+        acc_m = accuracy_score(prefs_test, np.round(rho_pred))
+        
+        print('Accuracy of %f with shape = %f and rate = %f' % (acc_m, shape_s0, rate_s0))
+
+        return -acc_m
 
     # initialguess = np.log([shape_s0, rate_s0])
     # args = (u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr)
@@ -542,8 +550,8 @@ if debug_small:
 
 # Hyperparameters common to most models --------------------------------------------------------------------------------
 
-shape_s0 = 1000
-rate_s0 = 0.1
+shape_s0 = 1
+rate_s0 = 1  #0.1
 max_update_size = 1000
 ninducing = 500
 forgetting_rate = 0.9
@@ -552,17 +560,18 @@ sushiB = False
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
-# print('Optimizing function scales ...')
-# np.random.seed(2309234)
-# u_tr, i1_tr, i2_tr, prefs_tr, _, _, _, _, _, _ = subsample_data()
-# shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
-#                                          item_features, user_features, prefs_tr)
-# print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
-#
+print('Optimizing function scales ...')
+np.random.seed(2309234)
+u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, _ = subsample_data()
+shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
+                                         item_features, user_features, prefs_tr,
+                                         u_test, i1_test, i2_test, prefs_test)
+print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
+
 # Experiment name tag
 tag = '_4'
 
-# np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
+np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
 
 # Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
 
