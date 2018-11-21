@@ -542,7 +542,7 @@ if debug_small:
 
 # Hyperparameters common to most models --------------------------------------------------------------------------------
 
-shape_s0 = 0.1
+shape_s0 = 1000
 rate_s0 = 0.1
 max_update_size = 1000
 ninducing = 500
@@ -552,17 +552,17 @@ sushiB = False
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
-print('Optimizing function scales ...')
-np.random.seed(2309234)
-u_tr, i1_tr, i2_tr, prefs_tr, _, _, _, _, _, _ = subsample_data()
-shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
-                                         item_features, user_features, prefs_tr)
-print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
-
+# print('Optimizing function scales ...')
+# np.random.seed(2309234)
+# u_tr, i1_tr, i2_tr, prefs_tr, _, _, _, _, _, _ = subsample_data()
+# shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
+#                                          item_features, user_features, prefs_tr)
+# print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
+#
 # Experiment name tag
-tag = '_3'
+tag = '_4'
 
-np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
+# np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
 
 # Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
 

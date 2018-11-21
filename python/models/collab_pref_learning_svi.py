@@ -787,7 +787,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                                 covpair.dot(self.wS[f] - self.K_mm * self.rate_sw[f] / self.shape_sw[f]).dot(covpair.T)
         else:
             cov_w = None
-            
+
         return t_out, w_out, cov_t, cov_w
 
     def predict_t(self, item_features):
