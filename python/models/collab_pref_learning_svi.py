@@ -907,6 +907,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         der_logpy_logqy = 0
         der_logpt_logqt = 0
 
+        if self.verbose:
+            logging.debug('Computing gradient for dimension %i' % d)
+
         # compute the gradient. This should follow the MAP estimate from chu and ghahramani.
         # Terms that don't involve the hyperparameter are zero; implicit dependencies drop out if we only calculate
         # gradient when converged due to the coordinate ascent method.
@@ -917,7 +920,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
             for f in range(self.Nfactors):
                 swf = self.shape_sw[f] / self.rate_sw[f]
-                invKs_Cf = (self.invK_mm * self.shape_sw[f] / self.rate_sw[f]).dot(self.wS[f])
+                invK_mm_f = self.invK_mm * self.shape_sw[f] / self.rate_sw[f]
+                invKs_Cf = invK_mm_f.dot(self.wS[f])
                 invK_wf = invK_w[:, f]
 
                 Sigma = self.Sigma_w[f, :, :]
