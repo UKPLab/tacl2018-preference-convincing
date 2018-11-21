@@ -283,7 +283,7 @@ def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, 
         #print('Obtained lower bound %f with shape_s0 = %f and rate_s0 = %f' % (lb, shape_s0, rate_s0))
         #return -lb
         rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, ufeats)
-        acc_m = accuracy_score(prefs_test, np.round(rho_pred))
+        acc_m = accuracy_score(prefs_test.astype(int), np.round(rho_pred).astype(int))
 
         print('Accuracy of %f with shape = %f and rate = %f' % (acc_m, shape_s0, rate_s0))
 

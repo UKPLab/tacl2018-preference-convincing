@@ -18,7 +18,10 @@ if not os.path.isdir(figure_save_path):
     os.mkdir(figure_save_path)
 
 if __name__ == '__main__':
-    
+
+    # The first part runs some methods, times them and computes required metrics --> These results are needed for the
+    # first and second plots.
+
     if 'expt_settings' not in globals():
         expt_settings = {}
         expt_settings['dataset'] = None
@@ -33,17 +36,33 @@ if __name__ == '__main__':
     compute_metrics.max_no_folds = 32
         
     # Create a plot for the runtime/accuracy against M + include other methods with ling + Glove features
-    methods =  ['SinglePrefGP_noOpt_weaksprior_M2', 'SinglePrefGP_noOpt_weaksprior_M10', 
-                'SinglePrefGP_noOpt_weaksprior_M100', 'SinglePrefGP_noOpt_weaksprior_M200', 'SinglePrefGP_noOpt_weaksprior_M300',
-                'SinglePrefGP_noOpt_weaksprior_M400', 'SinglePrefGP_noOpt_weaksprior_M500',  
-                'SinglePrefGP_noOpt_weaksprior_M600', 'SinglePrefGP_noOpt_weaksprior_M700', 
-                'SVM', 'BI-LSTM', 'SinglePrefGP_weaksprior', ]
+    methods =  ['SinglePrefGP_noOpt_weaksprior_M2',
+                'SinglePrefGP_noOpt_weaksprior_M10',
+                'SinglePrefGP_noOpt_weaksprior_M100',
+                'SinglePrefGP_noOpt_weaksprior_M200',
+                'SinglePrefGP_noOpt_weaksprior_M300',
+                'SinglePrefGP_noOpt_weaksprior_M400',
+                'SinglePrefGP_noOpt_weaksprior_M500',
+                'SinglePrefGP_noOpt_weaksprior_M600',
+                'SinglePrefGP_noOpt_weaksprior_M700',
+                'PersPrefGP_commonmean_noOpt_M2',
+                'PersPrefGP_commonmean_noOpt_M10',
+                'PersPrefGP_commonmean_noOpt_M100',
+                'PersPrefGP_commonmean_noOpt_M200',
+                'PersPrefGP_commonmean_noOpt_M300',
+                'PersPrefGP_commonmean_noOpt_M400',
+                'PersPrefGP_commonmean_noOpt_M500',
+                'PersPrefGP_commonmean_noOpt_M600',
+                'PersPrefGP_commonmean_noOpt_M700',
+                'SVM', 'BI-LSTM', #'SinglePrefGP_weaksprior',
+                ]
     expt_settings['feature_type'] = 'both'
     expt_settings['embeddings_type'] = 'word_mean'
     
     docids = None
     
-    dims_methods = np.array(['SinglePrefGP_noOpt_weaksprior_M500', 'SVM', 'BI-LSTM', 'SinglePrefGP_weaksprior'])
+    dims_methods = np.array(['SinglePrefGP_noOpt_weaksprior_M500', 'PersPrefGP_commonmean_noOpt_M500', 'SVM', 'BI-LSTM'])
+    #, 'SinglePrefGP_weaksprior'])
     runtimes_dims = np.zeros((len(dims_methods), 4))
     
     runtimes_both = np.zeros(len(methods))
