@@ -920,7 +920,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
             for f in range(self.Nfactors):
                 swf = self.shape_sw[f] / self.rate_sw[f]
-                invK_mm_f = self.invK_mm * self.shape_sw[f] / self.rate_sw[f]
+                invK_mm_f = self.invK_mm * swf
                 invKs_Cf = invK_mm_f.dot(self.wS[f])
                 invK_wf = invK_w[:, f]
 

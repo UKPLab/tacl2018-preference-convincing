@@ -1421,14 +1421,21 @@ class CollabPrefLearningVB(object):
         if np.any(np.isinf(self.lsy)):
             return np.inf
 
-        num_jobs = multiprocessing.cpu_count()
-        mll_jac = Parallel(n_jobs=num_jobs)(delayed(self._gradient_dim)(lstype, d, dim)
-                                             for d, dim in enumerate(dimensions))
-        mll_jac = np.array(mll_jac)  #, order='F')
-        # mll_jac = np.zeros(len(dimensions), dtype=float)
-        # for d, dim in enumerate(dimensions):
-        #
-        #     mll_jac[d] = self._gradient_dim(lstype, d, dim)
+        # num_jobs = multiprocessing.cpu_count()
+        # if num_jobs > 12:
+        #     num_jobs = 12
+
+        if self.verbose:
+            logging.debug("Starting gradient computations...")
+        # mll_jac = Parallel(n_jobs=num_jobs)(delayed(self._gradient_dim)(lstype, d, dim)
+        #                                      for d, dim in enumerate(dimensions))
+        # mll_jac = np.array(mll_jac)  #, order='F')
+        mll_jac = np.zeros(len(dimensions), dtype=float)
+        for d, dim in enumerate(dimensions):
+            mll_jac[d] = self._gradient_dim(lstype, d, dim)
+
+        if self.verbose:
+            logging.debug("Completed gradient computations.")
 
         if len(mll_jac) == 1:  # don't need an array if we only compute for one dimension
             mll_jac = mll_jac[0]
