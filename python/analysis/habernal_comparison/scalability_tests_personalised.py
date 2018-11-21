@@ -12,7 +12,7 @@ if __name__ == '__main__':
                'SinglePrefGP_noOpt_weaksprior_M100',
                'SinglePrefGP_noOpt_weaksprior_M200',
                'SinglePrefGP_noOpt_weaksprior_M300',
-               'SinglePrefGP_noOpt_weaksprior_M400'
+               'SinglePrefGP_noOpt_weaksprior_M400',
                'SinglePrefGP_noOpt_weaksprior_M500',
                'PersPrefGP_commonmean_noOpt_weaksprior_M2',
                'PersPrefGP_commonmean_noOpt_weaksprior_M10',
