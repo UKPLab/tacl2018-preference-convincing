@@ -137,8 +137,12 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.inducing_coords = kmeans.cluster_centers_
 
         # Kernel over items (used to construct priors over w and t)
+        if self.verbose:
+            logging.debug('Initialising K_mm')
         self.K_mm = self.kernel_func(self.inducing_coords, self.ls) + 1e-6 * np.eye(self.ninducing) # jitter
         self.invK_mm = np.linalg.inv(self.K_mm)
+        if self.verbose:
+            logging.debug('Initialising K_nm')
         self.K_nm = self.kernel_func(self.obs_coords, self.ls, self.inducing_coords)
 
         # Related to w, the item components ------------------------------------------------------------
@@ -193,12 +197,16 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.y_inducing_coords = kmeans.cluster_centers_
 
             # Kernel over people used to construct prior covariance for y
+            if self.verbose:
+                logging.debug('Initialising Ky_mm')
             self.Ky_mm_block = self.y_kernel_func(self.y_inducing_coords, self.lsy)
             self.Ky_mm_block += 1e-6 * np.eye(len(self.Ky_mm_block)) # jitter
 
             # Prior covariance of y
             self.invKy_mm_block = np.linalg.inv(self.Ky_mm_block)
 
+            if self.verbose:
+                logging.debug('Initialising Ky_nm')
             self.Ky_nm_block = self.y_kernel_func(self.person_features, self.lsy, self.y_inducing_coords)
 
             # posterior covariance
@@ -525,6 +533,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             if diff < self.conv_threshold_G:
                 break
 
+        if self.verbose:
+            logging.debug('Computing Kw_i')
         Kw_i = self.kernel_func(self.obs_coords[self.n_idx_i, :], self.ls)
         self.w_cov_i = []
         self.w_i = []
@@ -755,7 +765,11 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
     def _predict_w_t(self, coords_1, return_cov=True):
 
         # kernel between pidxs and t
+        if self.verbose:
+            logging.debug('Computing K_nm in predict_w_t')
         K = self.kernel_func(coords_1, self.ls, self.inducing_coords)
+        if self.verbose:
+            logging.debug('Computing K_nn in predict_w_t')
         K_starstar = self.kernel_func(coords_1, self.ls, coords_1)
         covpair = K.dot(self.invK_mm)
         N = coords_1.shape[0]
@@ -799,6 +813,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             t = self.t
         else:
             # kernel between pidxs and t
+            if self.verbose:
+                logging.debug('Computing K_nm in predict_t')
             K = self.kernel_func(item_features, self.ls, self.inducing_coords)
             N = item_features.shape[0]
 
@@ -817,7 +833,11 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         if not self.use_t:
             return np.zeros(len(item_0_idxs))
 
+        if self.verbose:
+            logging.debug('Computing K_nm in predict_common')
         K = self.kernel_func(item_features, self.ls, self.inducing_coords)
+        if self.verbose:
+            logging.debug('Computing K_nn in predict_common')
         K_starstar = self.kernel_func(item_features, self.ls, item_features)
         covpair = K.dot(self.invK_mm)
         covpair_uS = covpair.dot(self.tS)
@@ -861,7 +881,11 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             Ky_starstar = self.Ky_nm_block.dot(self.invKy_mm_block).dot(self.Ky_nm_block.T)
 
         else:
+            if self.verbose:
+                logging.debug('Computing Ky_nm in predict_y')
             Ky = self.y_kernel_func(person_features, self.lsy, self.y_inducing_coords)
+            if self.verbose:
+                logging.debug('Computing Ky_nn in predict_y')
             Ky_starstar = self.y_kernel_func(person_features, self.lsy, person_features)
 
         covpair = Ky.dot(self.invKy_mm_block)

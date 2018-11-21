@@ -79,7 +79,7 @@ if __name__ == '__main__':
     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
 
     methods = [
-        'PersPrefGP_commonmean_noOpt', #'PersPrefGP_noOpt',
+        'PersPrefGP_commonmean_noOpt', 'PersPrefGP_commonmean'#'PersPrefGP_noOpt',
         #'PersPrefGP_fa_noOpt' 'IndPrefGP_noOpt',
                ]  
     embeddings_types = ['word_mean']#, 'skipthoughts'] # 'siamese-cbow'] 
