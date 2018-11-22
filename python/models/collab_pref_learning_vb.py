@@ -1014,7 +1014,8 @@ class CollabPrefLearningVB(object):
 
     def predict_f(self, item_features=None, person_features=None, personids=None, return_cov=False, return_personids=False):
 
-        personids = personids.astype(int)
+        if personids is not None:
+            personids = personids.astype(int)
 
         if person_features is None and personids is not None:
             '''
