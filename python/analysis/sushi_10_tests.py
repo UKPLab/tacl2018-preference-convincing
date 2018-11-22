@@ -528,7 +528,7 @@ print('User features: %i users, %i features.'% (user_features.shape[0], user_fea
 
 # for debugging --------------------------------------------------------------------------------------------------------
 
-debug_small = True
+debug_small = False
 
 if debug_small:
     ndebug = 50
