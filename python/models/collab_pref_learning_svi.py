@@ -11,6 +11,7 @@ approximations considering they are using slightly different values of obs_f to 
 accumulate from small differences in the approximations.
 
 """
+import datetime
 
 import numpy as np
 from scipy.stats import multivariate_normal as mvn, norm
@@ -343,6 +344,29 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         # i.e. the cluster identifiability problem
         # self.w = np.zeros((self.N, self.Nfactors))
         self.w = self.K_nm.dot(self.invK_mm).dot(self.w_u)
+        # save for later
+        batchsize = 500
+        nbatches = int(np.ceil(self.N / float(batchsize) ))
+
+        self.Kw_file_tag = ''#datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+        self.Kw = np.memmap('./Kw_%s.tmp' % self.Kw_file_tag, dtype=float, mode='w+', shape=(self.N, self.N))
+
+        for b in range(nbatches):
+
+            end1 = (b+1)*batchsize
+            if end1 > self.N:
+                end1 = self.N
+
+            for b2 in range(nbatches):
+
+                end2 = (b2+1)*batchsize
+                if end2 > self.N:
+                    end2 = self.N
+
+                self.Kw[b*batchsize:(b+1)*batchsize, :][:, b2*batchsize:(b2+1)*batchsize] = self.kernel_func(
+                    self.obs_coords[b*batchsize:end1, :], self.ls, self.obs_coords[b2*batchsize:end2, :])
+
+        self.Kw.flush()
 
         self.Sigma_w = np.zeros((self.Nfactors, self.ninducing, self.ninducing))
 
@@ -535,7 +559,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         if self.verbose:
             logging.debug('Computing Kw_i')
-        Kw_i = self.kernel_func(self.obs_coords[self.n_idx_i, :], self.ls)
+        Kw_i = self.Kw[self.n_idx_i, :][:, self.n_idx_i]
+
         self.w_cov_i = []
         self.w_i = []
 
@@ -902,50 +927,40 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         return y_out, cov_y
 
-    def _gradient_dim(self, lstype, d, dimension):
-        der_logpw_logqw = 0
-        der_logpy_logqy = 0
-        der_logpt_logqt = 0
+    def _compute_gradients_all_dims(self, lstype, dimensions):
+        mll_jac = np.zeros(len(dimensions), dtype=float)
 
-        if self.verbose:
-            logging.debug('Computing gradient for dimension %i' % d)
+        if lstype == 'item' or (lstype == 'both'):
+            common_term = np.sum(np.array([(self.w_u[:, f:f+1].dot(self.w_u[:, f:f+1].T) + self.wS[f]).dot(
+                self.shape_sw[f] / self.rate_sw[f] * self.invK_mm) - np.eye(self.ninducing)
+                for f in range(self.Nfactors)]), axis=0)
+            if self.use_t:
+                common_term += (self.t_u.dot(self.t_u.T) + self.tS).dot(self.shape_st / self.rate_st * self.invK_mm) \
+                               - np.eye(self.ninducing)
 
+            for dim in dimensions[:self.nitem_features]:
+                if self.verbose and np.mod(dim, 1000)==0:
+                    logging.debug('Computing gradient for %s dimension %i' % (lstype, dim))
+                mll_jac[dim] = self._gradient_dim(self.invK_mm, common_term, 'item', dim)
+
+        if (lstype == 'person' or (lstype == 'both')) and self.person_features is not None:
+            common_term = np.sum(np.array([(self.y_u[f:f+1].T.dot(self.y_u[f:f+1,:]) + self.yS[f]).dot(self.invKy_mm_block)
+                                           - np.eye(self.y_ninducing) for f in range(self.Nfactors)]), axis=0)
+
+            for dim in dimensions[self.nitem_features:]:
+                if self.verbose and np.mod(dim, 1000)==0:
+                    logging.debug('Computing gradient for %s dimension %i' % (lstype, dim))
+                mll_jac[dim + self.nitem_features] = self._gradient_dim(self.invKy_mm_block, common_term, 'person', dim)
+
+        return mll_jac
+
+    def _gradient_dim(self, invK_mm, common_term, lstype, dimension):
         # compute the gradient. This should follow the MAP estimate from chu and ghahramani.
         # Terms that don't involve the hyperparameter are zero; implicit dependencies drop out if we only calculate
         # gradient when converged due to the coordinate ascent method.
-        if lstype == 'item' or (lstype == 'both' and d < self.nitem_features):
+        if lstype == 'item':
             dKdls = self.K_mm * self.kernel_der(self.inducing_coords, self.ls, dimension)
-            # try to make the s scale cancel as much as possible
-            invK_w = self.invK_mm.dot(self.w_u)
-
-            for f in range(self.Nfactors):
-                swf = self.shape_sw[f] / self.rate_sw[f]
-                invK_mm_f = self.invK_mm * swf
-                invKs_Cf = invK_mm_f.dot(self.wS[f])
-                invK_wf = invK_w[:, f]
-
-                Sigma = self.Sigma_w[f, :, :]
-
-                der_logpw_logqw += 0.5 * (invK_wf.T.dot(dKdls).dot(invK_wf) * swf -
-                                    np.trace(invKs_Cf.dot(Sigma).dot(dKdls / swf)))
-
-            if self.use_t:
-                invK_t = self.invK_mm.dot(self.t_u)
-                invKs_C = self.invK_mm.dot(self.tS) * self.st
-
-                der_logpt_logqt = 0.5 * (invK_t.T.dot(dKdls).dot(invK_t) * self.st -
-                            np.trace(invKs_C.dot(self.Sigma_t).dot(dKdls / self.st)))
-
-        elif (lstype == 'person' or (lstype == 'both' and d >= self.nitem_features)) and self.person_features is not None:
+        elif lstype == 'person' and self.person_features is not None:
             dKdls = self.Ky_mm_block * self.kernel_der(self.y_inducing_coords, self.lsy, dimension)
-            invK_y = self.invKy_mm_block.dot(self.y_u.T)
 
-            for f in range(self.Nfactors):
-                invKs_Cf = self.invKy_mm_block.dot(self.yS[f])
-                invK_yf = invK_y[:, f]
-
-                Sigma = self.Sigma_y[f, :, :]
-
-                der_logpy_logqy += 0.5 * (invK_yf.T.dot(dKdls).dot(invK_yf) - np.trace(invKs_Cf.dot(Sigma).dot(dKdls)))
-
-        return der_logpw_logqw + der_logpy_logqy + der_logpt_logqt
+        return 0.5 * np.trace(common_term.dot(dKdls).dot(invK_mm))

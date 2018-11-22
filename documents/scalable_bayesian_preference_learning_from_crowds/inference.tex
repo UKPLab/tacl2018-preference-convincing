@@ -176,7 +176,7 @@ By taking expectations with respect to the variational $q$ distributions, the lo
 \alpha_0, \beta_0) -\log q(\bs f_m) - \log q(s) ] & \nonumber \\ \label{eq:lowerbound}
 =\; & \sum_{p=1}^P \mathbb{E}_{q(\bs f)}[\log p(y_p | f_{a_p}, f_{b_p})] - \frac{1}{2} \bigg\{ \log|\bs K_{mm}| - \mathbb{E}[\log s] - \log|\bs S| - M
 \nonumber &\\
-& + \hat{\bs f}_m\mathbb{E}[s] \bs K_{mm}^{-1}\hat{\bs f}_m + 
+& + \hat{\bs f}_m^T\mathbb{E}[s] \bs K_{mm}^{-1}\hat{\bs f}_m + 
 \textrm{Tr}(\mathbb{E}[s] \bs K_{mm}^{-1} \bs S) \bigg\}  + \log\Gamma(\alpha) - \log\Gamma(\alpha_0)  + \alpha_0(\log \beta_0) \nonumber\\
 & + (\alpha_0-\alpha)\mathbb{E}[\log s]+ (\beta-\beta_0) \mathbb{E}[s] - \alpha \log \beta, &
 \end{flalign}

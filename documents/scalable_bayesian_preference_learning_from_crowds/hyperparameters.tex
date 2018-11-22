@@ -77,40 +77,71 @@ with respect to the $d$th length-scale, $l_d$, is as follows:
 \begin{flalign}
 & \nabla_{l_{\! d}} \mathcal{L} =  
 \frac{\partial \mathcal{L}}{\partial \hat{\bs f}_m} \frac{\partial \hat{\bs f}_m}{\partial l_d}
-+ \frac{\partial \mathcal{L}}{\partial \bs S} \frac{\partial \bs S}{\partial l_d}
++ \frac{\partial \mathcal{L}}{\partial \bs S^{-1}} \frac{\partial \bs S^{-1}}{\partial l_d}
 + \frac{\partial \mathcal{L}}{\partial a} \frac{\partial a}{\partial l_d}
 + \frac{\partial \mathcal{L}}{\partial b} \frac{\partial b}{\partial l_d}
-+ \frac{\partial \mathcal{L}}{\partial \bs K}\frac{\partial \bs K}{\partial l_d}. &
++ \frac{\partial \mathcal{L}}{\partial \bs K}\frac{\partial \bs K}{\partial l_d}. & 
 \end{flalign}
+We exploit $S^{-1}$
 The terms involving the variational paramters $\hat{\bs f}_m$, $\bs S$, $a$ and $b$ arise because 
 they depend indirectly on the length-scale through the expectations 
 in the variational factors, $\log q(.)$. 
 However, when the variational inference algorithm has converged,
-$\mathcal{L}$ is at a maximum given the current priors,
+$\mathcal{L}$ is at a maximum,
 so the partial derivatives of $\mathcal{L}$ with respect to $\hat{\bs f}_m$, $\bs S$, $a$ and $b$
 are zero.
 Hence, after convergence, $\nabla_{l_{\! d}} \mathcal{L}$ simplifies to:
 \begin{flalign}
- &\nabla_{\!l_{\! d}} \mathcal{L}  = - \frac{1}{2}\! \bigg \{
- \!\mathbb{E}[s] \hat{\bs f}_{\! m}^T \bs K_{\! mm}^{-1} 
-\frac{\partial \bs K_{\! mm}}{\partial l_d} \bs K_{\! mm}^{-1} \hat{\bs f}_{\! m} 
- + \mathrm{tr}\!\left(\!
-\mathbb{E}[s]\bs S^T\bs K_{\! mm}^{-1} \! - \!\bs I \! \right)
- \!\frac{\partial \bs K_{\! mm}}{\partial l_d} \bs K_{\! mm}^{-1}
-\! \bigg\} \!. &
+ &\nabla_{\!l_{\! d}} \mathcal{L}  = 
+\frac{1}{2} \mathrm{tr}\!\left(\! \left(
+\mathbb{E}[s](\hat{\bs f}_{\! m} \hat{\bs f}_{\! m}^T + \bs S^T)\bs K_{\! mm}^{-1} \! -  \bs I \! \right)
+ \!\frac{\partial \bs K_{\! mm}}{\partial l_d} \bs K_{\! mm}^{-1} \right) \!. &
 \label{eq:gradient_single}
 \end{flalign}
-The equivalent gradient for the crowd model is given by:
+For the crowd model, we assume that $C$ latent item components, $\bs V$ have the same kernel function,
+which is also shared with $\bs t$. The gradients with respect to the length-scale, $l_{w,d}$,
+for the $d$th item feature are therefore given by:
 \begin{flalign}
- &\nabla_{\!l_{\! d}} \mathcal{L}_{crowd}  = - \frac{1}{2}\! \bigg \{
- \!\mathbb{E}[s] \hat{\bs f}_{\! m}^T \bs K_{\! mm}^{-1} 
-\frac{\partial \bs K_{\! mm}}{\partial l_d} \bs K_{\! mm}^{-1} \hat{\bs f}_{\! m} 
- + \mathrm{tr}\!\left(\!
-\mathbb{E}[s]\bs S^T\bs K_{\! mm}^{-1} \! - \!\bs I \! \right)
- \!\frac{\partial \bs K_{\! mm}}{\partial l_d} \bs K_{\! mm}^{-1}
-\! \bigg\} \!. &
-\label{eq:gradient_crowd}
+ &\nabla_{l_{ v,d}} \mathcal{L}_{crowd}  = 
+%  \sum_{c=1}^{C} \bigg\{ \mathbb{E}[s_c] 
+%  \hat{\bs v}_{ m,c}^T \bs K_{ mm,v}^{-1} 
+% \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \bs K_{ mm,v}^{-1} \hat{\bs v}_{ m,c} 
+%  + & \nonumber \\
+%  & \mathrm{tr}\left( \left(
+% \mathbb{E}[s_c]\bs S_{v,c}^T\bs K_{ mm,v}^{-1}  - \frac{1}{2} \bs I  \right)
+%  \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \bs K_{ mm,v}^{-1} \right) \bigg\}
+%  + & \nonumber \\
+%  & \mathbb{E}[\sigma] 
+%  \hat{\bs t}_{ m}^T \bs K_{ mm,t}^{-1} 
+% \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \hat{\bs t}_{ m} 
+%  + \mathrm{tr}\left( \left(
+% \mathbb{E}[\sigma]\bs S_{t}^T\bs K_{ mm,t}^{-1}  - \frac{1}{2} \bs I  \right)
+%  \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \right)
+%  & \nonumber \\
+% & = 
+\frac{1}{2} \mathrm{tr}\left( \left( \sum_{c=1}^{C} \mathbb{E}[s_c] \left\{ \hat{\bs v}_{m,c} 
+ \hat{\bs v}_{m,c}^T + \bs S_{v,c}^T \right\}
+ \bs K_{ mm,v}^{-1}  - C\bs I  \right)
+ \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \bs K_{ mm,v}^{-1} \right)
+ & \nonumber \\
+ & + \frac{1}{2}\mathrm{tr}\left( \left(
+\mathbb{E}[\sigma](\hat{\bs t}_{ m}\hat{\bs t}_{ m}^T + \bs S_{t}^T) \bs K_{ mm,t}^{-1}  
+- \bs I  \right)
+ \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \right)
+.&
+\label{eq:gradient_crowd_items}
 \end{flalign}
+% If different kernels are used for different components, then the equation above can be modified to
+% simply sum over terms relating to the components with a shared kernel function. 
+The gradients for the $d$th user feature length-scale, $l_{w,d}$, follows the same form:
+\begin{flalign}
+ &\nabla_{l_{w,d}} \mathcal{L}_{crowd}  = \frac{1}{2} \mathrm{tr}\left( \left( \sum_{c=1}^{C} \left\{ \hat{\bs w}_{m,c} \hat{\bs w}_{m,c}^T +
+\bs \Sigma_c^T\right\} \bs K_{mm,w}^{-1} - C\bs I  \right)
+ \frac{\partial \bs K_{mm,w}}{\partial l_{w,d}} \bs K_{mm,w}^{-1} \right)
+ . &
+\label{eq:gradient_crowd_users}
+\end{flalign}
+
 % When combining kernel functions for each features using a product,
 % as in Equation \ref{eq:kernel}, the partial derivative of the covariance matrix $\bs K_{mm}$ with respect to 
 % $l_d$ is given by:

@@ -17,15 +17,14 @@ import multiprocessing
 from scipy.special import psi
 
 
-def _gradient_terms_for_subset(K_mm, kernel_derfactor, kernel_operator, invKs_fhat, invKs_mm_uS_sigmasq, ls_d, coords,
-                               s):
+def _gradient_terms_for_subset(K_mm, invK_mm, kernel_derfactor, kernel_operator, common_term, ls_d, coords, s):
+
     if kernel_operator == '*':
         dKdls = K_mm * kernel_derfactor(coords, coords, ls_d, operator=kernel_operator) / s
     elif kernel_operator == '+':
         dKdls = kernel_derfactor(coords, coords, ls_d, operator=kernel_operator) / s
-    firstterm = invKs_fhat.T.dot(dKdls).dot(invKs_fhat)[0][0]
-    secondterm = np.trace(invKs_mm_uS_sigmasq.dot(dKdls))
-    return 0.5 * (firstterm - secondterm)
+
+    return 0.5 * np.trace(common_term.dot(dKdls).dot(invK_mm * s) )
 
 
 class GPClassifierSVI(GPClassifierVB):
@@ -242,12 +241,7 @@ class GPClassifierSVI(GPClassifierVB):
         if not self.use_svi:
             return super(GPClassifierSVI, self).lowerbound_gradient(dim)
 
-        fhat = self.um_minus_mu0
-        invKs_fhat = self.invKs_mm.dot(fhat)
-
-        sigmasq = self.get_obs_precision()
-
-        invKs_mm_uS_sigmasq = self.invKs_mm.dot(self.uS).dot(sigmasq)
+        common_term = (self.um_minus_mu0.dot(self.um_minus_mu0.T) + self.uS).dot(self.s * self.invK_mm) - np.eye(self.ninducing)
 
         if self.n_lengthscales == 1 or dim == -1:  # create an array with values for each dimension
             dims = range(self.obs_coords.shape[1])
@@ -259,13 +253,14 @@ class GPClassifierSVI(GPClassifierVB):
             num_jobs = max_no_jobs
         if len(self.ls) > 1:
             gradient = Parallel(n_jobs=num_jobs, backend='threading')(
-                delayed(_gradient_terms_for_subset)(self.K_mm, self.kernel_derfactor, self.kernel_combination,
-                    invKs_fhat, invKs_mm_uS_sigmasq, self.ls[dim], self.inducing_coords[:, dim:dim + 1], self.s)
+                delayed(_gradient_terms_for_subset)(self.K_mm, self.invK_mm, self.kernel_derfactor, self.kernel_combination,
+                    common_term, self.ls[dim], self.inducing_coords[:, dim:dim + 1], self.s)
                 for dim in dims)
+
         else:
             gradient = Parallel(n_jobs=num_jobs, backend='threading')(
-                delayed(_gradient_terms_for_subset)(self.K_mm, self.kernel_derfactor, self.kernel_combination,
-                    invKs_fhat, invKs_mm_uS_sigmasq, self.ls[0], self.inducing_coords[:, dim:dim + 1], self.s)
+                delayed(_gradient_terms_for_subset)(self.K_mm, self.invK_mm, self.kernel_derfactor, self.kernel_combination,
+                    common_term, self.ls[0], self.inducing_coords[:, dim:dim + 1], self.s)
                 for dim in dims)
 
         if self.n_lengthscales == 1:

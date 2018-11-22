@@ -1319,7 +1319,7 @@ class CollabPrefLearningVB(object):
             logging.debug("LML: %f, item length-scales = %s, person length-scales = %s" % (lml, self.ls, self.lsy))
         return -lml
 
-    def _gradient_dim(self, lstype, d, dimension):
+    def _gradient_dim(self, invK_mm, common_term, lstype, dimension):
         der_logpw_logqw = 0
         der_logpy_logqy = 0
         der_logpt_logqt = 0
@@ -1328,7 +1328,7 @@ class CollabPrefLearningVB(object):
         # compute the gradient. This should follow the MAP estimate from chu and ghahramani. 
         # Terms that don't involve the hyperparameter are zero; implicit dependencies drop out if we only calculate 
         # gradient when converged due to the coordinate ascent method.
-        if lstype == 'item' or (lstype == 'both' and d < self.nitem_features):
+        if lstype == 'item':
 
             dKdls = self.K * self.kernel_der(self.obs_coords, self.ls, dimension)
             invK_w = self.invK.dot(self.w)  # N x Nfactors
@@ -1352,8 +1352,7 @@ class CollabPrefLearningVB(object):
                 der_logpt_logqt = 0.5 * (invK_t.T.dot(dKdls).dot(invK_t) * self.st -
                                          np.trace(invKs_C.dot(self.t_gp.get_obs_precision()).dot(dKdls / self.st)))
 
-        elif (lstype == 'person' or (
-                lstype == 'both' and d >= self.nitem_features)) and self.person_features is not None:
+        elif lstype == 'person' and self.person_features is not None:
             dKdls = self.Ky * self.kernel_der(self.person_features, self.lsy, dimension)
             invK_y = self.invKy.dot(self.y.T)  # Npeople x Nfactors
 
@@ -1370,6 +1369,29 @@ class CollabPrefLearningVB(object):
                                           np.trace((invKs_Cf.dot(Sigma)).dot(dKdls / syf)))
 
         return der_logpw_logqw + der_logpy_logqy + der_logpt_logqt + der_logpf_logqf
+
+    def _compute_gradients_all_dims(self, lstype, dimensions):
+        mll_jac = np.zeros(len(dimensions), dtype=float)
+
+        if lstype == 'item' or (lstype == 'both'):
+            common_term = np.sum(np.array([(self.w[:, f:f+1].dot(self.w[:, f:f+1].T) + self.w_cov[f]).dot(
+                self.shape_sw[f] / self.rate_sw[f] * self.invK) - np.eye(self.N)
+                for f in range(self.Nfactors)]), axis=0)
+            if self.use_t:
+                common_term += (self.t.dot(self.t.T) + self.t_cov).dot(self.shape_st / self.rate_st * self.invK) \
+                               - np.eye(self.N)
+
+            for dim in dimensions[:self.nitem_features]:
+                mll_jac[dim] = self._gradient_dim(self.invK, common_term, 'item', dim)
+
+        if (lstype == 'person' or (lstype == 'both')) and self.person_features is not None:
+            common_term = np.sum(np.array([(self.y[f:f+1].T.dot(self.y[f:f+1,:]) + self.y_cov[f]).dot(self.invKy_block)
+                                           - np.eye(self.Npeople) for f in range(self.Nfactors)]), axis=0)
+
+            for dim in dimensions[self.nitem_features:]:
+                mll_jac[dim + self.nitem_features] = self._gradient_dim(self.invKy_block, common_term, 'person', dim)
+
+        return mll_jac
 
     def nml_jacobian(self, hyperparams, lstype, dimension, use_MAP=False):
         """
@@ -1431,9 +1453,7 @@ class CollabPrefLearningVB(object):
         # mll_jac = Parallel(n_jobs=num_jobs)(delayed(self._gradient_dim)(lstype, d, dim)
         #                                      for d, dim in enumerate(dimensions))
         # mll_jac = np.array(mll_jac)  #, order='F')
-        mll_jac = np.zeros(len(dimensions), dtype=float)
-        for d, dim in enumerate(dimensions):
-            mll_jac[d] = self._gradient_dim(lstype, d, dim)
+        mll_jac = self._compute_gradients_all_dims(lstype, dimensions)
 
         if self.verbose:
             logging.debug("Completed gradient computations.")

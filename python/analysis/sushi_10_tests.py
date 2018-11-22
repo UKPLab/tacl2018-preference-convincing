@@ -15,6 +15,7 @@ sys.path.append("./python/analysis")
 sys.path.append("./python/models")
 sys.path.append("./python/test")
 
+import matplotlib.pyplot as plt
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
@@ -22,8 +23,6 @@ import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
 from sklearn.metrics import accuracy_score, log_loss
-import matplotlib.pyplot as plt
-
 from collab_pref_learning_svi import CollabPrefLearningSVI
 from gp_pref_learning import GPPrefLearning
 from per_user_pref_learning import GPPrefPerUser
@@ -529,7 +528,7 @@ print('User features: %i users, %i features.'% (user_features.shape[0], user_fea
 
 # for debugging --------------------------------------------------------------------------------------------------------
 
-debug_small = False
+debug_small = True
 
 if debug_small:
     ndebug = 50
@@ -551,7 +550,7 @@ if debug_small:
 
 # Hyperparameters common to most models --------------------------------------------------------------------------------
 
-shape_s0 = 1
+shape_s0 = 10
 rate_s0 = 1  #0.1
 max_update_size = 1000
 ninducing = 500
@@ -560,21 +559,20 @@ forgetting_rate = 0.9
 sushiB = False
 vscales = None
 
+# Experiment name tag
+tag = '_5'
+
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
-print('Optimizing function scales ...')
-np.random.seed(2309234)
-u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, _ = subsample_data()
-shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
-                                         item_features, user_features, prefs_tr,
-                                         u_test, i1_test, i2_test, prefs_test)
-print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
-
-# Experiment name tag
-tag = '_4'
-
-np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
-
+# print('Optimizing function scales ...')
+# np.random.seed(2309234)
+# u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, _ = subsample_data()
+# shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
+#                                          item_features, user_features, prefs_tr,
+#                                          u_test, i1_test, i2_test, prefs_test)
+# print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
+# np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
+#
 # Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
 
 vscales = None # don't record the v scale factors
