@@ -349,7 +349,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         nbatches = int(np.ceil(self.N / float(batchsize) ))
 
         self.Kw_file_tag = ''#datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-        self.Kw = np.memmap('./Kw_%s.tmp' % self.Kw_file_tag, dtype=float, mode='w+', shape=(self.N, self.N))
+        if self.N > 500:
+            self.Kw = np.memmap('./Kw_%s.tmp' % self.Kw_file_tag, dtype=float, mode='w+', shape=(self.N, self.N))
+        else:
+            self.Kw = np.zeros((self.N, self.N))
 
         for b in range(nbatches):
 
@@ -366,7 +369,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.Kw[b*batchsize:(b+1)*batchsize, :][:, b2*batchsize:(b2+1)*batchsize] = self.kernel_func(
                     self.obs_coords[b*batchsize:end1, :], self.ls, self.obs_coords[b2*batchsize:end2, :])
 
-        self.Kw.flush()
+        if self.N > 500:
+            self.Kw.flush()
 
         self.Sigma_w = np.zeros((self.Nfactors, self.ninducing, self.ninducing))
 
