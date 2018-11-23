@@ -23,7 +23,6 @@ from collab_pref_learning_test import gen_synthetic_personal_prefs as gen_multi,
     split_dataset as split_multiuser_dataset, evaluate_models_common_mean as evaluate_multiuser_consensus, \
     evaluate_models_personal as evaluate_multiuser_personal
 from per_user_pref_learning import GPPrefPerUser
-from joblib import Parallel, delayed
 
 markers = ['o', 'x', '+', '>', '<', '*']
 
@@ -80,7 +79,7 @@ if __name__ == '__main__':
 
     noise_plots = [None, None, None, None, None, None, None]
 
-    figure_root_path = './results/synth_2'
+    figure_root_path = './results/synth_3'
     if not os.path.exists(figure_root_path):
         os.mkdir(figure_root_path)
 
@@ -88,71 +87,71 @@ if __name__ == '__main__':
     if not os.path.exists(figure_save_path):
         os.mkdir(figure_save_path)
 
-    # # NOISE TEST, SINGLE USER DATA, SINGLE USER MODEL ------------------------------------------------------------------
-    #
-    # mean_results = []
-    # std_results = []
-    #
-    # for s in inverse_scales:
-    #
-    #     results_s = []
-    #
-    #     for rep in range(nreps):
-    #
-    #         ls = [np.random.rand() * 20, np.random.rand() * 20]
-    #
-    #         prefs, item_features, pair1idxs, pair2idxs, f = gen_single(
-    #             nx=nx,
-    #             ny=ny,
-    #             N=N,
-    #             P=P,
-    #             ls=ls,
-    #             s=s
-    #         )
-    #
-    #         ftrain, pair1idxs_tr, pair2idxs_tr, prefs_tr, train_points, \
-    #         ftest, pair1idxs_test, pair2idxs_test, prefs_test, test_points = \
-    #             split_dataset(N, f, pair1idxs, pair2idxs, prefs)
-    #
-    #         # # Create a GPPrefLearning model
-    #         model = GPPrefLearning(2, mu0=0, shape_s0=2, rate_s0=2, ls_initial=None, use_svi=True, ninducing=50,
-    #                                max_update_size=100, forgetting_rate=0.9, verbose=True)
-    #
-    #         print(("--- Repeating single user test, rep %i ---" % rep))
-    #         results_s.append(evaluate_singleuser(
-    #             model, item_features, f,
-    #             ftrain, pair1idxs_tr, pair2idxs_tr, prefs_tr, train_points,
-    #             ftest, pair1idxs_test, pair2idxs_test, test_points
-    #         ))
-    #
-    #     print('Single user test: all reps completed for inverse scale %f. Mean and stds of the metrics:' % s)
-    #
-    #     mean_results_s = np.mean(results_s, axis=0)
-    #     std_results_s = np.std(results_s, axis=0)
-    #
-    #     print('noise rate in training data: %f, %f' % (mean_results_s[0], std_results_s[0]))
-    #     print('tau_obs: %f, %f' % (mean_results_s[1], std_results_s[1]))
-    #     print('tau_test: %f, %f' % (mean_results_s[2], std_results_s[2]))
-    #     print('brier: %f, %f' % (mean_results_s[3], std_results_s[3]))
-    #     print('cee: %f, %f' % (mean_results_s[4], std_results_s[4]))
-    #     print('f1: %f, %f' % (mean_results_s[5], std_results_s[5]))
-    #     print('acc: %f, %f' % (mean_results_s[6], std_results_s[6]))
-    #     print('roc: %f, %f' % (mean_results_s[7], std_results_s[7]))
-    #
-    #     mean_results.append(mean_results_s)
-    #     std_results.append(std_results_s)
-    #
-    # # let's plot our results.
-    # mean_results = np.array(mean_results)
-    # std_results = np.array(std_results)
-    #
-    # noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training)', method='GPPL, single user data')
-    # noise_plots[1] = plot_result(2, 'tau_test', 'tau (test)', method='GPPL, single user data')
-    # noise_plots[2] = plot_result(3, 'brier', 'brier score', method='GPPL, single user data')
-    # noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', method='GPPL, single user data')
-    # noise_plots[4] = plot_result(5, 'f1', 'F1 score', method='GPPL, single user data')
-    # noise_plots[5] = plot_result(6, 'acc', 'accuracy', method='GPPL, single user data')
-    # noise_plots[6] = plot_result(7, 'roc', 'area under ROC curve', method='GPPL, single user data')
+    # NOISE TEST, SINGLE USER DATA, SINGLE USER MODEL ------------------------------------------------------------------
+
+    mean_results = []
+    std_results = []
+
+    for s in inverse_scales:
+
+        results_s = []
+
+        for rep in range(nreps):
+
+            ls = [np.random.rand() * 20, np.random.rand() * 20]
+
+            prefs, item_features, pair1idxs, pair2idxs, f = gen_single(
+                nx=nx,
+                ny=ny,
+                N=N,
+                P=P,
+                ls=ls,
+                s=s
+            )
+
+            ftrain, pair1idxs_tr, pair2idxs_tr, prefs_tr, train_points, \
+            ftest, pair1idxs_test, pair2idxs_test, prefs_test, test_points = \
+                split_dataset(N, f, pair1idxs, pair2idxs, prefs)
+
+            # # Create a GPPrefLearning model
+            model = GPPrefLearning(2, mu0=0, shape_s0=2, rate_s0=2, ls_initial=None, use_svi=True, ninducing=50,
+                                   max_update_size=100, forgetting_rate=0.9, verbose=True)
+
+            print(("--- Repeating single user test, rep %i ---" % rep))
+            results_s.append(evaluate_singleuser(
+                model, item_features, f,
+                ftrain, pair1idxs_tr, pair2idxs_tr, prefs_tr, train_points,
+                ftest, pair1idxs_test, pair2idxs_test, test_points
+            ))
+
+        print('Single user test: all reps completed for inverse scale %f. Mean and stds of the metrics:' % s)
+
+        mean_results_s = np.mean(results_s, axis=0)
+        std_results_s = np.std(results_s, axis=0)
+
+        print('noise rate in training data: %f, %f' % (mean_results_s[0], std_results_s[0]))
+        print('tau_obs: %f, %f' % (mean_results_s[1], std_results_s[1]))
+        print('tau_test: %f, %f' % (mean_results_s[2], std_results_s[2]))
+        print('brier: %f, %f' % (mean_results_s[3], std_results_s[3]))
+        print('cee: %f, %f' % (mean_results_s[4], std_results_s[4]))
+        print('f1: %f, %f' % (mean_results_s[5], std_results_s[5]))
+        print('acc: %f, %f' % (mean_results_s[6], std_results_s[6]))
+        print('roc: %f, %f' % (mean_results_s[7], std_results_s[7]))
+
+        mean_results.append(mean_results_s)
+        std_results.append(std_results_s)
+
+    # let's plot our results.
+    mean_results = np.array(mean_results)
+    std_results = np.array(std_results)
+
+    noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training)', method='GPPL, single user data')
+    noise_plots[1] = plot_result(2, 'tau_test', 'tau (test)', method='GPPL, single user data')
+    noise_plots[2] = plot_result(3, 'brier', 'brier score', method='GPPL, single user data')
+    noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', method='GPPL, single user data')
+    noise_plots[4] = plot_result(5, 'f1', 'F1 score', method='GPPL, single user data')
+    noise_plots[5] = plot_result(6, 'acc', 'accuracy', method='GPPL, single user data')
+    noise_plots[6] = plot_result(7, 'roc', 'area under ROC curve', method='GPPL, single user data')
 
     # NOISE TEST, MULTI USER OBSERVATIONS, PREDICTING CONSENSUS, MODELS: GPPL, POOL, crowd-GPPL ----------------------------------
 
@@ -198,7 +197,7 @@ if __name__ == '__main__':
                 P=P,
                 ls=ls,
                 sigma=s,
-                s=0.2,
+                s=0.1,
                 lsy=lsy,
                 Npeoplefeatures=2
             )
@@ -210,8 +209,9 @@ if __name__ == '__main__':
             ninducing = 50
 
             # Create a GPPrefLearning model
-            model = CollabPrefLearningSVI(2, 2, mu0=0, shape_s0=0.1, rate_s0=0.1, ls=None, nfactors=Npeople, ninducing=ninducing,
-                                   max_update_size=1000, forgetting_rate=0.9, verbose=True, use_lb=True)
+            model = CollabPrefLearningSVI(2, 2, mu0=0, shape_s0=0.1, rate_s0=0.1, ls=None, nfactors=Npeople,
+                                          ninducing=ninducing, max_update_size=1000, forgetting_rate=0.9, verbose=True,
+                                          use_lb=True, use_common_mean_t=True)
 
             print(("--- Repeating multi user test, rep %i ---" % rep))
             results_s_multi.append(evaluate_multiuser_consensus(

@@ -304,7 +304,7 @@ The variational factors for the inducing points can be obtained by deriving expe
 \end{flalign}
 where the precision is given by:
 \begin{flalign}
-\bs S_{v,c}^{-1} = \;\;& \bs K^{-1}_{v,mm}/\mathbb{E}[s_c] 
+\bs S_{v,c}^{-1} = \;\;& \bs K^{-1}_{v,mm}\mathbb{E}[s_c] 
 + \bs A_v^T \bs G^T \textrm{diag}(\hat{\bs w}_{c,\bs u}^2 + \bs\Sigma_{c,\bs u,\bs u})\bs Q^{-1} \bs G \bs A_v, &
 \end{flalign}
 where $\bs A_v = \bs K_{v,nm} \bs K_{v,mm}^{-1}$, 
@@ -314,7 +314,7 @@ The term $\textrm{diag}(\hat{\bs W}_{c,\bs j}^2 + \bs\Sigma_{c,\bs j})$
 scales the diagonal observation precision, $\bs Q^{-1}$, by the latent user factors.
 We use $\bs S_{v,c}^{-1}$ to compute the variational means for each row of $\bs V_m$ as follows:
 \begin{flalign}
-\hat{\bs v}_{m,c} = \;\;& \bs S_{v,c} \bs A_v^T \bs G^T \textrm{diag}(\hat{\bs w}_{c,\bs j}) \bs Q^{-1}\left(\bs y - \Phi(\mathbb{E}[\bs z]) + \sum_{j=1}^U \bs H_{j}(\hat{\bs v}_c^T \hat{\bs w}_{c,j})\right), &
+\hat{\bs v}_{m,c} = \;\;& \bs S_{v,c} \bs A_v^T \bs G^T \textrm{diag}(\hat{\bs w}_{c,\bs u}) \bs Q^{-1}\left(\bs y - \Phi(\mathbb{E}[\bs z]) + \sum_{j=1}^U \bs H_{j}(\hat{\bs v}_c^T \hat{\bs w}_{c,j})\right), &
 \end{flalign}
 where $\bs H_j \in P \times N$ contains partial derivatives of the pairwise likelihood
 with respect to $F_{i,j} = \hat{v}_{c,i} \hat{w}_{c,j}$, 

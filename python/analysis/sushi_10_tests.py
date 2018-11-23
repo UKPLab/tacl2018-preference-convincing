@@ -91,12 +91,12 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
                    u_test=None, i1_test=None, i2_test=None, ufeats_test=None):
 
     Nfactors = ufeats.shape[0]
-    if Nfactors > 50:
-        Nfactors = 50 # this is the maximum
+    if Nfactors > max_facs:
+        Nfactors = max_facs # this is the maximum
 
-    model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Nfactors,
-                                  ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
-                                  verbose=True, use_lb=True)
+    model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None,
+                                  nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
+                                  forgetting_rate=forgetting_rate, verbose=True, use_lb=True, use_common_mean_t=False)
 
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
 
@@ -176,7 +176,7 @@ def run_GPPL_per_user(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_t
     model = GPPrefPerUser(ufeats.shape[0], max_update_size, shape_s0, rate_s0, ifeats.shape[1], ninducing)
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
-    fpred = model.predict_f(ifeats[active_items], chosen_users)
+    fpred = model.predict_f(ifeats[active_items], personids=chosen_users)
     rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, None)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
@@ -186,8 +186,9 @@ def run_GPPL_per_user(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_t
 def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, chosen_users):
 
     Nfactors = ufeats.shape[0]
-    if Nfactors > 50:
-        Nfactors = 50 # this is the maximum
+
+    if Nfactors > max_facs:
+        Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Nfactors,
                                   ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
@@ -205,8 +206,8 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
 
 def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, chosen_users):
     Nfactors = ufeats.shape[0]
-    if Nfactors > 50:
-        Nfactors = 50 # this is the maximum
+    if Nfactors > max_facs:
+        Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningSVI(1, 1, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Nfactors,
                                   ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
@@ -224,8 +225,8 @@ def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test,
 
 def run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ufeats_test):
     Nfactors = ufeats.shape[0]
-    if Nfactors > 50:
-        Nfactors = 50 # this is the maximum
+    if Nfactors > max_facs:
+        Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Nfactors,
                                   ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
@@ -549,7 +550,7 @@ if debug_small:
 
 
 # Hyperparameters common to most models --------------------------------------------------------------------------------
-
+max_facs = 5
 shape_s0 = 10
 rate_s0 = 1  #0.1
 max_update_size = 1000
@@ -560,7 +561,7 @@ sushiB = False
 vscales = None
 
 # Experiment name tag
-tag = '_5'
+tag = '_7'
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 

@@ -235,7 +235,7 @@ class CollabPrefLearningVB(object):
         else:
             self.conv_threshold = 1e-1
 
-        self.max_iter_G = 5
+        self.max_iter_G = 3
         self.max_iter = 1000
         self.min_iter = 1
         self.n_converged = 3  # number of iterations while apparently converged (avoids numerical errors)
@@ -1015,7 +1015,7 @@ class CollabPrefLearningVB(object):
     def predict_f(self, item_features=None, person_features=None, personids=None, return_cov=False, return_personids=False):
 
         if personids is not None:
-            personids = personids.astype(int)
+            personids = np.array(personids).astype(int)
 
         if person_features is None and personids is not None:
             '''

@@ -38,10 +38,12 @@ class GPPrefPerUser():
                 use_median_ls=use_median_ls
             )
 
-    def predict_f(self, item_features, chosen_users=None):
+    def predict_f(self, item_features, person_features=None, personids=None):
 
-        if chosen_users is None:
+        if personids is None:
             chosen_users = range(self.Npeople)
+        else:
+            chosen_users = personids
 
         def usermodel_predict_f(model, item_features):
             if model.vb_iter == 0:
@@ -76,11 +78,11 @@ class GPPrefPerUser():
         return rhopred
 
     def predict_t(self, item_features):
-        F = self.predict_f(item_features, None)
+        F = self.predict_f(item_features)
         return np.mean(F, axis=1)
 
     def predict_common(self, item_features, p1, p2):
-        F = self.predict_f(item_features, None)
+        F = self.predict_f(item_features)
 
         # predict the common mean/consensus or underlying ground truth function
         g_f = (np.mean(F[p1], axis=1) - np.mean(F[p2], axis=1)).astype(int) / np.sqrt(2)

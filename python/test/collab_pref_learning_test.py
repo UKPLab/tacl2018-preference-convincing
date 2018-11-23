@@ -210,7 +210,7 @@ def gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, sigma, s, 
     Ky = matern_3_2_from_raw_vals(person_features, lsy)
     Ky = [Ky for _ in range(Nfactors)]
     Ky = block_diag(*Ky)
-    y = mvn.rvs(cov=Ky).reshape(Nfactors, Npeople)
+    y = np.ones((Nfactors, Npeople))#mvn.rvs(cov=Ky).reshape(Nfactors, Npeople)
 
     f_all = w.dot(y) + t
 
