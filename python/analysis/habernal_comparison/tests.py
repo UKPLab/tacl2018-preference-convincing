@@ -927,8 +927,8 @@ class TestRunner:
                                 person_rank_test = get_fold_regression_data(self.folds_r, self.fold, self.docids)
 
             # convert the ranking person IDs to the idxs
-            person_rank_train = np.array([np.argwhere(upersonIDs == p) for p in person_rank_train])
-            person_rank_test = np.array([np.argwhere(upersonIDs == p) for p in person_rank_test])
+            person_rank_train = np.array([np.argwhere(upersonIDs == p.strip())[0][0] for p in person_rank_train])
+            person_rank_test = np.array([np.argwhere(upersonIDs == p.strip())[0][0] for p in person_rank_test])
 
             self.load_features(feature_type, embeddings_type, a1_train, a2_train, uids, utexts)
             #items_feat = items_feat[:, :ndebug_features]     

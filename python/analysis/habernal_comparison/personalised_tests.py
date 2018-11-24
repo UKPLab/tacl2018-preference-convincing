@@ -138,6 +138,9 @@ if __name__ == '__main__':
 
     # CONSENSUS PREDICTION
     runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+    runner.methods = [
+               'PersConsensusPrefGP_commonmean_noOpt_weaksprior'#, 'PersConsensusPrefGP_commonmean_weaksprior'
+            ]
     runner.run_test_set(min_no_fold=0, max_no_folds=32)
 
     vscales = np.mean(runner.vscales, axis=0)
