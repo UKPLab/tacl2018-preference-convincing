@@ -129,7 +129,7 @@ if __name__ == '__main__':
     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
 
     methods = [
-               'PersPrefGP_commonmean_noOpt_weaksprior'#, 'PersPrefGP_commonmean_weaksprior'
+               'PersPrefGP_commonmean_noOpt_weaksprior', 'PersPrefGP_commonmean_weaksprior'
             ]
     embeddings_types = ['word_mean']
 
@@ -140,12 +140,12 @@ if __name__ == '__main__':
         runner.save_collab_model = True
 
     # PERSONALISED PREDICTION
-    runner.run_test_set(min_no_folds=3, max_no_folds=32)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
     # CONSENSUS PREDICTION
     runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
     runner.methods = [
-               'PersConsensusPrefGP_commonmean_noOpt_weaksprior'#, 'PersConsensusPrefGP_commonmean_weaksprior'
+               'PersConsensusPrefGP_commonmean_noOpt_weaksprior', 'PersConsensusPrefGP_commonmean_weaksprior'
             ]
     runner.run_test_set(min_no_fold=0, max_no_folds=32)
 
