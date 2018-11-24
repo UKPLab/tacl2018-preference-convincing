@@ -1,5 +1,8 @@
 \section{Scalable Inference}\label{sec:inf}
 
+***TODO: we don't have the factors for s and sigma. We can replace the E[s] notation
+if we define them.***
+
 Given a set of pairwise labels, $\bs y$, 
 the goal is to infer the posterior distribution over the preference values $\bs f$, in the single
 user case, or $\bs F=\bs V^T \bs W$ in the multi-user case. 
@@ -177,13 +180,13 @@ By taking expectations with respect to the variational $q$ distributions, the lo
 =\; & \sum_{p=1}^P \mathbb{E}_{q(\bs f)}[\log p(y_p | f_{a_p}, f_{b_p})] - \frac{1}{2} \bigg\{ \log|\bs K_{mm}| - \mathbb{E}[\log s] - \log|\bs S| - M
 \nonumber &\\
 & + \hat{\bs f}_m^T\mathbb{E}[s] \bs K_{mm}^{-1}\hat{\bs f}_m + 
-\textrm{Tr}(\mathbb{E}[s] \bs K_{mm}^{-1} \bs S) \bigg\}  + \log\Gamma(\alpha) - \log\Gamma(\alpha_0)  + \alpha_0(\log \beta_0) \nonumber\\
+\textrm{tr}(\mathbb{E}[s] \bs K_{mm}^{-1} \bs S) \bigg\}  + \log\Gamma(\alpha) - \log\Gamma(\alpha_0)  + \alpha_0(\log \beta_0) \nonumber\\
 & + (\alpha_0-\alpha)\mathbb{E}[\log s]+ (\beta-\beta_0) \mathbb{E}[s] - \alpha \log \beta, &
 \end{flalign}
 %         invK_mm_expecFF = self.invK_mm.dot(self.uS + self.um_minus_mu0.dot(self.um_minus_mu0.T))
 %         self.rate_s = self.rate_s0 + 0.5 * np.trace(invK_mm_expecFF)
 where $\alpha= \alpha_0 + \frac{M}{2}$ and $\beta = \beta_0 + \frac{
-\textrm{Tr}(\bs K^{-1}_{mm}(S + \hat{\bs f}_m \hat{\bs f}_m^T))}{2}$,
+\textrm{tr}(\bs K^{-1}_{mm}(S + \hat{\bs f}_m \hat{\bs f}_m^T))}{2}$,
 and the terms relating to $\mathbb{E}[p(\bs f | \bs f_m) - q(\bs f)]$ cancel.
 The iterative algorithm proceeds by updating each of the $q$ factors in turn,
 taking expectations with respect to the other factors. 
@@ -338,17 +341,14 @@ The variational component for the inducing points of the common item mean follow
 \end{flalign}
 where $\bs A_t = \bs K_{t,nm} \bs K_{t,mm}^{-1}$.
 
-***TODO: this is not right -- the G term should be the same for all cases. But it is 
-actually the H term specific above, except we sum over either users or 
-item (these are multiple data points)*** 
-Finally, the latent user factors, $\bs W$,
-require a different linearization matrix, $\bs J \in P \times U$, containing partial derivatives 
-of the pairwise likelihood with respect to $\hat{w}_c$. Its elements are given by:
-\begin{flalign}
-J_{p,j} = \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p]) (2y_p - 1) [u_p = j] % needs to be added or subtracted depending on a or b
-\end{flalign} 
+Finally, for the latent user factors, $\bs W$,
+%require a different linearization matrix, $\bs J \in P \times U$, containing partial derivatives 
+%of the pairwise likelihood with respect to $\hat{w}_c$. Its elements are given by:
+%\begin{flalign}
+%J_{p,j} = \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p]) (2y_p - 1) [u_p = j] % needs to be added or subtracted depending on a or b
+%\end{flalign} 
 %now multiply by V. What about covariances between v?
-The variational distribution for the inducing points is then as follows:
+the variational distribution for the inducing points is:% then as follows:
 \begin{flalign}
 \log q(\bs W_m) = \;\;& \mathbb{E}_{q(\bs V)q(\bs t)}[\log \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right)] 
 + \sum_{c=1}^C \mathbb{E}[\log\mathcal{N}(\bs w_c; \bs 0, \bs K_{w,mm})]
@@ -358,12 +358,12 @@ The variational distribution for the inducing points is then as follows:
 where the variational parameters are:
 \begin{flalign}
 \bs \Sigma^{-1}_{c} = \;\;& \bs K^{-1}_{w,mm}
-+ \bs A_w^T \left( \bs J^T \textrm{diag}\left(\hat{\bs v}_{c,\bs a}^2 + \bs S_{c,\bs a, \bs a} + 
++ \bs A_w^T \left( \sum_{p=1}^P \bs H_{.,p}^T \textrm{diag}\left(\hat{\bs v}_{c,\bs a}^2 + \bs S_{c,\bs a, \bs a} + 
 \hat{\bs v}_{c,\bs b}^2 + \bs S_{c,\bs b, \bs b} \right.\right. & \nonumber \\
-& \left.\left.  - 2\hat{\bs v}_{c,\bs a}\hat{\bs v}_{c,\bs b} - 2\bs S_{c,\bs a, \bs b} \right) \bs Q^{-1} \bs J^T \right) \bs A_w & \label{eq:Sigma} \\
+& \left.\left.  - 2\hat{\bs v}_{c,\bs a}\hat{\bs v}_{c,\bs b} - 2\bs S_{c,\bs a, \bs b} \right) \bs Q^{-1} \sum_{p=1}^P \bs H_{.,p} \right) \bs A_w & \label{eq:Sigma} \\
 %%%%
-\hat{\bs w}_{m,c} = \;\;& \bs \Sigma_{c} \bs A_w^T 
-\left( \bs J^T\textrm{diag}(\hat{\bs v}_{c,\bs a}) - \bs J^T\textrm{diag}(\hat{\bs v}_{c,\bs b}) \right) \bs Q^{-1} & \nonumber \\
+\hat{\bs w}_{m,c} = \;\;& \bs \Sigma_{c} \bs A_w^T \sum_{p=1}^P \bs H_{.,p}
+\left( \textrm{diag}(\hat{\bs v}_{c,\bs a}) - \textrm{diag}(\hat{\bs v}_{c,\bs b}) \right) \bs Q^{-1} & \nonumber \\
 & \left(\bs y - \Phi(\mathbb{E}[\bs z]) + \sum_{j=1}^U \bs H_u (\hat{\bs v}_c^T \hat{\bs w}_{c,j})\right), & \label{eq:what}
 \end{flalign}
 where the subscripts $._{\bs a} = \{ ._{a_p} \forall p \in 1,...,P \}$
@@ -407,9 +407,9 @@ updates:
 - \log|\bs S_{v,c}|  - \mathbb{E}[\log s_c] 
 + \hat{\bs v}_{m,c}^T \mathbb{E}[s_c]\bs K_{v,mm}^{-1}\hat{\bs v}_{m,c} & \nonumber \\
 & 
-+ \textrm{Tr}(\mathbb{E}[s_c] \bs K_{v,mm}^{-1} \bs S_{v,c}) 
++ \textrm{tr}(\mathbb{E}[s_c] \bs K_{v,mm}^{-1} \bs S_{v,c}) 
 - \log|\bs \Sigma_{c}|  + \hat{\bs w}_{m,c}^T \bs K_{w,mm}^{-1}\hat{\bs w}_{m,c} 
-+ \textrm{Tr}(\bs K_{w,mm}^{-1} \bs \Sigma_{c})
++ \textrm{tr}(\bs K_{w,mm}^{-1} \bs \Sigma_{c})
 \bigg\}
 & \nonumber \\
 &  
@@ -418,7 +418,7 @@ updates:
 + \hat{\bs t}^T \mathbb{E}[\sigma] \bs K_{t,mm}^{-1} \hat{\bs t}  &
 \nonumber \\
 &
-+ \textrm{Tr}(\mathbb{E}[\sigma] \bs K_{t,mm}^{-1} \bs S_{t})
++ \textrm{tr}(\mathbb{E}[\sigma] \bs K_{t,mm}^{-1} \bs S_{t})
 \Bigg\} 
 - (C+1)(\log\Gamma(\alpha_0)  + \alpha_0(\log \beta_0))
 & \nonumber \\

@@ -92,7 +92,7 @@ so the partial derivatives of $\mathcal{L}$ with respect to $\hat{\bs f}_m$, $\b
 are zero.
 Hence, after convergence, $\nabla_{l_{\! d}} \mathcal{L}$ simplifies to:
 \begin{flalign}
- &\nabla_{\!l_{\! d}} \mathcal{L}  = 
+ &\nabla_{\!l_{\! d}} \mathcal{L} \longrightarrow 
 \frac{1}{2} \mathrm{tr}\!\left(\! \left(
 \mathbb{E}[s](\hat{\bs f}_{\! m} \hat{\bs f}_{\! m}^T + \bs S^T)\bs K_{\! mm}^{-1} \! -  \bs I \! \right)
  \!\frac{\partial \bs K_{\! mm}}{\partial l_d} \bs K_{\! mm}^{-1} \right) \!. &
@@ -102,7 +102,7 @@ For the crowd model, we assume that $C$ latent item components, $\bs V$ have the
 which is also shared with $\bs t$. The gradients with respect to the length-scale, $l_{w,d}$,
 for the $d$th item feature are therefore given by:
 \begin{flalign}
- &\nabla_{l_{ v,d}} \mathcal{L}_{crowd}  = 
+ &\nabla_{l_{ v,d}} \mathcal{L}_{crowd} \longrightarrow
 %  \sum_{c=1}^{C} \bigg\{ \mathbb{E}[s_c] 
 %  \hat{\bs v}_{ m,c}^T \bs K_{ mm,v}^{-1} 
 % \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \bs K_{ mm,v}^{-1} \hat{\bs v}_{ m,c} 
@@ -135,7 +135,7 @@ for the $d$th item feature are therefore given by:
 % simply sum over terms relating to the components with a shared kernel function. 
 The gradients for the $d$th user feature length-scale, $l_{w,d}$, follows the same form:
 \begin{flalign}
- &\nabla_{l_{w,d}} \mathcal{L}_{crowd}  = \frac{1}{2} \mathrm{tr}\left( \left( \sum_{c=1}^{C} \left\{ \hat{\bs w}_{m,c} \hat{\bs w}_{m,c}^T +
+ &\nabla_{l_{w,d}} \mathcal{L}_{crowd} \longrightarrow \frac{1}{2} \mathrm{tr}\left( \left( \sum_{c=1}^{C} \left\{ \hat{\bs w}_{m,c} \hat{\bs w}_{m,c}^T +
 \bs \Sigma_c^T\right\} \bs K_{mm,w}^{-1} - C\bs I  \right)
  \frac{\partial \bs K_{mm,w}}{\partial l_{w,d}} \bs K_{mm,w}^{-1} \right)
  . &

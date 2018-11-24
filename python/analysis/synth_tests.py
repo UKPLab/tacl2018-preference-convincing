@@ -197,7 +197,7 @@ if __name__ == '__main__':
                 P=P,
                 ls=ls,
                 sigma=s,
-                s=0.1,
+                s=0.01,
                 lsy=lsy,
                 Npeoplefeatures=2
             )
@@ -373,7 +373,7 @@ if __name__ == '__main__':
                 P=P,
                 ls=ls,
                 sigma=s,
-                s=0.2,
+                s=0.01,
                 lsy=lsy,
                 Npeoplefeatures=2
             )

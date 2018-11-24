@@ -511,7 +511,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
             for f in range(self.Nfactors):
                 # scale the precision by y
-                scaling_f = self.y_var[f, self.personIDs[self.data_obs_idx_i]]**2 + \
+                scaling_f = self.y[f, self.personIDs[self.data_obs_idx_i]]**2 + \
                             self.y_var[f, self.personIDs[self.data_obs_idx_i]]
 
                 Sigma_f = covpair.dot(invQGT * scaling_f[None, :]).dot(self.G).dot(covpair.T)
@@ -601,7 +601,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                             - 2 * self.w_cov_i[f][self.pref_v_w_idx, self.pref_u_w_idx]
 
                 if self.person_features is None:
-                    self.Sigma_y[f, :] = covpair.dot(np.sum(scaling_f[:, None] * invQG, axis=0)[:, None]).flatten()
+                    self.Sigma_y[f, :] = np.diag(covpair.dot(self.G.T.dot(scaling_f[:, None] * invQG)).dot(covpair.T))
                 else:
                     self.Sigma_y[f, :, :] = covpair.dot(self.G.T.dot(scaling_f[:, None] * invQG)).dot(covpair.T)
 
