@@ -1261,8 +1261,8 @@ class CollabPrefLearningVB(object):
         return self.ls, self.lsy, -min_nlml  # return the log marginal likelihood
 
     def neg_marginal_likelihood(self, hyperparams, lstype, dimension, personIDs, items_1_coords, items_2_coords,
-                                item_features, preferences, person_features, input_type=input_type,
-                                use_median_ls=use_median_ls, use_MAP=False, ):
+                                item_features, preferences, person_features, input_type,
+                                use_median_ls, use_MAP=False):
         """
         Weight the marginal log data likelihood by the hyper-prior. Unnormalised posterior over the hyper-parameters.
         """
