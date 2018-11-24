@@ -984,7 +984,8 @@ class CollabPrefLearningVB(object):
             N = item_features.shape[0]
 
         # set personids and itemids to None to compute all pairs
-        mu, f_cov, personids = self.predict_f(item_features, person_features, personids, return_cov=True, return_personids=True)
+        mu, f_cov, personids = self.predict_f(item_features, person_features, personids,
+                                              return_cov=True, return_personids=True)
         mu = mu.T.reshape(N * Npeople, 1)
         pref_v = item_0_idxs + (N * personids)
         pref_u = item_1_idxs + (N * personids)
@@ -1012,7 +1013,8 @@ class CollabPrefLearningVB(object):
     def _y_var(self):
         return np.diag(self.y_cov)
 
-    def predict_f(self, item_features=None, person_features=None, personids=None, return_cov=False, return_personids=False):
+    def predict_f(self, item_features=None, person_features=None, personids=None, return_cov=False,
+                  return_personids=False):
 
         if personids is not None:
             personids = np.array(personids).astype(int)

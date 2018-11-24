@@ -221,7 +221,7 @@ if __name__ == '__main__':
     if fix_seeds:
         np.random.seed(1)
 
-    Nfactor_values = [3] # [1, 3, 10, 20]  # repeat with different no.s of factors
+    Nfactor_values = [1, 3, 10, 20]  # repeat with different no.s of factors
 
     figure_save_path = figure_root_path + '/multi_factor_correlations_P/'
     if not os.path.exists(figure_save_path):
@@ -346,7 +346,4 @@ if __name__ == '__main__':
         std_results = np.array(std_results_m)
 
         noise_plots[1] = plot_result(1, "num_pairs_r", 'number of pairwise training labels',
-                            "Mean factor correlation (Pearson's r)", 'num_factors=%i' % Nfactors, noise_plots[1])
-
-        noise_plots[2] = plot_result(2, "num_pairs_r", 'number of pairwise training labels',
                             "Mean factor correlation (Pearson's r)", 'num_factors=%i' % Nfactors, noise_plots[1])

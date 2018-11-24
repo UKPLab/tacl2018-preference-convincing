@@ -74,6 +74,12 @@ class PersonalisedTestRunner(TestRunner):
             self.vscales.append(np.sort(self.model.rate_sw / self.model.shape_sw)[::-1])
 
         proba = self.model.predict(self.person_test, self.a1_test, self.a2_test, self.items_feat)
+
+        print(np.any(np.isnan(proba)))
+        print(np.any(np.isinf(proba)))
+        for p in proba:
+            print(p)
+
         if self.a_rank_test is not None:
             predicted_f = self.model.predict_f_item_person(self.a_rank_test, self.person_rank_test, self.items_feat)
     
@@ -134,7 +140,7 @@ if __name__ == '__main__':
         runner.save_collab_model = True
 
     # PERSONALISED PREDICTION
-    runner.run_test_set(min_no_folds=0, max_no_folds=32)
+    runner.run_test_set(min_no_folds=3, max_no_folds=32)
 
     # CONSENSUS PREDICTION
     runner.datasets = ['UKPConvArgCrowdSample_evalMACE']

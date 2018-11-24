@@ -904,7 +904,8 @@ class TestRunner:
                 print(("Skipping fold %i, %s" % (foldidx, self.fold)))
                 continue
             if foldidx >= max_no_folds or foldidx < min_no_folds:
-                print(("Already completed maximum no. folds. Skipping fold %i, %s" % (foldidx, self.fold)))
+                print(("Already completed maximum no. folds or this fold is below the minimum specified."
+                       " Skipping fold %i, %s" % (foldidx, self.fold)))
                 continue
             foldresultsfile = results_stem + '/fold%i.pkl' % foldidx
             if foldidx not in all_proba and os.path.isfile(foldresultsfile): 
