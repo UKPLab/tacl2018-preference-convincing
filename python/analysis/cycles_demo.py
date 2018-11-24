@@ -287,7 +287,7 @@ if __name__ == '__main__':
     fold = list(folds.keys())[0]
     print(("Fold name ", fold))
     trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test,\
-                        X, uids, utexts = get_noisy_fold_data(folds, fold, docids, 1.0)
+                        X, uids, utexts, _ = get_noisy_fold_data(folds, fold, docids, 1.0)
 
     items_feat = get_mean_embeddings(embeddings, X)
     ndims = items_feat.shape[1]

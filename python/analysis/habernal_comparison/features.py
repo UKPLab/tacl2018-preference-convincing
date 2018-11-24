@@ -136,7 +136,7 @@ if __name__ == '__main__':
                     pickle.dump(data_f, fh)
 
             trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test, \
-                                                                        X, uids, utexts = get_fold_data(folds, fold, docids)
+                                                                X, uids, utexts, _ = get_fold_data(folds, fold, docids)
 
             # get the embedding values for the test data -- need to find embeddings of the whole piece of text
             runner = TestRunner('crowdsourcing_argumentation_expts_first_submission', [dataset], [feature_type],

@@ -210,16 +210,16 @@ def get_fold_data(folds, fold, docids):
     person_test = np.array(person_test)  
     
     personIDs = np.concatenate((person_train, person_test))
-    _, personIdxs = np.unique(personIDs, return_inverse=True)
+    upersonIDs, personIdxs = np.unique(personIDs, return_inverse=True)
     person_train = personIdxs[:len(person_train)]
     person_test = personIdxs[len(person_train):]
     
     return a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, \
-        X, uids, utexts
+        X, uids, utexts, upersonIDs
         
 def get_noisy_fold_data(folds, fold, docids, acc, tr_pair_subset=None):
     a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, X, \
-    uids, utexts = get_fold_data(folds, fold, docids)
+        uids, utexts, upersonIDs = get_fold_data(folds, fold, docids)
     
     # now subsample the training data
     N = len(a1_train)
@@ -239,7 +239,7 @@ def get_noisy_fold_data(folds, fold, docids, acc, tr_pair_subset=None):
         prefs_train[flip_labels] = 2 - prefs_train[flip_labels] # labels are 0, 1 or 2
     
     return a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, \
-        X, uids, utexts   
+        X, uids, utexts, upersonIDs
     
 def get_fold_regression_data(folds_regression, fold, docids):
     if folds_regression is not None:
@@ -248,7 +248,7 @@ def get_fold_regression_data(folds_regression, fold, docids):
         scores_rank_train = np.array(scores_rank_train)
         argids_rank_train = np.array(argids_rank_train)    
         
-        _, scores_rank_test, argids_rank_test, personIDs_rank_test, _ = folds_regression.get(fold)["test"] # blank argument is turkIDs_rank_test
+        _, scores_rank_test, argids_rank_test, person_rank_test, _ = folds_regression.get(fold)["test"] # blank argument is turkIDs_rank_test
         item_idx_ranktest = np.array([np.argwhere(testid==docids)[0][0] for testid in argids_rank_test])
         scores_rank_test = np.array(scores_rank_test)
         argids_rank_test = np.array(argids_rank_test)
@@ -261,10 +261,10 @@ def get_fold_regression_data(folds_regression, fold, docids):
         item_idx_ranktest = None
         scores_rank_test = None
         argids_rank_test = None
-        personIDs_rank_test = None    
+        person_rank_test = None
 
     return item_idx_ranktrain, scores_rank_train, argids_rank_train, person_rank_train,\
-           item_idx_ranktest, scores_rank_test, argids_rank_test, personIDs_rank_test
+           item_idx_ranktest, scores_rank_test, argids_rank_test, person_rank_test
     
     
 def subsample_tr_data(subsample_amount, a1_train, a2_train):
@@ -306,6 +306,8 @@ class TestRunner:
         self.dataset_increment = dataset_increment
 
         self.vscales = []  # record the latent factor scales
+
+        self.save_collab_model = False
 
     def load_features(self, feature_type, embeddings_type, a1_train, a2_train, uids, utexts=None):
         '''
@@ -918,12 +920,16 @@ class TestRunner:
             # Get data for this fold --------------------------------------------------------------------------------------
             print(("Fold name ", self.fold))
             a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test,\
-                                self.X, uids, utexts = get_noisy_fold_data(self.folds, self.fold, self.docids, acc)                            
+                        self.X, uids, utexts, upersonIDs = get_noisy_fold_data(self.folds, self.fold, self.docids, acc)
             
             # ranking folds
             a_rank_train, scores_rank_train, _, person_rank_train, a_rank_test, scores_rank_test, _, \
-                                person_idx_ranktest = get_fold_regression_data(self.folds_r, self.fold, self.docids)
-            
+                                person_rank_test = get_fold_regression_data(self.folds_r, self.fold, self.docids)
+
+            # convert the ranking person IDs to the idxs
+            person_rank_train = np.array([np.argwhere(upersonIDs == p) for p in person_rank_train])
+            person_rank_test = np.array([np.argwhere(upersonIDs == p) for p in person_rank_test])
+
             self.load_features(feature_type, embeddings_type, a1_train, a2_train, uids, utexts)
             #items_feat = items_feat[:, :ndebug_features]     
     
@@ -970,7 +976,7 @@ class TestRunner:
             if '_oneLS' in self.method:
                 self.ls_initial = np.median(self.ls_initial)
                 logging.info("Selecting a single LS for all features: %f" % self.ls_initial)
-            
+
             logging.info("Starting test with method %s..." % (self.method))
             starttime = time.time()        
             
@@ -1004,17 +1010,25 @@ class TestRunner:
                 self.person_rank_train = person_rank_train
                                 
                 self.a_rank_test = a_rank_test
-                self.person_rank_test = person_idx_ranktest
+                self.person_rank_test = person_rank_test
                 if self.a_rank_test is not None and len(self.person_rank_test) == 0:
                     self.person_rank_test = np.zeros(len(self.a_rank_test)) # if no person IDs, make sure we default to 0
-                
+
+                if self.save_collab_model:
+                    self.modelfile = results_stem + '/%s_model_fold%i_nseen%i.pkl' % (self.method, foldidx, nseen_so_far)
+
                 # run the method with the current data subset
                 method_runner_fun = self._choose_method_fun(feature_type)
-                    
+
                 proba, predicted_f, tr_proba = method_runner_fun()
             
                 endtime = time.time() 
-                
+
+                # save the model for making other predictions
+                if self.save_collab_model:
+                    with open(self.modelfile, 'wb') as fh:
+                        pickle.dump(self.model, fh)
+
                 # make it the right shape
                 proba = np.array(proba)
                 if proba.ndim == 2 and proba.shape[1] > 1:
