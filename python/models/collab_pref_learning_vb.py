@@ -1214,16 +1214,18 @@ class CollabPrefLearningVB(object):
             if person_features is None:
                 initialguess = np.log(self.ls)
                 logging.debug("Initial item length-scale guess in restart %i: %s" % (r, self.ls))
-                res = minimize(self.neg_marginal_likelihood, initialguess, args=('item', -1, use_MAP,),
-                               jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter': maxfun, 'ftol' : 1e-3,
-                                                'gtol': 10 ** (-self.nitem_features - 1)})
+                res = minimize(self.neg_marginal_likelihood, initialguess, args=('item', -1, personIDs, items_1_coords,
+                    items_2_coords, item_features, preferences, person_features, input_type, use_median_ls, use_MAP),
+                    jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter': maxfun, 'ftol' : 1e-3,
+                    'gtol': 10 ** (-self.nitem_features - 1)})
             else:
                 initialguess = np.append(np.log(self.ls), np.log(self.lsy))
                 logging.debug("Initial item length-scale guess in restart %i: %s" % (r, self.ls))
                 logging.debug("Initial person length-scale guess in restart %i: %s" % (r, self.lsy))
-                res = minimize(self.neg_marginal_likelihood, initialguess, args=('both', -1, use_MAP,),
-                               jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter': maxfun, 'ftol' : 1e-3,
-                                                'gtol': 10 ** (-self.nitem_features-self.nperson_features - 1)})
+                res = minimize(self.neg_marginal_likelihood, initialguess, args=('both', -1, personIDs, items_1_coords,
+                    items_2_coords, item_features, preferences, person_features, input_type, use_median_ls, use_MAP,),
+                    jac=self.nml_jacobian, method='L-BFGS-B', options={'maxiter': maxfun, 'ftol' : 1e-3,
+                    'gtol': 10 ** (-self.nitem_features-self.nperson_features - 1)})
 
             opt_hyperparams = res['x']
             nlml = res['fun']
@@ -1245,7 +1247,9 @@ class CollabPrefLearningVB(object):
         if best_iter < final_r:
             # need to go back to the best result
             if person_features is None:  # don't do this if further optimisation required anyway
-                self.neg_marginal_likelihood(best_opt_hyperparams, 'item', -1, use_MAP=False)
+                self.neg_marginal_likelihood(best_opt_hyperparams, 'item', -1, personIDs, items_1_coords, items_2_coords,
+                                item_features, preferences, person_features, input_type=input_type,
+                                use_median_ls=use_median_ls, use_MAP=False)
 
         logging.debug(
             "Chosen item length-scale %s, used %i evals of NLML over %i restarts" % (self.ls, nfits, nrestarts))
@@ -1256,7 +1260,9 @@ class CollabPrefLearningVB(object):
         logging.debug("Optimal hyper-parameters: item = %s, person = %s" % (self.ls, self.lsy))
         return self.ls, self.lsy, -min_nlml  # return the log marginal likelihood
 
-    def neg_marginal_likelihood(self, hyperparams, lstype, dimension, use_MAP=False):
+    def neg_marginal_likelihood(self, hyperparams, lstype, dimension, personIDs, items_1_coords, items_2_coords,
+                                item_features, preferences, person_features, input_type=input_type,
+                                use_median_ls=use_median_ls, use_MAP=False, ):
         """
         Weight the marginal log data likelihood by the hyper-prior. Unnormalised posterior over the hyper-parameters.
         """
@@ -1295,7 +1301,9 @@ class CollabPrefLearningVB(object):
         if np.any(np.isinf(self.lsy)):
             return np.inf
 
-        # make sure we start again -- fit should set the value of parameters back to the initial guess
+        self.fit(personIDs, items_1_coords, items_2_coords, item_features, preferences, person_features,
+                 input_type=input_type, use_median_ls=use_median_ls)
+
         marginal_log_likelihood = self.lowerbound()
         if use_MAP:
             log_model_prior = self.ln_modelprior()
