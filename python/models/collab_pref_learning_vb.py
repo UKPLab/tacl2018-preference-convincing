@@ -1401,12 +1401,15 @@ class CollabPrefLearningVB(object):
 
         return mll_jac
 
-    def nml_jacobian(self, hyperparams, lstype, dimension, use_MAP=False):
+    def nml_jacobian(self, hyperparams, lstype, dimension, personIDs, items_1_coords, items_2_coords, item_features,
+                     preferences, person_features, input_type, use_median_ls, use_MAP=False):
         """
         Weight the marginal log data likelihood by the hyper-prior. Unnormalised posterior over the hyper-parameters.
         """
         if np.any(np.isnan(hyperparams)):
             return np.inf
+
+        needs_fitting = False
 
         if lstype == 'item':
             if dimension == -1 or self.n_wlengthscales == 1:
@@ -1451,6 +1454,10 @@ class CollabPrefLearningVB(object):
             return np.inf
         if np.any(np.isinf(self.lsy)):
             return np.inf
+
+        if needs_fitting:
+            self.neg_marginal_likelihood(hyperparams, lstype, dimension, personIDs, items_1_coords, items_2_coords,
+                    item_features, preferences, person_features, input_type, use_median_ls, use_MAP)
 
         # num_jobs = multiprocessing.cpu_count()
         # if num_jobs > 12:
