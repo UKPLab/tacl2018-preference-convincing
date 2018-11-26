@@ -580,13 +580,13 @@ vscales = None # don't record the v scale factors
 
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
-           'crowd-GPPL',
-           'GPPL-pooled',
-           'GPPL-joint',
-           'GPPL-per-user',
+           # 'crowd-GPPL',
+           # 'collab-GPPL', # Houlsby
+           # 'GPPL-pooled',
+           # 'GPPL-joint',
+           # 'GPPL-per-user',
            'crowd-GPPL\\u',
            'crowd-BMF',
-           'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
            ]
 
@@ -613,7 +613,7 @@ methods = [
 # hyperparameters common to most models
 optimize = True
 sushiB = False
-run_sushi_expt(methods, 'sushi_10_opt' + tag)
+# run_sushi_expt(methods, 'sushi_10_opt' + tag)
 
 vscales_A = vscales
 vscales = None
@@ -659,13 +659,13 @@ vscales = None # don't record the v factor scale factors
 
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
-           'crowd-GPPL',
-           'GPPL-pooled',
-           'GPPL-joint',
-           'GPPL-per-user',
+           # 'crowd-GPPL',
+           # 'collab-GPPL',  # Houlsby
+           # 'GPPL-pooled',
+           # 'GPPL-joint',
+           # 'GPPL-per-user',
            'crowd-GPPL\\u',
            'crowd-BMF',
-           'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
            ]
 
@@ -693,7 +693,7 @@ methods = [
 # hyperparameters common to most models
 optimize = True
 sushiB = True
-run_sushi_expt(methods, 'sushi_100_opt' + tag)
+# run_sushi_expt(methods, 'sushi_100_opt' + tag)
 
 vscales_B = vscales
 
