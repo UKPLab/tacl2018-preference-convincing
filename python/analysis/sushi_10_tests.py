@@ -597,7 +597,7 @@ methods = [
 
 optimize = False
 sushiB = False
-run_sushi_expt(methods, 'sushi_10' + tag)
+# run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
