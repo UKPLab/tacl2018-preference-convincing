@@ -422,6 +422,11 @@ def run_sushi_expt(methods, expt_name):
         # Get training and test data
         u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, scores, chosen_users = subsample_data()
 
+        print(u_tr)
+        print(i1_tr)
+        print(i2_tr)
+        print(prefs_tr)
+
         fpred_r = []
         rho_pred_r = []
 

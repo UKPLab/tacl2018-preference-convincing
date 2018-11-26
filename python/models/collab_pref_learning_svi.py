@@ -166,8 +166,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.y_ninducing = self.Npeople
 
             # Prior covariance of y
-            self.Ky_mm_block = np.ones(self.y_ninducing) + \
-                    (1e-4 if self.cov_type=='diagonal' else 1e-6) * np.eye(self.y_ninducing) # jitter
+            self.Ky_mm_block = np.ones(self.y_ninducing) * (1+1e-4 if self.cov_type=='diagonal' else 1+1e-6)  # jitter
             self.invKy_mm_block = self.Ky_mm_block
             self.Ky_nm_block = np.diag(self.Ky_mm_block)
 
@@ -625,13 +624,19 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 # need to get x for current iteration and merge using SVI weighted sum
                 self.yinvSm[:, f] = (1-rho_i) * self.prev_yinvSm[:, f] + rho_i * w_i * x.flatten()
 
-                self.yS[f] = np.linalg.inv(self.yinvS[f])
-                self.y_u[f] = self.yS[f].dot(self.yinvSm[:, f])
+                if self.person_features is None:
+                    self.yS[f] = 1.0 / self.yinvS[f]
+                    self.y_u[f] = (self.yS[f].T * self.yinvSm[:, f]).T
+                    self.y[f] = self.y_u[f]
+                    self.y_var[f] = self.yS[f]
+                else:
+                    self.yS[f] = np.linalg.inv(self.yinvS[f])
+                    self.y_u[f] = self.yS[f].dot(self.yinvSm[:, f])
 
-                yf, varyf = inducing_to_observation_moments(self.Ky_mm_block,
-                        self.invKy_mm_block, self.Ky_nm_block, self.y_u[f:f+1, :].T, 0, self.yS[f], 1, full_cov=False)
-                self.y[f:f + 1] = yf.T
-                self.y_var[f:f + 1] = varyf.T
+                    yf, varyf = inducing_to_observation_moments(self.Ky_mm_block,
+                            self.invKy_mm_block, self.Ky_nm_block, self.y_u[f:f+1, :].T, 0, self.yS[f], 1, full_cov=False)
+                    self.y[f:f + 1] = yf.T
+                    self.y_var[f:f + 1] = varyf.T
 
                 self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
 
