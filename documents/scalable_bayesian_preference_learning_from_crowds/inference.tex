@@ -1,8 +1,5 @@
 \section{Scalable Inference}\label{sec:inf}
 
-***TODO: we don't have the factors for s and sigma. We can replace the E[s] notation
-if we define them.***
-
 Given a set of pairwise labels, $\bs y$, 
 the goal is to infer the posterior distribution over the preference values $\bs f$, in the single
 user case, or $\bs F=\bs V^T \bs W$ in the multi-user case. 
@@ -98,11 +95,17 @@ Given our likelihood approximation, we can now use variational inference to esti
 by optimizing an approximate posterior over all latent variables:
 \begin{flalign}
 p(\bs f, s | \bs y, \bs x, k_{\theta}, \alpha_0, \beta_0) & \approx q(s)q(\bs f), & \nonumber \\
-\textrm{where } \log q(s) & = \log \mathcal{N}(\mathbb{E}[\bs f]; \bs 0, \bs K_{\theta}/s) + \log \mathcal{G}(s; \alpha_0, \beta_0) + \textrm{const}, & \nonumber \\
-\log q(\bs f) & = \log \mathcal{N}(\bs y; \tilde{\Phi}(\bs z), \bs Q) + \log \mathcal{N}(\bs f; \bs 0, \bs K_{\theta}/\mathbb{E}[s]) + \textrm{const}. &
+\textrm{where } \log q(s) & = \mathbb{E}_{\bs f}[\log p(s | \bs f, \alpha_0, \beta_0)] & \nonumber \\
+& = \log \mathcal{N}(\mathbb{E}[\bs f]; \bs 0, \bs K_{\theta}/s) + \log \mathcal{G}(s; \alpha_0, \beta_0) + \textrm{const}, & \nonumber \\
+\log q(\bs f) & = \mathbb{E}_{s}[\log p(\bs f | k_{\theta}, s, \bs x, \bs y) ] & \nonumber \\
+& = \log \mathcal{N}(\bs y; \tilde{\Phi}(\bs z), \bs Q) + \log \mathcal{N}(\bs f; \bs 0, \bs K_{\theta}/\mathbb{E}[s]) + \textrm{const}. &
 \label{eq:vb_approx}
 \end{flalign}
 %don't some of the expectations over s simplify out?
+Since the Gamma is conjugate to the variance of a Gaussian, $q(s)$ is also a Gamma distribution. 
+Likewise, since the likelihood approximation is Gaussian and its mean is a linear function of $\bs f$, 
+which has a multivariate Gaussian prior,
+$q(\bs f)$ is also a multivariate Gaussian.
 The Gaussian likelihood approximation and linearization
 also appear in methods based on expectation propagation~\citep{rasmussen_gaussian_2006} 
 and the extended Kalman filter~\citep{reece2011determining,steinberg2014extended}.
@@ -117,14 +120,17 @@ We introduce a sparse approximation to the Gaussian process that allows
 us to limit the size of the covariance matrix that needs to be inverted,
 and permit stochastic inference methods that consider only a subset of the $P$ observations at each iteration
 ~\citep{hensman2013gaussian,hensman2015scalable}. 
-To do this, we introduce a set of $M$ \emph{inducing points}, with inputs $\bs x_m$,
- function values $\bs f_m$, and covariance $\bs K_{mm}$.
-The covariance between the observations and the inducing points is $\bs K_{nm}$.
-We then modify the variational approximation in Equation \ref{eq:vb_approx} to introduce the inducing points 
+To do this, we introduce a set of $M \ll N$ \emph{inducing points}, with inputs $\bs x_m$,
+ function values $\bs f_m$, covariance $\bs K_{mm}$,
+ and covariance between the observations and the inducing points is $\bs K_{nm}$.
+ The inducing points act as proxies for the observed points during inference,
+ and thereby reduce the number of data points we have to perform costly operations over.
+We modify the variational approximation in Equation \ref{eq:vb_approx} to introduce the inducing points 
 (for clarity, we omit $\theta$ from this point on):
 \begin{flalign}
 p(\bs f, \bs f_m, s | \bs y, \bs x, \bs x_m, k_{\theta}, \alpha_0, \beta_0) &\approx q(\bs f, \bs f_m, s) = q(s)q(\bs f)q(\bs f_m), \label{eq:svi_approx}
 \end{flalign}
+where we marginalize $\bs f$ to obtain the factor for $\bs f_m$:
 \begin{flalign}
 \log q(\bs f_m) &= \log \mathcal{N}\left(\bs y; \tilde{\Phi}(\bs z), \bs Q\right)]
 + \log\mathcal{N}\left(\bs f_m; \bs 0, \bs K_{mm}/\mathbb{E}\left[s\right]\right)  + \textrm{const}, \nonumber \\
@@ -136,15 +142,24 @@ p(\bs f, \bs f_m, s | \bs y, \bs x, \bs x_m, k_{\theta}, \alpha_0, \beta_0) &\ap
 \hat{\bs f}_m &= \bs S \bs A^T \bs G^T \bs Q^{-1} (\bs y - \Phi(\mathbb{E}[\bs z]) + \bs G \mathbb{E}[\bs f] ), \label{eq:fhat_m}
 \end{flalign}
 where $\bs A = \bs K_{nm} \bs K^{-1}_{mm}$.
-The factor $q(s)$ remains unchanged from Equation \ref{eq:vb_approx}, while
-$q(\bs f)$ is now assumed to be independent of the observations:
+We choose an approximation of $q(\bs f)$ that depends only on the function values at the inducing points, $\bs f_m$, and is independent of the observations:
  \begin{flalign}
 \log q(\bs f) & = \log \mathcal{N}(\bs f; \bs A \hat{\bs f}_m, 
 \bs K + \bs A (\bs S - \bs K_{mm}/\mathbb{E}[s]) \bs A^T ).
 \end{flalign}
-The use of inducing points therefore avoids the need to invert an $N \times N$ covariance matrix to compute the posterior.
+This means that we no longer need to invert an $N \times N$ covariance matrix to compute the posterior.
+The factor $q(s)$ is also modified to depend on the inducing points:
+\begin{flalign}
+& \log q(s) = \log\mathcal{N}(\mathbb{E}[\bs f_m| \bs 0, \bs K_mm/s] + \log \mathcal{G}(s; \alpha_0, \beta_0) + \mathrm{const} = \log \mathcal{G}(s; \alpha, \beta) &
+\end{flalign}
+where $\alpha= \alpha_0 + \frac{M}{2}$ and $\beta = \beta_0 + \frac{
+\textrm{tr}(\bs K^{-1}_{mm}(S + \hat{\bs f}_m \hat{\bs f}_m^T))}{2}$.
+Since none of the other factors depend on $\log q(\bs f)$, it need not be estimated until prediction time
+once the other factors have already been estimated, as explained in the next subsection.
 
-To choose inducing points that can represent the spread of data in our observations
+Since the inducing points stand in for the observed locations,
+their choice affects the quality of our approximation. 
+To choose inducing points that represent the spread of data in our observations
 across feature space, 
 we use K-means++~\cite{arthur2007k} with $K=M$ to  
 cluster the feature vectors, 
@@ -185,9 +200,7 @@ By taking expectations with respect to the variational $q$ distributions, the lo
 \end{flalign}
 %         invK_mm_expecFF = self.invK_mm.dot(self.uS + self.um_minus_mu0.dot(self.um_minus_mu0.T))
 %         self.rate_s = self.rate_s0 + 0.5 * np.trace(invK_mm_expecFF)
-where $\alpha= \alpha_0 + \frac{M}{2}$ and $\beta = \beta_0 + \frac{
-\textrm{tr}(\bs K^{-1}_{mm}(S + \hat{\bs f}_m \hat{\bs f}_m^T))}{2}$,
-and the terms relating to $\mathbb{E}[p(\bs f | \bs f_m) - q(\bs f)]$ cancel.
+where the terms relating to $\mathbb{E}[p(\bs f | \bs f_m) - q(\bs f)]$ cancel.
 The iterative algorithm proceeds by updating each of the $q$ factors in turn,
 taking expectations with respect to the other factors. 
 
@@ -232,8 +245,8 @@ and $delay$ and $forgettingRate$ are hyperparameters of the algorithm~\citep{hof
 The scale parameter, $s$, can also be learned as part of the SVI procedure. Its variational factor,
 $q(s)$, has the following update equations:
 \begin{flalign}
-\mathbb{E}[s] & = \frac{2a_0 + M}{2b} \label{eq:Es}\\
-\mathbb{E}[\log s] & = \Psi(2a_0 + M) - \log(2b), \label{eq:Elogs}
+\mathbb{E}[s] & = \frac{2\alpha_0 + M}{2\beta} \label{eq:Es}\\
+\mathbb{E}[\log s] & = \Psi(2\alpha_0 + M) - \log(2\beta), \label{eq:Elogs}
 \end{flalign}
 where $\Psi$ is the digamma function.
 

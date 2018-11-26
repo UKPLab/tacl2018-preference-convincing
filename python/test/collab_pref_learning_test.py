@@ -63,6 +63,14 @@ def evaluate_models_personal(model, item_features, person_features, F,
     print('Noise rate in the pairwise training labels: %f' % noise_rate)
 
     t = (F[pair1idxs_test, personidxs_test] > F[pair2idxs_test, personidxs_test]).astype(int)
+
+    if np.unique(t).shape[0] == 1:
+        idxs_to_flip = np.random.choice(len(pair1idxs_test), int(0.5 * len(pair1idxs_test)), replace=False)
+        tmp = pair1idxs_test[idxs_to_flip]
+        pair1idxs_test[idxs_to_flip] = pair2idxs_test[idxs_to_flip]
+        pair2idxs_test[idxs_to_flip] = tmp
+        t[idxs_to_flip] = 1 - t[idxs_to_flip]
+
     rho_pred = model.predict(personidxs_test, pair1idxs_test, pair2idxs_test, item_features, person_features)
     rho_pred = rho_pred.flatten()
     t_pred = np.round(rho_pred)
@@ -122,6 +130,13 @@ def evaluate_models_common_mean(model, item_features, person_features, f,
     print('Noise rate in the pairwise training labels: %f' % noise_rate)
 
     t = (f[pair1idxs_test] > f[pair2idxs_test]).astype(int)
+    if np.unique(t).shape[0] == 1:
+        idxs_to_flip = np.random.choice(len(pair1idxs_test), int(0.5 * len(pair1idxs_test)), replace=False)
+        tmp = pair1idxs_test[idxs_to_flip]
+        pair1idxs_test[idxs_to_flip] = pair2idxs_test[idxs_to_flip]
+        pair2idxs_test[idxs_to_flip] = tmp
+        t[idxs_to_flip] = 1 - t[idxs_to_flip]
+
     rho_pred = model.predict_common(item_features, pair1idxs_test, pair2idxs_test)
     rho_pred = rho_pred.flatten()
     t_pred = np.round(rho_pred)
@@ -210,7 +225,7 @@ def gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, sigma, s, 
     Ky = matern_3_2_from_raw_vals(person_features, lsy)
     Ky = [Ky for _ in range(Nfactors)]
     Ky = block_diag(*Ky)
-    y = np.ones((Nfactors, Npeople))#mvn.rvs(cov=Ky).reshape(Nfactors, Npeople)
+    y = mvn.rvs(cov=Ky).reshape(Nfactors, Npeople)
 
     f_all = w.dot(y) + t
 

@@ -140,7 +140,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         # Kernel over items (used to construct priors over w and t)
         if self.verbose:
             logging.debug('Initialising K_mm')
-        self.K_mm = self.kernel_func(self.inducing_coords, self.ls) + 1e-6 * np.eye(self.ninducing) # jitter
+        self.K_mm = self.kernel_func(self.inducing_coords, self.ls) + \
+                    (1e-4 if self.cov_type=='diagonal' else 1e-6) * np.eye(self.ninducing) # jitter
         self.invK_mm = np.linalg.inv(self.K_mm)
         if self.verbose:
             logging.debug('Initialising K_nm')
@@ -165,7 +166,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.y_ninducing = self.Npeople
 
             # Prior covariance of y
-            self.Ky_mm_block = np.ones(self.y_ninducing)
+            self.Ky_mm_block = np.ones(self.y_ninducing) + \
+                    (1e-4 if self.cov_type=='diagonal' else 1e-6) * np.eye(self.y_ninducing) # jitter
             self.invKy_mm_block = self.Ky_mm_block
             self.Ky_nm_block = np.diag(self.Ky_mm_block)
 
@@ -203,7 +205,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             if self.verbose:
                 logging.debug('Initialising Ky_mm')
             self.Ky_mm_block = self.y_kernel_func(self.y_inducing_coords, self.lsy)
-            self.Ky_mm_block += 1e-6 * np.eye(len(self.Ky_mm_block)) # jitter
+            self.Ky_mm_block += (1e-4 if self.cov_type=='diagonal' else 1e-6) * np.eye(self.y_ninducing) # jitter
 
             # Prior covariance of y
             self.invKy_mm_block = np.linalg.inv(self.Ky_mm_block)

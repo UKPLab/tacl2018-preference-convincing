@@ -1,5 +1,37 @@
 \section{Experiments}\label{sec:expts}
 
+\begin{table}
+\begin{tabularx}{\textwidth}{| p{1.9cm} | X | X | X | X | X | X | X | X |}
+\hline
+Dataset & Folds /subs-amples & Users & Items & Pairs, train & Pairs, test & Pref vals, test & Item features & User features \\
+\hline\hline
+Simulation (a) & 25 & 25 & 100 & 900 & 0  & 100 & 2 & 2\\
+Simulation (b) & 25 & 25 & 100 & 900 & 0 & 100 & 2 & 2 \\
+Simulation (c) & 25 & 25 & 100 & 900 & 0 & 100 & 2 & 2\\
+Simulation (d) & 25 & 25 & 100 & 36 - 2304 & 0 & 100 & 2 & 2\\
+\hline
+Sushi A & 25 & 1000 & 10 & 15000 & 5000 & 10000 & 18 & 123 \\
+Sushi B & 25 & 5000 & 100 & 50000 & 5000 & 500000 &  18 & 123 \\
+\hline
+UKPConvArg-CrowdSample & 32 & 1442 & 1052 & 16398 & 529 & 33 & 32310 & 0
+\\ \hline
+\end{tabularx}
+\caption{Summary of datasets showing mean counts per subsample or per fold. For the simulation datasets, generate the subsamples of data independently, for the Sushi dataset we select subsamples independently from the complete dataset, while  
+UKPConvArgCrowdSample is divided into folds, where the test data in each fold corresponds to a single topic and stance. The numbers of features are given after categorical labels have been converted to one-hot encoding, counting
+each category as a separate feature.
+}
+\label{tab:datasets}
+\end{table}
+% NOTE: possible problem with convincingness data is that some users have very few observations in training data.
+We use the datasets summarized in Table \ref{tab:datasets} to test the key aspects of our proposed methods: recovering an underlying consensus from noisy pairwise labels; modeling personal preferences from pairwise labels; and the scalability of our proposed Bayesian preference learning methods, GPPL and crowd-GPPL using SVI.
+In Section \ref{sec:exp_synth}, we use simulated data to test the ability of our method to recover preference functions from noisy data when the correct number of latent factors is unknown. 
+Then, in Section \ref{sec:sushi}, we compare our method against previous approaches for predicting the preferences
+of thousands of users on the \emph{Sushi} datasets~\citep{kamishima2003nantonac}.
+Section \ref{sec:exp_nlp} evaluates our approach on an NLP task with high-dimensional feature vectors and
+a larger number of items, which involves using pairwise judgments of arguments from online debate forums 
+to learn a function of argument \emph{convincingness}. We use the \emph{UKPConvArgSample} dataset, which is 
+sampled from data provided by ~\citet{habernal2016argument}. 
+Finally, we analyze the scalability of our SVI approach in Section \ref{sec:exp_scale}, again using the \emph{UKPConvArgSample} dataset.
 
 \subsection{Methods Compared}
 
@@ -31,15 +63,31 @@ Dataset:
 Hypothesis: 
 
 \begin{figure}
-\caption{Recovering latent preference functions with increasing levels of noise
-in different scenarios: 
-(a) single user; 
-(b) ground truth function from crowdsourced labels; 
-(c) latent components from a crowd of users.
+\subfloat[Inferring preferences for a single user]{
+\includegraphics[width=.5\columnwidth]{../../results/synth_3/single_user/tau_test}
+}
+\subfloat[Inferring consensus function from crowdsourced labels]{
+\includegraphics[width=.5\columnwidth]{../../results/synth_3/multi_user_consensus/tau_test}
+} \\
+\subfloat[Inferring personal preferences for members of a crowd]{
+\includegraphics[width=.57\columnwidth]{../../results/synth_3/multi_user_personal/tau_test}
+}
+\subfloat[Inferring the latent factors]{
+\includegraphics[width=.43\columnwidth]{../../results/synth_3/multi_factor_correlations_P/num_pairs_r}
+}
+\caption{Rank correlation between true and inferred preference values for different inference tasks.  (a)--(c) varying level of noise in pairwise training labels, (d) varying number of pairwise training labels. 
 }
 \end{figure}
 
-\section{Comparision of Alternative Methods on Real Data}\label{sec:exp_small}
+%\begin{figure}
+%%\includegraphics[scale=1]{../../results/synth_3/multiuser_factor_correlations_s/noise_r}
+%\caption{Correlations between the inferred and ground truth latent factors with varying values of
+%(a) noise variance, s; 
+%(b) number of pairwise labels in training data. 
+%}
+%\end{figure}
+
+\subsection{Sushi Preferences}\label{sec:sushi}
 
 Dataset: Sushi
 % Houlsby results: for comparison against a different inference technique on small data, include
@@ -85,19 +133,81 @@ and runtime.
 
 In all cases, we use the no. pairs per user and no. users to select the subset of data used for training, then test on the remainder.
 
+\begin{table}
+\begin{tabularx}{\textwidth}{| l | c | c | c | c |}
+\\ \hline
+%\input{../../results/sushi_10_4/results.tex}\\
+%\input{../../results/sushi_10_opt_4/results.tex}\\
+\\ \hline
+\end{tabularx}
+\caption{Performance on Sushi-A dataset with 10 items, 1000 users, 15 pairwise labels per user for training.}
+\end{table}
+
+\begin{table}
+\begin{tabularx}{\textwidth}{| l | c | c | c | c |}
+\\ \hline
+%\input{../../results/sushi_100_4/results.tex} \\ 
+%\input{../../results/sushi_100_opt_4/results.tex} \\
+\\ \hline
+\end{tabularx}
+\caption{Performance on Sushi-B dataset with 100 items, 5000 users, 10 pairwise labels per user for training.}
+\end{table}
+
 \begin{figure}
+\includegraphics[scale=1]{../../results/sushi_factor_scales}
 \caption{
-Average test error for each method on Sushi-A dataset.
-The above experiments would generate 2 (sushi-A and sushi-B) x 3 ( 2 x varying no. users +
-1 x varying no. pairs) x 3 (two pairwise metrics, one ranking) = 18 plots. This needs trimming!
-Suggest we resort to:
-1 (sushi-A) x 2 (varying no users with two different no. pairs) x 1 = 2 plots. Then we can put
-any missing results in the text for comparison with other methods, i.e. either logloss or 
-classification error.
+Distribution of latent factor variances, $s_c$, for crowd-GPPL on the Sushi-A and Sushi-B datasets, averaged over all $25$ runs.
 }
 \end{figure}
 
-\section{Scalability Experiments}\label{sec:exp_scale}
+\subsection{Argument Convincingness}\label{sec:exp_nlp}
+
+We compare performance of several methods on the Dataset used in Section \ref{sec:exp_scale}.
+
+The judgments were obtained by asking crowdsourcing workers to decide which of a pair of arguments is 
+more convincing. The dataset contains 16 debate topics, each of which has two stances and
+contains consensus judgements as well as 
+The data comes from ...
+We use this dataset to evaluate performance in a high-dimensional problem with $32,310$ feature dimensions.
+These features include ...
+Single-user GPPL was tested on this dataset in . Here we test the benefits of
+the crowd-GPPL model for predicting the consensus and test both single-user and crowd-GPPL for predicting
+the individual preferences of workers in the crowd.
+The datasets are 
+
+Methods: 
+
+Hypothesis: 
+
+
+\begin{table}
+\begin{tabularx}{\columnwidth}{ | l | X | X | X | X | X | X |}
+\hline
+ & \multicolumn{3}{|X|}{Consensus}&\multicolumn{3}{| X |}{Personal} \\ \hline
+ Method & Acc & CEE & Kend. & Acc & CEE & Kend. \\ \hline
+ SVM & .70 & .58 & .31 & & &  \\
+ Bi-LSTM & .73 &  .55 & .21 & & & \\
+ GPPL medi. & \textbf{.77} & \textbf{.50} &  \textbf{.40} & & &  \\
+ GPPL opt. & & & & & &  \\
+ Crowd-GPPL medi. & & & & & & \\
+ Crowd-GPPL opt. & & & & & & \\
+ PL+ SVR & .75 & .55 & \textbf{.40} & & & \\
+ GPC & .73 & .53 & - & & & - \\
+ \\\hline
+\end{tabularx}
+\caption{Performance comparison on UKPConvArgCrowdSample using ling+GloVe features. \emph{Acc} and \emph{CEE} show classification accuracy and cross entropy error (or log-loss) for pairwise predictions, 
+while \emph{Kend.} shows Kendall's tau for the predicted preference function.}
+\label{tab:convarg}
+\end{table}
+
+\begin{figure}
+\includegraphics[scale=1]{../../results/sushi_factor_scales}
+\caption{
+Distribution of latent factor variances, $s_c$, for crowd-GPPL on UKPConvArgCrowdSample, averaged over all $32$ runs.
+}
+\end{figure}
+
+\subsection{Scalability Experiments}\label{sec:exp_scale}
 
 Dataset:
 
@@ -108,32 +218,30 @@ List of experiments to include -- need new plots for the crowd model:
 \item Performance, computation time vs. no. inducing points
 \item Computation time vs. dataset size, no. features
 %\item not done: memory vs no. inducing points, update size
-\item not done: Performance, computation time, vs update size
-%\item not done: performance, computation time vs different initialisation methods for the inducing points; include different initialisations of K-means
+%\item not done: Performance, computation time, vs update size
+%%\item not done: performance, computation time vs different initialisation methods for the inducing points; include different initialisations of K-means
 \end{enumerate}
 
-\section{Performance on Large NLP Dataset}\label{sec:exp_nlp}
-
-We compare performance of several methods on the Dataset used in Section \ref{sec:exp_scale}.
-
-Methods: 
-
-Hypothesis: 
-
 \begin{figure}
-\caption{Performance when predicting consensus from crowdsourced argument convincingness judgements:
-(a) rank correlations; (b) pairwise label classification.
+\subfloat[Varying number of items in training set. GloVe features.]{
+    \includegraphics[scale=1]{../../results/scalability/num_inducing_32310_features}
+}
+\subfloat[Varying no. ling+GloVe features. $M=500$]{
+    \includegraphics[scale=1]{../../results/scalability/num_inducing_300_features}
+}
+\caption{
+    Runtimes for training+prediction on UKPConvArgCrowdSample with varying subsample size. Means over 32 runs. 
+    Note the logarithmic x-axis for (b).
 }
 \end{figure}
-
 \begin{figure}
-\caption{Performance when predicting personal preferences: pairwise label classification for individual crowdworker
-convincingness judgements.
+\subfloat[33210 ling+GloVe features]{
+    \includegraphics[scale=1]{../../results/scalability/num_arguments}
 }
-\end{figure}
-
-\begin{figure}
-\caption{Trade-off between performance gains and number of optimization rounds when using ARD:
-classification performance when predicting consensus for argument convincingness judgements. 
+\subfloat[300 GloVe features]{
+    \includegraphics[scale=1]{../../results/scalability/num_features}
+}
+\caption{
+Effect of varying $M$ on accuracy and runtime (training+prediction) for GPPL and crowd-GPPL on UKPConvArgCrowdSample. Means over 32 runs.
 }
 \end{figure}

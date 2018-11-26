@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
     noise_plots = [None, None, None, None, None, None, None]
 
-    figure_root_path = './results/synth_2'
+    figure_root_path = './results/synth_3'
     if not os.path.exists(figure_root_path):
         os.mkdir(figure_root_path)
 
@@ -215,7 +215,7 @@ if __name__ == '__main__':
     # MULTI USER OBSERVATIONS, MEASURING CORRELATION BETWEEN DISCOVERED AND TRUE LATENT FACTORS, MODEL: MU
 
     s = 1
-    P_values = [1280]#[10, 20, 40, 80, 160, 320, 640, 1280, 2560, 5120, 10240, 20480]
+    P_values = [40, 80, 160, 320, 640, 1280, 2560]
 
     # make sure the simulation is repeatable
     if fix_seeds:
@@ -242,8 +242,6 @@ if __name__ == '__main__':
 
         for P in P_values:
 
-            results_s = []
-            results_s_pool = []
             results_s_multi = []
 
             for rep in range(nreps):
@@ -329,7 +327,7 @@ if __name__ == '__main__':
                 noise_rate = 1.0 - np.mean(prefs_tr == prefs_tr_noisefree)
                 print('Noise rate in the pairwise training labels: %f' % noise_rate)
 
-                results_s_multi.append([noise_rate, mean_r])
+                results_s_multi.append([P, mean_r, noise_rate])
 
             mean_results_s_m = np.mean(results_s_multi, axis=0)
             std_results_s_m = np.std(results_s_multi, axis=0)

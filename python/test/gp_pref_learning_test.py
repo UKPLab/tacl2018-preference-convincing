@@ -136,6 +136,13 @@ def evaluate_models(model, item_features, f,
     else:
         t = (f[pair1idxs_test, personidxs_test] > f[pair2idxs_test, personidxs_test]).astype(int)
 
+    if np.unique(t).shape[0] == 1:
+        idxs_to_flip = np.random.choice(len(pair1idxs_test), int(0.5 * len(pair1idxs_test)), replace=False)
+        tmp = pair1idxs_test[idxs_to_flip]
+        pair1idxs_test[idxs_to_flip] = pair2idxs_test[idxs_to_flip]
+        pair2idxs_test[idxs_to_flip] = tmp
+        t[idxs_to_flip] = 1 - t[idxs_to_flip]
+
     rho_pred, var_rho_pred = model.predict(item_features, pair1idxs_test, pair2idxs_test)
     rho_pred = rho_pred.flatten()
     t_pred = np.round(rho_pred)
