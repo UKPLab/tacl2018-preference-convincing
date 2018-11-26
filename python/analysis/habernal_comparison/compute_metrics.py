@@ -34,9 +34,9 @@ from scipy.stats import pearsonr, spearmanr, kendalltau
 from data_loading import load_train_test_data, load_ling_features, data_root_dir
 import datetime, time
 
-data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
-resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
+data_root_dir = os.path.abspath("./data/personalised/")
 expt_root_dir = 'crowdsourcing_argumentation_opt/'
+resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
 
 def get_fold_data(data, f, expt_settings, flip_labels=False):
     # discrete labels are 0, 1 or 2
@@ -200,10 +200,10 @@ def get_results_dir(data_root_dir, resultsfile_template, expt_settings, folderna
 
 def load_results_data(data_root_dir, resultsfile_template, expt_settings, max_no_folds, foldername=expt_root_dir):
     # start by loading the old-style data
-    resultsfile = data_root_dir + 'outputdata/' + foldername + \
+    resultsfile = os.path.join(data_root_dir, 'outputdata/', foldername, \
             resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
                 expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
-                expt_settings['di']) + '_test.pkl'
+                expt_settings['di']) + '_test.pkl')
     
     resultsdir = get_results_dir(data_root_dir, resultsfile_template, expt_settings, foldername)                       
     
@@ -289,7 +289,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                 for expt_settings['embeddings_type'] in embeddings_to_use:
                     data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template,
                                                                               expt_settings, max_no_folds)
-
+                    foldrange = None
                     min_folds = min_folds_desired
 
                     for f in range(nFolds):
@@ -432,24 +432,25 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             tr_results_acc[row, col, -1, AL_round] = np.mean(tr_results_acc[row, col, foldrange, AL_round], axis=0)
                             tr_results_logloss[row, col, -1, AL_round] = np.mean(tr_results_logloss[row, col, foldrange, AL_round], axis=0)
                             tr_results_auc[row, col, -1, AL_round] = np.mean(tr_results_auc[row, col, foldrange, AL_round], axis=0)
-                        
-                    print('p-values for %s, %s, %s, %s:' % (expt_settings['dataset'], expt_settings['method'],
-                                                    expt_settings['feature_type'], expt_settings['embeddings_type']))
-                        
-                    print(wilcoxon(results_f1[0, 0, foldrange, AL_round], 
-                                                                      results_f1[row, col, foldrange, AL_round])[1])
-                    print(wilcoxon(results_acc[0, 0, foldrange, AL_round], 
-                                                                      results_acc[row, col, foldrange, AL_round])[1])
-                    print(wilcoxon(results_logloss[0, 0, foldrange, AL_round], 
-                                                                      results_logloss[row, col, foldrange, AL_round])[1])
-                    print(wilcoxon(results_auc[0, 0, foldrange, AL_round], 
-                                                                      results_auc[row, col, foldrange, AL_round])[1])
-                    print(wilcoxon(results_pearson[0, 0, foldrange, AL_round], 
-                                                                      results_pearson[row, col, foldrange, AL_round])[1])
-                    print(wilcoxon(results_spearman[0, 0, foldrange, AL_round], 
-                                                                      results_spearman[row, col, foldrange, AL_round])[1])
-                    print(wilcoxon(results_kendall[0, 0, foldrange, AL_round], 
-                                                                      results_kendall[row, col, foldrange, AL_round])[1])                                                                                                                                                                        
+
+                    if foldrange is not None:
+                        print('p-values for %s, %s, %s, %s:' % (expt_settings['dataset'], expt_settings['method'],
+                                                expt_settings['feature_type'], expt_settings['embeddings_type']))
+
+                        print(wilcoxon(results_f1[0, 0, foldrange, AL_round],
+                                                                  results_f1[row, col, foldrange, AL_round])[1])
+                        print(wilcoxon(results_acc[0, 0, foldrange, AL_round],
+                                                                  results_acc[row, col, foldrange, AL_round])[1])
+                        print(wilcoxon(results_logloss[0, 0, foldrange, AL_round],
+                                                                  results_logloss[row, col, foldrange, AL_round])[1])
+                        print(wilcoxon(results_auc[0, 0, foldrange, AL_round],
+                                                                  results_auc[row, col, foldrange, AL_round])[1])
+                        print(wilcoxon(results_pearson[0, 0, foldrange, AL_round],
+                                                                  results_pearson[row, col, foldrange, AL_round])[1])
+                        print(wilcoxon(results_spearman[0, 0, foldrange, AL_round],
+                                                                  results_spearman[row, col, foldrange, AL_round])[1])
+                        print(wilcoxon(results_kendall[0, 0, foldrange, AL_round],
+                                                                  results_kendall[row, col, foldrange, AL_round])[1])
                         
                     if row == 0: # set the column headers    
                         columns[col] = expt_settings['feature_type'] + ', ' + expt_settings['embeddings_type']

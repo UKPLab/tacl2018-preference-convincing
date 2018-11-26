@@ -75,7 +75,7 @@ if __name__ == '__main__':
     P = 1000
 
     # the independent variable that we adjust:
-    inverse_scales = [0.001, 0.01]#, 0.05, 0.1, 0.2]
+    inverse_scales = [0.001, 0.01, 0.05, 0.1, 0.2]
 
     noise_plots = [None, None, None, None, None, None, None]
 
@@ -155,6 +155,8 @@ if __name__ == '__main__':
 
     # NOISE TEST, MULTI USER OBSERVATIONS, PREDICTING CONSENSUS, MODELS: GPPL, POOL, crowd-GPPL ----------------------------------
 
+    inverse_scales = [0.0001, 0.001, 0.005, 0.01, 0.02]
+
     # make sure the simulation is repeatable
     if fix_seeds:
         np.random.seed(1)
@@ -197,7 +199,7 @@ if __name__ == '__main__':
                 P=P,
                 ls=ls,
                 sigma=s,
-                s=0.01,
+                s=s,
                 lsy=lsy,
                 Npeoplefeatures=2
             )
