@@ -623,6 +623,16 @@ sushiB = False
 vscales_A = vscales
 vscales = None
 
+# Reload the full sets of features (previously, we subsampled on the relevant items for Sushi-A ------------------------
+
+item_data = pd.read_csv(item_feat_file, sep='\t', index_col=0, header=None)
+item_features = item_data.values[:, 1:].astype(float)
+item_features = convert_discrete_to_continuous(item_features, cols_to_convert=[2])
+
+user_data = pd.read_csv(user_feat_file, sep='\t', index_col=0, header=None)
+user_features = user_data.values.astype(float)
+user_features = convert_discrete_to_continuous(user_features, cols_to_convert=[0, 3, 4, 6, 7])
+
 # Load SUSHI-B dataset -------------------------------------------------------------------------------------------------
 
 sushi_prefs_file = './data/sushi3-2016/sushi3b.5000.10.order'
