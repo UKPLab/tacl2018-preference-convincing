@@ -185,14 +185,14 @@ Hypothesis:
 \hline
  & \multicolumn{3}{|X|}{Consensus}&\multicolumn{3}{| X |}{Personal} \\ \hline
  Method & Acc & CEE & Kend. & Acc & CEE & Kend. \\ \hline
- SVM & .70 & .58 & .31 & & &  \\
- Bi-LSTM & .73 &  .55 & .21 & & & \\
- GPPL medi. & \textbf{.77} & \textbf{.50} &  \textbf{.40} & & &  \\
+ SVM & .70 & .58 & .31 & .63 & .66 & .31 \\
+ Bi-LSTM & .73 &  .55 & .21 & .64 & .64 & .21 \\
+ GPPL medi. & \textbf{.77} & \textbf{.50} &  \textbf{.40} & .69 & .59 & .40 \\
  GPPL opt. & & & & & &  \\
  Crowd-GPPL medi. & & & & & & \\
  Crowd-GPPL opt. & & & & & & \\
- PL+ SVR & .75 & .55 & \textbf{.40} & & & \\
- GPC & .73 & .53 & - & & & - \\
+ PL+ SVR & .75 & .55 & \textbf{.40} & .75 & & .40 \\
+ GPC & .73 & .53 & - & .68 & .59 & - \\
  \\\hline
 \end{tabularx}
 \caption{Performance comparison on UKPConvArgCrowdSample using ling+GloVe features. \emph{Acc} and \emph{CEE} show classification accuracy and cross entropy error (or log-loss) for pairwise predictions, 

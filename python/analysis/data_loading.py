@@ -61,7 +61,7 @@ def combine_lines_into_one_file(dataset_name, dirname=os.path.join(data_root_dir
                 
     return outputfile, outputstr, dataids   
 
-def load_train_test_data(dataset):
+def load_train_test_data(dataset, inflate=False):
     # Set experiment options and ensure CSV data is ready -------------------------------------------------------------
     
     folds_regression = None # test data for regression (use the folds object for training)
@@ -140,15 +140,53 @@ def load_train_test_data(dataset):
     if ranking_csvdirname is not None:             
         folds_regression, _ = load_my_data_regression(ranking_csvdirname, embeddings_dir=embeddings_dir, 
                                                       load_embeddings=True)
-        
-    if folds_test is not None:
-        for fold in folds:
-            folds[fold]["test"] = folds_test[fold]["test"]
-    if folds_regression_test is not None:
-        for fold in folds_regression:
-            folds_regression[fold]["test"] = folds_regression_test[fold]["test"] 
 
-    return folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map
+    inflate_to_personal = None
+    if folds_test is not None:
+
+        inflate_to_personal = []
+
+        for fold in folds:
+            print("REPLACING GOLD DATA FOR %s" % fold)
+            print(len(folds[fold]["test"][2]))
+            print(len(folds_test[fold]["test"][2]))
+
+            folds[fold]["test"] = folds_test[fold]["test"]
+
+            if inflate:
+                mapper_f = []
+                inflate_to_personal.append(mapper_f)
+
+                for testidx in range(len(folds_test[fold]["test"][0])):
+                    for origidx in range(len(folds[fold]["test"][0])):
+                        if np.all(np.array(folds_test[fold]["test"][0][testidx]) == np.array(folds[fold]["test"][0][origidx])) & \
+                            np.all(np.array(folds_test[fold]["test"][1][testidx]) == np.array(folds[fold]["test"][1][origidx])):
+                            mapper_f.append(testidx)
+
+    inflate_to_personal_r = None
+    if folds_regression_test is not None:
+        inflate_to_personal_r = []
+        for fold in folds_regression:
+            if inflate:
+                mapper_f = []
+                inflate_to_personal_r.append(mapper_f)
+
+                for testidx in range(len(folds_regression_test[fold]["test"][0])):
+                    for origidx in range(len(folds_regression[fold]["test"][0])):
+                        if np.all(
+                            (np.array(folds_regression_test[fold]["test"][0][testidx]) == np.array(folds_regression[fold]["test"][0][origidx])) &
+                            (np.array(folds_regression_test[fold]["test"][1][testidx]) == np.array(folds_regression[fold]["test"][1][origidx]))
+                        ):
+                            mapper_f.append(testidx)
+
+            folds_regression[fold]["test"] = folds_regression_test[fold]["test"]
+
+
+    if inflate:
+        return folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map, \
+           inflate_to_personal, inflate_to_personal_r
+    else:
+        return folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map
     
 def load_embeddings(word_index_to_embeddings_map):
     print('Loading embeddings')

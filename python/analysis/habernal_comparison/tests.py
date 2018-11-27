@@ -765,8 +765,13 @@ class TestRunner:
             tr_proba = None
     
         
-        return proba, predicted_f, tr_proba           
-       
+        return proba, predicted_f, tr_proba
+
+    def run_dummy(self):
+        return np.array(self.inflate_to_personal[self.foldidx]), \
+               np.array(self.inflate_to_personal_r[self.foldidx]) if self.a_rank_test is not None else None, \
+               np.zeros(self.a1_unseen.size) if self.a1_unseen is not None else None
+
     def _choose_method_fun(self, feature_type):
         if 'SinglePrefGP' in self.method:
             method_runner_fun = self.run_gppl
@@ -780,7 +785,9 @@ class TestRunner:
             if feature_type == 'ling':
                 logging.error("BI-LSTM is not set up to run without using embeddings. Will switch to feature type=both...")
                 feature_type = 'both'            
-            method_runner_fun = lambda: self.run_bilstm(feature_type)    
+            method_runner_fun = lambda: self.run_bilstm(feature_type)
+        elif 'dummy' in self.method:
+            method_runner_fun = self.run_dummy
             
         return method_runner_fun
                
@@ -812,8 +819,9 @@ class TestRunner:
         return resultsfile, results_stem    
     
     def _load_dataset(self, dataset):
-        self.folds, self.folds_r, self.word_index_to_embeddings_map, self.word_to_indices_map, self.index_to_word_map = \
-                    load_train_test_data(dataset)
+        self.folds, self.folds_r, self.word_index_to_embeddings_map, self.word_to_indices_map, \
+            self.index_to_word_map, self.inflate_to_personal, self.inflate_to_personal_r = \
+                load_train_test_data(dataset, inflate=True)
         self.ling_feat_spmatrix, self.docids = load_ling_features(dataset)
         self.dataset = dataset
             
@@ -900,6 +908,7 @@ class TestRunner:
             fold_keys = list(self.folds.keys())
 
         for foldidx, self.fold in enumerate(fold_keys):
+            self.foldidx = foldidx
             if foldidx in all_proba and dataset_increment==0:
                 print(("Skipping fold %i, %s" % (foldidx, self.fold)))
                 continue
@@ -1076,11 +1085,13 @@ class TestRunner:
                     
                 logging.info("@@@ Completed running fold %i with method %s, features %s, %i data so far, in %f seconds." % (
                     foldidx, self.method, feature_type, nseen_so_far, endtime-starttime) )
-                logging.info("Accuracy for fold = %f" % (
+
+                if predictions.size == prefs_test.size:
+                    logging.info("Accuracy for fold = %f" % (
                         np.sum(prefs_test[prefs_test != 1] == 2 * predictions.flatten()[prefs_test != 1]
                             ) / float(np.sum(prefs_test != 1))) )
-                
-                if predicted_f is not None:
+
+                if predicted_f is not None and predicted_f.size == scores_rank_test.size:
                     # print out the pearson correlation
                     logging.info("Pearson correlation for fold = %f" % pearsonr(scores_rank_test, predicted_f.flatten())[0])
                   
@@ -1090,8 +1101,9 @@ class TestRunner:
                     logging.info("Unseen data in the training fold, accuracy for fold = %f" % (
                         np.sum(prefs_unseen[prefs_unseen != 1] == 2 * np.round(tr_proba_unseen).flatten()[prefs_unseen != 1]
                             ) / float(np.sum(prefs_unseen != 1))) )   
-                                       
-                logging.info("AUC = %f" % roc_auc_score(prefs_test[prefs_test!=1] / 2.0, proba[prefs_test!=1]) )
+
+                if proba.size == prefs_test.size:
+                    logging.info("AUC = %f" % roc_auc_score(prefs_test[prefs_test!=1] / 2.0, proba[prefs_test!=1]) )
                 # Save the data for later analysis ----------------------------------------------------------------------------
                 if hasattr(self.model, 'ls'):
                     final_ls[foldidx] = self.model.ls
@@ -1111,7 +1123,9 @@ class TestRunner:
                         all_f[foldidx] = np.concatenate((all_f[foldidx], predicted_f), axis=1)
                     if tr_proba is not None:
                         all_tr_proba[foldidx] = np.concatenate((all_tr_proba[foldidx], tr_proba), axis=1)
-                
+
+                print(prefs_test)
+
                 # Save the ground truth
                 all_target_prefs[foldidx] = prefs_test
                 if self.folds_r is not None:
@@ -1170,12 +1184,21 @@ if __name__ == '__main__':
 
     acc = 1.0
     dataset_increment = 0
-         
-    datasets = ['UKPConvArgStrict']
-    methods = ['SinglePrefGP_weaksprior']
+
+    datasets = ['UKPConvArgCrowdSample_evalMACE']
+    methods = ['dummy']
     feature_types = ['both']
     embeddings_types = ['word_mean']
 
-    runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods,
+    runner = TestRunner('personalised', datasets, feature_types, embeddings_types, methods,
                             dataset_increment)
     runner.run_test_set(min_no_folds=0, max_no_folds=32)
+
+    # datasets = ['UKPConvArgStrict']
+    # methods = ['SinglePrefGP_weaksprior']
+    # feature_types = ['both']
+    # embeddings_types = ['word_mean']
+    #
+    # runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods,
+    #                         dataset_increment)
+    # runner.run_test_set(min_no_folds=0, max_no_folds=32)
