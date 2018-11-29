@@ -8,14 +8,14 @@ if __name__ == '__main__':
     # For plots 1 and 2 ------------------------------------------------------------------------------------------------
     datasets = ['UKPConvArgCrowdSample_evalMACE']
     methods = [
-               # 'SinglePrefGP_noOpt_weaksprior_M2',
-               # 'SinglePrefGP_noOpt_weaksprior_M10',
-               # 'SinglePrefGP_noOpt_weaksprior_M100',
-               # 'SinglePrefGP_noOpt_weaksprior_M200',
-               # 'SinglePrefGP_noOpt_weaksprior_M300',
-               # 'SinglePrefGP_noOpt_weaksprior_M400',
-               # 'SinglePrefGP_noOpt_weaksprior_M500',
-               # 'PersPrefGP_commonmean_noOpt_weaksprior_M2',
+               'SinglePrefGP_noOpt_weaksprior_M2',
+               'SinglePrefGP_noOpt_weaksprior_M10',
+               'SinglePrefGP_noOpt_weaksprior_M100',
+               'SinglePrefGP_noOpt_weaksprior_M200',
+               'SinglePrefGP_noOpt_weaksprior_M300',
+               'SinglePrefGP_noOpt_weaksprior_M400',
+               'SinglePrefGP_noOpt_weaksprior_M500',
+               'PersPrefGP_commonmean_noOpt_weaksprior_M2',
                'PersPrefGP_commonmean_noOpt_weaksprior_M10',
                'PersPrefGP_commonmean_noOpt_weaksprior_M100',
                'PersPrefGP_commonmean_noOpt_weaksprior_M200',
@@ -31,10 +31,10 @@ if __name__ == '__main__':
     runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0)
 
     # For Plot 3: Scaling with N_tr ------------------------------------------------------------------------------------
-    datasets = ['UKPConvArgCrowdSampl_evalMACE']
+    datasets = ['UKPConvArgCrowdSample_evalMACE']
     methods = ['SinglePrefGP_noOpt_weaksprior_M0', 'SinglePrefGP_noOpt_weaksprior_M100',
                'PersPrefGP_noOpt_weaksprior_M0', 'PersPrefGP_noOpt_weaksprior_M100',
-               'SVM', 'BI-LSTM'
+               #'BI-LSTM'#'SVM', 'BI-LSTM'
         ] # M0 will mean no SVI
     feature_types = ['embeddings']
     embeddings_types = ['word_mean']
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     # For plot 4: no. features versus runtime --------------------------------------------------------------------------
 
     datasets = ['UKPConvArgCrowdSample_evalMACE']
-    methods = ['PersPrefGP_noOpt_weaksprior_M500', 'SinglePrefGP_noOpt_weaksprior_M500', 'SVM', 'BI-LSTM']
+    methods = ['PersPrefGP_noOpt_weaksprior_M500', 'SinglePrefGP_noOpt_weaksprior_M500']#, 'SVM', 'BI-LSTM']
     feature_types = ['debug']
     ndebug_features = 30
     embeddings_types = ['word_mean']
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0)
 
     datasets = ['UKPConvArgCrowdSample_evalMACE']
-    methods = ['SinglePrefGP_noOpt_weaksprior_M500', 'PersPrefGP_noOpt_weaksprior_M500', 'SVM', 'BI-LSTM']
+    methods = ['SinglePrefGP_noOpt_weaksprior_M500', 'PersPrefGP_noOpt_weaksprior_M500']#, 'SVM', 'BI-LSTM']
     feature_types = ['debug']
     ndebug_features = 3000
     embeddings_types = ['word_mean']
