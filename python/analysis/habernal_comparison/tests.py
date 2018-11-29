@@ -825,8 +825,7 @@ class TestRunner:
     
     def _load_dataset(self, dataset):
         self.folds, self.folds_r, self.word_index_to_embeddings_map, self.word_to_indices_map, \
-            self.index_to_word_map, self.inflate_to_personal, self.inflate_to_personal_r = \
-                load_train_test_data(dataset, inflate=True) # turn off inflate if not using the dummy method
+            self.index_to_word_map = load_train_test_data(dataset)
 
         self.ling_feat_spmatrix, self.docids = load_ling_features(dataset)
         self.dataset = dataset
