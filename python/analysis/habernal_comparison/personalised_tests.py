@@ -93,10 +93,13 @@ class PersonalisedTestRunner(TestRunner):
         # look for a file that was trained on the same data but with the personalised predictions instead of MACE consensus.
         pretrainedmodelfile = self.modelfile.replace('_evalMACE', '')
 
+        logging.info('Looking for a pretrained model at %s' % pretrainedmodelfile)
+
         if os.path.exists(pretrainedmodelfile):
             with open(pretrainedmodelfile, 'rb') as fh:
                 self.model = pickle.load(fh)
         else:
+            logging.info('I didnae find any pretrained model :(')
             self._train_persgppl()
 
         if self.vscales is not None:
