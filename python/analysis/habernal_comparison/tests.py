@@ -525,39 +525,24 @@ class TestRunner:
         return proba, predicted_f, tr_proba      
     
     def run_svm(self, feature_type):
-#         from svmutil import svm_train, svm_predict, svm_read_problem
-#          
-#         if feature_type == 'embeddings' or feature_type == 'both' or feature_type == 'debug':
-#             embeddings = self.embeddings_items_feat
-#         else:
-#             embeddings = None
-         
         prefs_train_fl = np.array(self.prefs_train, dtype=float)
+
+        # cannot train on uncertain labels
+        idxs = (prefs_train_fl == 0) | (prefs_train_fl == 2)
+        prefs_train_fl = prefs_train_fl[idxs]
+
         svc_labels = np.concatenate((prefs_train_fl * 0.5, 1 - prefs_train_fl * 0.5))
-#                                             
-#         filetemplate = os.path.join(data_root_dir, 'libsvmdata/%s-%s-%s-libsvm.txt')
-#         nfeats = self.ling_feat_spmatrix.shape[1]
-#           
-#         #if not os.path.isfile(trainfile):
-#         trainfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_train], self.docids[self.a2_train], 
-#             svc_labels, 'training', self.fold, nfeats, outputfile=filetemplate, reverse_pairs=True, embeddings=embeddings, 
-#             a1=self.a1_train, a2=self.a2_train, embeddings_only=feature_type=='embeddings')
-#           
-#         problem = svm_read_problem(trainfile) 
-#         self.model = svm_train(problem[0], problem[1], '-b 1')
-#       
-#         #if not os.path.isfile(testfile):
-#         testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_test], self.docids[self.a2_test], 
-#             np.ones(len(self.a1_test)), 'test', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings, 
-#             a1=self.a1_test, a2=self.a2_test, embeddings_only=feature_type=='embeddings')
-#              
-#         problem = svm_read_problem(testfile)        
-#         _, _, proba = svm_predict(problem[0], problem[1], self.model, '-b 1')
 
         svc = SVC(probability=True)
-        trainfeats = np.concatenate((np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1),
-                               np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1)),
-                               axis=0)
+        trainfeats = np.concatenate((
+                        np.concatenate((
+                            self.items_feat[self.a1_train[idxs]],
+                            self.items_feat[self.a2_train[idxs]]), axis=1),
+                        np.concatenate((
+                            self.items_feat[self.a1_train[idxs]],
+                            self.items_feat[self.a2_train[idxs]]), axis=1)),
+                    axis=0)
+
         print("no. features: %i" % trainfeats.shape[1])
         print("no. pairs: %i" % trainfeats.shape[0])
         svc.fit(trainfeats, svc_labels)

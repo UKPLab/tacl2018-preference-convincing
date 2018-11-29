@@ -127,7 +127,7 @@ class PersonalisedTestRunner(TestRunner):
 
 if __name__ == '__main__':
     dataset_increment = 0     
-    datasets = ['UKPConvArgCrowdSample']
+    datasets = ['UKPConvArgCrowdSample_evalMACE']
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
 
@@ -135,7 +135,7 @@ if __name__ == '__main__':
 
     methods = [
                #'PersPrefGP_commonmean_noOpt_weaksprior', 'PersPrefGP_commonmean_weaksprior',
-                'SVM', 'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior', 'Bi-LSTM',
+                'SVM', 'GP+SVM', 'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior', 'Bi-LSTM',
             ]
     embeddings_types = ['word_mean']
 
