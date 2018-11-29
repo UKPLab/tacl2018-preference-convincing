@@ -135,7 +135,9 @@ if __name__ == '__main__':
 
     methods = [
                #'PersPrefGP_commonmean_noOpt_weaksprior', 'PersPrefGP_commonmean_weaksprior',
-                'SVM', 'GP+SVM', 'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior', 'Bi-LSTM',
+               # 'SVM', 'GP+SVM', # forget these methods as the other paper showed they were worse already, and the SVM
+               # does not scale either -- it's worse than the GP.
+               'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior', 'Bi-LSTM',
             ]
     embeddings_types = ['word_mean']
 

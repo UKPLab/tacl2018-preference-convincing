@@ -543,8 +543,8 @@ class TestRunner:
                             self.items_feat[self.a2_train[idxs]]), axis=1)),
                     axis=0)
 
-        print("no. features: %i" % trainfeats.shape[1])
-        print("no. pairs: %i" % trainfeats.shape[0])
+        print("SVM classifier: no. features: %i" % trainfeats.shape[1])
+        print("SVM classifier: no. pairs: %i" % trainfeats.shape[0])
         svc.fit(trainfeats, svc_labels)
         proba = svc.predict_proba(np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1))
 
@@ -1110,8 +1110,6 @@ class TestRunner:
                         all_f[foldidx] = np.concatenate((all_f[foldidx], predicted_f), axis=1)
                     if tr_proba is not None:
                         all_tr_proba[foldidx] = np.concatenate((all_tr_proba[foldidx], tr_proba), axis=1)
-
-                print(prefs_test)
 
                 # Save the ground truth
                 all_target_prefs[foldidx] = prefs_test
