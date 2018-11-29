@@ -92,6 +92,7 @@ class PersonalisedTestRunner(TestRunner):
 
         # look for a file that was trained on the same data but with the personalised predictions instead of MACE consensus.
         pretrainedmodelfile = self.modelfile.replace('_evalMACE', '')
+        pretrainedmodelfile = pretrainedmodelfile.replace('Consensus', '')
 
         logging.info('Looking for a pretrained model at %s' % pretrainedmodelfile)
 
