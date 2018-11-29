@@ -99,6 +99,7 @@ class PersonalisedTestRunner(TestRunner):
         if os.path.exists(pretrainedmodelfile):
             with open(pretrainedmodelfile, 'rb') as fh:
                 self.model = pickle.load(fh)
+                logging.info('Reloaded a pretrained model :)')
         else:
             logging.info('I didnae find any pretrained model :(')
             self._train_persgppl()
@@ -133,8 +134,8 @@ if __name__ == '__main__':
     feature_types = ['debug'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
 
     methods = [
-               'PersPrefGP_commonmean_noOpt_weaksprior', 'PersPrefGP_commonmean_weaksprior',
-                'SVM', 'Bi-LSTM', 'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior'
+               #'PersPrefGP_commonmean_noOpt_weaksprior', 'PersPrefGP_commonmean_weaksprior',
+                'SVM', 'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior', 'Bi-LSTM',
             ]
     embeddings_types = ['word_mean']
 
@@ -142,43 +143,43 @@ if __name__ == '__main__':
         runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods,
                                         dataset_increment)
         runner.save_collab_model = True
-    #
-    # # PERSONALISED PREDICTION
-    # runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
-    # CONSENSUS PREDICTION
-    runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-    runner.methods = [
-               'PersConsensusPrefGP_commonmean_noOpt_weaksprior', 'PersConsensusPrefGP_commonmean_weaksprior'
-            ]
+    # PERSONALISED PREDICTION
     runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
-    vscales = np.mean(runner.vscales, axis=0)
-
-    logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
-
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure(figsize=(5, 4))
-
-    markers = ['o', 'x', '+', '>', '<', '*']
-
-    plt.plot(np.arange(vscales.shape[0]), vscales, marker=markers[0], label='UKPConvArgCrowdSample',
-             linewidth=2, markersize=8)
-
-    plt.ylabel('Inverse scale 1/s')
-    plt.xlabel('Factor ID')
-
-    plt.grid('on', axis='y')
-    plt.legend(loc='best')
-    plt.tight_layout()
-
-    figure_root_path = './results/conv_factors'
-    if not os.path.exists(figure_root_path):
-        os.mkdir(figure_root_path)
-
-    plt.savefig(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.pdf')
-
-    np.savetxt(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.csv', vscales, delimiter=',', fmt='%f')
-
-    logging.basicConfig(level=logging.DEBUG)  # switch back to the debug output
+    # CONSENSUS PREDICTION
+    # runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+    # runner.methods = [
+    #            'PersConsensusPrefGP_commonmean_noOpt_weaksprior', 'PersConsensusPrefGP_commonmean_weaksprior'
+    #         ]
+    # runner.run_test_set(min_no_folds=0, max_no_folds=32)
+    #
+    # vscales = np.mean(runner.vscales, axis=0)
+    #
+    # logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
+    #
+    # import matplotlib.pyplot as plt
+    #
+    # fig = plt.figure(figsize=(5, 4))
+    #
+    # markers = ['o', 'x', '+', '>', '<', '*']
+    #
+    # plt.plot(np.arange(vscales.shape[0]), vscales, marker=markers[0], label='UKPConvArgCrowdSample',
+    #          linewidth=2, markersize=8)
+    #
+    # plt.ylabel('Inverse scale 1/s')
+    # plt.xlabel('Factor ID')
+    #
+    # plt.grid('on', axis='y')
+    # plt.legend(loc='best')
+    # plt.tight_layout()
+    #
+    # figure_root_path = './results/conv_factors'
+    # if not os.path.exists(figure_root_path):
+    #     os.mkdir(figure_root_path)
+    #
+    # plt.savefig(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.pdf')
+    #
+    # np.savetxt(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.csv', vscales, delimiter=',', fmt='%f')
+    #
+    # logging.basicConfig(level=logging.DEBUG)  # switch back to the debug output
