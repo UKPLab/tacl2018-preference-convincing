@@ -203,7 +203,7 @@ if __name__ == '__main__':
                 P=P,
                 ls=ls,
                 sigma=s,
-                s=0.0001,
+                s=0.001,
                 lsy=lsy,
                 Npeoplefeatures=2
             )

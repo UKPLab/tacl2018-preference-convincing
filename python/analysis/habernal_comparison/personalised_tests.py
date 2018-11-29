@@ -145,41 +145,39 @@ if __name__ == '__main__':
         runner.save_collab_model = True
 
     # PERSONALISED PREDICTION
-    runner.run_test_set(min_no_folds=0, max_no_folds=32)
+    # runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
     # CONSENSUS PREDICTION
-    # runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-    # runner.methods = [
-    #            'PersConsensusPrefGP_commonmean_noOpt_weaksprior', 'PersConsensusPrefGP_commonmean_weaksprior'
-    #         ]
-    # runner.run_test_set(min_no_folds=0, max_no_folds=32)
-    #
-    # vscales = np.mean(runner.vscales, axis=0)
-    #
-    # logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
-    #
-    # import matplotlib.pyplot as plt
-    #
-    # fig = plt.figure(figsize=(5, 4))
-    #
-    # markers = ['o', 'x', '+', '>', '<', '*']
-    #
-    # plt.plot(np.arange(vscales.shape[0]), vscales, marker=markers[0], label='UKPConvArgCrowdSample',
-    #          linewidth=2, markersize=8)
-    #
-    # plt.ylabel('Inverse scale 1/s')
-    # plt.xlabel('Factor ID')
-    #
-    # plt.grid('on', axis='y')
-    # plt.legend(loc='best')
-    # plt.tight_layout()
-    #
-    # figure_root_path = './results/conv_factors'
-    # if not os.path.exists(figure_root_path):
-    #     os.mkdir(figure_root_path)
-    #
-    # plt.savefig(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.pdf')
-    #
-    # np.savetxt(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.csv', vscales, delimiter=',', fmt='%f')
-    #
-    # logging.basicConfig(level=logging.DEBUG)  # switch back to the debug output
+    runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+    runner.methods = [
+               'PersConsensusPrefGP_commonmean_noOpt_weaksprior', 'PersConsensusPrefGP_commonmean_weaksprior'
+            ]
+    runner.run_test_set(min_no_folds=0, max_no_folds=32)
+
+    vscales = np.mean(runner.vscales, axis=0)
+
+    logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
+
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure(figsize=(5, 4))
+
+    markers = ['o', 'x', '+', '>', '<', '*']
+
+    plt.plot(np.arange(vscales.shape[0]), vscales, marker=markers[0], label='UKPConvArgCrowdSample',
+             linewidth=2, markersize=8)
+
+    plt.ylabel('Inverse scale 1/s')
+    plt.xlabel('Factor ID')
+
+    plt.grid('on', axis='y')
+    plt.legend(loc='best')
+    plt.tight_layout()
+
+    figure_root_path = './results/conv_factors'
+    if not os.path.exists(figure_root_path):
+        os.mkdir(figure_root_path)
+
+    plt.savefig(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.pdf')
+
+    np.savetxt(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.csv', vscales, delimiter=',', fmt='%f')

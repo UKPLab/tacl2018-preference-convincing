@@ -597,7 +597,7 @@ methods = [
 
 optimize = False
 sushiB = False
-run_sushi_expt(methods, 'sushi_10' + tag)
+# run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
@@ -618,7 +618,7 @@ methods = [
 # hyperparameters common to most models
 optimize = True
 sushiB = False
-run_sushi_expt(methods, 'sushi_10_opt' + tag)
+# run_sushi_expt(methods, 'sushi_10_opt' + tag)
 
 vscales_A = vscales
 vscales = None
@@ -678,7 +678,7 @@ methods = [
            'collab-GPPL',  # Houlsby
            'GPPL-pooled',
            'GPPL-joint',
-           'GPPL-per-user',
+           # 'GPPL-per-user',
            'crowd-GPPL\\u',
            'crowd-BMF',
            # 'GPPL+BMF' # khan -- excluded from this experiment
@@ -708,7 +708,7 @@ methods = [
 # hyperparameters common to most models
 optimize = True
 sushiB = True
-run_sushi_expt(methods, 'sushi_100_opt' + tag)
+# run_sushi_expt(methods, 'sushi_100_opt' + tag)
 
 vscales_B = vscales
 
