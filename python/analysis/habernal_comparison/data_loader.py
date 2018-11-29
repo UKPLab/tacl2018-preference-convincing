@@ -109,7 +109,7 @@ def load_single_file_separate_args(directory, file_name, word_to_indices_map, nb
     id_vector = []
     turkerids = []
     
-    for line in lines[1:]:
+    for line in lines:
         # print line
         toks = line.split('\t')
         if len(toks) != 5:

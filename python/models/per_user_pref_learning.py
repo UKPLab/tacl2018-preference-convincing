@@ -14,6 +14,7 @@ class GPPrefPerUser():
 
     def __init__(self, Npeople, max_update_size, shape_s0, rate_s0, nitem_feats=2, ninducing=50):
         self.user_models = []
+
         self.Npeople = Npeople
         for p in range(Npeople):
             model_p = GPPrefLearning(nitem_feats, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None,
@@ -65,15 +66,17 @@ class GPPrefPerUser():
     def predict(self, users, p1, p2, item_features, _):
 
         rhopred = np.zeros(len(p1))
-        varrhopred = np.zeros(len(p1))
 
         uusers = np.unique(users)
         for u in uusers:
             uidxs = users.flatten() == u
 
-            rho_pred_u, var_rho_pred_u = self.user_models[u].predict(item_features, p1[uidxs], p2[uidxs])
+            if self.user_models[u].vb_iter == 0:
+                # not trained, skip it
+                rho_pred_u = np.zeros(p1[uidxs].shape[0])
+            else:
+                rho_pred_u, _ = self.user_models[u].predict(item_features, p1[uidxs], p2[uidxs])
             rhopred[uidxs] = rho_pred_u.flatten()
-            varrhopred[uidxs] = var_rho_pred_u.flatten()
 
         return rhopred
 

@@ -309,6 +309,9 @@ class TestRunner:
 
         self.save_collab_model = False
 
+        self.inflate_to_personal = None
+        self.inflate_to_personal_r = None
+
     def load_features(self, feature_type, embeddings_type, a1_train, a2_train, uids, utexts=None):
         '''
         Load all the features specified by the type into an items_feat object. Remove any features where the values are all
@@ -768,8 +771,10 @@ class TestRunner:
         return proba, predicted_f, tr_proba
 
     def run_dummy(self):
-        return np.array(self.inflate_to_personal[self.foldidx]), \
-               np.array(self.inflate_to_personal_r[self.foldidx]) if self.a_rank_test is not None else None, \
+        return np.array(self.inflate_to_personal[self.foldidx]) if self.inflate_to_personal is not None else \
+                    np.zeros(self.a1_test.size), \
+               np.array(self.inflate_to_personal_r[self.foldidx]) if self.a_rank_test is not None and \
+                    self.inflate_to_personal_r is not None else np.zeros(self.a_rank_test.size), \
                np.zeros(self.a1_unseen.size) if self.a1_unseen is not None else None
 
     def _choose_method_fun(self, feature_type):
@@ -821,7 +826,8 @@ class TestRunner:
     def _load_dataset(self, dataset):
         self.folds, self.folds_r, self.word_index_to_embeddings_map, self.word_to_indices_map, \
             self.index_to_word_map, self.inflate_to_personal, self.inflate_to_personal_r = \
-                load_train_test_data(dataset, inflate=True)
+                load_train_test_data(dataset, inflate=True) # turn off inflate if not using the dummy method
+
         self.ling_feat_spmatrix, self.docids = load_ling_features(dataset)
         self.dataset = dataset
             
@@ -937,8 +943,18 @@ class TestRunner:
                                 person_rank_test = get_fold_regression_data(self.folds_r, self.fold, self.docids)
 
             # convert the ranking person IDs to the idxs
-            person_rank_train = np.array([np.argwhere(upersonIDs == p.strip())[0][0] for p in person_rank_train])
-            person_rank_test = np.array([np.argwhere(upersonIDs == p.strip())[0][0] for p in person_rank_test])
+            person_rank_train = np.array([np.argwhere(upersonIDs == p.strip())[0][0] if p.strip() in upersonIDs else -1
+                                          for p in person_rank_train])
+            person_rank_test = np.array([np.argwhere(upersonIDs == p.strip())[0][0] if p.strip() in upersonIDs else -1
+                                         for p in person_rank_test])
+
+            a_rank_train = a_rank_train[person_rank_train != -1]
+            scores_rank_train = scores_rank_train[person_rank_train != -1]
+            person_rank_train = person_rank_train[person_rank_train != -1]
+
+            a_rank_test = a_rank_test[person_rank_test != -1]
+            scores_rank_test = scores_rank_test[person_rank_test != -1]
+            person_rank_test = person_rank_test[person_rank_test != -1]
 
             self.load_features(feature_type, embeddings_type, a1_train, a2_train, uids, utexts)
             #items_feat = items_feat[:, :ndebug_features]     

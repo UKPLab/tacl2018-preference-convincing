@@ -21,7 +21,7 @@ if __name__ == '__main__':
     # Personalised predictions -- single-user methods
 
     datasets = ['UKPConvArgCrowdSample']#, 'UKPConvArgCrowdSample_evalMACE']
-    methods = ['GP+SVM', 'SinglePrefGP_noOpt_weaksprior', 'SingleGPC_noOpt_weaksprior', 'SVM', 'Bi-LSTM']  #, 'SinglePrefGP_weaksprior']
+    methods = ['SVM', 'Bi-LSTM']  #, 'SinglePrefGP_weaksprior'] 'GP+SVM','SinglePrefGP_noOpt_weaksprior', 'SingleGPC_noOpt_weaksprior',
     feature_types = ['both'] # 'both'
     embeddings_types = ['word_mean']
 

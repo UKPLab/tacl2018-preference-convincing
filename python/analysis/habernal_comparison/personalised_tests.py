@@ -134,21 +134,20 @@ if __name__ == '__main__':
             ]
     embeddings_types = ['word_mean']
 
-
     if 'runner' not in globals():
         runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods,
                                         dataset_increment)
         runner.save_collab_model = True
-
-    # PERSONALISED PREDICTION
-    runner.run_test_set(min_no_folds=0, max_no_folds=32)
+    #
+    # # PERSONALISED PREDICTION
+    # runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
     # CONSENSUS PREDICTION
     runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
     runner.methods = [
                'PersConsensusPrefGP_commonmean_noOpt_weaksprior', 'PersConsensusPrefGP_commonmean_weaksprior'
             ]
-    runner.run_test_set(min_no_fold=0, max_no_folds=32)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
     vscales = np.mean(runner.vscales, axis=0)
 

@@ -112,7 +112,7 @@ def get_fold_data(data, f, expt_settings, flip_labels=False):
         else:
             gold_rank = None
                     
-        if data[2] is not None and (len(data[2]) > 0 or data[2].item() is not None):
+        if data[2] is not None and (len(data[2]) > 0):# or data[2].item() is not None):
             pred_rank = np.array(data[2])
         
             if pred_rank.ndim == 1:
@@ -293,7 +293,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                     foldrange = None
                     resultsdir_gold = None
                     # uncomment this to load the gold data for UKPConvArgCrowdSample from a dummy test file.
-                    if 'UKPConvArgCrowdSample_evalMACE' in expt_settings['dataset']:
+                    if 'UKPConvArgCrowdSample' in expt_settings['dataset']:
 
                         print('Loading the gold data from the dummy runs...')
                         resultsdir_gold = resultsdir.replace(expt_settings['method'], 'dummy')
@@ -363,15 +363,23 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                                                                           flip_labels=m in flip_labels)
                         print(gold_disc[:20])
                         print(pred_disc[:20])
+                        print(gold_disc.shape[0])
+                        print(pred_disc.shape[0])
 
                         if data_f_gold is not None:
                             print('Getting the gold dummy data...')
                             gold_disc, _, gold_prob, inflate_disc, gold_rank, inflate_rank, _, _, _ = get_fold_data(
                                 data_f_gold, f, expt_settings, flip_labels=m in flip_labels)
 
+                            pred_disc = 2 - pred_disc # old results were flipped!
+                            pred_prob = 2 - pred_prob
+
                             pred_disc = pred_disc[inflate_disc]
                             pred_prob = pred_prob[inflate_disc]
                             pred_rank = pred_rank[inflate_rank]
+
+                            print(gold_disc.size)
+                            print(pred_disc.size)
 
                             print(gold_disc[:20])
                             print(pred_disc[:20])
@@ -407,7 +415,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                 # ranking data was not saved in original file. Get it from the expt_settings['folds_regression'] here
                                 _, rankscores_test, _, _ = expt_settings['folds_regression'].get(fold)["test"]
                                 gold_rank = np.array(rankscores_test)
-                                
+
                             if gold_rank is not None and pred_rank is not None:
                                 results_pearson[row, col, f, AL_round]  = pearsonr(gold_rank, 
                                                                                    pred_rank[:, AL_round])[0]

@@ -149,19 +149,36 @@ def load_train_test_data(dataset, inflate=False):
         for fold in folds:
             print("REPLACING GOLD DATA FOR %s" % fold)
             print(len(folds[fold]["test"][2]))
+            print(len(folds[fold]["test"][0]))
             print(len(folds_test[fold]["test"][2]))
-
-            folds[fold]["test"] = folds_test[fold]["test"]
+            print(folds_test[fold]["test"][2][:20])
 
             if inflate:
                 mapper_f = []
-                inflate_to_personal.append(mapper_f)
 
-                for testidx in range(len(folds_test[fold]["test"][0])):
-                    for origidx in range(len(folds[fold]["test"][0])):
-                        if np.all(np.array(folds_test[fold]["test"][0][testidx]) == np.array(folds[fold]["test"][0][origidx])) & \
-                            np.all(np.array(folds_test[fold]["test"][1][testidx]) == np.array(folds[fold]["test"][1][origidx])):
+                for origidx in range(len(folds[fold]["test"][0])):
+                    for testidx in range(len(folds_test[fold]["test"][0])):
+                        if np.all(np.array(folds_test[fold]["test"][0][testidx])
+                                  == np.array(folds[fold]["test"][0][origidx])) & \
+                            np.all(np.array(folds_test[fold]["test"][1][testidx])
+                                   == np.array(folds[fold]["test"][1][origidx])):
                             mapper_f.append(testidx)
+                            break
+                        if np.all(np.array(folds_test[fold]["test"][0][testidx])
+                                  == np.array(folds[fold]["test"][1][origidx])) & \
+                            np.all(np.array(folds_test[fold]["test"][1][testidx])
+                                   == np.array(folds[fold]["test"][0][origidx])):
+                            mapper_f.append(testidx)
+                            break
+                    #print("idx: %i, len: %i" % (origidx, len(mapper_f)))
+
+                inflate_to_personal.extend(mapper_f)
+                print('Length of inflater: %i' % len(mapper_f))
+
+                folds[fold]["test"] = folds_test[fold]["test"]
+            else:
+                folds[fold]["test"] = folds_test[fold]["test"]
+
 
     inflate_to_personal_r = None
     if folds_regression_test is not None:
@@ -171,16 +188,14 @@ def load_train_test_data(dataset, inflate=False):
                 mapper_f = []
                 inflate_to_personal_r.append(mapper_f)
 
-                for testidx in range(len(folds_regression_test[fold]["test"][0])):
-                    for origidx in range(len(folds_regression[fold]["test"][0])):
-                        if np.all(
-                            (np.array(folds_regression_test[fold]["test"][0][testidx]) == np.array(folds_regression[fold]["test"][0][origidx])) &
-                            (np.array(folds_regression_test[fold]["test"][1][testidx]) == np.array(folds_regression[fold]["test"][1][origidx]))
-                        ):
+                for origidx in range(len(folds_regression[fold]["test"][0])):
+                    for testidx in range(len(folds_regression_test[fold]["test"][0])):
+                        if np.all(np.array(folds_regression_test[fold]["test"][0][testidx])
+                                  == np.array(folds_regression[fold]["test"][0][origidx])):
                             mapper_f.append(testidx)
-
-            folds_regression[fold]["test"] = folds_regression_test[fold]["test"]
-
+                            continue
+            else:
+                folds_regression[fold]["test"] = folds_regression_test[fold]["test"]
 
     if inflate:
         return folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map, \

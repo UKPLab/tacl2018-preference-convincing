@@ -50,13 +50,20 @@ def gen_synthetic_prefs(nx=10, ny=10, N=100, P=5000, ls=[1, 40], s=100):
     phi = norm.cdf(g_f)
     prefs = bernoulli.rvs(phi)
 
+    if np.unique(prefs).shape[0] == 1:
+        idxs_to_flip = np.random.choice(len(pair1idxs), int(0.5 * len(pair1idxs)), replace=False)
+        tmp = pair1idxs[idxs_to_flip]
+        pair1idxs[idxs_to_flip] = pair2idxs[idxs_to_flip]
+        pair2idxs[idxs_to_flip] = tmp
+        prefs[idxs_to_flip] = 1 - prefs[idxs_to_flip]
+
     item_features = np.concatenate((xvals, yvals), axis=1)
 
     return prefs, item_features, pair1idxs, pair2idxs, f
 
 def split_dataset(N, f, pair1idxs, pair2idxs, prefs):
     # test set size
-    test_size = 0.1
+    test_size = 0.5
 
     P = len(prefs)
 
@@ -101,7 +108,7 @@ def evaluate_models(model, item_features, f,
         use_median_ls=True
     )
 
-    print(("Final lower bound: %f" % model.lowerbound()))
+    # print(("Final lower bound: %f" % model.lowerbound()))
 
     # Predict at all locations
     fpred, vpred = model.predict_f(item_features)
