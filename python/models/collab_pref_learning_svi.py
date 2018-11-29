@@ -844,6 +844,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         if self.verbose:
             logging.debug('Computing K_nm in predict_common')
+
+        if item_features is None:
+            item_features = self.obs_coords
+
         K = self.kernel_func(item_features, self.ls, self.inducing_coords)
         if self.verbose:
             logging.debug('Computing K_nn in predict_common')

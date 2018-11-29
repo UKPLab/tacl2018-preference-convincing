@@ -107,7 +107,7 @@ class PersonalisedTestRunner(TestRunner):
         if self.vscales is not None:
             self.vscales.append(np.sort(self.model.rate_sw / self.model.shape_sw)[::-1])
 
-        proba = self.model.predict_common(self.items_feat, self.a1_test, self.a2_test)
+        proba = self.model.predict_common(None, self.a1_test, self.a2_test)
         if self.a_rank_test is not None:
             predicted_f = self.model.predict_t(self.items_feat[self.a_rank_test])
 
