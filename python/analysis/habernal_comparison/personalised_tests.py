@@ -109,7 +109,7 @@ class PersonalisedTestRunner(TestRunner):
 
         proba = self.model.predict_common(None, self.a1_test, self.a2_test)
         if self.a_rank_test is not None:
-            predicted_f = self.model.predict_t(self.items_feat[self.a_rank_test])
+            predicted_f = self.model.predict_t(self.model.obs_coords[self.a_rank_test])
 
         return proba, predicted_f, None
 
