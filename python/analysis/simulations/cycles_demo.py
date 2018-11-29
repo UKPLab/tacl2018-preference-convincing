@@ -25,9 +25,10 @@ sys.path.append(os.path.expanduser("~/git/pyIBCC/python"))
 
 import numpy as np
 import matplotlib.pyplot as plt
-from tests import load_ling_features, get_noisy_fold_data, load_embeddings, \
-                        compute_lengthscale_heuristic, get_mean_embeddings
-from data_loading import load_train_test_data
+from tests import get_noisy_fold_data, load_embeddings, \
+                        compute_lengthscale_heuristic
+from embeddings import get_mean_embeddings
+from data_loader import load_train_test_data, load_ling_features
 import networkx as nx
 from sklearn.svm import SVC
 

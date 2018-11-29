@@ -11,7 +11,6 @@ Created on 10 May 2016
 import logging, os, datetime, pickle
 logging.basicConfig(level=logging.DEBUG)
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D #@UnresolvedImport  
 from sklearn.cross_validation import KFold
 
 

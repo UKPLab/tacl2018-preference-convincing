@@ -59,8 +59,8 @@ from gp_pref_learning import GPPrefLearning, pref_likelihood
 from gp_classifier_svi import GPClassifierSVI
 from gp_classifier_vb import compute_median_lengthscales
 from sklearn.svm import SVR 
-from data_loading import load_train_test_data, load_embeddings, load_ling_features, data_root_dir, \
-    load_siamese_cbow_embeddings, load_skipthoughts_embeddings
+from embeddings import load_embeddings, load_siamese_cbow_embeddings, load_skipthoughts_embeddings, get_mean_embeddings
+from data_loader import data_root_dir, load_train_test_data, load_ling_features
 import numpy as np
     
 ndebug_features = 10
@@ -174,10 +174,8 @@ def get_doc_token_seqs(ids, X_list, texts=None):
         utexts = [utext for utext in utexts]
         return X, uids, utexts
     else:
-        return X, uids    
-    
-def get_mean_embeddings(word_embeddings, X):
-    return np.array([np.mean(word_embeddings[Xi, :], axis=0) for Xi in X])    
+        return X, uids
+
 
 def get_docidxs_from_ids(all_docids, ids_to_map):
     return np.array([np.argwhere(docid==all_docids)[0][0] for docid in ids_to_map])
@@ -309,8 +307,6 @@ class TestRunner:
 
         self.save_collab_model = False
 
-        self.inflate_to_personal = None
-        self.inflate_to_personal_r = None
 
     def load_features(self, feature_type, embeddings_type, a1_train, a2_train, uids, utexts=None):
         '''
@@ -770,13 +766,6 @@ class TestRunner:
         
         return proba, predicted_f, tr_proba
 
-    def run_dummy(self):
-        return np.array(self.inflate_to_personal[self.foldidx]) if self.inflate_to_personal is not None else \
-                    np.zeros(self.a1_test.size), \
-               np.array(self.inflate_to_personal_r[self.foldidx]) if self.a_rank_test is not None and \
-                    self.inflate_to_personal_r is not None else np.zeros(self.a_rank_test.size), \
-               np.zeros(self.a1_unseen.size) if self.a1_unseen is not None else None
-
     def _choose_method_fun(self, feature_type):
         if 'SinglePrefGP' in self.method:
             method_runner_fun = self.run_gppl
@@ -791,9 +780,7 @@ class TestRunner:
                 logging.error("BI-LSTM is not set up to run without using embeddings. Will switch to feature type=both...")
                 feature_type = 'both'            
             method_runner_fun = lambda: self.run_bilstm(feature_type)
-        elif 'dummy' in self.method:
-            method_runner_fun = self.run_dummy
-            
+
         return method_runner_fun
                
     def _set_resultsfile(self, feature_type, embeddings_type, acc, dataset_increment):

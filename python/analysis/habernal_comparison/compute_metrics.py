@@ -31,7 +31,7 @@ import pandas as pd
 import pickle
 from sklearn.metrics import f1_score, accuracy_score, roc_auc_score, log_loss
 from scipy.stats import pearsonr, spearmanr, kendalltau
-from data_loading import load_train_test_data, load_ling_features, data_root_dir
+from data_loader import data_root_dir, load_train_test_data, load_ling_features
 import datetime, time
 
 data_root_dir = os.path.abspath("./data/")

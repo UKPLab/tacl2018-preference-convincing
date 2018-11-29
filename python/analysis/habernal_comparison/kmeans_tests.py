@@ -60,8 +60,8 @@ from gp_pref_learning import GPPrefLearning, pref_likelihood
 from gp_classifier_svi import GPClassifierSVI
 from gp_classifier_vb import compute_median_lengthscales
 from sklearn.svm import SVR 
-from data_loading import load_train_test_data, load_embeddings, load_ling_features, data_root_dir, \
-    load_siamese_cbow_embeddings, load_skipthoughts_embeddings
+from embeddings import load_embeddings, load_siamese_cbow_embeddings, load_skipthoughts_embeddings
+from data_loader import data_root_dir, load_train_test_data, load_ling_features
 import numpy as np
     
 ndebug_features = 10

@@ -13,12 +13,12 @@ sys.path.append("./python/analysis")
 sys.path.append("./python/models")
 sys.path.append("./python/analysis/habernal_comparison")
 
-from data_loader import load_single_file_separate_args
-from data_loading import load_ling_features, load_embeddings
+from data_loader import load_single_file_separate_args, load_ling_features
+from embeddings import load_embeddings, get_mean_embeddings
 from gp_classifier_vb import compute_median_lengthscales
 from gp_pref_learning import GPPrefLearning
 from run_preprocessing import preprocessing_pipeline
-from tests import get_docidxs_from_ids, get_doc_token_seqs, get_mean_embeddings
+from tests import get_docidxs_from_ids, get_doc_token_seqs
 import numpy as np
 import logging
 import os

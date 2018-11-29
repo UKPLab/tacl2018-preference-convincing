@@ -93,7 +93,7 @@ class PersonalisedTestRunner(TestRunner):
         # look for a file that was trained on the same data but with the personalised predictions instead of MACE consensus.
         pretrainedmodelfile = self.modelfile.replace('_evalMACE', '')
 
-        if os.path.exist(pretrainedmodelfile):
+        if os.path.exists(pretrainedmodelfile):
             with open(pretrainedmodelfile, 'rb') as fh:
                 self.model = pickle.load(fh)
         else:

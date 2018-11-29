@@ -8,6 +8,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import compute_metrics
+import data_loader
+
 
 def plot_active_learning_results(results, ylabel, title=None, ax=None, style=None):
     ax = results.plot(kind='line', ax=ax, title=title, legend=True, style=style)
@@ -22,7 +24,7 @@ if __name__ == '__main__':
         expt_settings['folds'] = None 
         expt_settings['foldorderfile'] = None
       
-    compute_metrics.data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
+    data_loader.data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
     compute_metrics.foldorderfile = None
     compute_metrics.resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
         

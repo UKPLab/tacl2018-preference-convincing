@@ -27,7 +27,7 @@ import pickle
 import numpy as np
 
 from compute_metrics import get_results_dir, get_fold_data
-from data_loading import load_train_test_data, load_ling_features
+from data_loader import load_train_test_data, load_ling_features
 from tests import get_doc_token_seqs, get_docidxs_from_ids, compute_lengthscale_heuristic
 from gp_classifier_vb import matern_3_2_from_raw_vals
 from sklearn.metrics.pairwise import cosine_similarity

@@ -5,7 +5,7 @@ from __future__ import print_function
 
 import sys
 
-import data_loader_regression
+import data_loader
 import numpy as np
 from keras.layers.core import Dense, Dropout
 from keras.layers.embeddings import Embedding
@@ -36,7 +36,7 @@ print('Loading data...')
 # switch to my data
 argv = sys.argv[1:]
 input_folder = argv[0]
-folds, word_index_to_embeddings_map = data_loader_regression.load_my_data(input_folder, nb_words=max_features)
+folds, word_index_to_embeddings_map = data_loader.load_my_data_regression(input_folder, nb_words=max_features)
 
 # collect all gold scores and all predictions to compute final correlations
 all_gold_scores = np.array([])

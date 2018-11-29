@@ -16,7 +16,8 @@ import os, pickle
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from tests import load_train_test_data, load_embeddings, load_ling_features, get_fold_data, TestRunner
+from tests import load_embeddings, get_fold_data, TestRunner
+from data_loader import load_train_test_data, load_ling_features
 from matplotlib.ticker import MaxNLocator
 
 if __name__ == '__main__':
