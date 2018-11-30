@@ -23,7 +23,7 @@
 % \usepackage{url}
 % \usepackage{latexsym}
 % 
-% \usepackage[fleqn]{amsmath}
+\usepackage[fleqn]{amsmath}
 % \usepackage{amssymb}
 % \usepackage{amstext}
 % \usepackage{amsthm}
@@ -48,7 +48,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \title{ 
-Scalable Bayesian Preference Learning from Crowds
+Scalable and Sparse: Bayesian Preference Learning with Crowds
 }
 
 \author{Edwin Simpson 

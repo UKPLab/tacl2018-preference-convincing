@@ -502,7 +502,14 @@ def run_sushi_expt(methods, expt_name):
     with open(results_path + '/results.tex', 'w') as fh:
         fh.writelines(lines)
 
-# Load feature data ----------------------------------------------------------------------------
+# Initialise output paths ----------------------------------------------------------------------------------------------
+
+figure_root_path = './results/sushi_factors'
+if not os.path.exists(figure_root_path):
+    os.mkdir(figure_root_path)
+
+
+# Load feature data ----------------------------------------------------------------------------------------------------
 
 item_feat_file = './data/sushi3-2016/sushi3.idata'
 user_feat_file = './data/sushi3-2016/sushi3.udata'
@@ -609,7 +616,7 @@ methods = [
            'GPPL-pooled',
            'GPPL-joint',
            # 'GPPL-per-user',
-           'crowd-GPPL\\u',
+           #'crowd-GPPL\\u',
            # 'crowd-BMF',
            # 'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
@@ -618,9 +625,12 @@ methods = [
 # hyperparameters common to most models
 optimize = True
 sushiB = False
-# run_sushi_expt(methods, 'sushi_10_opt' + tag)
+run_sushi_expt(methods, 'sushi_10_opt' + tag)
 
 vscales_A = vscales
+vscales_A = np.mean(vscales_A, axis=0)
+np.savetxt(figure_root_path + '/sushi_A_factor_scales.csv', vscales_A, delimiter=',', fmt='%f')
+
 vscales = None
 
 # Reload the full sets of features (previously, we subsampled on the relevant items for Sushi-A ------------------------
@@ -699,7 +709,7 @@ methods = [
            'GPPL-pooled',
            'GPPL-joint',
            # 'GPPL-per-user',
-           'crowd-GPPL\\u',
+           #'crowd-GPPL\\u',
            # 'crowd-BMF',
            # 'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
@@ -714,7 +724,6 @@ vscales_B = vscales
 
 # Plot the latent factor scales ----------------------------------------------------------------------------------------
 
-vscales_A = np.mean(vscales_A, axis=0)
 vscales_B = np.mean(vscales_B, axis=0)
 
 logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
@@ -733,13 +742,8 @@ plt.grid('on', axis='y')
 plt.legend(loc='best')
 plt.tight_layout()
 
-figure_root_path = './results/sushi_factors'
-if not os.path.exists(figure_root_path):
-    os.mkdir(figure_root_path)
-
 plt.savefig(figure_root_path + '/sushi_factor_scales.pdf')
 
-np.savetxt(figure_root_path + '/sushi_A_factor_scales.csv', vscales_A, delimiter=',', fmt='%f')
 np.savetxt(figure_root_path + '/sushi_B_factor_scales.csv', vscales_B, delimiter=',', fmt='%f')
 
 logging.basicConfig(level=logging.DEBUG)  # switch back to the debug output
