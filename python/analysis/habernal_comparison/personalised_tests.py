@@ -134,10 +134,7 @@ if __name__ == '__main__':
     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
 
     methods = [
-               #'PersPrefGP_commonmean_noOpt_weaksprior', 'PersPrefGP_commonmean_weaksprior',
-               # 'SVM', 'GP+SVM', # forget these methods as the other paper showed they were worse already, and the SVM
-               # does not scale either -- it's worse than the GP.
-               'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior', 'Bi-LSTM',
+               'PersPrefGP_commonmean_noOpt_weaksprior', 'PersPrefGP_commonmean_weaksprior',
             ]
     embeddings_types = ['word_mean']
 
@@ -160,6 +157,8 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
 
+    import matplotlib
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
     fig = plt.figure(figsize=(5, 4))
@@ -183,3 +182,18 @@ if __name__ == '__main__':
     plt.savefig(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.pdf')
 
     np.savetxt(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.csv', vscales, delimiter=',', fmt='%f')
+
+    methods = [
+               # 'SVM', 'GP+SVM', # forget these methods as the other paper showed they were worse already, and the SVM
+               # does not scale either -- it's worse than the GP.
+               'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior', 'Bi-LSTM',
+            ]
+    embeddings_types = ['word_mean']
+
+    if 'runner' not in globals():
+        runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods,
+                                        dataset_increment)
+        runner.save_collab_model = True
+
+    # PERSONALISED PREDICTION
+    runner.run_test_set(min_no_folds=0, max_no_folds=32)

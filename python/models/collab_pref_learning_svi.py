@@ -821,16 +821,15 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             # reuse the training points
             t = self.t
         else:
-            # kernel between pidxs and t
-            if self.verbose:
-                logging.debug('Computing K_nm in predict_t')
-            K = self.kernel_func(item_features, self.ls, self.inducing_coords)
-            N = item_features.shape[0]
-
             # use kernel to compute t.
             if self.use_t:
+                # kernel between pidxs and t
+                if self.verbose:
+                    logging.debug('Computing K_nm in predict_t')
+                K = self.kernel_func(item_features, self.ls, self.inducing_coords)
                 t = K.dot(self.invK_mm).dot(self.t_u)
             else:
+                N = item_features.shape[0]
                 t = np.zeros((N, 1))
 
         return t

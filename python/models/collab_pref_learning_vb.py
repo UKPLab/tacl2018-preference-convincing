@@ -236,7 +236,7 @@ class CollabPrefLearningVB(object):
             self.conv_threshold = 1e-1
 
         self.max_iter_G = 3
-        self.max_iter = 1000
+        self.max_iter = 200
         self.min_iter = 1
         self.n_converged = 3  # number of iterations while apparently converged (avoids numerical errors)
         self.vb_iter = 0

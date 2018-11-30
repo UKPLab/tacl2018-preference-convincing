@@ -58,34 +58,92 @@ For both of these methods, the user covariance matrix, $\bs K_w$, in the crowd-G
 
 \subsection{Simulated Noisy Data}\label{sec:exp_synth}
 
-Dataset:
+First, we test how well GPPL is able to recover an underlying consensus function
+in the presence of varying amounts of noise.
 
-Hypothesis: 
+We generate data by first selecting $100$ points at random
+from a $10x10$ 2-dimensional grid and choosing $500$ pairs of these points at random. 
+We generate pairwise labels by drawing from the single user GPPL model:
+first, draw latent preference function values for the selected points; 
+then, compute the pairwise likelihoods for the selected pairs using Equation \ref{eq:plphi};
+draw pairwise labels from the Bernoulli likelihoods. 
+We split the chosen points into 50\% training and test sets, and
+train GPPL on all pairs involving only points in the training set.
+We then use GPPL to latent predict preference function for the points in the test set.
+We repeat this process, varying the value of $s$ in the generation step, 
+which controls the precision of a latent preference function: as $s$ is increased, the latent
+function values have a smaller amplitude and the pairwise labels become noisier.
+The hyper-parameters of the GPPL model for prediction remain the same throughout, 
+with $\alpha_0 = 2$, $\beta_0 = 2$.
+We repeat the complete experiment $25$ times, including generating new data for each value of $s$.
+
+The results of the first test in Figure \ref{fig:simA} show that increasing
+the noise rate in the pairwise labels causes a near-linear decrease in the
+rank correlation between the predicted and true preference function values. 
+Nonetheless, GPPL is able to recover the ranking of points with $\tau > 0.5$ when
+more than $1/3$ pairwise labels are incorrect.
+
+In the second simulation, we recover a consensus function
+from preference labels produced by multiple simulated users with varying differences
+in their individual preferences. We use the same process as the first simulation, except
+we now draw the pairwise labels from a crowd-GPPL model with $25$ users and $3$ latent factors,
+instead of a single-user model. We fix the inverse scale of the latent item factors, $s=0.001$,
+but vary the precision of the consensus function, $\sigma$. 
+We use three methods to recover the consensus function: \emph{GPPL-per-user},
+in which an independent model is trained for each user, and the mean of their
+predictions is used to estimate the consensus; 
+\emph{pooled-GPPL}, a single instance of GPPL trained on pairwise labels from all users; 
+and crowd-GPPL, with $C=25$ so that there is one factor per user. 
+
+Figure \ref{fig:simB} shows that the crowd-GPPL model is better able recover the latent consensus
+function than the other methods, even when noise levels are high. 
+The pooled model's predictions may be worsened by biased users whose preferences deviate
+ consistently from the consensus. GPPL-per-user relies on separate instances of GPPL, so 
+ does not benefit from sharing information between users when training the model.
+
+The third test repeats a similar setup to the second, but here we evaluate the methods'
+ability to to recover the personal preferences of individual simulated users.
+We fix $\sigma = 10$ and vary the precision of the item latent factors, $s$.
+
+Results for predicting personal preferences in the presence of noise are shown in 
+Figure \ref{fig:simC}. Crowd-GPPL is able to make better predictions when noise is below
+$0.3$ but its benefit disappears when the noise level increases further. 
+
+In the final simulation, we evaluate the effect of the quantity of training data 
+in scenarios with different numbers of latent factors.
+We hypothesized that a larger number of latent factors would indicate a more complex
+scenario that would require more training data. 
+We generate data again from the crowd-GPPL model with $s=0.2$ and $\sigma=1$
+and vary the number of true latent factors using values $C_{true} \in \{ 1, 3, 10, 20\}$.
+For each value of $C_{true}$, we run crowd-GPPL with increasing numbers of pairwise labels,
+and evaluate the correlation between inferred and true latent user factors. 
+To match inferred factors to true factors, we compute Pearson correlations between each
+true factor and each inferred factor, then repeatedly select the pair of unmatched 
+factors with the highest correlation as a new match until all true factors are matched. 
+
+The results in Figure \ref{fig:simD} show that...
 
 \begin{figure}
 \subfloat[Inferring preferences for a single user]{
+\label{fig:simA}
 \includegraphics[width=.5\columnwidth]{../../results/synth_3/single_user/tau_test}
 }
 \subfloat[Inferring consensus function from crowdsourced labels]{
+\label{fig:simB}
 \includegraphics[width=.5\columnwidth]{../../results/synth_3/multi_user_consensus/tau_test}
 } \\
 \subfloat[Inferring personal preferences for members of a crowd]{
+\label{fig:simC}
 \includegraphics[width=.57\columnwidth]{../../results/synth_3/multi_user_personal/tau_test}
 }
 \subfloat[Inferring the latent factors]{
+\label{fig:simD}
 \includegraphics[width=.43\columnwidth]{../../results/synth_3/multi_factor_correlations_P/num_pairs_r}
 }
 \caption{Rank correlation between true and inferred preference values for different inference tasks.  (a)--(c) varying level of noise in pairwise training labels, (d) varying number of pairwise training labels. 
 }
 \end{figure}
 
-%\begin{figure}
-%%\includegraphics[scale=1]{../../results/synth_3/multiuser_factor_correlations_s/noise_r}
-%\caption{Correlations between the inferred and ground truth latent factors with varying values of
-%(a) noise variance, s; 
-%(b) number of pairwise labels in training data. 
-%}
-%\end{figure}
 
 \subsection{Sushi Preferences}\label{sec:sushi}
 

@@ -914,18 +914,22 @@ class TestRunner:
                                 person_rank_test = get_fold_regression_data(self.folds_r, self.fold, self.docids)
 
             # convert the ranking person IDs to the idxs
-            person_rank_train = np.array([np.argwhere(upersonIDs == p.strip())[0][0] if p.strip() in upersonIDs else -1
+            if len(person_rank_train):
+                person_rank_train = np.array([np.argwhere(upersonIDs == p.strip())[0][0] if p.strip() in upersonIDs else -1
                                           for p in person_rank_train])
-            person_rank_test = np.array([np.argwhere(upersonIDs == p.strip())[0][0] if p.strip() in upersonIDs else -1
+
+                a_rank_train = a_rank_train[person_rank_train != -1]
+                scores_rank_train = scores_rank_train[person_rank_train != -1]
+                person_rank_train = person_rank_train[person_rank_train != -1]
+
+            if len(person_rank_test):
+
+                person_rank_test = np.array([np.argwhere(upersonIDs == p.strip())[0][0] if p.strip() in upersonIDs else -1
                                          for p in person_rank_test])
 
-            a_rank_train = a_rank_train[person_rank_train != -1]
-            scores_rank_train = scores_rank_train[person_rank_train != -1]
-            person_rank_train = person_rank_train[person_rank_train != -1]
-
-            a_rank_test = a_rank_test[person_rank_test != -1]
-            scores_rank_test = scores_rank_test[person_rank_test != -1]
-            person_rank_test = person_rank_test[person_rank_test != -1]
+                a_rank_test = a_rank_test[person_rank_test != -1]
+                scores_rank_test = scores_rank_test[person_rank_test != -1]
+                person_rank_test = person_rank_test[person_rank_test != -1]
 
             self.load_features(feature_type, embeddings_type, a1_train, a2_train, uids, utexts)
             #items_feat = items_feat[:, :ndebug_features]     
