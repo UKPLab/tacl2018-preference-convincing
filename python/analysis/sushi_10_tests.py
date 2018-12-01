@@ -88,7 +88,7 @@ def convert_discrete_to_continuous(features, cols_to_convert):
 
 
 def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
-                   u_test=None, i1_test=None, i2_test=None, ufeats_test=None):
+                   u_test=None, i1_test=None, i2_test=None):
 
     Nfactors = ufeats.shape[0]
     if Nfactors > max_facs:
@@ -106,31 +106,36 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
     if u_test is None:
         return model
 
-    fpred = model.predict_f(ifeats[active_items], ufeats_test)
+    fpred = model.predict_f(ifeats[active_items], ufeats)
     rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, ufeats)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred
 
 
-def run_GPPL_pooled(_, i1_tr, i2_tr, ifeats, __, prefs_tr, ___, i1_test, i2_test, ufeats_test):
+def run_GPPL_pooled(_, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, ___, i1_test, i2_test):
     model = GPPrefLearning(ifeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None, use_svi=True,
                    ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate, verbose=True)
 
     model.fit(i1_tr, i2_tr, ifeats, prefs_tr, optimize=optimize, use_median_ls=True)
 
-    fpred, _ = np.tile(model.predict_f(ifeats[active_items]), (1, ufeats_test.shape[0]))
+    fpred, _ = np.tile(model.predict_f(ifeats[active_items]), (1, ufeats.shape[0]))
     rho_pred, _ = model.predict(ifeats, i1_test, i2_test)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred
 
 
-def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ufeats_test):
+def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test):
     model = GPPrefLearning(ifeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None, use_svi=True,
                    ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate, verbose=True)
 
     model.uselowerbound = False
+
+    # we need to use only the features for the subset of users in the training set!
+    # if user features are not very informative, then the inducing points may be fairly useless.
+    # this might explain why performance is low for joint model and crowd-GPPL.
+    # However, BMF is and GPPL\u is still too low?
 
     joint_ifeats = np.tile(ifeats, (ufeats.shape[0], 1))
     joint_ufeats = np.tile(ufeats, (1, ifeats.shape[0])).reshape((ufeats.shape[0]*ifeats.shape[0], ufeats.shape[1]))
@@ -161,29 +166,29 @@ def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test
         rho_pred_b, _ = model.predict(joint_feats[joint_feats_idxs_b], pairs_b[0], pairs_b[1])
         rho_pred = np.append(rho_pred, rho_pred_b)
 
-    joint_ifeats = np.tile(ifeats[active_items], (ufeats_test.shape[0], 1))
-    joint_ufeats = np.tile(ufeats_test, (1, active_items.shape[0])).reshape((ufeats_test.shape[0]*active_items.shape[0],
-                                                                       ufeats_test.shape[1]))
+    joint_ifeats = np.tile(ifeats[active_items], (ufeats.shape[0], 1))
+    joint_ufeats = np.tile(ufeats, (1, active_items.shape[0])).reshape((ufeats.shape[0]*active_items.shape[0],
+                                                                       ufeats.shape[1]))
     joint_feats = np.concatenate((joint_ifeats, joint_ufeats), axis=1)
     fpred, _ = model.predict_f(joint_feats)
-    fpred = fpred.reshape(active_items.shape[0], ufeats_test.shape[0])
+    fpred = fpred.reshape(active_items.shape[0], ufeats.shape[0])
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred
 
 
-def run_GPPL_per_user(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, chosen_users):
+def run_GPPL_per_user(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test):
     model = GPPrefPerUser(ufeats.shape[0], max_update_size, shape_s0, rate_s0, ifeats.shape[1], ninducing)
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
-    fpred = model.predict_f(ifeats[active_items], personids=chosen_users)
+    fpred = model.predict_f(ifeats[active_items], personids=None)
     rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, None)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred
 
 
-def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, chosen_users):
+def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test):
 
     Nfactors = ufeats.shape[0]
 
@@ -197,14 +202,13 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
     fpred = model.predict_f(ifeats[active_items], person_features=None)
-    fpred = fpred[:, chosen_users]
     rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, None)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred
 
 
-def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, chosen_users):
+def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test):
     Nfactors = ufeats.shape[0]
     if Nfactors > max_facs:
         Nfactors = max_facs # this is the maximum
@@ -213,17 +217,19 @@ def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test,
                                   ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
                                   verbose=True, use_lb=False, kernel_func='diagonal')
 
+    # TODO: BMF seems to be using the ifeats! It should not use any feats. However, it has got
+    # kernel-func = diagonal so it shouldn't matter
+
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
     fpred = model.predict_f(ifeats[active_items], person_features=None)
-    fpred = fpred[:, chosen_users]
     rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, None)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred
 
 
-def run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ufeats_test):
+def run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test):
     Nfactors = ufeats.shape[0]
     if Nfactors > max_facs:
         Nfactors = max_facs # this is the maximum
@@ -234,29 +240,11 @@ def run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_tes
 
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
 
-    fpred = model.predict_f(ifeats[active_items], ufeats_test)
+    fpred = model.predict_f(ifeats[active_items], ufeats)
     rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, ufeats)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred
-
-
-# def run_GPPL_separate_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ufeats_test):
-#     Nfactors = ufeats.shape[0]
-#     if Nfactors > 50:
-#         Nfactors = 50 # this is the maximum
-#
-#     model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Nfactors,
-#                                   ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
-#                                   verbose=True, use_lb=True, kernel_func='diagonal')
-#
-#     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=not optimize)
-#
-#     fpred = model.predict_f(ifeats, ufeats_test)
-#     rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, None)
-#
-#     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
-#     return fpred, rho_pred
 
 
 def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
@@ -322,24 +310,22 @@ def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, 
     return shape_s0, rate_s0
 
 
-def train_test(method_name, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, chosen_users):
-
-    ufeats_test = ufeats[chosen_users] # the features of the users whose scores we should predict
+def train_test(method_name, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test):
 
     if method_name == 'crowd-GPPL':
-        return run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ufeats_test)
+        return run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test)
     elif method_name == 'GPPL-pooled':
-        return run_GPPL_pooled(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ufeats_test)
+        return run_GPPL_pooled(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test)
     elif method_name == 'GPPL-joint':
-        return run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ufeats_test)
+        return run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test)
     elif method_name == 'GPPL-per-user':
-        return run_GPPL_per_user(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, chosen_users)
+        return run_GPPL_per_user(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test)
     elif method_name == 'crowd-GPPL\\u':
-        return run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, chosen_users)
+        return run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test)
     elif method_name == 'crowd-BMF':
-        return run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, chosen_users)
+        return run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test)
     elif method_name == 'collab-GPPL': # No common mean, i.e. like Houlsby but SVI
-        return run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ufeats_test)
+        return run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test)
     # elif method_name == 'GPPL+BMF': # like Khan. Not implemented yet -- get results from Khan paper where possible.
     #     return run_GPPL_separate_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ufeats_test)
 
@@ -421,6 +407,7 @@ def run_sushi_expt(methods, expt_name):
     for rep in range(nreps):
         # Get training and test data
         u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, scores, chosen_users = subsample_data()
+        u_tr = np.array([np.argwhere(np.in1d(chosen_users, u)).flatten()[0] for u in u_tr])
 
         print(u_tr)
         print(i1_tr)
@@ -440,8 +427,8 @@ def run_sushi_expt(methods, expt_name):
             logging.info("Starting test with method %s..." % (m))
             starttime = time.time()
 
-            fpred, rho_pred = train_test(m, u_tr, i1_tr, i2_tr, item_features, user_features, prefs_tr,
-                                         u_test, i1_test, i2_test, chosen_users)
+            fpred, rho_pred = train_test(m, u_tr, i1_tr, i2_tr, item_features, user_features[chosen_users], prefs_tr,
+                                         u_test, i1_test, i2_test)
 
             endtime = time.time()
             times_r.append(endtime - starttime)
@@ -501,6 +488,17 @@ def run_sushi_expt(methods, expt_name):
 
     with open(results_path + '/results.tex', 'w') as fh:
         fh.writelines(lines)
+
+# Scalability: the no. items is small so no benefit from sparse GP there. The no. users is large but the
+# features are not very informative, so user features not useful for inducing points.
+# Hence we can only show that (a) our SVI method does not degrade performance when inducing points are
+# not used and (b) whether the common mean helps improve performance and (c) if the length-scale tuning
+# improves performance.
+
+# Joint model: user features are not informative enough here to use inducing points, so the
+# joint model becomes quickly unscalable.
+
+
 
 # Initialise output paths ----------------------------------------------------------------------------------------------
 
@@ -566,14 +564,14 @@ max_facs = 50
 shape_s0 = 1000
 rate_s0 = 1000  #0.1
 max_update_size = 1000
-ninducing = 500
+ninducing = 5000
 forgetting_rate = 0.9
 
 sushiB = False
 vscales = None
 
 # Experiment name tag
-tag = '_8'
+tag = '_debug'
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
@@ -595,8 +593,8 @@ methods = [
            'crowd-GPPL',
            'collab-GPPL', # Houlsby
            'GPPL-pooled',
-           'GPPL-joint',
-           'GPPL-per-user',
+           #'GPPL-joint',
+           # 'GPPL-per-user',
            'crowd-GPPL\\u',
            'crowd-BMF',
            # 'GPPL+BMF' # khan -- excluded from this experiment
@@ -604,7 +602,7 @@ methods = [
 
 optimize = False
 sushiB = False
-# run_sushi_expt(methods, 'sushi_10' + tag)
+run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
@@ -614,7 +612,7 @@ vscales = []
 methods = [
            'crowd-GPPL',
            'GPPL-pooled',
-           'GPPL-joint',
+           #'GPPL-joint',
            # 'GPPL-per-user',
            #'crowd-GPPL\\u',
            # 'crowd-BMF',
@@ -687,7 +685,7 @@ methods = [
            'crowd-GPPL',
            'collab-GPPL',  # Houlsby
            'GPPL-pooled',
-           'GPPL-joint',
+           #'GPPL-joint',
            # 'GPPL-per-user',
            'crowd-GPPL\\u',
            'crowd-BMF',
@@ -707,7 +705,7 @@ vscales = []
 methods = [
            'crowd-GPPL',
            'GPPL-pooled',
-           'GPPL-joint',
+           #'GPPL-joint',
            # 'GPPL-per-user',
            #'crowd-GPPL\\u',
            # 'crowd-BMF',

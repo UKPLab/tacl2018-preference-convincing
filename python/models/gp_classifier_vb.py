@@ -1084,7 +1084,7 @@ class GPClassifierVB(object):
         elif not self.uselowerbound and np.mod(self.vb_iter, self.conv_check_freq) == self.conv_check_freq-1:
             diff = np.max(np.abs(self.obs_f - prev_val))
             if self.verbose:
-                logging.debug('GP Classifier VB obs_f diff = %.5f at iteration %.i' % (diff, self.vb_iter))
+                logging.debug('GP Classifier VB obs_f diff = %f at iteration %i' % (diff, self.vb_iter))
 
             sdiff = np.abs(self.old_s - self.s) / self.s
             if self.verbose:
