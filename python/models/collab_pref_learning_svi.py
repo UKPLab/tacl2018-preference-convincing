@@ -412,6 +412,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                         self.person_features[b*batchsize:end1, :], self.lsy, self.person_features[b2*batchsize:end2, :])
                 elif b == b2:
                     self.Ky[b*batchsize:(b+1)*batchsize, :][:, b2*batchsize:(b2+1)*batchsize] = np.eye(end1 - b*batchsize, dtype=float)
+                else:
+                    self.Ky[b * batchsize:(b + 1) * batchsize, :][:, b2 * batchsize:(b2 + 1) * batchsize] = np.zeros(
+                        (end1 - b * batchsize, end2 - b2 * batchsize), dtype=float)
 
         if self.Npeople > 500:
             self.Ky.flush()
@@ -589,12 +592,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         self.w_cov_i = np.zeros((self.Nfactors, self.n_idx_i.shape[0], self.n_idx_i.shape[0]))
 
         covpair = K_nm_i.dot(self.invK_mm)
-        Knn_minus_Kmmterms = Kw_i - covpair.dot(self.K_mm).dot(covpair.T)
-
         sw = self.shape_sw / self.rate_sw
 
         for f in range(self.Nfactors):
-            self.w_cov_i[f] = Knn_minus_Kmmterms / sw[f] + covpair.dot(self.wS[f]).dot(covpair.T)
+            self.w_cov_i[f] = Kw_i / sw[f] + covpair.dot(self.wS[f] - self.K_mm/sw[f]).dot(covpair.T)
 
             self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, N,
                                                        self.invK_mm, self.w_u[:, f:f + 1], np.zeros((N, 1)),
@@ -703,10 +704,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             Ky_i = self.Ky[self.p_idx_i, :][:, self.p_idx_i]
             K_nm_i = self.Ky_nm_block[self.p_idx_i]
             covpair = K_nm_i.dot(self.invKy_mm_block)
-            Knn_minus_Kmmterms = Ky_i - covpair.dot(self.Ky_mm_block).dot(covpair.T)
 
             for f in range(self.Nfactors):
-                self.y_cov_i[f] = Knn_minus_Kmmterms + covpair.dot(self.yS[f]).dot(covpair.T)
+                self.y_cov_i[f] = Ky_i + covpair.dot(self.yS[f] - self.Ky_mm_block).dot(covpair.T)
         else:
             for f in range(self.Nfactors):
                 self.y_cov_i[f] = np.diag(self.yS[f][self.p_idx_i])
