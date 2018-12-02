@@ -130,7 +130,7 @@ if __name__ == '__main__':
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
 
-    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
+    feature_types = ['debug'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
 
     methods = [
                'PersPrefGP_commonmean_noOpt_weaksprior'#, 'PersPrefGP_commonmean_weaksprior',

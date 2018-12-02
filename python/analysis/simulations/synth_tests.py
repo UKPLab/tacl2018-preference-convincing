@@ -39,7 +39,9 @@ def plot_result(idx, filename, ylabel, method, fig=None, lineidx=0):
         plt.figure(fig.number)
 
     # ax1.semilogx(inverse_scales
-    plt.plot(mean_results[:, 0], mean_results[:, idx],
+
+    new_order = np.argsort(mean_results[:, 0])
+    plt.plot(mean_results[new_order, 0], mean_results[new_order, idx],
               marker=markers[lineidx], label=method, linewidth=2, markersize=8)
 
     plt.ylabel(ylabel)
@@ -68,7 +70,7 @@ if __name__ == '__main__':
         np.random.seed(1)
 
     # SETTINGS FOR ALL THE NOISE TESTS
-    nreps = 1#25
+    nreps = 3#25
     nx = 10
     ny = 10
     N = nx * ny
@@ -162,20 +164,20 @@ if __name__ == '__main__':
     # we want new plots
     plt.close('all')
 
-    inverse_scales = [0.0001, 0.0002, 0.0004, 0.0008, 0.0016, 0.0032, 0.064]
+    nx = 10
+    ny = 10
+    N = nx * ny
+    Nfactors = 3
+    Npeople = 25
+    inverse_scales = [0.002, 0.02, 0.2, 1.0, 10.0, 100.0]#[0.0001, 0.001, 0.005, 0.01, 0.02]
     ls = [10, 10]
-    lsy = [5, 10]
+    lsy = [10, 10]
+
+    inverse_scales = [0.0002, 0.002, 0.02, 0.1, 1.0, 10.0]
 
     # make sure the simulation is repeatable
     if fix_seeds:
         np.random.seed(1)
-
-    nx = 20
-    ny = 20
-    N = nx * ny
-
-    Nfactors = 3
-    Npeople = 25
 
     mean_results = []
     std_results = []
@@ -209,7 +211,7 @@ if __name__ == '__main__':
                 P=P,
                 ls=ls,
                 sigma=s,
-                s=0.001,
+                s=0.2,
                 lsy=lsy,
                 Npeoplefeatures=2
             )
@@ -352,7 +354,7 @@ if __name__ == '__main__':
     N = nx * ny
     Nfactors = 3
     Npeople = 25
-    inverse_scales = [0.002, 0.02, 0.2, 2.0, 20.0, 200.0]#[0.0001, 0.001, 0.005, 0.01, 0.02]
+    inverse_scales = [0.002, 0.02, 0.2, 1.0, 10.0, 100.0]#[0.0001, 0.001, 0.005, 0.01, 0.02]
     ls = [10, 10]
     lsy = [10, 10]
 

@@ -723,6 +723,11 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         self.y_cov_i = np.zeros((self.Nfactors, self.p_idx_i.shape[0], self.p_idx_i.shape[0]))
 
         covpair = K_nm_i.dot(self.invKy_mm_block)
+
+        print(Ky_i.shape)
+        print(covpair.shape)
+        print(self.Ky_mm_block.shape)
+
         Knn_minus_Kmmterms = Ky_i - covpair.dot(self.Ky_mm_block).dot(covpair.T)
 
         for f in range(self.Nfactors):
