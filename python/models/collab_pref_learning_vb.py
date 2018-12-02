@@ -168,7 +168,7 @@ class CollabPrefLearningVB(object):
 
     def __init__(self, nitem_features, nperson_features=0, shape_s0=1, rate_s0=1, shape_ls=1, rate_ls=100, ls=100,
                  shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=20,
-                 use_common_mean_t=True, kernel_func='matern_3_2', use_lb=False):
+                 use_common_mean_t=True, kernel_func='matern_3_2', use_lb=True):
         """
 
         :param nitem_features:

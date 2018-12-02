@@ -93,7 +93,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
     def __init__(self, nitem_features, nperson_features=0, mu0=0, shape_s0=1, rate_s0=1,
                  shape_ls=1, rate_ls=100, ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=20,
                  use_common_mean_t=True, kernel_func='matern_3_2',
-                 max_update_size=500, ninducing=500, forgetting_rate=0.9, delay=1.0, use_lb=False):
+                 max_update_size=500, ninducing=500, forgetting_rate=0.9, delay=1.0, use_lb=True):
 
         self.max_update_size = max_update_size
         self.ninducing_preset = ninducing
