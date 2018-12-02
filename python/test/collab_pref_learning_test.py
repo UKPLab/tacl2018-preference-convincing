@@ -311,7 +311,7 @@ if __name__ == '__main__':
     else:
         use_svi = True
     use_t = True
-    use_person_features = True
+    use_person_features = False
     optimize = False
 
     ls_initial = np.array(ls)# + np.random.rand(len(ls)) * 10)

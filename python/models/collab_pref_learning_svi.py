@@ -544,16 +544,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
             for f in range(self.Nfactors):
                 # scale the precision by y
-                # scaling_f = self.y[f, self.personIDs[self.data_obs_idx_i]]**2 + \
-                #             self.y_var[f, self.personIDs[self.data_obs_idx_i]]
-                #
-                # Sigma_w_f = covpair.dot(invQGT * scaling_f[None, :]).dot(self.G).dot(covpair.T)
-
-                # scaling_f = self.y[f:f+1, self.y_idx_i].T.dot(self.y[f:f+1, self.y_idx_i]) + np.diag(self.y_var[f, self.y_idx_i])
                 ycov_idxs = [np.argwhere(self.p_idx_i == idx).flatten()[0] for idx in self.y_idx_i]
-                scaling_f = self.y[f:f+1, self.y_idx_i].T.dot(self.y[f:f+1, self.y_idx_i]) + self.y_cov_i[f][ycov_idxs, :][:, ycov_idxs]
+                scaling_f = self.y[f:f+1, self.y_idx_i].T.dot(self.y[f:f+1, self.y_idx_i]) + \
+                            self.y_cov_i[f][ycov_idxs, :][:, ycov_idxs]
 
-                # scaling_f = np.diag(self.y[f, self.y_idx_i]**2 + self.y_var[f, self.y_idx_i])
                 Sigma_w_f = covpair.dot(invQGT.dot(self.G) * scaling_f).dot(covpair.T)
 
                 # need to get invS for current iteration and merge using SVI weighted sum
@@ -634,27 +628,13 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 wcov_idxs = [np.argwhere(self.n_idx_i == idx).flatten()[0] for idx in self.w_idx_i]
                 scaling_2 = self.w[self.w_idx_i, f:f+1].dot(self.w[self.w_idx_i, f:f+1].T) + self.w_cov_i[f][wcov_idxs, :][:, wcov_idxs]
                 Sigma_y_f =  covpair.dot(scaling_2 * invQG.dot(self.G)).dot(covpair.T)
-                if self.person_features is None:
-                    Sigma_y_f = np.diag(Sigma_y_f)
-
-                # # scale the precision by w
-                # scaling_f = self.w[self.tpref_v[self.data_obs_idx_i], f]**2 \
-                #             + self.w[self.tpref_u[self.data_obs_idx_i], f]**2 \
-                #             - 2 * self.w[self.tpref_v[self.data_obs_idx_i], f] * self.w[self.tpref_u[self.data_obs_idx_i], f] \
-                #             + self.w_cov_i[f][self.pref_u_w_idx, self.pref_u_w_idx] \
-                #             + self.w_cov_i[f][self.pref_v_w_idx, self.pref_v_w_idx] \
-                #             - 2 * self.w_cov_i[f][self.pref_v_w_idx, self.pref_u_w_idx]
-                #
-                # if self.person_features is None:
-                #     Sigma_y_f = np.diag(covpair.dot(self.G.T.dot(scaling_f[:, None] * invQG)).dot(covpair.T))
-                # else:
-                #     Sigma_y_f = covpair.dot(self.G.T.dot(scaling_f[:, None] * invQG)).dot(covpair.T)
 
                 # need to get invS for current iteration and merge using SVI weighted sum
                 if self.person_features is not None:
                     self.yinvS[f] = (1-rho_i) * self.prev_yinvS[f] + rho_i * (
                         self.invKy_mm_block + w_i * Sigma_y_f)
                 else:
+                    Sigma_y_f = np.diag(Sigma_y_f)
                     self.yinvS[f] = (1 - rho_i) * self.prev_yinvS[f] + rho_i * (1 + w_i * Sigma_y_f)
 
                 z0 = pref_likelihood(self.obs_f, v=self.pref_v[self.data_obs_idx_i], u=self.pref_u[self.data_obs_idx_i]) \
@@ -717,21 +697,20 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         if self.verbose:
             logging.debug('Computing y_cov_i')
-        Ky_i = self.Ky[self.p_idx_i, :][:, self.p_idx_i]
-        K_nm_i = self.Ky_nm_block[self.p_idx_i]
 
         self.y_cov_i = np.zeros((self.Nfactors, self.p_idx_i.shape[0], self.p_idx_i.shape[0]))
 
-        covpair = K_nm_i.dot(self.invKy_mm_block)
+        if self.person_features is not None:
+            Ky_i = self.Ky[self.p_idx_i, :][:, self.p_idx_i]
+            K_nm_i = self.Ky_nm_block[self.p_idx_i]
+            covpair = K_nm_i.dot(self.invKy_mm_block)
+            Knn_minus_Kmmterms = Ky_i - covpair.dot(self.Ky_mm_block).dot(covpair.T)
 
-        print(Ky_i.shape)
-        print(covpair.shape)
-        print(self.Ky_mm_block.shape)
-
-        Knn_minus_Kmmterms = Ky_i - covpair.dot(self.Ky_mm_block).dot(covpair.T)
-
-        for f in range(self.Nfactors):
-            self.y_cov_i[f] = Knn_minus_Kmmterms + covpair.dot(self.yS[f]).dot(covpair.T)
+            for f in range(self.Nfactors):
+                self.y_cov_i[f] = Knn_minus_Kmmterms + covpair.dot(self.yS[f]).dot(covpair.T)
+        else:
+            for f in range(self.Nfactors):
+                self.y_cov_i[f] = np.diag(self.yS[f][self.p_idx_i])
 
     def _update_sample(self):
 
