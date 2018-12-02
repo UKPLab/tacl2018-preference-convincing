@@ -635,6 +635,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                         self.invKy_mm_block + w_i * Sigma_y_f)
                 else:
                     Sigma_y_f = np.diag(Sigma_y_f)
+                    print(np.min(Sigma_y_f))
                     self.yinvS[f] = (1 - rho_i) * self.prev_yinvS[f] + rho_i * (1 + w_i * Sigma_y_f)
 
                 z0 = pref_likelihood(self.obs_f, v=self.pref_v[self.data_obs_idx_i], u=self.pref_u[self.data_obs_idx_i]) \
@@ -736,6 +737,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             y_var = self.yS
         else:
             y_var = np.array([np.diag(self.yS[f]) for f in range(self.Nfactors)])
+
+        print('yvar: ')
+        print(np.min(y_var))
+
         logrho, lognotrho, _ = self._post_sample(self.K_nm, self.invK_mm, self.w_u, self.wS, self.t_u, self.tS,
                                      self.Ky_nm_block, self.invKy_mm_block, self.y_u,
                                      y_var,
