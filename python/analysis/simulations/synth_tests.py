@@ -167,10 +167,10 @@ if __name__ == '__main__':
     nx = 10
     ny = 10
     N = nx * ny
-    Nfactors = 3
+    Nfactors = 5
     Npeople = 25
     ls = [10, 10]
-    lsy = [2, 2]
+    lsy = [5, 5]
     inverse_scales = [0.0002, 0.002, 0.02, 0.1, 1.0, 10.0]
 
     # make sure the simulation is repeatable
@@ -350,11 +350,11 @@ if __name__ == '__main__':
     nx = 10
     ny = 10
     N = nx * ny
-    Nfactors = 3
+    Nfactors = 5
     Npeople = 25
     inverse_scales = [0.002, 0.02, 0.2, 1.0, 10.0, 100.0]#[0.0001, 0.001, 0.005, 0.01, 0.02]
     ls = [10, 10]
-    lsy = [2, 2]
+    lsy = [5, 5]
 
     mean_results = []
     std_results = []

@@ -635,7 +635,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                         self.invKy_mm_block + w_i * Sigma_y_f)
                 else:
                     Sigma_y_f = np.diag(Sigma_y_f)
-                    print(np.min(Sigma_y_f))
+                    print(np.min(np.diag(scaling_2)))
                     self.yinvS[f] = (1 - rho_i) * self.prev_yinvS[f] + rho_i * (1 + w_i * Sigma_y_f)
 
                 z0 = pref_likelihood(self.obs_f, v=self.pref_v[self.data_obs_idx_i], u=self.pref_u[self.data_obs_idx_i]) \
@@ -653,15 +653,13 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                     self.yS[f] = 1.0 / self.yinvS[f]
                     self.y_u[f] = (self.yS[f].T * self.yinvSm[:, f]).T
                     self.y[f] = self.y_u[f]
-                    self.y_var[f] = self.yS[f]
                 else:
                     self.yS[f] = np.linalg.inv(self.yinvS[f])
                     self.y_u[f] = self.yS[f].dot(self.yinvSm[:, f])
 
-                    yf, varyf = inducing_to_observation_moments(self.Ky_mm_block,
-                            self.invKy_mm_block, self.Ky_nm_block, self.y_u[f:f+1, :].T, 0, self.yS[f], 1, full_cov=False)
+                    yf, _ = inducing_to_observation_moments(self.Ky_mm_block,
+                            self.invKy_mm_block, self.Ky_nm_block, self.y_u[f:f+1, :].T, 0)
                     self.y[f:f + 1] = yf.T
-                    self.y_var[f:f + 1] = varyf.T
 
                 self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
 
