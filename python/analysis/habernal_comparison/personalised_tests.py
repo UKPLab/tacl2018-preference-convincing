@@ -17,7 +17,6 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 from tests import TestRunner
 sys.path.append("./python/analysis/habernal_comparison")
-from collab_pref_learning_vb import CollabPrefLearningVB #, PreferenceComponentsFA, CollabPrefLearningSVI, PreferenceNoComponentFactors
 from collab_pref_learning_svi import CollabPrefLearningSVI
 import numpy as np
 
@@ -134,25 +133,27 @@ if __name__ == '__main__':
     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
 
     methods = [
-               'PersPrefGP_commonmean_noOpt_weaksprior', 'PersPrefGP_commonmean_weaksprior',
+               'PersPrefGP_commonmean_noOpt_weaksprior'#, 'PersPrefGP_commonmean_weaksprior',
             ]
     embeddings_types = ['word_mean']
 
     if 'runner' not in globals():
-        runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods,
+        runner = PersonalisedTestRunner('personalised_2', datasets, feature_types, embeddings_types, methods,
                                         dataset_increment)
         runner.save_collab_model = True
 
     # PERSONALISED PREDICTION
-    # runner.run_test_set(min_no_folds=0, max_no_folds=32)
+    runner.run_test_set(min_no_folds=0, max_no_folds=1)
 
     # CONSENSUS PREDICTION
     runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
     runner.methods = [
-               'PersConsensusPrefGP_commonmean_noOpt_weaksprior', 'PersConsensusPrefGP_commonmean_weaksprior'
+               'PersConsensusPrefGP_commonmean_noOpt_weaksprior'#, 'PersConsensusPrefGP_commonmean_weaksprior'
             ]
-    runner.run_test_set(min_no_folds=0, max_no_folds=32)
+    runner.run_test_set(min_no_folds=0, max_no_folds=1)
 
+
+    # Plot the scales of the latent factors ----------------------------------------------------------------------
     vscales = np.mean(runner.vscales, axis=0)
 
     logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
@@ -183,17 +184,17 @@ if __name__ == '__main__':
 
     np.savetxt(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.csv', vscales, delimiter=',', fmt='%f')
 
-    methods = [
-               # 'SVM', 'GP+SVM', # forget these methods as the other paper showed they were worse already, and the SVM
-               # does not scale either -- it's worse than the GP.
-               'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior', 'Bi-LSTM',
-            ]
-    embeddings_types = ['word_mean']
-
-    if 'runner' not in globals():
-        runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods,
-                                        dataset_increment)
-        runner.save_collab_model = True
-
-    # PERSONALISED PREDICTION
-    runner.run_test_set(min_no_folds=0, max_no_folds=32)
+    # # PERSONALISED PREDICTION for other methods -----------------------------------------------------------------
+    # methods = [
+    #            # 'SVM', 'GP+SVM', # forget these methods as the other paper showed they were worse already, and the SVM
+    #            # does not scale either -- it's worse than the GP.
+    #            'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior', 'Bi-LSTM',
+    #         ]
+    # embeddings_types = ['word_mean']
+    #
+    # if 'runner' not in globals():
+    #     runner = PersonalisedTestRunner('personalised', datasets, feature_types, embeddings_types, methods,
+    #                                     dataset_increment)
+    #     runner.save_collab_model = True
+    #
+    # runner.run_test_set(min_no_folds=0, max_no_folds=32)

@@ -265,7 +265,7 @@ if __name__ == '__main__':
 
     # make sure the simulation is repeatable
     if fix_seeds:
-        np.random.seed(10)
+        np.random.seed(11)
 
     logging.info( "Testing Bayesian preference components analysis using synthetic data..." )
     
@@ -321,7 +321,8 @@ if __name__ == '__main__':
     if use_svi:
         model = CollabPrefLearningSVI(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial,
                                       lsy=lsy_initial, use_common_mean_t=use_t,
-                                      nfactors=7, forgetting_rate=0.7, ninducing=16, max_update_size=100, use_lb=True)
+                                      nfactors=7, forgetting_rate=0.7, ninducing=16, max_update_size=10000,
+                                      shape_s0=1, rate_s0=1, use_lb=True)
     else:
         model = CollabPrefLearningVB(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial, lsy=lsy_initial,
                                      use_common_mean_t=use_t, nfactors=7, use_lb=True)
@@ -329,24 +330,24 @@ if __name__ == '__main__':
     if fix_seeds:
         np.random.seed(22)
 
-    model.verbose = False
+    model.verbose = True
     model.min_iter = 1
     model.max_iter = 200
     model.fit(personids[trainidxs], pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], 
-              person_features.T if use_person_features else None, optimize=optimize)
+              person_features if use_person_features else None, optimize=optimize)
 #               None, optimize=True)    
     print(("Difference between true item length scale and inferred item length scale = %s" % (ls - model.ls)))
     print(("Difference between true person length scale and inferred person length scale = %s" % (lsy - model.lsy)))
     
     # turn the values into predictions of preference pairs.
     results = model.predict(personids[testidxs], pair1idxs[testidxs], pair2idxs[testidxs], item_features,
-                            person_features.T if use_person_features else None)
+                            person_features if use_person_features else None)
     
     # make the test more difficult: we predict for a person we haven't seen before who has same features as another
     result_new_person = model.predict(
         [np.max(personids) + 1], pair1idxs[testidxs][0:1], pair2idxs[testidxs][0:1],
         item_features,
-        np.concatenate((person_features.T, person_features[:, personids[0:1]].T), axis=0) if use_person_features
+        np.concatenate((person_features, person_features[personids[0:1], :]), axis=0) if use_person_features
         else None)
     print("Test using new person: %.3f" % result_new_person)
     print("Old prediction: %.3f" % results[0])
@@ -357,7 +358,7 @@ if __name__ == '__main__':
         np.concatenate((pair1idxs[testidxs], pair1idxs[testidxs][0:1])),
         np.concatenate((pair2idxs[testidxs], pair2idxs[testidxs][0:1])),
         item_features,
-        np.concatenate((person_features.T, person_features[:, personids[0:1]].T), axis=0) if use_person_features
+        np.concatenate((person_features, person_features[personids[0:1], :]), axis=0) if use_person_features
         else None)
     print("Test using new person while predicting old people: %.3f" % result_new_old_person[-1])
     #print("Result is correct = " + str(np.abs(results[0] - result_new_person) < 1e-6) 
