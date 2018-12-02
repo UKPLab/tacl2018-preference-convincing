@@ -923,13 +923,25 @@ class TestRunner:
                 person_rank_train = person_rank_train[person_rank_train != -1]
 
             if len(person_rank_test):
-
+                # If running personalized predictions, ensure we only test on workers that were seen in training because
+                # we have no worker features to predict preferences of new workers.
                 person_rank_test = np.array([np.argwhere(upersonIDs == p.strip())[0][0] if p.strip() in upersonIDs else -1
                                          for p in person_rank_test])
 
-                a_rank_test = a_rank_test[person_rank_test != -1]
-                scores_rank_test = scores_rank_test[person_rank_test != -1]
-                person_rank_test = person_rank_test[person_rank_test != -1]
+                valid_test_idxs = (person_rank_test != -1) & np.in1d(person_rank_test, person_rank_train)
+
+                a_rank_test = a_rank_test[valid_test_idxs]
+                scores_rank_test = scores_rank_test[valid_test_idxs]
+                person_rank_test = person_rank_test[valid_test_idxs]
+
+            if len(person_test):
+                # If running personalized predictions, ensure we only test on workers that were seen in training because
+                # we have no worker features to predict preferences of new workers.
+                valid_test_idxs = np.in1d(person_test, person_train)
+                a1_test = a1_test[valid_test_idxs]
+                a2_test = a2_test[valid_test_idxs]
+                person_test = person_test[valid_test_idxs]
+                prefs_test = prefs_test[valid_test_idxs]
 
             self.load_features(feature_type, embeddings_type, a1_train, a2_train, uids, utexts)
             #items_feat = items_feat[:, :ndebug_features]     

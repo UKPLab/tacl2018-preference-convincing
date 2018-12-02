@@ -126,11 +126,11 @@ class PersonalisedTestRunner(TestRunner):
 
 if __name__ == '__main__':
     dataset_increment = 0     
-    datasets = ['UKPConvArgCrowdSample_evalMACE']
+    datasets = ['UKPConvArgCrowdSample']
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
 
-    feature_types = ['debug'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
+    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
 
     methods = [
                'PersPrefGP_commonmean_noOpt_weaksprior'#, 'PersPrefGP_commonmean_weaksprior',
@@ -156,7 +156,7 @@ if __name__ == '__main__':
     # Plot the scales of the latent factors ----------------------------------------------------------------------
     vscales = np.mean(runner.vscales, axis=0)
 
-    logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
+    logging.getLogger().setLevel(logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
 
     import matplotlib
     matplotlib.use('Agg')
@@ -183,6 +183,8 @@ if __name__ == '__main__':
     plt.savefig(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.pdf')
 
     np.savetxt(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.csv', vscales, delimiter=',', fmt='%f')
+
+    logging.getLogger().setLevel(logging.DEBUG)
 
     # # PERSONALISED PREDICTION for other methods -----------------------------------------------------------------
     # methods = [

@@ -303,11 +303,11 @@ def check_convergence(newval, oldval, conv_threshold, positive_only, iter=-1, ve
 
     if verbose:
         if np.isscalar(newval):
-            logging.debug('%s: %.5f, diff = %.5f at iteration %i' % (label, newval, diff, iter))
+            logging.debug('%s: %.5f, diff = %.f at iteration %i' % (label, newval, diff, iter))
         elif newval.size == 1:
-            logging.debug('%s: %.5f, diff = %.5f at iteration %i' % (label, newval.flatten()[0], diff, iter))
+            logging.debug('%s: %.5f, diff = %.f at iteration %i' % (label, newval.flatten()[0], diff, iter))
         else:
-            logging.debug('%s: diff = %.5f at iteration %i' % (label, diff, iter))
+            logging.debug('%s: diff = %.f at iteration %i' % (label, diff, iter))
             # logging.debug(np.max(np.abs(newval - oldval)))
 
     if positive_only and diff < - 10000 * conv_threshold:  # ignore any small errors as we are using approximations
