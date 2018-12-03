@@ -12,7 +12,7 @@ if __name__ == '__main__':
     expt_settings['foldorderfile'] = None
 
     resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
-    max_no_folds = 32
+    max_no_folds = 1
 
     npairs = 0
     acc = 1.0
