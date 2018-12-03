@@ -934,7 +934,7 @@ class TestRunner:
                 scores_rank_test = scores_rank_test[valid_test_idxs]
                 person_rank_test = person_rank_test[valid_test_idxs]
 
-            if len(person_test):
+            if len(person_test) and len(np.unique(person_test)) > 1:
                 # If running personalized predictions, ensure we only test on workers that were seen in training because
                 # we have no worker features to predict preferences of new workers.
                 valid_test_idxs = np.in1d(person_test, person_train)

@@ -290,20 +290,6 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                 for expt_settings['embeddings_type'] in embeddings_to_use:
                     data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template,
                                                                               expt_settings, max_no_folds)
-                    foldrange = None
-                    resultsdir_gold = None
-                    # uncomment this to load the gold data for UKPConvArgCrowdSample from a dummy test file.
-                    if 'UKPConvArgCrowdSample' in expt_settings['dataset']:
-
-                        print('Loading the gold data from the dummy runs...')
-                        resultsdir_gold = resultsdir.replace(expt_settings['method'], 'dummy')
-                        resultsdir_gold = resultsdir_gold.replace('UKPConvArgCrowdSample', 'UKPConvArgCrowdSample_evalMACE')
-
-                        gold_fold_order = np.genfromtxt(os.path.expanduser(resultsdir_gold + '/foldorder.txt'),
-                                                                    dtype=str)
-
-                        print('Results dir gold = %s' % resultsdir_gold)
-
                     min_folds = min_folds_desired
 
                     for f in range(nFolds):
@@ -324,16 +310,6 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                         if os.path.isfile(foldfile):
                             with open(foldfile, 'rb') as fh:
                                 data_f = pickle.load(fh, encoding='latin1')
-
-                            if resultsdir_gold is not None:
-
-                                goldfoldidx = np.argwhere([fold in gold_fold for gold_fold
-                                                           in gold_fold_order]).flatten()[0]
-                                print('Fold = %s, Gold fold = %s' % (fold, gold_fold_order[goldfoldidx]))
-                                with open(resultsdir_gold + '/fold%i.pkl' % goldfoldidx, 'rb') as fh:
-                                    data_f_gold = pickle.load(fh, encoding='latin1')
-                            else:
-                                data_f_gold = None
 
                         else: # convert the old stuff to new stuff
                             if data is None:
@@ -365,24 +341,6 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                         print(pred_disc[:20])
                         print(gold_disc.shape[0])
                         print(pred_disc.shape[0])
-
-                        if data_f_gold is not None:
-                            print('Getting the gold dummy data...')
-                            gold_disc, _, gold_prob, inflate_disc, gold_rank, inflate_rank, _, _, _ = get_fold_data(
-                                data_f_gold, f, expt_settings, flip_labels=m in flip_labels)
-
-                            pred_disc = 2 - pred_disc # old results were flipped!
-                            pred_prob = 2 - pred_prob
-
-                            pred_disc = pred_disc[inflate_disc]
-                            pred_prob = pred_prob[inflate_disc]
-                            pred_rank = pred_rank[inflate_rank]
-
-                            print(gold_disc.size)
-                            print(pred_disc.size)
-
-                            print(gold_disc[:20])
-                            print(pred_disc[:20])
 
                         if postprocced: # data was postprocessed and needs saving
                             with open(foldfile, 'wb') as fh:
