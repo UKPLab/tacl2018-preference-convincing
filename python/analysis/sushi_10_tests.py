@@ -263,7 +263,8 @@ def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, 
 
         shape_s0 = np.exp(loghypers[0])
         rate_s0 = np.exp(loghypers[1])
-        optimize = True # ensures we use the optimal length-scales when finding the optimal scale hyperparameters
+        optimize = False # optimize = True ensures we use the optimal length-scales when finding the optimal scale
+        # hyperparameters but takes much longer to run
 
         print('Running with shape_s0 = %f and rate_s0 = %f' % (shape_s0, rate_s0))
         model = run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr)
@@ -341,9 +342,9 @@ def subsample_data():
         npairs_tr = 10
         npairs_test = 1
     else:
-        nusers_tr = 1000
-        npairs_tr = 15
-        npairs_test = 5
+        nusers_tr = 100#1000
+        npairs_tr = 20#15
+        npairs_test = 25#5
 
     # select 1000 random users
     chosen_users = np.random.choice(nusers, nusers_tr, replace=False)
@@ -560,29 +561,29 @@ if debug_small:
 
 
 # Hyperparameters common to most models --------------------------------------------------------------------------------
-max_facs = 50
+max_facs = 20
 shape_s0 = 1000
 rate_s0 = 1000  #0.1
 max_update_size = 1000
-ninducing = 5000
+ninducing = 25#5000
 forgetting_rate = 0.9
 
 sushiB = False
 vscales = None
 
 # Experiment name tag
-tag = '_debug'
+tag = '_9'
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
-# print('Optimizing function scales ...')
-# np.random.seed(2309234)
-# u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, _ = subsample_data()
-# shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
-#                                          item_features, user_features, prefs_tr,
-#                                          u_test, i1_test, i2_test, prefs_test)
-# print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
-# np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
+print('Optimizing function scales ...')
+np.random.seed(2309234)
+u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, _ = subsample_data()
+shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
+                                         item_features, user_features, prefs_tr,
+                                         u_test, i1_test, i2_test, prefs_test)
+print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
+np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
 
 # Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
 
@@ -591,12 +592,12 @@ vscales = None # don't record the v scale factors
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           'collab-GPPL', # Houlsby
            'GPPL-pooled',
-           #'GPPL-joint',
+           'GPPL-joint',
            # 'GPPL-per-user',
            'crowd-GPPL\\u',
            'crowd-BMF',
+           'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
            ]
 
@@ -675,6 +676,10 @@ if debug_small:
     print('Debug: Found %i users, %i items, and %i pairs per user.' % (nusers, nitems_debug, prefs.shape[0]/nusers))
     print('Debug: Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
     print('Debug: User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
+
+# SUSHI B, global parameter changes ------------------------------------------------------------------------------------
+
+ninducing = 500 # allow us to handle more users.
 
 # SUSHI B dataset, no opt. ---------------------------------------------------------------------------------------------
 

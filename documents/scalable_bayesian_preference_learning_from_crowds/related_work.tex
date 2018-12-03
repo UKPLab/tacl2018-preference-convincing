@@ -21,6 +21,18 @@
 % real-valued evaluation of single states.
 % 
 
+% TODO: [18] T. Salimans, U. Paquet, and T. Graepel. Collabo-
+% rative learning of preference relations. In Proceed-
+% ings of the 6th ACM Conference on Recommender
+% Systems, 2012.
+
+% Note that Khan's method does not need factorization assumptions in the approximate posterior.
+% Instead, they have no prior over v (item features).
+% They have a diagonal covariance for the user features -- cheap. 
+% They need a separate GP per user but it seems like this is not a problem in practice -- I guess
+% the method scales linearly with no. users. In our case, we model covariance between users, so
+% scaling is poor unless you can use inducing points or diagonal covariance.
+
 \subsection{Preference Learning from Crowds}
 
 Several works have analyzed bounds on error rates or sample complexity for pairwise 

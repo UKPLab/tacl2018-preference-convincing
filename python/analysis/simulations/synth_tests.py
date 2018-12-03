@@ -69,35 +69,36 @@ if __name__ == '__main__':
     if fix_seeds:
         np.random.seed(1)
 
-    # SETTINGS FOR ALL THE NOISE TESTS
-    nreps = 3#25
-    nx = 10
-    ny = 10
-    N = nx * ny
-    P = 500
-
-    # the independent variable that we adjust:
-    inverse_scales = [0.001, 0.01, 0.05, 0.1, 0.2, 0.5, 1.0]
-    # inverse_scales = [0.0001, 0.001, 0.004, 0.007, 0.01, 0.02, 0.03]
-
-    ls = [10, 10]
-    lsy = [10, 10]
-
     noise_plots = [None, None, None, None, None, None, None]
 
     figure_root_path = './results/synth_sandbox'
     if not os.path.exists(figure_root_path):
         os.mkdir(figure_root_path)
 
-    figure_save_path = figure_root_path + '/single_user/'
-    if not os.path.exists(figure_save_path):
-        os.mkdir(figure_save_path)
+    nreps = 3#25
+    P = 500
 
     # NOISE TEST, SINGLE USER DATA, SINGLE USER MODEL ------------------------------------------------------------------
-
-    mean_results = []
-    std_results = []
-
+    #
+    # nx = 10
+    # ny = 10
+    # N = nx * ny
+    #
+    # # the independent variable that we adjust:
+    # inverse_scales = [0.001, 0.01, 0.05, 0.1, 0.2, 0.5, 1.0]
+    # # inverse_scales = [0.0001, 0.001, 0.004, 0.007, 0.01, 0.02, 0.03]
+    #
+    # ls = [10, 10]
+    # lsy = [10, 10]
+    #
+    # figure_save_path = figure_root_path + '/single_user/'
+    # if not os.path.exists(figure_save_path):
+    #     os.mkdir(figure_save_path)
+    #
+    #
+    # mean_results = []
+    # std_results = []
+    #
     # for s in inverse_scales:
     #
     #     results_s = []
@@ -164,8 +165,8 @@ if __name__ == '__main__':
     # we want new plots
     plt.close('all')
 
-    nx = 10
-    ny = 10
+    nx = 20
+    ny = 20
     N = nx * ny
     Nfactors = 5
     Npeople = 25
@@ -347,14 +348,15 @@ if __name__ == '__main__':
     if fix_seeds:
         np.random.seed(1)
 
-    nx = 10
-    ny = 10
-    N = nx * ny
-    Nfactors = 5
-    Npeople = 25
+    # nx = 20
+    # ny = 20
+    # N = nx * ny
+    # Nfactors = 5
+    # Npeople = 25
+    # ls = [5, 5]
+    # lsy = [5, 5]
+
     inverse_scales = [0.002, 0.02, 0.2, 1.0, 10.0, 100.0]#[0.0001, 0.001, 0.005, 0.01, 0.02]
-    ls = [5, 5]
-    lsy = [5, 5]
 
     mean_results = []
     std_results = []
