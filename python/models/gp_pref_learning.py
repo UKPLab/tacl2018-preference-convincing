@@ -90,11 +90,9 @@ def pref_likelihood(fmean, fvar=None, subset_idxs=[], v=[], u=[], return_g_f=Fal
         fvar = fvar + 2.0
 
     if len(v) and len(u):
-        g_f = (fmean[v, :] - fmean[u, :]) / np.sqrt(fvar) # / np.sqrt(self.s)) # gives an NobsxNobs matrix
+        g_f = (fmean[v, :] - fmean[u, :]) / np.sqrt(fvar)
     else: # provide the complete set of pairs
-        g_f = (fmean - fmean.T) / np.sqrt(fvar) # / np.sqrt(self.s))  # the maths shows that s cancels out -- it's already
-        # included in our estimates of f, which are scaled by s. However, the prior mean mu0 should also be scaled
-        # to match, but this should happen automatically if we learn s, I think.
+        g_f = (fmean - fmean.T) / np.sqrt(fvar)
 
     phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the
     # With the standard GP density classifier, we can skip this step because

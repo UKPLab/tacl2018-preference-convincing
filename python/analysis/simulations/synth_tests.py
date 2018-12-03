@@ -75,7 +75,7 @@ if __name__ == '__main__':
     if not os.path.exists(figure_root_path):
         os.mkdir(figure_root_path)
 
-    nreps = 3#25
+    nreps = 25
     P = 500
 
     # NOISE TEST, SINGLE USER DATA, SINGLE USER MODEL ------------------------------------------------------------------
@@ -172,7 +172,7 @@ if __name__ == '__main__':
     Npeople = 25
     ls = [5, 5]
     lsy = [5, 5]
-    inverse_scales = [0.0002, 0.002, 0.02, 0.1, 1.0, 10.0]
+    inverse_scales = [0.00002, 0.0002, 0.0006, 0.002, 0.02, 0.2]
 
     # make sure the simulation is repeatable
     if fix_seeds:

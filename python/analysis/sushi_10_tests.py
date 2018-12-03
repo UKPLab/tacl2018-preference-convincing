@@ -96,7 +96,7 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
 
     model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
-                                  forgetting_rate=forgetting_rate, verbose=True, use_lb=True, use_common_mean_t=False)
+                                  forgetting_rate=forgetting_rate, verbose=True, use_lb=True, use_common_mean_t=True)
 
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
 
@@ -231,9 +231,9 @@ def run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_tes
     if Nfactors > max_facs:
         Nfactors = max_facs # this is the maximum
 
-    model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Nfactors,
-                                  ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
-                                  verbose=True, use_lb=True, use_common_mean_t=False)
+    model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None,
+                                  nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
+                                  forgetting_rate=forgetting_rate, verbose=True, use_lb=True, use_common_mean_t=False)
 
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
 
