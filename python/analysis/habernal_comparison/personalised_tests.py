@@ -126,16 +126,13 @@ class PersonalisedTestRunner(TestRunner):
 
 if __name__ == '__main__':
     dataset_increment = 0     
-    datasets = ['UKPConvArgCrowdSample']
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
-
     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
-
-    methods = [
-               'PersPrefGP_commonmean_noOpt_weaksprior'#, 'PersPrefGP_commonmean_weaksprior',
-            ]
     embeddings_types = ['word_mean']
+
+    datasets = ['UKPConvArgCrowdSample']
+    methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
 
     if 'runner' not in globals():
         runner = PersonalisedTestRunner('personalised_2', datasets, feature_types, embeddings_types, methods,
@@ -147,11 +144,18 @@ if __name__ == '__main__':
 
     # CONSENSUS PREDICTION
     runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-    runner.methods = [
-               'PersConsensusPrefGP_commonmean_noOpt_weaksprior'#, 'PersConsensusPrefGP_commonmean_weaksprior'
-            ]
+    runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
     runner.run_test_set(min_no_folds=0, max_no_folds=1)
 
+    # PERSONALISED WITH ARD
+    runner.datasets = ['UKPConvArgCrowdSample']
+    runner.methods = ['PersPrefGP_commonmean_weaksprior']
+    runner.run_test_set(min_no_folds=0, max_no_folds=1)
+
+    # CONSENSUS WITH ARD
+    runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+    runner.methods = ['PersConsensusPrefGP_commonmean_weaksprior']
+    runner.run_test_set(min_no_folds=0, max_no_folds=1)
 
     # Plot the scales of the latent factors ----------------------------------------------------------------------
     vscales = np.mean(runner.vscales, axis=0)

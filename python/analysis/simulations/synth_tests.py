@@ -85,7 +85,7 @@ if __name__ == '__main__':
 
     noise_plots = [None, None, None, None, None, None, None]
 
-    figure_root_path = './results/synth_3'
+    figure_root_path = './results/synth_sandbox'
     if not os.path.exists(figure_root_path):
         os.mkdir(figure_root_path)
 
