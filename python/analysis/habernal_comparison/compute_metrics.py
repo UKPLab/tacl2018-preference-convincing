@@ -291,6 +291,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                     data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template,
                                                                               expt_settings, max_no_folds)
                     min_folds = min_folds_desired
+                    foldrange = None
 
                     for f in range(nFolds):
                         print("Processing fold %i" % f)
