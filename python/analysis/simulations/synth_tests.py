@@ -169,7 +169,7 @@ if __name__ == '__main__':
     N = nx * ny
     Nfactors = 5
     Npeople = 25
-    ls = [10, 10]
+    ls = [5, 5]
     lsy = [5, 5]
     inverse_scales = [0.0002, 0.002, 0.02, 0.1, 1.0, 10.0]
 
@@ -209,7 +209,7 @@ if __name__ == '__main__':
                 P=P,
                 ls=ls,
                 sigma=s,
-                s=0.02,
+                s=0.002,
                 lsy=lsy,
                 Npeoplefeatures=2
             )
@@ -353,7 +353,7 @@ if __name__ == '__main__':
     Nfactors = 5
     Npeople = 25
     inverse_scales = [0.002, 0.02, 0.2, 1.0, 10.0, 100.0]#[0.0001, 0.001, 0.005, 0.01, 0.02]
-    ls = [10, 10]
+    ls = [5, 5]
     lsy = [5, 5]
 
     mean_results = []

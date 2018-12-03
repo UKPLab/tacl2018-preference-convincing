@@ -595,6 +595,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         sw = self.shape_sw / self.rate_sw
 
         for f in range(self.Nfactors):
+            print('w_cov_i: wS: %f' % np.min(np.diag(self.wS[f])))
+
             self.w_cov_i[f] = Kw_i / sw[f] + covpair.dot(self.wS[f] - self.K_mm/sw[f]).dot(covpair.T)
 
             self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, N,
@@ -710,6 +712,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         else:
             for f in range(self.Nfactors):
                 self.y_cov_i[f] = np.diag(self.yS[f][self.p_idx_i])
+                print('y_cov_i: %f' % np.min(self.y_cov_i[f]))
 
     def _update_sample(self):
 
