@@ -597,7 +597,7 @@ methods = [
            # 'GPPL-per-user',
            'crowd-GPPL\\u',
            'crowd-BMF',
-           'collab-GPPL', # Houlsby
+           # 'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
            ]
 
@@ -688,7 +688,7 @@ vscales = None # don't record the v factor scale factors
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           'collab-GPPL',  # Houlsby
+           # 'collab-GPPL',  # Houlsby
            'GPPL-pooled',
            #'GPPL-joint',
            # 'GPPL-per-user',
