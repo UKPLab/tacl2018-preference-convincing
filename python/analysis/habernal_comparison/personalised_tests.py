@@ -140,22 +140,22 @@ if __name__ == '__main__':
         runner.save_collab_model = True
 
     # PERSONALISED PREDICTION
-    # runner.run_test_set(min_no_folds=0, max_no_folds=1)
+    runner.run_test_set(min_no_folds=0, max_no_folds=1)
 
     # CONSENSUS PREDICTION
     runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
     runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
-    runner.run_test_set(min_no_folds=0, max_no_folds=1)
+    # runner.run_test_set(min_no_folds=0, max_no_folds=1)
 
     # PERSONALISED WITH ARD
     runner.datasets = ['UKPConvArgCrowdSample']
     runner.methods = ['PersPrefGP_commonmean_weaksprior']
-    runner.run_test_set(min_no_folds=0, max_no_folds=1)
+    # runner.run_test_set(min_no_folds=0, max_no_folds=1)
 
     # CONSENSUS WITH ARD
     runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
     runner.methods = ['PersConsensusPrefGP_commonmean_weaksprior']
-    runner.run_test_set(min_no_folds=0, max_no_folds=1)
+    # runner.run_test_set(min_no_folds=0, max_no_folds=1)
 
     # Plot the scales of the latent factors ----------------------------------------------------------------------
     vscales = np.mean(runner.vscales, axis=0)
