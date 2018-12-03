@@ -32,16 +32,16 @@ class PersonalisedTestRunner(TestRunner):
 
         if 'weaksprior' in self.method:
             shape_s0 = 2.0
-            rate_s0 = 800.0
+            rate_s0 = 100.0
         elif 'lowsprior' in self.method:
             shape_s0 = 1.0
-            rate_s0 = 4.0
+            rate_s0 = 1.0
         elif 'weakersprior' in self.method:
             shape_s0 = 2.0
-            rate_s0 = 8000.0
+            rate_s0 = 1000.0
         else:
             shape_s0 = 200.0
-            rate_s0 = 80000.0
+            rate_s0 = 10000.0
 
         if '_M' in self.method:
             validx = self.method.find('_M') + 2
@@ -135,7 +135,7 @@ if __name__ == '__main__':
     methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
 
     if 'runner' not in globals():
-        runner = PersonalisedTestRunner('personalised_3', datasets, feature_types, embeddings_types, methods,
+        runner = PersonalisedTestRunner('personalised_4', datasets, feature_types, embeddings_types, methods,
                                         dataset_increment)
         runner.save_collab_model = True
 
@@ -168,7 +168,7 @@ if __name__ == '__main__':
 
     fig = plt.figure(figsize=(5, 4))
 
-    markers = ['o', 'x', '+', '>', '<', '*']
+    markers = ['x', 'o', '+', '>', '<', '*']
 
     plt.plot(np.arange(vscales.shape[0]), vscales, marker=markers[0], label='UKPConvArgCrowdSample',
              linewidth=2, markersize=8)

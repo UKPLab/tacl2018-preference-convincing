@@ -130,8 +130,6 @@ def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test
     model = GPPrefLearning(ifeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None, use_svi=True,
                    ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate, verbose=True)
 
-    model.uselowerbound = False
-
     # we need to use only the features for the subset of users in the training set!
     # if user features are not very informative, then the inducing points may be fairly useless.
     # this might explain why performance is low for joint model and crowd-GPPL.
@@ -148,7 +146,7 @@ def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test
 
     # need to split this up to compute because predict needs pairwise covariance terms and ends up computing full covariance
     batchsize = 100
-    nbatches = int(np.ceil(u_test.shape[0] / float(batchsize)))
+    nbatches = int(np.ceil(np.unique(u_test).shape[0] / float(batchsize)))
 
     rho_pred = []
     for batch in range(nbatches):
@@ -405,7 +403,8 @@ def run_sushi_expt(methods, expt_name):
     for rep in range(nreps):
         # Get training and test data
         u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, scores, chosen_users = subsample_data()
-        u_tr = np.array([np.argwhere(np.in1d(chosen_users, u)).flatten()[0] for u in u_tr])
+        u_tr = np.array([np.argwhere(chosen_users == u).flatten()[0] for u in u_tr])
+        u_test = np.array([np.argwhere(chosen_users == u).flatten()[0] for u in u_test])
 
         print(u_tr)
         print(i1_tr)
@@ -559,8 +558,8 @@ if debug_small:
 
 # Hyperparameters common to most models --------------------------------------------------------------------------------
 max_facs = 20
-shape_s0 = 1000
-rate_s0 = 1000  #0.1
+shape_s0 = 10.0
+rate_s0 = 1.0  #0.1
 max_update_size = 1000
 ninducing = 25#5000
 forgetting_rate = 0.9
@@ -573,14 +572,14 @@ tag = '_9'
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
-print('Optimizing function scales ...')
-np.random.seed(2309234)
-u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, _ = subsample_data()
-shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
-                                         item_features, user_features, prefs_tr,
-                                         u_test, i1_test, i2_test, prefs_test)
-print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
-np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
+# print('Optimizing function scales ...')
+# np.random.seed(2309234)
+# u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, _ = subsample_data()
+# shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
+#                                          item_features, user_features, prefs_tr,
+#                                          u_test, i1_test, i2_test, prefs_test)
+# print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
+# np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
 
 # Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
 
@@ -591,7 +590,7 @@ methods = [
            'crowd-GPPL',
            'GPPL-pooled',
            'GPPL-joint',
-           # 'GPPL-per-user',
+           'GPPL-per-user',
            'crowd-GPPL\\u',
            'crowd-BMF',
            # 'collab-GPPL', # Houlsby
@@ -600,7 +599,7 @@ methods = [
 
 optimize = False
 sushiB = False
-run_sushi_expt(methods, 'sushi_10' + tag)
+# run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
@@ -610,7 +609,7 @@ vscales = []
 methods = [
            'crowd-GPPL',
            'GPPL-pooled',
-           #'GPPL-joint',
+           'GPPL-joint',
            # 'GPPL-per-user',
            #'crowd-GPPL\\u',
            # 'crowd-BMF',
@@ -697,7 +696,7 @@ methods = [
 # hyperparameters common to most models
 optimize = False
 sushiB = True
-run_sushi_expt(methods, 'sushi_100' + tag)
+# run_sushi_expt(methods, 'sushi_100' + tag)
 
 # SUSHI B dataset, ARD -------------------------------------------------------------------------------------------------
 
@@ -730,7 +729,7 @@ logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to 
 
 fig = plt.figure(figsize=(5, 4))
 
-markers = ['o', 'x', '+', '>', '<', '*']
+markers = ['x', 'o', '+', '>', '<', '*']
 
 plt.plot(np.arange(vscales_A.shape[0]), vscales_A, marker=markers[0], label='Sushi A', linewidth=2, markersize=8)
 plt.plot(np.arange(vscales_B.shape[0]), vscales_B, marker=markers[1], label='Sushi B', linewidth=2, markersize=8)
