@@ -96,7 +96,7 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
 
     model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
-                                  forgetting_rate=forgetting_rate, verbose=True, use_lb=False, use_common_mean_t=False)
+                                  forgetting_rate=forgetting_rate, verbose=True, use_lb=True, use_common_mean_t=False)
 
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
 
@@ -197,7 +197,7 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
 
     model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Nfactors,
                                   ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
-                                  verbose=True, use_lb=False)
+                                  verbose=True, use_lb=True)
 
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
@@ -215,10 +215,7 @@ def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test,
 
     model = CollabPrefLearningSVI(1, 1, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Nfactors,
                                   ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
-                                  verbose=True, use_lb=False, kernel_func='diagonal')
-
-    # TODO: BMF seems to be using the ifeats! It should not use any feats. However, it has got
-    # kernel-func = diagonal so it shouldn't matter
+                                  verbose=True, use_lb=True, kernel_func='diagonal')
 
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
