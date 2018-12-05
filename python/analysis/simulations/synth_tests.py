@@ -171,8 +171,8 @@ if __name__ == '__main__':
     Nfactors = 5
     Npeople = 25
     ls = [2, 2]
-    lsy = [2, 2]
-    inverse_scales = [0.0002, 0.0006, 0.002, 0.02, 0.2, 2.0]
+    lsy = [1, 1]
+    inverse_scales = [0.1, 0.2, 0.4, 0.6, 1.2, 2]
 
     # make sure the simulation is repeatable
     if fix_seeds:
@@ -210,7 +210,7 @@ if __name__ == '__main__':
                 P=P,
                 ls=ls,
                 sigma=s,
-                s=0.002,
+                s=2,
                 lsy=lsy,
                 Npeoplefeatures=2
             )

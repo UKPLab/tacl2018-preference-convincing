@@ -603,11 +603,17 @@ sushiB = False
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
-# TODO: see if the difference in performance between the per-user method (working well) and joint models (working
-# poorly) is due to bad lengthscales that can be optimised with ARD. If not, is there any chance of the IDs being mixed
+# TODO: test with a single user comparing crowd-GPPL and GPPL-per-user. Can we get to 80% with crowd GPPL?
+# Then, try with 2 users.
+#
+# the difference in performance between the per-user method (working well) and joint models (working
+# poorly) is apparently due to bad lengthscales that can be optimised with ARD.
+#
+# Is there any chance of the IDs being mixed
 # up or something? It's notable, however, that the CEE values for Khan are comparable to ours.
 # Note that in the synth tests, "multi-user-consensus", we get the opposite, i.e. f1score and acc for per-user is very
 # poor.
+#
 
 vscales = []
 
