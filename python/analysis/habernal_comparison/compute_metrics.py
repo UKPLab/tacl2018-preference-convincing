@@ -338,11 +338,6 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                         gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, \
                                                     pred_tr_prob, postprocced = get_fold_data(data_f, f, expt_settings,
                                                                                           flip_labels=m in flip_labels)
-                        print(gold_disc[:20])
-                        print(pred_disc[:20])
-                        print(gold_disc.shape[0])
-                        print(pred_disc.shape[0])
-
                         if postprocced: # data was postprocessed and needs saving
                             with open(foldfile, 'wb') as fh:
                                 pickle.dump(data_f, fh)
