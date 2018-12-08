@@ -19,8 +19,8 @@ if __name__ == '__main__':
     di = 0
 
     # Personalised predictions -- single-user methods
-    #
-    # datasets = ['UKPConvArgCrowdSample', 'UKPConvArgCrowdSample_evalMACE']
+
+    datasets = ['UKPConvArgCrowdSample', 'UKPConvArgCrowdSample_evalMACE']
     methods = ['SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior'] # 'GP+SVM','SinglePrefGP_noOpt_weaksprior', 'SingleGPC_noOpt_weaksprior',
     feature_types = ['both'] # 'both'
     embeddings_types = ['word_mean']
