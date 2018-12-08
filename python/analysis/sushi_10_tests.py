@@ -601,7 +601,7 @@ methods = [
            'crowd-GPPL-noInduc'
            'GPPL-pooled',
            'GPPL-joint',
-           'GPPL-per-user',
+           # 'GPPL-per-user',
            'crowd-BMF',
            'collab-GPPL', # Houlsby
            ]
