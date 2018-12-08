@@ -80,10 +80,17 @@ def expec_output_scale(shape_s0, rate_s0, N, invK, f_mean, m, invK_f_cov=None, f
         if f_cov is None:
             logging.error('Provide either invK_f_cov or f_cov')
             return
-        invK_f_cov = invK.dot(f_cov)
 
-    invK_expecFF = invK_f_cov + invK.dot((f_mean - m).dot(f_mean.T - m.T))
-    rate_s = rate_s0 + 0.5 * np.trace(invK_expecFF)
+        if invK.ndim == 1 and f_cov.ndim == 1:
+            invK_f_cov = invK * f_cov
+        else:
+            invK_f_cov = invK.dot(f_cov)
+
+    if invK.ndim == 1:
+        rate_s = rate_s0 + 0.5 * np.sum(invK_f_cov + invK * (f_mean - m)**2 )
+    else:
+        invK_expecFF = invK_f_cov + invK.dot((f_mean - m).dot(f_mean.T - m.T))
+        rate_s = rate_s0 + 0.5 * np.trace(invK_expecFF)
 
     return shape_s, rate_s
 
@@ -198,7 +205,7 @@ class CollabPrefLearningVB(object):
         self.rate_sw0 = rate_s0
 
         self.shape_sy0 = shape_s0
-        self.rate_sy0 = rate_s0
+        self.rate_sy0 = rate_s0 * 100
 
         self.shape_st0 = shape_s0
         self.rate_st0 = rate_s0

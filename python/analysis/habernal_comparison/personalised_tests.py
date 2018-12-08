@@ -70,7 +70,8 @@ class PersonalisedTestRunner(TestRunner):
         self._train_persgppl()
 
         if self.vscales is not None:
-            self.vscales.append(np.sort(self.model.rate_sw / self.model.shape_sw)[::-1])
+            self.vscales.append(np.sort((self.model.rate_sw / self.model.shape_sw) *
+                                        (self.model.rate_sw / self.model.shape_sw))[::-1])
 
         proba = self.model.predict(self.person_test, self.a1_test, self.a2_test, self.items_feat)
 

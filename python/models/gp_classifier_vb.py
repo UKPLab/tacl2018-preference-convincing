@@ -257,17 +257,15 @@ def compute_median_lengthscales(items_feat, multiply_heuristic_power=1.0, N_max=
 
     ls_initial_guess = np.ones(ndims) * default_ls_value
 
-
     if items_feat.shape[1] > 200:
-        logging.info('I am using a heuristic multiplier for the length-scale '
-                     'because median is too low to work in high-D spaces')
-        # ls_initial_guess *= 1000 # this worked reasonably well but was plucked out of thin air
-        ls_initial_guess *= items_feat.shape[
-                            1] ** multiply_heuristic_power  # this is a heuristic, see e.g. "On the High-dimensional
+        ls_initial_guess *= items_feat.shape[1] ** multiply_heuristic_power
+    # this is a heuristic, see e.g. "On the High-dimensional
     # Power of Linear-time Kernel Two-Sample Testing under Mean-difference Alternatives" by Ramdas et al. 2014. In that
     # paper they refer to root(no. dimensions) because they square the lengthscale in the kernel function.
     # It's possible that this value should be higher if a lot of feature values are actually missing values, as these
     # would lower the median.
+    # If multiply_heuristic_power is 0.5, we are normalising the total euclidean distance by number of dimensions (
+    # think Pythagoras' theorem).
 
     return ls_initial_guess
 
@@ -924,7 +922,7 @@ class GPClassifierVB(object):
             new_locations = (features is not None) or (self.n_locs != prev_n_locs)
 
             if use_median_ls and new_locations:
-                self.ls = compute_median_lengthscales(self.obs_coords)
+                self.ls = compute_median_lengthscales(self.obs_coords, multiply_heuristic_power=0.5)
 
             self._init_params(mu0, new_locations, K)
             self.vb_iter = 0 # reset if we have processed new observations
@@ -969,7 +967,7 @@ class GPClassifierVB(object):
             self._process_observations(obs_coords, obs_values, totals)  # process the data here so we don't repeat each call
 
             if use_median_ls:
-                self.ls = compute_median_lengthscales(self.obs_coords)
+                self.ls = compute_median_lengthscales(self.obs_coords, multiply_heuristic_power=0.5)
 
             self.vb_iter = 0 # reset if we have processed new observations
             self._init_params(mu0, True, K)

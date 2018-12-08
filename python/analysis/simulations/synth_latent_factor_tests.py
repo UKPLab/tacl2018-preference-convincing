@@ -4,7 +4,7 @@ Run a series of tests on synthetic data to show the effect of noise on recoverin
 import sys
 
 # include the paths for the other directories
-from scipy.stats.stats import pearsonr
+from scipy.stats.stats import pearsonr, kendalltau
 
 sys.path.append("./python")
 sys.path.append("./python/analysis")
@@ -327,7 +327,12 @@ if __name__ == '__main__':
                 noise_rate = 1.0 - np.mean(prefs_tr == prefs_tr_noisefree)
                 print('Noise rate in the pairwise training labels: %f' % noise_rate)
 
-                results_s_multi.append([P, mean_r, noise_rate])
+                Fpred = model.predict_f(item_features, person_features)
+
+                tau_test = kendalltau(F[test_points], Fpred[test_points])[0]
+                print("Kendall's tau on the test data: %f" % tau_test)
+
+                results_s_multi.append([P, mean_r, tau_test, noise_rate])
 
             mean_results_s_m = np.mean(results_s_multi, axis=0)
             std_results_s_m = np.std(results_s_multi, axis=0)
@@ -345,3 +350,6 @@ if __name__ == '__main__':
 
         noise_plots[1] = plot_result(1, "num_pairs_r", 'number of pairwise training labels',
                             "Mean factor correlation (Pearson's r)", 'num_factors=%i' % Nfactors, noise_plots[1])
+
+        noise_plots[2] = plot_result(2, "num_pairs_tau_test", 'number of pairwise training labels',
+                            "tau (test data)", 'num_factors=%i' % Nfactors, noise_plots[2])

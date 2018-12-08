@@ -9,6 +9,7 @@ import sys
 import time
 
 from scipy.optimize._minimize import minimize
+from scipy.stats.stats import kendalltau
 
 sys.path.append("./python")
 sys.path.append("./python/analysis")
@@ -88,20 +89,24 @@ def convert_discrete_to_continuous(features, cols_to_convert):
 
 
 def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
-                   u_test=None, i1_test=None, i2_test=None):
+                   u_test=None, i1_test=None, i2_test=None, ninducing=None):
 
     Nfactors = ufeats.shape[0]
     if Nfactors > max_facs:
         Nfactors = max_facs # this is the maximum
 
-    model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None,
+    if ninducing is None:
+        ninducing = np.max([ifeats.shape[0], ufeats.shape[0]])
+
+    model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
-                                  forgetting_rate=forgetting_rate, verbose=True, use_lb=True, use_common_mean_t=True)
+                                  forgetting_rate=forgetting_rate, verbose=True, use_lb=True, use_common_mean_t=True,
+                                  ls=None)
 
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
 
     if vscales is not None:
-        vscales.append(np.sort(model.rate_sw / model.shape_sw)[::-1])
+        vscales.append(np.sort((model.rate_sw / model.shape_sw) * (model.rate_sy / model.shape_sy))[::-1])
 
     if u_test is None:
         return model
@@ -128,7 +133,7 @@ def run_GPPL_pooled(_, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, ___, i1_test, i2_
 
 def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test):
     model = GPPrefLearning(ifeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None, use_svi=True,
-                   ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate, verbose=True)
+                   ninducing=ninducing * 2**(1/3.0), max_update_size=max_update_size, forgetting_rate=forgetting_rate, verbose=True)
 
     # we need to use only the features for the subset of users in the training set!
     # if user features are not very informative, then the inducing points may be fairly useless.
@@ -195,7 +200,7 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
 
     model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Nfactors,
                                   ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
-                                  verbose=True, use_lb=True)
+                                  verbose=True, use_lb=True, use_common_mean_t=True)
 
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
@@ -309,7 +314,11 @@ def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, 
 def train_test(method_name, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test):
 
     if method_name == 'crowd-GPPL':
-        return run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test)
+        return run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test,
+                              ninducing=ninducing)
+    elif method_name == 'crowd-GPPL-noInduc':
+        return run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test,
+                              ninducing=None)
     elif method_name == 'GPPL-pooled':
         return run_GPPL_pooled(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test)
     elif method_name == 'GPPL-joint':
@@ -329,7 +338,7 @@ def train_test(method_name, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test
 def subsample_data():
 
     if debug_small:
-        nusers_tr = 3
+        nusers_tr = 10
         npairs_tr = 4
         npairs_test = 1
     elif sushiB:
@@ -381,7 +390,7 @@ def subsample_data():
 
 
 def run_sushi_expt(methods, expt_name):
-    nreps = 25
+    nreps = 1
 
     # predictions from all reps and methods
     fpred_all = []
@@ -394,7 +403,7 @@ def run_sushi_expt(methods, expt_name):
     times_all = []
 
     # for repeatability
-    np.random.seed(209)
+    np.random.seed(29)
 
     results_path = './results/' + expt_name
     if not os.path.exists(results_path):
@@ -437,14 +446,14 @@ def run_sushi_expt(methods, expt_name):
             # Compute metrics
             acc_m = accuracy_score(prefs_test, np.round(rho_pred))
             logloss_m = log_loss(prefs_test.flatten(), rho_pred.flatten())
-            spearman_m = spearmanr(scores[scores > -1].flatten(), fpred[scores > -1].flatten())[0]
+            kendall_tau = kendalltau(scores[scores > -1].flatten(), fpred[scores > -1].flatten())[0]
 
             # Save metrics
             acc_r.append(acc_m)
             logloss_r.append(logloss_m)
-            spearman_r.append(spearman_m)
+            spearman_r.append(kendall_tau)
 
-            print('Results for %s at rep %i: acc=%.2f, CEE=%.2f, r=%.2f' % (m, rep, acc_m, logloss_m, spearman_m))
+            print('Results for %s at rep %i: acc=%.2f, CEE=%.2f, tau=%.2f' % (m, rep, acc_m, logloss_m, kendall_tau))
 
         fpred_all.append(fpred_r)
         rho_pred_all.append(rho_pred_r)
@@ -558,8 +567,8 @@ if debug_small:
 
 # Hyperparameters common to most models --------------------------------------------------------------------------------
 max_facs = 20
-shape_s0 = 10.0
-rate_s0 = 1.0  #0.1
+shape_s0 = 1.0
+rate_s0 = 100.0  #0.1
 max_update_size = 1000
 ninducing = 25#5000
 forgetting_rate = 0.9
@@ -568,7 +577,7 @@ sushiB = False
 vscales = None
 
 # Experiment name tag
-tag = '_9'
+tag = '_10'
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
@@ -587,19 +596,19 @@ vscales = None # don't record the v scale factors
 
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
+           'crowd-GPPL\\u',
            'crowd-GPPL',
+           'crowd-GPPL-noInduc'
            'GPPL-pooled',
            'GPPL-joint',
            'GPPL-per-user',
-           'crowd-GPPL\\u',
            'crowd-BMF',
-           # 'collab-GPPL', # Houlsby
-           # 'GPPL+BMF' # khan -- excluded from this experiment
+           'collab-GPPL', # Houlsby
            ]
 
 optimize = False
 sushiB = False
-# run_sushi_expt(methods, 'sushi_10' + tag)
+run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
@@ -620,10 +629,10 @@ vscales = []
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           'GPPL-pooled',
-           'GPPL-joint',
+           #'GPPL-pooled',
+           #'GPPL-joint',
            # 'GPPL-per-user',
-           #'crowd-GPPL\\u',
+           'crowd-GPPL\\u',
            # 'crowd-BMF',
            # 'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
@@ -698,7 +707,7 @@ methods = [
            'crowd-GPPL',
            # 'collab-GPPL',  # Houlsby
            'GPPL-pooled',
-           #'GPPL-joint',
+           'GPPL-joint',
            # 'GPPL-per-user',
            'crowd-GPPL\\u',
            'crowd-BMF',
@@ -717,10 +726,10 @@ vscales = []
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           'GPPL-pooled',
+           #'GPPL-pooled',
            #'GPPL-joint',
            # 'GPPL-per-user',
-           #'crowd-GPPL\\u',
+           'crowd-GPPL\\u',
            # 'crowd-BMF',
            # 'collab-GPPL', # Houlsby
            # 'GPPL+BMF' # khan -- excluded from this experiment
