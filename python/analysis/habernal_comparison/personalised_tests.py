@@ -159,37 +159,37 @@ if __name__ == '__main__':
     # runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
     # Plot the scales of the latent factors ----------------------------------------------------------------------
-    vscales = np.mean(runner.vscales, axis=0)
-
-    logging.getLogger().setLevel(logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
-
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure(figsize=(5, 4))
-
-    markers = ['x', 'o', '+', '>', '<', '*']
-
-    plt.plot(np.arange(vscales.shape[0]), vscales, marker=markers[0], label='UKPConvArgCrowdSample',
-             linewidth=2, markersize=8)
-
-    plt.ylabel('Inverse scale 1/s')
-    plt.xlabel('Factor ID')
-
-    plt.grid('on', axis='y')
-    plt.legend(loc='best')
-    plt.tight_layout()
-
-    figure_root_path = './results/conv_factors'
-    if not os.path.exists(figure_root_path):
-        os.mkdir(figure_root_path)
-
-    plt.savefig(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.pdf')
-
-    np.savetxt(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.csv', vscales, delimiter=',', fmt='%f')
-
-    logging.getLogger().setLevel(logging.DEBUG)
+    # vscales = np.mean(runner.vscales, axis=0)
+    # 
+    # logging.getLogger().setLevel(logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
+    #
+    # import matplotlib
+    # matplotlib.use('Agg')
+    # import matplotlib.pyplot as plt
+    #
+    # fig = plt.figure(figsize=(5, 4))
+    #
+    # markers = ['x', 'o', '+', '>', '<', '*']
+    #
+    # plt.plot(np.arange(vscales.shape[0]), vscales, marker=markers[0], label='UKPConvArgCrowdSample',
+    #          linewidth=2, markersize=8)
+    #
+    # plt.ylabel('Inverse scale 1/s')
+    # plt.xlabel('Factor ID')
+    #
+    # plt.grid('on', axis='y')
+    # plt.legend(loc='best')
+    # plt.tight_layout()
+    #
+    # figure_root_path = './results/conv_factors'
+    # if not os.path.exists(figure_root_path):
+    #     os.mkdir(figure_root_path)
+    #
+    # plt.savefig(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.pdf')
+    #
+    # np.savetxt(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.csv', vscales, delimiter=',', fmt='%f')
+    #
+    # logging.getLogger().setLevel(logging.DEBUG)
 
     # # PERSONALISED PREDICTION for other methods -----------------------------------------------------------------
     methods = [
