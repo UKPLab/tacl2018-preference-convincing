@@ -599,11 +599,11 @@ methods = [
            'crowd-GPPL\\u',
            'crowd-GPPL',
            'crowd-GPPL-noInduc'
-           'GPPL-pooled',
-           'GPPL-joint',
+           # 'GPPL-pooled',
+           # 'GPPL-joint',
            # 'GPPL-per-user',
-           'crowd-BMF',
-           'collab-GPPL', # Houlsby
+           # 'crowd-BMF',
+           # 'collab-GPPL', # Houlsby
            ]
 
 optimize = False

@@ -205,7 +205,7 @@ class CollabPrefLearningVB(object):
         self.rate_sw0 = rate_s0
 
         self.shape_sy0 = shape_s0
-        self.rate_sy0 = rate_s0 * 100
+        self.rate_sy0 = rate_s0
 
         self.shape_st0 = shape_s0
         self.rate_st0 = rate_s0

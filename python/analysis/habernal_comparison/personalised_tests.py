@@ -32,16 +32,16 @@ class PersonalisedTestRunner(TestRunner):
 
         if 'weaksprior' in self.method:
             shape_s0 = 2.0
-            rate_s0 = 100.0
+            rate_s0 = 200.0
         elif 'lowsprior' in self.method:
             shape_s0 = 1.0
             rate_s0 = 1.0
         elif 'weakersprior' in self.method:
             shape_s0 = 2.0
-            rate_s0 = 1000.0
+            rate_s0 = 2000.0
         else:
             shape_s0 = 200.0
-            rate_s0 = 10000.0
+            rate_s0 = 20000.0
 
         if '_M' in self.method:
             validx = self.method.find('_M') + 2
@@ -136,7 +136,7 @@ if __name__ == '__main__':
     methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
 
     if 'runner' not in globals():
-        runner = PersonalisedTestRunner('personalised_4', datasets, feature_types, embeddings_types, methods,
+        runner = PersonalisedTestRunner('personalised_5', datasets, feature_types, embeddings_types, methods,
                                         dataset_increment)
         runner.save_collab_model = True
 
@@ -146,7 +146,7 @@ if __name__ == '__main__':
     # CONSENSUS PREDICTION
     runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
     runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
-    # runner.run_test_set(min_no_folds=0, max_no_folds=32)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
     # PERSONALISED WITH ARD
     runner.datasets = ['UKPConvArgCrowdSample']
@@ -160,7 +160,7 @@ if __name__ == '__main__':
 
     # Plot the scales of the latent factors ----------------------------------------------------------------------
     # vscales = np.mean(runner.vscales, axis=0)
-    # 
+    #
     # logging.getLogger().setLevel(logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
     #
     # import matplotlib
@@ -205,4 +205,4 @@ if __name__ == '__main__':
     methods = ['SinglePrefGP_weaksprior']
     runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
     runner.methods = methods
-    runner.run_test_set(min_no_folds=0, max_no_folds=32)
+    # runner.run_test_set(min_no_folds=0, max_no_folds=32)

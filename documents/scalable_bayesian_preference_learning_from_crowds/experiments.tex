@@ -257,6 +257,22 @@ Effect of varying $M$ on accuracy and runtime (training+prediction) for GPPL and
 
 % PERFORMANCE ----------------------------------------------------
 
+% TODO: exclude tau from the personal column -- not enough data to compute the gold standard correctly, only pairwise labels are real gold!
+
+% Things we could do:
+% forget about trying to predict the crowd consensus, focus on scalability
+% This means we don't need to show performance improvements against 
+% Houlsby or for crowd-gppl for the consensus prediction.
+
+% however, if we want to show that the optimization procedure has improved performance, we should find out why the consensus results for crowd-GPPL are so bad. 
+% It may be a data matchup error.
+
+% Change to a different dataset instead of convincingness, or make sure to exclude workers with < 10 labels.
+
+% For sushi, we can test on unseen users. This wasn't done by Khan or Houlsby. I guess
+% that performance will be close to the pooled model, but it may help. This would
+% demonstrate a benefit of the GP method.
+
 \begin{table}
 \begin{tabularx}{\columnwidth}{ | l | X | X | X | X | X | X |}
 \hline
