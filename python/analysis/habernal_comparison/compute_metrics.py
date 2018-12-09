@@ -35,7 +35,7 @@ from data_loader import data_root_dir, load_train_test_data, load_ling_features
 import datetime, time
 
 data_root_dir = os.path.abspath("./data/")
-expt_root_dir = 'personalised_4'#'crowdsourcing_argumentation_opt/'
+expt_root_dir = 'personalised_5'#'crowdsourcing_argumentation_opt/'
 resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
 
 def get_fold_data(data, f, expt_settings, flip_labels=False):
