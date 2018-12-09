@@ -390,7 +390,7 @@ def subsample_data():
 
 
 def run_sushi_expt(methods, expt_name):
-    nreps = 1
+    nreps = 5
 
     # predictions from all reps and methods
     fpred_all = []
@@ -598,17 +598,17 @@ vscales = None # don't record the v scale factors
 methods = [
            'crowd-GPPL\\u',
            'crowd-GPPL',
-           'crowd-GPPL-noInduc'
-           # 'GPPL-pooled',
-           # 'GPPL-joint',
+           'crowd-GPPL-noInduc',
+           'GPPL-pooled',
+           'GPPL-joint',
            # 'GPPL-per-user',
-           # 'crowd-BMF',
+           'crowd-BMF',
            # 'collab-GPPL', # Houlsby
            ]
 
 optimize = False
 sushiB = False
-run_sushi_expt(methods, 'sushi_10' + tag)
+# run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
@@ -706,18 +706,18 @@ vscales = None # don't record the v factor scale factors
 methods = [
            'crowd-GPPL',
            # 'collab-GPPL',  # Houlsby
-           'GPPL-pooled',
-           'GPPL-joint',
+           # 'GPPL-pooled',
+           # 'GPPL-joint',
            # 'GPPL-per-user',
-           'crowd-GPPL\\u',
-           'crowd-BMF',
+           # 'crowd-GPPL\\u',
+           # 'crowd-BMF',
            # 'GPPL+BMF' # khan -- excluded from this experiment
            ]
 
 # hyperparameters common to most models
 optimize = False
 sushiB = True
-# run_sushi_expt(methods, 'sushi_100' + tag)
+run_sushi_expt(methods, 'sushi_100' + tag)
 
 # SUSHI B dataset, ARD -------------------------------------------------------------------------------------------------
 
