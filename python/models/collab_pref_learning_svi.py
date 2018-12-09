@@ -668,7 +668,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                     self.yS[f] = np.linalg.inv(self.yinvS[f])
                     self.y_u[f] = self.yS[f].dot(self.yinvSm[:, f])
 
-                    yf, var_yf = inducing_to_observation_moments(self.Ky_mm_block / self.shape_sy[f] * self.rate_sy[f],
+                    yf, _ = inducing_to_observation_moments(self.Ky_mm_block / self.shape_sy[f] * self.rate_sy[f],
                             self.invKy_mm_block, self.Ky_nm_block, self.y_u[f:f+1, :].T, 0)
 
                     # yf, var_yf = inducing_to_observation_moments(self.Ky_mm_block / self.shape_sy[f] * self.rate_sy[f],

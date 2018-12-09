@@ -641,7 +641,7 @@ methods = [
 # hyperparameters common to most models
 optimize = True
 sushiB = False
-run_sushi_expt(methods, 'sushi_10_opt' + tag)
+# run_sushi_expt(methods, 'sushi_10_opt' + tag)
 
 vscales_A = vscales
 vscales_A = np.mean(vscales_A, axis=0)
