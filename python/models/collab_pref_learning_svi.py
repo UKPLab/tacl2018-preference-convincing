@@ -988,24 +988,24 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                        + covpair.dot(self.yS[f] - self.Ky_mm_block / self.shape_sy[f] * self.rate_sy[f]).dot(covpair.T)
 
             ###############################
-            self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
-
-            phi, g_mean_f = pref_likelihood(self.obs_f, v=self.pref_v, u=self.pref_u,
-                                            return_g_f=True)  # first order Taylor series approximation
-            J = 1 / (2 * np.pi) ** 0.5 * np.exp(-g_mean_f ** 2 / 2.0) * np.sqrt(0.5)
-
-            Nidxs = np.tile(np.arange(self.N), self.Npeople)[:, None]
-            Pidxs = np.tile(np.arange(self.Npeople)[:, None], (1, self.N)).flatten()[:, None]
-
-            s = (self.personIDs == Pidxs).astype(int) * ((self.tpref_v == Nidxs).astype(int) - (self.tpref_u == Nidxs).astype(int))
-            G = J.T * s
-
-            matcher = np.zeros((self.Npeople, self.Npeople * self.N))
-            matcher[Pidxs.flatten(), np.arange(matcher.shape[1])] = 1
-
-            scaling_f = self.w[Nidxs, f].dot(self.w[Nidxs, f].T)
-            var_yf = 1.0 / (1.0 / np.diag(cov_y[f]) + np.diag(matcher.dot(scaling_f * (G/self.Q[None, :]).dot(G.T)).dot(matcher.T)))
-
+            # self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
+            #
+            # phi, g_mean_f = pref_likelihood(self.obs_f, v=self.pref_v, u=self.pref_u,
+            #                                 return_g_f=True)  # first order Taylor series approximation
+            # J = 1 / (2 * np.pi) ** 0.5 * np.exp(-g_mean_f ** 2 / 2.0) * np.sqrt(0.5)
+            #
+            # Nidxs = np.tile(np.arange(self.N), self.Npeople)[:, None]
+            # Pidxs = np.tile(np.arange(self.Npeople)[:, None], (1, self.N)).flatten()[:, None]
+            #
+            # s = (self.personIDs == Pidxs).astype(int) * ((self.tpref_v == Nidxs).astype(int) - (self.tpref_u == Nidxs).astype(int))
+            # G = J.T * s
+            #
+            # matcher = np.zeros((self.Npeople, self.Npeople * self.N))
+            # matcher[Pidxs.flatten(), np.arange(matcher.shape[1])] = 1
+            #
+            # scaling_f = self.w[Nidxs, f].dot(self.w[Nidxs, f].T)
+            # var_yf = 1.0 / (1.0 / np.diag(cov_y[f]) + np.diag(matcher.dot(scaling_f * (G/self.Q[None, :]).dot(G.T)).dot(matcher.T)))
+            #
             # y_out[f] = var_yf * (y_out[f] / np.diag(cov_y[f]) +
             #      matcher.dot(self.w[Nidxs, f] * G/self.Q[None, :]).dot(self.z).flatten())
         else:
