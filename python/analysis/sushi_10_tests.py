@@ -645,7 +645,8 @@ sushiB = False
 
 vscales_A = vscales
 vscales_A = np.mean(vscales_A, axis=0)
-np.savetxt(figure_root_path + '/sushi_A_factor_scales.csv', vscales_A, delimiter=',', fmt='%f')
+if vscales_A.ndim > 0:
+    np.savetxt(figure_root_path + '/sushi_A_factor_scales.csv', vscales_A, delimiter=',', fmt='%f')
 
 vscales = None
 
