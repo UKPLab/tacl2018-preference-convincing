@@ -596,8 +596,8 @@ vscales = None # don't record the v scale factors
 
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
-           'crowd-GPPL\\u',
            'crowd-GPPL',
+           'crowd-GPPL\\u',
            'crowd-GPPL-noInduc',
            'GPPL-pooled',
            'GPPL-joint',
@@ -608,7 +608,7 @@ methods = [
 
 optimize = False
 sushiB = False
-# run_sushi_expt(methods, 'sushi_10' + tag)
+run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
@@ -641,7 +641,7 @@ methods = [
 # hyperparameters common to most models
 optimize = True
 sushiB = False
-# run_sushi_expt(methods, 'sushi_10_opt' + tag)
+run_sushi_expt(methods, 'sushi_10_opt' + tag)
 
 vscales_A = vscales
 vscales_A = np.mean(vscales_A, axis=0)

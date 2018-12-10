@@ -671,19 +671,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                     yf, _ = inducing_to_observation_moments(self.Ky_mm_block / self.shape_sy[f] * self.rate_sy[f],
                             self.invKy_mm_block, self.Ky_nm_block, self.y_u[f:f+1, :].T, 0)
 
-                    # yf, var_yf = inducing_to_observation_moments(self.Ky_mm_block / self.shape_sy[f] * self.rate_sy[f],
-                    #         self.invKy_mm_block, self.Ky_nm_block, self.y_u[f:f+1, :].T, 0, self.yS[f],
-                    #         self.rate_sy[f] / self.shape_sy[f], full_cov=False)
-                    #
-                    # matcher = np.zeros((self.Npeople, len(self.y_idx_i)))
-                    # matcher[self.y_idx_i, np.arange(len(self.y_idx_i))] = 1
-                    #
-                    # var_yf = 1/(1/var_yf + np.diag(matcher.dot(self.G.T/self.Q[None, self.data_obs_idx_i]).
-                    #                                dot(self.G).dot(matcher.T)))[:, None]
-                    # invQ_f = matcher.dot((self.w[self.w_idx_i, f:f+1] * self.G.T / self.Q[None, self.data_obs_idx_i]).dot(
-                    #             self.z[self.data_obs_idx_i] - z0)) - yf
-                    # yf = var_yf * invQ_f
-
                     self.y[f:f + 1] = yf.T
 
                 self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
@@ -986,30 +973,35 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             for f in range(self.Nfactors):
                 cov_y[f] = Ky_starstar * self.rate_sy[f] / self.shape_sy[f] \
                        + covpair.dot(self.yS[f] - self.Ky_mm_block / self.shape_sy[f] * self.rate_sy[f]).dot(covpair.T)
-
-            ###############################
-            # self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
-            #
-            # phi, g_mean_f = pref_likelihood(self.obs_f, v=self.pref_v, u=self.pref_u,
-            #                                 return_g_f=True)  # first order Taylor series approximation
-            # J = 1 / (2 * np.pi) ** 0.5 * np.exp(-g_mean_f ** 2 / 2.0) * np.sqrt(0.5)
-            #
-            # Nidxs = np.tile(np.arange(self.N), self.Npeople)[:, None]
-            # Pidxs = np.tile(np.arange(self.Npeople)[:, None], (1, self.N)).flatten()[:, None]
-            #
-            # s = (self.personIDs == Pidxs).astype(int) * ((self.tpref_v == Nidxs).astype(int) - (self.tpref_u == Nidxs).astype(int))
-            # G = J.T * s
-            #
-            # matcher = np.zeros((self.Npeople, self.Npeople * self.N))
-            # matcher[Pidxs.flatten(), np.arange(matcher.shape[1])] = 1
-            #
-            # scaling_f = self.w[Nidxs, f].dot(self.w[Nidxs, f].T)
-            # var_yf = 1.0 / (1.0 / np.diag(cov_y[f]) + np.diag(matcher.dot(scaling_f * (G/self.Q[None, :]).dot(G.T)).dot(matcher.T)))
-            #
-            # y_out[f] = var_yf * (y_out[f] / np.diag(cov_y[f]) +
-            #      matcher.dot(self.w[Nidxs, f] * G/self.Q[None, :]).dot(self.z).flatten())
         else:
             cov_y = None
+
+        self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
+
+        Nidxs = np.tile(np.arange(self.N), self.Npeople)[:, None]
+        Pidxs = np.tile(np.arange(self.Npeople)[:, None], (1, self.N)).flatten()[:, None]
+        phi, g_mean_f = pref_likelihood(self.obs_f, v=self.pref_v, u=self.pref_u,
+                                        return_g_f=True)  # first order Taylor series approximation
+        J = 1 / (2 * np.pi) ** 0.5 * np.exp(-g_mean_f ** 2 / 2.0) * np.sqrt(0.5)
+        s = (self.personIDs == Pidxs).astype(int) * (
+                    (self.tpref_v == Nidxs).astype(int) - (self.tpref_u == Nidxs).astype(int))
+        G = J.T * s
+        matcher = np.zeros((self.Npeople, self.Npeople * self.N))
+        matcher[Pidxs.flatten(), np.arange(matcher.shape[1])] = 1
+
+        for f in range(self.Nfactors):
+            if cov_y is not None:
+                var_yf_given_u = np.diag(cov_y[f])
+            else:
+                var_yf_given_u = self.rate_sy[f] / self.shape_sy[f] + np.diag(covpair.dot(self.yS[f] -
+                                            self.Ky_mm_block / self.shape_sy[f] * self.rate_sy[f]).dot(covpair.T))
+
+            scaling_f = self.w[Nidxs, f].dot(self.w[Nidxs, f].T)
+            obs_prec = np.diag(matcher.dot(scaling_f * (G/self.Q[None, :]).dot(G.T)).dot(matcher.T))
+            var_yf = 1.0 / (1.0 / var_yf_given_u + obs_prec)
+
+            y_out[f] = var_yf * (y_out[f]/var_yf_given_u +
+                                 matcher.dot(self.w[Nidxs, f] * G / self.Q[None, :]).dot(self.z).flatten() )
 
         return y_out, cov_y
 
