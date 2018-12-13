@@ -5,14 +5,6 @@ error.
 import os
 import sys
 
-# include the paths for the other directories
-import time
-
-from scipy.optimize._minimize import minimize
-from scipy.stats.stats import kendalltau
-
-from collab_pref_learning_fitc import CollabPrefLearningFITC
-
 sys.path.append("./python")
 sys.path.append("./python/analysis")
 sys.path.append("./python/models")
@@ -22,6 +14,11 @@ import matplotlib.pyplot as plt
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
+# include the paths for the other directories
+import time
+from scipy.optimize._minimize import minimize
+from scipy.stats.stats import kendalltau
+from collab_pref_learning_fitc import CollabPrefLearningFITC
 import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score, log_loss
