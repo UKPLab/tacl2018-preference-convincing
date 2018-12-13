@@ -302,7 +302,7 @@ def run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_tes
 
 
 def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
-                         u_test, i1_test, i2_test, prefs_test):
+                         u_test, i1_test, i2_test, prefs_test, chosen_users):
     '''
     Optimize the function scale to select values of shape_s0 and rate_s0 using Bayesian model selection.
 
@@ -347,10 +347,13 @@ def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, 
     min_sh_idx = -1
     min_r_idx = -1
 
+    u_tr = np.array([np.argwhere(chosen_users == u).flatten()[0] for u in u_tr])
+    u_test = np.array([np.argwhere(chosen_users == u).flatten()[0] for u in u_test])
+
     for sh, shape_s0 in enumerate(sh_vals):
         for r, rate_s0 in enumerate(r_vals):
-            lb = run_crowd_GPPL_wrapper([np.log(shape_s0), np.log(rate_s0)], u_tr, i1_tr, i2_tr, ifeats, ufeats,
-                                        prefs_tr, u_test, i1_test, i2_test, prefs_test)
+            lb = run_crowd_GPPL_wrapper([np.log(shape_s0), np.log(rate_s0)], u_tr, i1_tr, i2_tr, ifeats,
+                                        ufeats[chosen_users], prefs_tr, u_test, i1_test, i2_test, prefs_test)
             if lb < minval:
                 minval = lb
                 min_sh_idx = sh
@@ -723,10 +726,10 @@ tag = '_11'
 print('Optimizing function scales ...')
 np.random.seed(2309234)
 sushiA_small = True
-u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, _, _, _, _, _, _, _ = subsample_data()
+u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, chosen_users, _, _, _, _, _, _ = subsample_data()
 shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
                                          item_features, user_features, prefs_tr,
-                                         u_test, i1_test, i2_test, prefs_test)
+                                         u_test, i1_test, i2_test, prefs_test, chosen_users)
 print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
 np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
 
