@@ -163,6 +163,7 @@ def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test
 
     model.fit(i1_tr, i2_tr, joint_feats, prefs_tr, optimize=optimize, use_median_ls=True)
 
+
     # need to split this up to compute because predict needs pairwise covariance terms and ends up computing full covariance
     batchsize = 100
     nbatches = int(np.ceil(np.unique(u_test).shape[0] / float(batchsize)))
@@ -188,7 +189,7 @@ def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test
                                                                        ufeats.shape[1]))
     joint_feats = np.concatenate((joint_ifeats, joint_ufeats), axis=1)
     fpred, _ = model.predict_f(joint_feats)
-    fpred = fpred.reshape(active_items.shape[0], ufeats.shape[0])
+    fpred = fpred.reshape(ufeats.shape[0], active_items.shape[0]).T
 
 
     batchsize = 100
@@ -215,7 +216,7 @@ def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test
                                                                        ufeats_un.shape[1]))
     joint_feats = np.concatenate((joint_ifeats, joint_ufeats), axis=1)
     fpred_un, _ = model.predict_f(joint_feats)
-    fpred_un = fpred_un.reshape(active_items.shape[0], ufeats_un.shape[0])
+    fpred_un = fpred_un.reshape(ufeats_un.shape[0], active_items.shape[0]).T
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred, fpred_un, rho_pred_un
@@ -511,7 +512,7 @@ def run_sushi_expt(methods, expt_name):
     tau_unseen_all = []
 
     # for repeatability
-    np.random.seed(29)
+    np.random.seed(30)
 
     results_path = './results/' + expt_name
     if not os.path.exists(results_path):
@@ -601,18 +602,18 @@ def run_sushi_expt(methods, expt_name):
         tau_mean = np.mean(np.array(tau_all), axis=0)
         times_mean = np.mean(np.array(times_all), axis=0)
 
-        acc_un_mean = np.mean(np.array(acc_all), axis=0)
-        logloss_un_mean = np.mean(np.array(logloss_all), axis=0)
-        tau_un_mean = np.mean(np.array(tau_all), axis=0)
+        acc_un_mean = np.mean(np.array(acc_unseen_all), axis=0)
+        logloss_un_mean = np.mean(np.array(logloss_unseen_all), axis=0)
+        tau_un_mean = np.mean(np.array(tau_unseen_all), axis=0)
 
         acc_std = np.std(np.array(acc_all), axis=0)
         logloss_std = np.std(np.array(logloss_all), axis=0)
         tau_std = np.std(np.array(tau_all), axis=0)
         times_std = np.std(np.array(times_all), axis=0)
 
-        acc_un_std = np.std(np.array(acc_all), axis=0)
-        logloss_un_std = np.std(np.array(logloss_all), axis=0)
-        tau_un_std = np.std(np.array(tau_all), axis=0)
+        acc_un_std = np.std(np.array(acc_unseen_all), axis=0)
+        logloss_un_std = np.std(np.array(logloss_unseen_all), axis=0)
+        tau_un_std = np.std(np.array(tau_unseen_all), axis=0)
 
         # Print means and stds of metrics in Latex format ready for copying into a table
         print('Table of results:')
@@ -719,14 +720,15 @@ tag = '_10'
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
-# print('Optimizing function scales ...')
-# np.random.seed(2309234)
-# u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, _ = subsample_data()
-# shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
-#                                          item_features, user_features, prefs_tr,
-#                                          u_test, i1_test, i2_test, prefs_test)
-# print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
-# np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
+print('Optimizing function scales ...')
+np.random.seed(2309234)
+sushiA_small = True
+u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, _ = subsample_data()
+shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
+                                         item_features, user_features, prefs_tr,
+                                         u_test, i1_test, i2_test, prefs_test)
+print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
+np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
 
 # SMALL data test to show benefits of user features --------------------------------------------------------------------
 
@@ -747,7 +749,7 @@ methods = [
 optimize = False
 sushiB = False
 sushiA_small = True
-# run_sushi_expt(methods, 'sushi_10small' + tag)
+run_sushi_expt(methods, 'sushi_10small' + tag)
 
 # Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
 
@@ -790,12 +792,12 @@ vscales = []
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           'GPPL-pooled',
-           'GPPL-joint',
-           'GPPL-per-user',
+           # 'GPPL-pooled',
+           # 'GPPL-joint',
+           # 'GPPL-per-user',
            'crowd-GPPL\\u',
-           'crowd-BMF',
-           'crowdFITC-GPPL',
+           # 'crowd-BMF',
+           # 'crowdFITC-GPPL',
            'collab-GPPL', # Houlsby -- included to show that the LB found using crowd method is more useful for optimisation
            ]
 
