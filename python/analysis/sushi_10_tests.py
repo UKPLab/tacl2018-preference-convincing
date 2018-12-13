@@ -723,7 +723,7 @@ tag = '_11'
 print('Optimizing function scales ...')
 np.random.seed(2309234)
 sushiA_small = True
-u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, _, _, _, _, _, _ = subsample_data()
+u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, _, _, _, _, _ = subsample_data()
 shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
                                          item_features, user_features, prefs_tr,
                                          u_test, i1_test, i2_test, prefs_test)
