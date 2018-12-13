@@ -148,7 +148,6 @@ class GPClassifierSVI(GPClassifierVB):
 
         self.u_invSm = np.zeros((self.ninducing, 1), dtype=float)  # theta_1
         self.u_invS = np.zeros((self.ninducing, self.ninducing), dtype=float)  # theta_2
-        self.u_invK = np.zeros((self.ninducing, self.ninducing), dtype=float)  # prior covariance -- s changes
         self.u_Lambda = np.zeros((self.ninducing, self.ninducing), dtype=float) # observation precision at inducing points
         self.uS = self.K_mm * self.rate_s0 / self.shape_s0  # initialise properly to prior
         self.um_minus_mu0 = np.zeros((self.ninducing, 1))
@@ -318,7 +317,6 @@ class GPClassifierSVI(GPClassifierVB):
         # A = solve_triangular(L_u_invS, B, lower=True, trans=True, check_finite=False, overwrite_b=True)
 
         self.uS = scipy.linalg.inv(self.u_invS)
-        self.u_invK = (1 - rho_i) * self.prev_u_invK + rho_i * self.invKs_mm
 
         #         self.um_minus_mu0 = solve_triangular(L_u_invS, self.u_invSm, lower=True, check_finite=False)
         #         self.um_minus_mu0 = solve_triangular(L_u_invS, self.um_minus_mu0, lower=True, trans=True, check_finite=False,
@@ -335,7 +333,7 @@ class GPClassifierSVI(GPClassifierVB):
         # see Hensman, Scalable variational Gaussian process classification, equation 18
 
         #(self.K_nm / self.s).dot(self.s * self.invK_mm).dot(self.uS).dot(self.u_invSm)
-        fhat = covpair.dot(self.uS).dot(self.u_invSm) + mu0
+        fhat = covpair.dot(self.um_minus_mu0) + mu0
 
         if Ks_nn is not None:
             if full_cov:
@@ -383,7 +381,6 @@ class GPClassifierSVI(GPClassifierVB):
         self.prev_u_invSm = self.u_invSm
         self.prev_u_invS = self.u_invS
         self.prev_u_Lambda = self.u_Lambda
-        self.prev_u_invK = self.u_invK
 
         self._update_sample_idxs()
 
@@ -416,7 +413,6 @@ class GPClassifierSVI(GPClassifierVB):
 
         self.u_invSm = np.zeros((self.ninducing, 1), dtype=float)  # theta_1
         self.u_invS = np.zeros((self.ninducing, self.ninducing), dtype=float)  # theta_2
-        self.u_invK = np.zeros((self.ninducing, self.ninducing), dtype=float)
         self.u_Lambda = np.zeros((self.ninducing, self.ninducing), dtype=float) # observation precision at inducing points
         self.uS = self.K_mm * self.rate_s0 / self.shape_s0  # initialise properly to prior
         self.um_minus_mu0 = np.zeros((self.ninducing, 1))
