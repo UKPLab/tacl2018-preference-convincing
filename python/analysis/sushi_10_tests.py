@@ -716,7 +716,7 @@ sushiB = False
 vscales = None
 
 # Experiment name tag
-tag = '_10'
+tag = '_11'
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
