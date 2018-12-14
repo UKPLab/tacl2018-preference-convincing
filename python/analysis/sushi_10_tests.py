@@ -494,11 +494,12 @@ def subsample_data():
     u_unseen = userids[pairidxs_unseen]
     prefs_unseen = prefs[pairidxs_unseen]
 
-    idxs_to_flip = np.random.choice(len(pairidxs_unseen), int(0.5 * len(pairidxs_unseen)), replace=False)
-    tmp = i1_unseen[idxs_to_flip]
-    i1_unseen[idxs_to_flip] = i2_unseen[idxs_to_flip]
-    i2_unseen[idxs_to_flip] = tmp
-    prefs_unseen[idxs_to_flip] = 1 - prefs_unseen[idxs_to_flip]
+    if len(pairidxs_unseen):
+        idxs_to_flip = np.random.choice(len(pairidxs_unseen), int(0.5 * len(pairidxs_unseen)), replace=False)
+        tmp = i1_unseen[idxs_to_flip]
+        i1_unseen[idxs_to_flip] = i2_unseen[idxs_to_flip]
+        i2_unseen[idxs_to_flip] = tmp
+        prefs_unseen[idxs_to_flip] = 1 - prefs_unseen[idxs_to_flip]
 
     return u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, scores, chosen_users, u_unseen, \
            i1_unseen, i2_unseen, prefs_unseen, scores_unseen, chosen_users_unseen
