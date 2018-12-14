@@ -722,7 +722,7 @@ delay = 10
 ninducing = 25#5000
 forgetting_rate = 0.9
 
-nreps = 1
+nreps = 25
 
 sushiB = False
 vscales = None

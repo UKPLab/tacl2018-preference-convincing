@@ -32,7 +32,7 @@ class PersonalisedTestRunner(TestRunner):
 
         if 'weaksprior' in self.method:
             shape_s0 = 2.0
-            rate_s0 = 200.0
+            rate_s0 = 20.0
         elif 'lowsprior' in self.method:
             shape_s0 = 1.0
             rate_s0 = 1.0
@@ -52,9 +52,9 @@ class PersonalisedTestRunner(TestRunner):
         self.model = CollabPrefLearningSVI(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose,
                                            nfactors=nfactors, rate_ls=1.0 / np.mean(self.ls_initial),
                                            use_common_mean_t=common_mean, max_update_size=200, use_lb=True,
-                                           shape_s0=shape_s0, rate_s0=rate_s0, ninducing=M)
+                                           shape_s0=shape_s0, rate_s0=rate_s0, ninducing=M, delay=10)
 
-        self.model.max_iter = 200
+        self.model.max_iter = 500
 
         zero_centered_prefs = np.array(self.prefs_train, dtype=float) - 1
 
@@ -74,11 +74,26 @@ class PersonalisedTestRunner(TestRunner):
                                         (self.model.rate_sw / self.model.shape_sw))[::-1])
 
         proba = self.model.predict(self.person_test, self.a1_test, self.a2_test, self.items_feat)
+        common_proba = self.model.predict_common(None, self.a1_test, self.a2_test)
+
+        print('Fraction of differences between personal and consensus pairwise predctions: %f' %
+              (np.sum(np.round(proba.flatten()) != np.round(common_proba.flatten())) / float(len(proba.flatten())) ) )
 
         print(np.any(np.isnan(proba)))
         print(np.any(np.isinf(proba)))
         for p in proba:
             print(p)
+
+        print('common proba: ')
+
+        for p in common_proba:
+            print(p)
+
+        # what did we change?
+        # - more iterations ( 200 --> 500 )
+        # - smaller rates ( 200 --> 20 ) because there are multiple factors whose scales all add up
+        # next: try increasing delay so that y doesn't disappear to zero so easily when the person is not seen until
+        # later batch of training data
 
         if self.a_rank_test is not None:
             predicted_f = self.model.predict_f_item_person(self.a_rank_test, self.person_rank_test, self.items_feat)
@@ -138,73 +153,73 @@ if __name__ == '__main__':
     methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
 
     if 'runner' not in globals():
-        runner = PersonalisedTestRunner('personalised_5', datasets, feature_types, embeddings_types, methods,
+        runner = PersonalisedTestRunner('personalised_6', datasets, feature_types, embeddings_types, methods,
                                         dataset_increment)
         runner.save_collab_model = True
 
     # PERSONALISED PREDICTION
     runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
-    # CONSENSUS PREDICTION
-    runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-    runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
-    runner.run_test_set(min_no_folds=0, max_no_folds=32)
-
-    # PERSONALISED WITH ARD
-    runner.datasets = ['UKPConvArgCrowdSample']
-    runner.methods = ['PersPrefGP_commonmean_weaksprior']
+    # # CONSENSUS PREDICTION
+    # runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+    # runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
     # runner.run_test_set(min_no_folds=0, max_no_folds=32)
-
-    # CONSENSUS WITH ARD
-    runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-    runner.methods = ['PersConsensusPrefGP_commonmean_weaksprior']
-    # runner.run_test_set(min_no_folds=0, max_no_folds=32)
-
-    # Plot the scales of the latent factors ----------------------------------------------------------------------
-    # vscales = np.mean(runner.vscales, axis=0)
     #
-    # logging.getLogger().setLevel(logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
+    # # PERSONALISED WITH ARD
+    # runner.datasets = ['UKPConvArgCrowdSample']
+    # runner.methods = ['PersPrefGP_commonmean_weaksprior']
+    # # runner.run_test_set(min_no_folds=0, max_no_folds=32)
     #
-    # import matplotlib
-    # matplotlib.use('Agg')
-    # import matplotlib.pyplot as plt
+    # # CONSENSUS WITH ARD
+    # runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+    # runner.methods = ['PersConsensusPrefGP_commonmean_weaksprior']
+    # # runner.run_test_set(min_no_folds=0, max_no_folds=32)
     #
-    # fig = plt.figure(figsize=(5, 4))
+    # # Plot the scales of the latent factors ----------------------------------------------------------------------
+    # # vscales = np.mean(runner.vscales, axis=0)
+    # #
+    # # logging.getLogger().setLevel(logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
+    # #
+    # # import matplotlib
+    # # matplotlib.use('Agg')
+    # # import matplotlib.pyplot as plt
+    # #
+    # # fig = plt.figure(figsize=(5, 4))
+    # #
+    # # markers = ['x', 'o', '+', '>', '<', '*']
+    # #
+    # # plt.plot(np.arange(vscales.shape[0]), vscales, marker=markers[0], label='UKPConvArgCrowdSample',
+    # #          linewidth=2, markersize=8)
+    # #
+    # # plt.ylabel('Inverse scale 1/s')
+    # # plt.xlabel('Factor ID')
+    # #
+    # # plt.grid('on', axis='y')
+    # # plt.legend(loc='best')
+    # # plt.tight_layout()
+    # #
+    # # figure_root_path = './results/conv_factors'
+    # # if not os.path.exists(figure_root_path):
+    # #     os.mkdir(figure_root_path)
+    # #
+    # # plt.savefig(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.pdf')
+    # #
+    # # np.savetxt(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.csv', vscales, delimiter=',', fmt='%f')
+    # #
+    # # logging.getLogger().setLevel(logging.DEBUG)
     #
-    # markers = ['x', 'o', '+', '>', '<', '*']
+    # # # PERSONALISED PREDICTION for other methods -----------------------------------------------------------------
+    # methods = [
+    #            # 'SVM', 'GP+SVM', 'Bi-LSTM' # forget these methods as the other paper showed they were worse already, and the SVM
+    #            # does not scale either -- it's worse than the GP.
+    #            'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior'
+    #         ]
     #
-    # plt.plot(np.arange(vscales.shape[0]), vscales, marker=markers[0], label='UKPConvArgCrowdSample',
-    #          linewidth=2, markersize=8)
+    # runner.datasets = ['UKPConvArgCrowdSample']
+    # runner.methods = methods
+    # # runner.run_test_set(min_no_folds=0, max_no_folds=32)
     #
-    # plt.ylabel('Inverse scale 1/s')
-    # plt.xlabel('Factor ID')
-    #
-    # plt.grid('on', axis='y')
-    # plt.legend(loc='best')
-    # plt.tight_layout()
-    #
-    # figure_root_path = './results/conv_factors'
-    # if not os.path.exists(figure_root_path):
-    #     os.mkdir(figure_root_path)
-    #
-    # plt.savefig(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.pdf')
-    #
-    # np.savetxt(figure_root_path + '/UKPConvArgCrowdSample_factor_scales.csv', vscales, delimiter=',', fmt='%f')
-    #
-    # logging.getLogger().setLevel(logging.DEBUG)
-
-    # # PERSONALISED PREDICTION for other methods -----------------------------------------------------------------
-    methods = [
-               # 'SVM', 'GP+SVM', 'Bi-LSTM' # forget these methods as the other paper showed they were worse already, and the SVM
-               # does not scale either -- it's worse than the GP.
-               'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior'
-            ]
-
-    runner.datasets = ['UKPConvArgCrowdSample']
-    runner.methods = methods
-    # runner.run_test_set(min_no_folds=0, max_no_folds=32)
-
-    methods = ['SinglePrefGP_weaksprior']
-    runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-    runner.methods = methods
-    # runner.run_test_set(min_no_folds=0, max_no_folds=32)
+    # methods = ['SinglePrefGP_weaksprior']
+    # runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+    # runner.methods = methods
+    # # runner.run_test_set(min_no_folds=0, max_no_folds=32)
