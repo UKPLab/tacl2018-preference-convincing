@@ -186,7 +186,7 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
 
                 Qfitc = np.diag(self.Q[self.data_obs_idx_i]) + (self.G*(
                     np.ones(self.y_idx_i.shape[0]) -
-                    np.diag(self.Ky_nm[self.y_idx_i].dot(self.invKy_mm).dot(self.Ky_nm[self.y_idx_i].T))
+                    np.diag(covpair.T.dot(self.Ky_nm[self.y_idx_i].T))
                 )[None, :] * self.rate_sy[f] / self.shape_sy[f]).dot(self.G.T)
 
                 Sigma_y_f =  covpair.dot(scaling_f * self.G.T.dot(np.linalg.inv(Qfitc)).dot(self.G)).dot(covpair.T)
@@ -219,7 +219,7 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
                     self.yS[f] = np.linalg.inv(self.yinvS[f])
                     self.y_u[f] = self.yS[f].dot(self.yinvSm[:, f])
 
-                    yf, _ = inducing_to_observation_moments(self.Ky_mm_block / self.shape_sy[f] * self.rate_sy[f],
+                    yf, _ = inducing_to_observation_moments(self.Ky_mm / self.shape_sy[f] * self.rate_sy[f],
                                                             self.invKy_mm, self.Ky_nm, self.y_u[f:f + 1, :].T, 0)
 
                     self.y[f:f + 1] = yf.T

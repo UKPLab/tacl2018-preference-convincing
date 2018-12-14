@@ -51,7 +51,7 @@ class PersonalisedTestRunner(TestRunner):
 
         self.model = CollabPrefLearningSVI(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose,
                                            nfactors=nfactors, rate_ls=1.0 / np.mean(self.ls_initial),
-                                           use_common_mean_t=common_mean, max_update_size=1000, use_lb=True,
+                                           use_common_mean_t=common_mean, max_update_size=200, use_lb=True,
                                            shape_s0=shape_s0, rate_s0=rate_s0, ninducing=M)
 
         self.model.max_iter = 200
@@ -91,18 +91,20 @@ class PersonalisedTestRunner(TestRunner):
         '''
 
         # look for a file that was trained on the same data but with the personalised predictions instead of MACE consensus.
-        pretrainedmodelfile = self.modelfile.replace('_evalMACE', '')
-        pretrainedmodelfile = pretrainedmodelfile.replace('Consensus', '')
+        # pretrainedmodelfile = self.modelfile.replace('_evalMACE', '')
+        # pretrainedmodelfile = pretrainedmodelfile.replace('Consensus', '')
+        #
+        # logging.info('Looking for a pretrained model at %s' % pretrainedmodelfile)
+        #
+        # if os.path.exists(pretrainedmodelfile):
+        #     with open(pretrainedmodelfile, 'rb') as fh:
+        #         self.model = pickle.load(fh)
+        #         logging.info('Reloaded a pretrained model :)')
+        # else:
+        #     logging.info('I didnae find any pretrained model :(')
+        #     self._train_persgppl()
 
-        logging.info('Looking for a pretrained model at %s' % pretrainedmodelfile)
-
-        if os.path.exists(pretrainedmodelfile):
-            with open(pretrainedmodelfile, 'rb') as fh:
-                self.model = pickle.load(fh)
-                logging.info('Reloaded a pretrained model :)')
-        else:
-            logging.info('I didnae find any pretrained model :(')
-            self._train_persgppl()
+        self._train_persgppl()
 
         if self.vscales is not None:
             self.vscales.append(np.sort(self.model.rate_sw / self.model.shape_sw)[::-1])
@@ -129,7 +131,7 @@ if __name__ == '__main__':
     dataset_increment = 0     
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
-    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
+    feature_types = ['embeddings'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
     embeddings_types = ['word_mean']
 
     datasets = ['UKPConvArgCrowdSample']
@@ -141,7 +143,7 @@ if __name__ == '__main__':
         runner.save_collab_model = True
 
     # PERSONALISED PREDICTION
-    # runner.run_test_set(min_no_folds=0, max_no_folds=32)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
     # CONSENSUS PREDICTION
     runner.datasets = ['UKPConvArgCrowdSample_evalMACE']

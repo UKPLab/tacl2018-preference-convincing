@@ -238,12 +238,12 @@ class CollabPrefLearningVB(object):
 
         self.uselowerbound = use_lb
         if use_lb:
-            self.conv_threshold = 1e-3
+            self.conv_threshold = 1e-5
         else:
-            self.conv_threshold = 1e-1
+            self.conv_threshold = 1e-2
 
         self.max_iter_G = 3
-        self.max_iter = 200
+        self.max_iter = 500
         self.min_iter = 1
         self.n_converged = 3  # number of iterations while apparently converged (avoids numerical errors)
         self.vb_iter = 0
@@ -978,14 +978,14 @@ class CollabPrefLearningVB(object):
     def predict(self, personids, item_0_idxs, item_1_idxs, item_features=None, person_features=None, no_var=False):
 
         if person_features is None:
-            logging.info('No person features provided -- assuming no correlations between people')
+            logging.info('Predict: no person features provided -- assuming the same people as seen in training')
             Npeople = len(np.unique(personids))
         else:
             Npeople = person_features.shape[0]
         personids = np.array(personids)
 
         if item_features is None:
-            logging.info('No item features provided -- assuming same items as seen in training')
+            logging.info('Predict: no item features provided -- assuming same items as seen in training')
             N = self.N
         else:
             N = item_features.shape[0]
@@ -1020,50 +1020,64 @@ class CollabPrefLearningVB(object):
     def _y_var(self):
         return np.diag(self.y_cov)
 
+    def _predict_y_tr(self, return_cov):
+        y = self.y
+        if return_cov:
+            y_var = self._y_var()
+        else:
+            y_var = None
+
+        return y, y_var
+
+    def _compute_cov_w(self):
+        cov_w = np.zeros((self.Nfactors, self.N, self.N))
+        for f in range(self.Nfactors):
+            fidxs = np.arange(self.N) + self.N * f
+            cov_w[f] = self.w_cov[fidxs, :][:, fidxs]
+
+        return cov_w
+
+    def _compute_cov_t(self):
+        return self.t_cov
+
     def predict_f(self, item_features=None, person_features=None, personids=None, return_cov=False,
                   return_personids=False):
 
         if personids is not None:
             personids = np.array(personids).astype(int)
 
-        if person_features is None and personids is not None:
-            '''
-            This is the case for where we do not have any person features in training or testing. 
-            In this case we assume diagonal covariance between people. 
-            '''
-            upeople = np.unique(personids)
-            Npeople = len(upeople)
+        if person_features is None:
+            # Make predictions for all the users seen during training
+            y, y_var = self._predict_y_tr(return_cov)
 
-            # reuse the training points
-            y = np.zeros((self.Nfactors, Npeople))
+            if personids is not None:
+                # get the subset of people specified by personids
+                upeople = np.unique(personids)
+                Npeople = len(upeople)
 
-            cov_y = np.tile((np.eye(Npeople))[None, :, :], (self.Nfactors, 1, 1))
+                # reuse the training points
+                y_sub = np.zeros((self.Nfactors, Npeople))
 
-            # for any people IDs we have seen before, we use the posterior mean and variance
-            people_from_training = np.in1d(upeople, self.personIDs)
+                var_y_sub = np.ones((self.Nfactors, Npeople))
 
-            if return_cov:
-                y_var = self._y_var()
+                # for any people IDs we have seen before, we use the posterior mean and variance
+                people_from_training = np.in1d(upeople, self.personIDs)
 
-            if np.any(people_from_training): # reuse any previously-seen people
-                # copy in the posterior means
-                y[:, people_from_training] = self.y[:, upeople[people_from_training]]
+                if np.any(people_from_training): # reuse any previously-seen people
+                    # copy in the posterior means
+                    y_sub[:, people_from_training] = y[:, upeople[people_from_training]]
 
                 if return_cov:
                     for f in range(self.Nfactors):
-                        cov_y[f, people_from_training, people_from_training] = y_var[f, upeople[people_from_training]]
+                        var_y_sub[f, people_from_training] = y_var[f, upeople[people_from_training]]
 
-        elif person_features is None and personids is None:
-            y = self.y
-            Npeople = self.y.shape[1]
-            if return_cov:
-                cov_y = np.tile((np.eye(Npeople))[None, :, :], (self.Nfactors, 1, 1))
-                y_var = self._y_var()
-                for f in range(self.Nfactors):
-                    cov_y[f,:, :] = np.diag(y_var[f, :])
-
+                y = y_sub
+                var_y = var_y_sub
         else:
+            # Make predictions for new users
             y, cov_y = self._predict_y(person_features, return_cov)
+            if return_cov:
+                var_y = cov_y[:, range(y.shape[1]), range(y.shape[1])]
 
         if item_features is None:
             # reuse the training points
@@ -1071,15 +1085,12 @@ class CollabPrefLearningVB(object):
             w = self.w
 
             if return_cov:
-                cov_w = np.zeros((self.Nfactors, self.N, self.N))
-                for f in range(self.Nfactors):
-                    fidxs = np.arange(self.N) + self.N * f
-                    cov_w[f] = self.w_cov[fidxs, :][:, fidxs]
-                cov_t = self.t_cov
+                cov_w = self._compute_cov_w()
+                cov_t = self._compute_cov_t()
         else:
             t, w, cov_t, cov_w = self._predict_w_t(item_features, return_cov)
 
-        N = item_features.shape[0]
+        N = w.shape[0]
         Npeople = y.shape[1]
 
         predicted_f = (w.dot(y) + t)
@@ -1094,17 +1105,19 @@ class CollabPrefLearningVB(object):
             else:
                 return predicted_f, personids
 
-        cov_f = np.zeros((Npeople, N, N)) + cov_t[None, :, :]
+        cov_f = np.zeros((Npeople, N, N))
+        if self.use_t:
+            cov_f += cov_t[None, :, :]
 
         # covariance of a product of two independent gaussians (product-Gaussian distribution)
         for f in range(self.Nfactors):
-            cov_f += (np.diag(cov_y[f])[:, None, None] * cov_w[f][None, :, :])
+            cov_f += (var_y[f][:, None, None] * cov_w[f][None, :, :])
 
             yscaling = y[f, :]**2
             cov_wf = cov_w[f][None, :, :] * yscaling[:, None, None]
 
             wscaling = (w[:, f:f + 1].dot(w[:, f:f + 1].T))
-            cov_yf = np.diag(cov_y[f])[:, None, None] * wscaling[None, :, :]
+            cov_yf = var_y[f][:, None, None] * wscaling[None, :, :]
 
             cov_f += cov_wf + cov_yf
 

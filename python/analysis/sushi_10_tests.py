@@ -88,7 +88,7 @@ def convert_discrete_to_continuous(features, cols_to_convert):
 
 def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
                    u_test=None, i1_test=None, i2_test=None, u_un=None, i1_un=None, i2_un=None, ufeats_un=None,
-                   ninducing=None):
+                   ninducing=None, use_common_mean=True):
 
     Nfactors = ufeats.shape[0]
     if Nfactors > max_facs:
@@ -97,11 +97,11 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
     if ninducing is None:
         ninducing = np.max([ifeats.shape[0], ufeats.shape[0]])
 
-    model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
+    model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
-                                  forgetting_rate=forgetting_rate, verbose=True, use_lb=True, use_common_mean_t=True,
-                                  ls=None)
-    #model.use_local_obs_posterior_y = False
+                                  forgetting_rate=forgetting_rate, verbose=True, use_lb=True,
+                                  use_common_mean_t=use_common_mean, delay=delay)
+    # model.use_local_obs_posterior_y = False
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
 
     if vscales is not None:
@@ -110,11 +110,11 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
     if u_test is None:
         return model
 
-    fpred = model.predict_f(ifeats[active_items], ufeats)
-    rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, ufeats)
+    fpred = model.predict_f()
+    rho_pred = model.predict(u_test, i1_test, i2_test)
 
-    fpred_un = model.predict_f(ifeats[active_items], ufeats_un)
-    rho_pred_un = model.predict(u_un, i1_un, i2_un, ifeats, ufeats)
+    fpred_un = model.predict_f(None, ufeats_un)
+    rho_pred_un = model.predict(u_un, i1_un, i2_un, None, ufeats_un)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred, fpred_un, rho_pred_un
@@ -131,8 +131,8 @@ def run_GPPL_pooled(_, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, __, i1_test, i2_t
 
     model.fit(i1_tr, i2_tr, ifeats, prefs_tr, optimize=optimize, use_median_ls=True)
 
-    fpred, _ = np.tile(model.predict_f(ifeats[active_items]), (1, ufeats.shape[0]))
-    rho_pred, _ = model.predict(ifeats, i1_test, i2_test)
+    fpred, _ = np.tile(model.predict_f(), (1, ufeats.shape[0]))
+    rho_pred, _ = model.predict(None, i1_test, i2_test)
     rho_pred_un, _ = model.predict(ifeats, i1_un, i2_un)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
@@ -184,12 +184,12 @@ def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test
         rho_pred_b, _ = model.predict(joint_feats[joint_feats_idxs_b], pairs_b[0], pairs_b[1])
         rho_pred = np.append(rho_pred, rho_pred_b)
 
-    joint_ifeats = np.tile(ifeats[active_items], (ufeats.shape[0], 1))
-    joint_ufeats = np.tile(ufeats, (1, active_items.shape[0])).reshape((ufeats.shape[0]*active_items.shape[0],
+    joint_ifeats = np.tile(ifeats, (ufeats.shape[0], 1))
+    joint_ufeats = np.tile(ufeats, (1, ifeats.shape[0])).reshape((ufeats.shape[0]*ifeats.shape[0],
                                                                        ufeats.shape[1]))
     joint_feats = np.concatenate((joint_ifeats, joint_ufeats), axis=1)
     fpred, _ = model.predict_f(joint_feats)
-    fpred = fpred.reshape(ufeats.shape[0], active_items.shape[0]).T
+    fpred = fpred.reshape(ufeats.shape[0], ifeats.shape[0]).T
 
 
     batchsize = 100
@@ -211,12 +211,12 @@ def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test
         rho_pred_b, _ = model.predict(joint_feats[joint_feats_idxs_b], pairs_b[0], pairs_b[1])
         rho_pred_un = np.append(rho_pred_un, rho_pred_b)
 
-    joint_ifeats = np.tile(ifeats[active_items], (ufeats_un.shape[0], 1))
-    joint_ufeats = np.tile(ufeats_un, (1, active_items.shape[0])).reshape((ufeats_un.shape[0]*active_items.shape[0],
+    joint_ifeats = np.tile(ifeats, (ufeats_un.shape[0], 1))
+    joint_ufeats = np.tile(ufeats_un, (1, ifeats.shape[0])).reshape((ufeats_un.shape[0]*ifeats.shape[0],
                                                                        ufeats_un.shape[1]))
     joint_feats = np.concatenate((joint_ifeats, joint_ufeats), axis=1)
     fpred_un, _ = model.predict_f(joint_feats)
-    fpred_un = fpred_un.reshape(ufeats_un.shape[0], active_items.shape[0]).T
+    fpred_un = fpred_un.reshape(ufeats_un.shape[0], ifeats.shape[0]).T
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred, fpred_un, rho_pred_un
@@ -226,31 +226,32 @@ def run_GPPL_per_user(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_t
     model = GPPrefPerUser(ufeats.shape[0], max_update_size, shape_s0, rate_s0, ifeats.shape[1], ninducing)
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
-    fpred = model.predict_f(ifeats[active_items], personids=None)
-    rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, None)
+    fpred = model.predict_f(None, personids=None)
+    rho_pred = model.predict(u_test, i1_test, i2_test, None, None)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
-    return fpred, rho_pred, np.zeros((ifeats[active_items].shape[0], ufeats_un.shape[0])), 0.5 * np.ones(len(u_un))
+    return fpred, rho_pred, np.zeros((ifeats.shape[0], ufeats_un.shape[0])), 0.5 * np.ones(len(u_un))
 
 
 def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test,
                              u_un, i1_un, i2_un, ufeats_un):
 
     Nfactors = ufeats.shape[0]
-
     if Nfactors > max_facs:
         Nfactors = max_facs # this is the maximum
 
-    model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Nfactors,
-                                  ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
-                                  verbose=True, use_lb=True, use_common_mean_t=True)
+    model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None,
+                                  nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
+                                  forgetting_rate=forgetting_rate, verbose=True, use_lb=True,
+                                  use_common_mean_t=True, delay=delay)
 
+    model.use_local_obs_posterior_y = False
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
-    fpred = model.predict_f(ifeats[active_items], person_features=None)
-    rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, None)
+    fpred = model.predict_f(None, None)
+    rho_pred = model.predict(u_test, i1_test, i2_test, None, None)
 
-    fpred_un = model.predict_f(ifeats[active_items], personids=np.arange(ufeats_un.shape[0]) + ufeats.shape[0])
+    fpred_un = model.predict_f(None, personids=np.arange(ufeats_un.shape[0]) + ufeats.shape[0])
     rho_pred_un = model.predict(ufeats.shape[0] + np.zeros(len(u_un)), i1_un, i2_un, ifeats, None)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
@@ -264,38 +265,39 @@ def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test,
 
     model = CollabPrefLearningSVI(1, 1, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Nfactors,
                                   ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
-                                  verbose=True, use_lb=True, kernel_func='diagonal')
-
+                                  verbose=True, use_lb=True, kernel_func='diagonal', delay=delay)
+    model.use_local_obs_posterior_y = False
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
-    fpred = model.predict_f(ifeats[active_items], person_features=None)
+    fpred = model.predict_f(None, None)
     rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, None)
 
-    fpred_un = model.predict_f(ifeats[active_items], personids=np.arange(ufeats_un.shape[0]) + ufeats.shape[0])
+    fpred_un = model.predict_f(None, personids=np.arange(ufeats_un.shape[0]) + ufeats.shape[0])
     rho_pred_un = model.predict(ufeats.shape[0] + np.zeros(len(u_un)), i1_un, i2_un, ifeats, None)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred, fpred_un, rho_pred_un
 
 
-def run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test,
-                    u_un, i1_un, i2_un, ufeats_un, use_common_mean=False):
+def run_collab_FITC_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test,
+                              u_un, i1_un, i2_un, ufeats_un, use_common_mean=False):
     Nfactors = ufeats.shape[0]
     if Nfactors > max_facs:
         Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningFITC(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None,
-                                   nfactors=Nfactors, ninducing=ninducing, forgetting_rate=forgetting_rate,
-                                   verbose=True, use_lb=True, use_common_mean_t=use_common_mean,
-                                   max_update_size=max_update_size)
+                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
+                                   forgetting_rate=forgetting_rate, verbose=True, use_lb=True,
+                                   use_common_mean_t=use_common_mean, delay=delay)
 
-    model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
+    model.use_local_obs_posterior_y = False
+    model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
-    fpred = model.predict_f(ifeats[active_items], ufeats)
-    rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, ufeats)
+    fpred = model.predict_f(None, None)
+    rho_pred = model.predict(u_test, i1_test, i2_test, None, None)
 
-    fpred_un = model.predict_f(ifeats[active_items], ufeats_un)
-    rho_pred_un = model.predict(u_un, i1_un, i2_un, ifeats, ufeats)
+    fpred_un = model.predict_f(None, personids=np.arange(ufeats_un.shape[0]) + ufeats.shape[0])  # ufeats_un)
+    rho_pred_un = model.predict(ufeats.shape[0] + np.zeros(len(u_un)), i1_un, i2_un, ifeats, None)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred, fpred_un, rho_pred_un
@@ -358,7 +360,7 @@ def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, 
                 minval = lb
                 min_sh_idx = sh
                 min_r_idx = r
-                print('New best value: %f, with hypers %f and %f' % (-lb, sh, r))
+                print('New best value: %f, with hypers %f and %f' % (-lb, shape_s0, rate_s0y))
 
     shape_s0 = sh_vals[min_sh_idx]
     rate_s0 = r_vals[min_r_idx]
@@ -374,6 +376,9 @@ def train_test(method_name, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test
     if method_name == 'crowd-GPPL':
         return run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, u_un, i1_un, i2_un,
                               ufeats_un, ninducing=ninducing)
+    elif method_name == 'crowd-GPPL-noConsensus':
+        return run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, u_un, i1_un, i2_un,
+                              ufeats_un, ninducing=ninducing, use_common_mean=False)
     elif method_name == 'crowd-GPPL-noInduc':
         return run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, u_un, i1_un, i2_un,
                               ufeats_un, ninducing=None)
@@ -392,12 +397,12 @@ def train_test(method_name, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test
     elif method_name == 'crowd-BMF':
         return run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, u_un, i1_un, i2_un,
                               ufeats_un)
-    elif method_name == 'collab-GPPL': # No common mean, i.e. like Houlsby but SVI
-        return run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test,
-                               u_un, i1_un, i2_un, ufeats_un)
-    elif method_name == 'crowdFITC-GPPL':
-        return run_collab_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test,
-                               u_un, i1_un, i2_un, ufeats_un, use_common_mean=True)
+    elif method_name == 'crowd-GPPL-FITC\\u-noConsensus': # No common mean, i.e. like Houlsby but SVI
+        return run_collab_FITC_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test,
+                                         u_un, i1_un, i2_un, ufeats_un)
+    elif method_name == 'crowd-GPPL-FITC\\u':
+        return run_collab_FITC_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test,
+                                         u_un, i1_un, i2_un, ufeats_un, use_common_mean=True)
 
 def subsample_data():
 
@@ -422,8 +427,8 @@ def subsample_data():
         npairs_test = 25#5
         nusers_unseen = 100
 
-    # select 1000 random users
-    chosen_users = np.random.choice(nusers, nusers_tr + nusers_unseen, replace=False)
+    # select 1000 random users # select the first N users
+    chosen_users = np.random.choice(nusers, nusers_tr + nusers_unseen, replace=False)  #np.arange(nusers_tr + nusers_unseen)
     chosen_users_unseen = chosen_users[nusers_tr:]
     chosen_users = chosen_users[:nusers_tr]
 
@@ -677,8 +682,11 @@ ranking_data = pd.read_csv(sushi_prefs_file, sep=' ', skiprows=1, header=None)
 userids, items1, items2, prefs = extract_pairs_from_ranking(ranking_data.values[:, 2:].astype(int))
 
 nusers = len(np.unique(userids))
-active_items = np.unique(np.array([items1, items2]))
-item_features = item_features[:np.max(active_items)+1, :]
+active_items, items_contiguous = np.unique(np.array([items1, items2]), return_inverse=True)
+item_features = item_features[active_items]
+items_contiguous = items_contiguous.reshape(2, len(items1))
+items1 = items_contiguous[0]
+items2 = items_contiguous[1]
 nitems = len(active_items)
 print('Found %i users, %i items, and %i pairs per user.' % (nusers, nitems, prefs.shape[0]/nusers))
 print('Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
@@ -710,28 +718,29 @@ max_facs = 20
 shape_s0 = 1.0
 rate_s0 = 100.0  #0.1
 max_update_size = 200
+delay = 10
 ninducing = 25#5000
 forgetting_rate = 0.9
 
-nreps = 25
+nreps = 1
 
 sushiB = False
 vscales = None
 
 # Experiment name tag
-tag = '_11'
+tag = '_14'
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
-print('Optimizing function scales ...')
-np.random.seed(2309234)
-sushiA_small = True
-u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, chosen_users, _, _, _, _, _, _ = subsample_data()
-shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
-                                         item_features, user_features, prefs_tr,
-                                         u_test, i1_test, i2_test, prefs_test, chosen_users)
-print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
-np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
+# print('Optimizing function scales ...')
+# np.random.seed(2309234)
+# sushiA_small = False
+# u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, chosen_users, _, _, _, _, _, _ = subsample_data()
+# shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
+#                                          item_features, user_features, prefs_tr,
+#                                          u_test, i1_test, i2_test, prefs_test, chosen_users)
+# print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
+# np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
 
 # SMALL data test to show benefits of user features --------------------------------------------------------------------
 
@@ -740,13 +749,15 @@ vscales = None # don't record the v scale factors
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           'crowd-GPPL\\u',
            'crowd-GPPL-noInduc',
-           'collab-GPPL', # Houlsby
-           'GPPL-pooled',
-           'GPPL-joint',
-           'GPPL-per-user',
+           'crowd-GPPL-noConsensus',
+           'crowd-GPPL\\u',
            'crowd-BMF',
+           'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
+           'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+           'GPPL-pooled',
+           # 'GPPL-joint',
+           'GPPL-per-user',
            ]
 
 optimize = False
@@ -761,14 +772,15 @@ vscales = None # don't record the v scale factors
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           'crowd-GPPL\\u',
            'crowd-GPPL-noInduc',
-           'crowdFITC-GPPL',
-           'collab-GPPL', # Houlsby
-           'GPPL-pooled',
-           'GPPL-joint',
-           'GPPL-per-user',
+           'crowd-GPPL-noConsensus',
+           'crowd-GPPL\\u',
            'crowd-BMF',
+           'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
+           'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+           'GPPL-pooled',
+           # # 'GPPL-joint',
+           'GPPL-per-user',
            ]
 
 optimize = False
@@ -795,13 +807,8 @@ vscales = []
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           # 'GPPL-pooled',
-           # 'GPPL-joint',
-           # 'GPPL-per-user',
            'crowd-GPPL\\u',
-           # 'crowd-BMF',
-           # 'crowdFITC-GPPL',
-           'collab-GPPL', # Houlsby -- included to show that the LB found using crowd method is more useful for optimisation
+           'crowd-GPPL-FITC\\u-noConsensus', # Houlsby -- included to show that the LB found using crowd method is more useful for optimisation
            ]
 
 # hyperparameters common to most models
@@ -835,8 +842,11 @@ ranking_data = pd.read_csv(sushi_prefs_file, sep=' ', skiprows=1, header=None)
 userids, items1, items2, prefs = extract_pairs_from_ranking(ranking_data.values[:, 2:].astype(int))
 
 nusers = len(np.unique(userids))
-active_items = np.unique(np.array([items1, items2]))
-item_features = item_features[:np.max(active_items)+1, :]
+active_items, items_contiguous = np.unique(np.array([items1, items2]), return_inverse=True)
+item_features = item_features[active_items]
+items_contiguous = items_contiguous.reshape(2, len(items1))
+items1 = items_contiguous[0]
+items2 = items_contiguous[1]
 nitems = len(active_items)
 print('Found %i users, %i items, and %i pairs per user.' % (nusers, nitems, prefs.shape[0]/nusers))
 print('Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
@@ -873,13 +883,14 @@ vscales = None # don't record the v factor scale factors
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           'crowdFITC-GPPL',
-           'collab-GPPL',  # Houlsby
-           'GPPL-pooled',
-           'GPPL-joint',
-           'GPPL-per-user',
+           'crowd-GPPL-noConsensus',
            'crowd-GPPL\\u',
            'crowd-BMF',
+           'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
+           'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+           'GPPL-pooled',
+           # 'GPPL-joint',
+           'GPPL-per-user',
            ]
 
 # hyperparameters common to most models
@@ -895,12 +906,8 @@ vscales = []
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           #'GPPL-pooled',
-           #'GPPL-joint',
-           # 'GPPL-per-user',
            'crowd-GPPL\\u',
-           # 'crowd-BMF',
-           'collab-GPPL', # Houlsby
+           'crowd-GPPL-FITC\\u-noConsensus', # Houlsby
            ]
 
 # hyperparameters common to most models
