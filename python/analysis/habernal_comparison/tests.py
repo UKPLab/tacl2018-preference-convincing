@@ -943,6 +943,8 @@ class TestRunner:
                 person_test = person_test[valid_test_idxs]
                 prefs_test = prefs_test[valid_test_idxs]
 
+            self.prefs_test = prefs_test
+
             self.load_features(feature_type, embeddings_type, a1_train, a2_train, uids, utexts)
             #items_feat = items_feat[:, :ndebug_features]     
     

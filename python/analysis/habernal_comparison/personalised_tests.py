@@ -58,7 +58,14 @@ class PersonalisedTestRunner(TestRunner):
 
         zero_centered_prefs = np.array(self.prefs_train, dtype=float) - 1
 
-        self.model.fit(self.person_train, self.a1_train, self.a2_train, self.items_feat, zero_centered_prefs,
+        # subsample for debugging!!!
+        self.chosen_people = np.unique(self.person_test)[:50]
+        tridxs = np.in1d(self.person_train, self.chosen_people)
+
+        self.model.uselowerbound = False
+        self.model.use_local_obs_posterior_y = False
+
+        self.model.fit(self.person_train[tridxs], self.a1_train[tridxs], self.a2_train[tridxs], self.items_feat, zero_centered_prefs[tridxs],
                        optimize=self.optimize_hyper, nrestarts=1, input_type='zero-centered')
 
     def run_persgppl(self):
@@ -73,11 +80,40 @@ class PersonalisedTestRunner(TestRunner):
             self.vscales.append(np.sort((self.model.rate_sw / self.model.shape_sw) *
                                         (self.model.rate_sw / self.model.shape_sw))[::-1])
 
-        proba = self.model.predict(self.person_test, self.a1_test, self.a2_test, self.items_feat)
-        common_proba = self.model.predict_common(None, self.a1_test, self.a2_test)
+        # subsample for debugging!!!
+        testidxs = np.in1d(self.person_test, self.chosen_people)
+
+        proba = self.model.predict(self.person_test[testidxs], self.a1_test[testidxs], self.a2_test[testidxs])#, self.items_feat)
+        self.common_proba = self.model.predict_common(None, self.a1_test[testidxs], self.a2_test[testidxs])
 
         print('Fraction of differences between personal and consensus pairwise predctions: %f' %
-              (np.sum(np.round(proba.flatten()) != np.round(common_proba.flatten())) / float(len(proba.flatten())) ) )
+              (np.sum(np.round(proba.flatten()) != np.round(self.common_proba.flatten())) / float(len(proba.flatten())) ) )
+
+
+        prefs_test = self.prefs_test[testidxs]
+
+        logging.info("Test personal accuracy = %f" % (
+                np.sum(prefs_test[prefs_test != 1] == 2 * np.round(proba).flatten()[prefs_test != 1]
+                       ) / float(np.sum(prefs_test != 1))))
+
+        logging.info("Test consensus-to-personal accuracy = %f" % (
+                np.sum(prefs_test[prefs_test != 1] == 2 * np.round(self.common_proba).flatten()[prefs_test != 1]
+                       ) / float(np.sum(prefs_test != 1))))
+
+
+        tridxs = np.in1d(self.person_train, self.chosen_people)
+        prefs_train = self.prefs_train[tridxs]
+
+        trproba = self.model.predict(self.person_train[tridxs], self.a1_train[tridxs], self.a2_train[tridxs])
+        trcommon_proba = self.model.predict_common(None, self.a1_train[tridxs], self.a2_train[tridxs])
+
+        logging.info("Train personal accuracy = %f" % (
+                np.sum(prefs_train[prefs_train != 1] == 2 * np.round(trproba).flatten()[prefs_train != 1]
+                       ) / float(np.sum(prefs_train != 1))))
+
+        logging.info("Train consensus-to-personal accuracy = %f" % (
+                np.sum(prefs_train[prefs_train != 1] == 2 * np.round(trcommon_proba).flatten()[prefs_train != 1]
+                       ) / float(np.sum(prefs_train != 1))))
 
         # print(np.any(np.isnan(proba)))
         # print(np.any(np.isinf(proba)))
@@ -150,11 +186,11 @@ if __name__ == '__main__':
     dataset_increment = 0     
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
-    feature_types = ['embeddings'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
+    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
     embeddings_types = ['word_mean']
 
     datasets = ['UKPConvArgCrowdSample']
-    methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
+    methods = ['PersPrefGP_commonmean_noOpt_weaksprior_M100']
 
     if 'runner' not in globals():
         runner = PersonalisedTestRunner('personalised_6', datasets, feature_types, embeddings_types, methods,

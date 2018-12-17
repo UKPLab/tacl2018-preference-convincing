@@ -577,8 +577,8 @@ class CollabPrefLearningVB(object):
                                                      'CollabPL VB, y ', change_as_a_fraction=False)
                 converged = converged_w & converged_y
 
-            old_w = self.w
-            old_y = self.y
+                old_w = self.w.copy()
+                old_y = self.y.copy()
 
             self.vb_iter += 1
 
