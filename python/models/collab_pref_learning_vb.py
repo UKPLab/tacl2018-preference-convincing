@@ -1012,7 +1012,7 @@ class CollabPrefLearningVB(object):
 
         return predicted_prefs
 
-    def predict_f_item_person(self, itemids, personids, item_features, person_features=None):
+    def predict_f_item_person(self, itemids, personids, item_features=None, person_features=None):
         predicted_f, personids = self.predict_f(item_features, person_features, personids, return_personids=True)
         predicted_f = predicted_f[itemids, personids]
         return predicted_f

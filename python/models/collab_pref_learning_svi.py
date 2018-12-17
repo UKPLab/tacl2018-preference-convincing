@@ -982,8 +982,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         if item_features is None:
             item_features = self.obs_coords
+            K = self.K_nm
+        else:
+            K = self.kernel_func(item_features, self.ls, self.inducing_coords)
 
-        K = self.kernel_func(item_features, self.ls, self.inducing_coords)
         if self.verbose:
             logging.debug('Computing K_nn in predict_common')
         K_starstar = self.kernel_func(item_features, self.ls, item_features)
