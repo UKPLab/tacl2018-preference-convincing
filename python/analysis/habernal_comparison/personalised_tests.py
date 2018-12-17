@@ -79,21 +79,25 @@ class PersonalisedTestRunner(TestRunner):
         print('Fraction of differences between personal and consensus pairwise predctions: %f' %
               (np.sum(np.round(proba.flatten()) != np.round(common_proba.flatten())) / float(len(proba.flatten())) ) )
 
-        print(np.any(np.isnan(proba)))
-        print(np.any(np.isinf(proba)))
-        for p in proba:
-            print(p)
-
-        print('common proba: ')
-
-        for p in common_proba:
-            print(p)
+        # print(np.any(np.isnan(proba)))
+        # print(np.any(np.isinf(proba)))
+        # for p in proba:
+        #     print(p)
+        #
+        # print('common proba: ')
+        #
+        # for p in common_proba:
+        #     print(p)
 
         # what did we change?
         # - more iterations ( 200 --> 500 )
         # - smaller rates ( 200 --> 20 ) because there are multiple factors whose scales all add up
         # next: try increasing delay so that y doesn't disappear to zero so easily when the person is not seen until
         # later batch of training data
+        # Also: consider that when users are independent, then the stochastic updates are also updating only some of
+        # the variables. But the others are getting set back to zero... this is only a problem in this model because
+        # if they are initialised to zero, they don't move much because w and y are scaled by each other's current
+        # estimates. It might be okay if variance of w and y is large because this is added to the scale factor
 
         if self.a_rank_test is not None:
             predicted_f = self.model.predict_f_item_person(self.a_rank_test, self.person_rank_test, self.items_feat)

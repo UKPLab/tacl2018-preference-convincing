@@ -764,7 +764,7 @@ methods = [
 optimize = False
 sushiB = False
 sushiA_small = True
-run_sushi_expt(methods, 'sushi_10small' + tag)
+# run_sushi_expt(methods, 'sushi_10small' + tag)
 
 # Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
 
@@ -787,7 +787,7 @@ methods = [
 optimize = False
 sushiB = False
 sushiA_small = False
-run_sushi_expt(methods, 'sushi_10' + tag)
+# run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
