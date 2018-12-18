@@ -1444,6 +1444,13 @@ class CollabPrefLearningVB(object):
                     needs_fitting = True
                     self.ls[dimension] = np.exp(hyperparams)
                 dimensions = [dimension]
+
+            lml_jac = np.zeros(len(dimensions))
+            lml_jac[np.isneginf(self.ls)] = np.inf
+            lml_jac[np.isposinf(self.ls)] = -np.inf
+            if np.any(np.isinf(self.ls)):
+                return lml_jac
+
         elif lstype == 'person':
             if dimension == -1 or self.n_ylengthscales == 1:
                 if np.any(np.abs(self.lsy - np.exp(hyperparams)) > 1e-4):
@@ -1455,6 +1462,13 @@ class CollabPrefLearningVB(object):
                     needs_fitting = True
                     self.lsy[dimension] = np.exp(hyperparams)
                 dimensions = [dimension]
+
+            lml_jac = np.zeros(len(dimensions))
+            lml_jac[np.isneginf(self.lsy)] = np.inf
+            lml_jac[np.isposinf(self.lsy)] = -np.inf
+            if np.any(np.isinf(self.lsy)):
+                return lml_jac
+
         elif lstype == 'both' and dimension <= 0:
 
             hyperparams_w = hyperparams[:self.nitem_features]
@@ -1469,13 +1483,15 @@ class CollabPrefLearningVB(object):
                 self.lsy[:] = np.exp(hyperparams_y)
 
             dimensions = np.append(np.arange(len(self.ls)), np.arange(len(self.lsy)))
+
+            lml_jac = np.zeros(len(dimensions))
+            ls_all = np.append(self.ls, self.lsy)
+            lml_jac[np.isneginf(ls_all)] = np.inf
+            lml_jac[np.isposinf(ls_all)] = -np.inf
+            if np.any(np.isinf(ls_all)):
+                return lml_jac
         else:
             logging.error("Invalid optimization setup.")
-
-        if np.any(np.isinf(self.ls)):
-            return np.inf
-        if np.any(np.isinf(self.lsy)):
-            return np.inf
 
         if needs_fitting:
             self.neg_marginal_likelihood(hyperparams, lstype, dimension, personIDs, items_1_coords, items_2_coords,
@@ -1513,7 +1529,7 @@ class CollabPrefLearningVB(object):
         logging.debug("Jacobian of LML: %s" % lml_jac)
         if self.verbose:
             logging.debug("...with item length-scales = %s, person length-scales = %s" % (self.ls, self.lsy))
-        return -lml_jac  # negative because the objective function is also negated
+        return lml_jac
 
     def ln_modelprior(self):
         # Gamma distribution over each value. Set the parameters of the gammas.
