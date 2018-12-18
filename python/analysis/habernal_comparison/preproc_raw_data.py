@@ -113,7 +113,7 @@ def process_list_of_turker_assts(pairlist):
     
     pairlist = pairlist['annotatedArgumentPair']
     for pair in pairlist:
-        workerlabel = pair['mTurkAssignments']['mTurkAssignment']
+        workerlabel = pair['mTurkAssignments']['mTurkAssignment'][0]
         row = [pair['id'].encode('utf-8'), workerlabel['turkID'].encode('utf-8'), 
                workerlabel['value'].encode('utf-8'),
                pair['arg1']['text'].encode('utf-8').replace('\n', ' ').replace('\t', ' '), 

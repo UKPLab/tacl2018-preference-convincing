@@ -995,10 +995,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         t_out = K.dot(self.invK_mm).dot(self.t_u)
         cov_t = K_starstar * self.rate_st / self.shape_st + (covpair_uS - covpair.dot(self.Kts_mm)).dot(covpair.T)
 
-        predicted_prefs = pref_likelihood(t_out, cov_t[item_0_idxs, item_1_idxs]
-                                          + cov_t[item_0_idxs, item_1_idxs]
+        predicted_prefs = pref_likelihood(t_out, cov_t[item_0_idxs, item_0_idxs]
+                                          + cov_t[item_1_idxs, item_1_idxs]
                                           - cov_t[item_0_idxs, item_1_idxs]
-                                          - cov_t[item_0_idxs, item_1_idxs],
+                                          - cov_t[item_1_idxs, item_0_idxs],
                                           subset_idxs=[], v=item_0_idxs, u=item_1_idxs)
 
         return predicted_prefs
