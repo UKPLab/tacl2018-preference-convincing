@@ -873,7 +873,8 @@ class TestRunner:
         self._init_ls(feature_type, embeddings_type)
 
         resultsfile, results_stem = self._set_resultsfile(feature_type, embeddings_type, acc, dataset_increment)
-                       
+
+        self.results_stem = results_stem
         all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, all_tr_proba = \
                                                                                 self._reload_partial_result(resultsfile)
                 

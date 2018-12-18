@@ -11,6 +11,8 @@ if __name__ == '__main__':
 
     expt_settings['foldorderfile'] = None
 
+    expt_root_dir = 'personalised_6'
+
     resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
     max_no_folds = 32
 
@@ -28,7 +30,7 @@ if __name__ == '__main__':
     # results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
     # tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
     # = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-    #                   max_no_folds=max_no_folds)
+    #                   max_no_folds=max_no_folds, foldername=expt_root_dir)
     # print("Completed compute metrics")
 
     # Personalised predictions -- multi-user methods
@@ -41,7 +43,7 @@ if __name__ == '__main__':
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                      max_no_folds=max_no_folds)
+                      max_no_folds=max_no_folds, foldername=expt_root_dir)
 
     print("Completed compute metrics")
 
@@ -56,6 +58,6 @@ if __name__ == '__main__':
     # results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
     # tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
     # = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-    #                   max_no_folds=max_no_folds)
+    #                   max_no_folds=max_no_folds, foldername=expt_root_dir)
     #
     # print("Completed compute metrics")

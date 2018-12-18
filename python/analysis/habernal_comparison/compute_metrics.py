@@ -221,8 +221,9 @@ def load_results_data(data_root_dir, resultsfile_template, expt_settings, max_no
         
     return data, nFolds, resultsdir, resultsfile          
 
-def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, accuracy=1.0, di=0, npairs=0, tag='', 
-        remove_seen_from_mean=False, max_no_folds=32, min_folds_desired=0, compute_tr_performance=False, flip_labels=[]):
+def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, accuracy=1.0, di=0, npairs=0,
+                    tag='', remove_seen_from_mean=False, max_no_folds=32, min_folds_desired=0,
+                    compute_tr_performance=False, flip_labels=[], foldername=expt_root_dir):
         
     expt_settings['acc'] = accuracy
     expt_settings['di'] = di
@@ -289,7 +290,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                     embeddings_to_use = embeddings_types
                 for expt_settings['embeddings_type'] in embeddings_to_use:
                     data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template,
-                                                                              expt_settings, max_no_folds)
+                                                              expt_settings, max_no_folds, foldername)
                     min_folds = min_folds_desired
                     foldrange = None
 

@@ -32,7 +32,7 @@ class PersonalisedTestRunner(TestRunner):
 
         if 'weaksprior' in self.method:
             shape_s0 = 2.0
-            rate_s0 = 20.0
+            rate_s0 = 200.0
         elif 'lowsprior' in self.method:
             shape_s0 = 1.0
             rate_s0 = 1.0
@@ -82,25 +82,52 @@ class PersonalisedTestRunner(TestRunner):
 
         proba = self.model.predict(self.person_test, self.a1_test, self.a2_test)
 
+        people = np.unique(self.person_test)
+
+        text_out = ""
+
+        for p in people:
+            text_out += '%i & ' % p
+            testidxs = self.person_test == p
+
+            trsize = np.sum(self.person_train == p)
+            logging.info("No. training egs: %i" % trsize)
+            text_out += '%i & ' % trsize
+
+            tesize = np.sum(self.person_test == p)
+            logging.info("No. test egs: %i" % tesize)
+            text_out += '%i & ' % tesize
+
+            proba = self.model.predict(self.person_test[testidxs], self.a1_test[testidxs],
+                                   self.a2_test[testidxs])  # , self.items_feat)
+            common_proba = self.model.predict_common(None, self.a1_test[testidxs], self.a2_test[testidxs])
+
+            prefs_test = self.prefs_test[testidxs]
+
+            per_acc = np.sum(prefs_test[prefs_test != 1] == 2 * np.round(proba).flatten()[prefs_test != 1]
+                       ) / float(np.sum(prefs_test != 1))
+            con_acc = np.sum(prefs_test[prefs_test != 1] == 2 * np.round(common_proba).flatten()[prefs_test != 1]
+                       ) / float(np.sum(prefs_test != 1))
+
+            logging.info("Test personal accuracy = %f" % per_acc)
+
+            logging.info("Test consensus-to-personal accuracy = %f" % con_acc)
+
+            text_out += '%f & %f \\\\\n' % (per_acc, con_acc)
+
+        with open(self.results_stem + '/personal_results_%i.tex' % self.foldidx, 'w') as fh:
+            fh.writelines(text_out)
         # subsample for debugging!!!
         # testidxs = np.in1d(self.person_test, self.chosen_people)
-        #
-        # proba = self.model.predict(self.person_test[testidxs], self.a1_test[testidxs], self.a2_test[testidxs])#, self.items_feat)
-        # self.common_proba = self.model.predict_common(None, self.a1_test[testidxs], self.a2_test[testidxs])
+
+
 
         # print('Fraction of differences between personal and consensus pairwise predctions: %f' %
         #       (np.sum(np.round(proba.flatten()) != np.round(self.common_proba.flatten())) / float(len(proba.flatten())) ) )
         #
         #
-        # prefs_test = self.prefs_test[testidxs]
         #
-        # logging.info("Test personal accuracy = %f" % (
-        #         np.sum(prefs_test[prefs_test != 1] == 2 * np.round(proba).flatten()[prefs_test != 1]
-        #                ) / float(np.sum(prefs_test != 1))))
-        #
-        # logging.info("Test consensus-to-personal accuracy = %f" % (
-        #         np.sum(prefs_test[prefs_test != 1] == 2 * np.round(self.common_proba).flatten()[prefs_test != 1]
-        #                ) / float(np.sum(prefs_test != 1))))
+
         #
         #
         # tridxs = np.in1d(self.person_train, self.chosen_people)
@@ -191,7 +218,7 @@ if __name__ == '__main__':
     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
     embeddings_types = ['word_mean']
 
-    datasets = ['UKPConvArgCrowdSample']
+    datasets = ['UKPConvArgCrowd']
     methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
 
     if 'runner' not in globals():
