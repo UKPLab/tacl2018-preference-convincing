@@ -35,7 +35,7 @@ if __name__ == '__main__':
 
     datasets = ['UKPConvArgCrowdSample']
     methods = ['PersPrefGP_commonmean_noOpt_weaksprior']#, 'PersPrefGP_commonmean_weaksprior']
-    feature_types = ['embeddings'] # 'both'
+    feature_types = ['both'] # 'both'
     embeddings_types = ['word_mean']
 
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
