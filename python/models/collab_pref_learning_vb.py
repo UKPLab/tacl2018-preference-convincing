@@ -736,29 +736,29 @@ class CollabPrefLearningVB(object):
         logrho = np.log(rho)
         lognotrho = np.log(1 - rho)
 
-        prod_cov = 0
-        y_w_cov_y = 0
-        w_y_cov_w = 0
-        for f in range(self.Nfactors):
-
-            fidxs = np.arange(self.N) + (self.N * f)
-            w_cov = self.w_cov[fidxs, :][:, fidxs]
-
-            fidxs = np.arange(self.Npeople) + (self.Npeople * f)
-            y_cov = self.y_cov[fidxs, :][:, fidxs]
-
-            cov = w_cov[None, :, :, None] * y_cov[:, None, None, :]
-            cov = cov.reshape(self.N * self.Npeople, self.N * self.Npeople)
-
-            y_w_cov_y_f = w_cov[None, :, :, None] * self.y[f:f+1, :].T.dot(self.y[f:f+1, :])[:, None, None, :]
-            y_w_cov_y_f = y_w_cov_y_f.reshape(self.N * self.Npeople, self.N * self.Npeople)
-            y_w_cov_y += y_w_cov_y_f
-
-            w_y_cov_w_f = y_cov[:, None, None, :] * self.w[:, f:f+1].dot(self.w[:, f:f+1].T)[None, :, :, None]
-            w_y_cov_w_f = w_y_cov_w_f.reshape(self.N * self.Npeople, self.N * self.Npeople)
-            w_y_cov_w += w_y_cov_w_f
-
-            prod_cov += cov
+        # prod_cov = 0
+        # y_w_cov_y = 0
+        # w_y_cov_w = 0
+        # for f in range(self.Nfactors):
+        #
+        #     fidxs = np.arange(self.N) + (self.N * f)
+        #     w_cov = self.w_cov[fidxs, :][:, fidxs]
+        #
+        #     fidxs = np.arange(self.Npeople) + (self.Npeople * f)
+        #     y_cov = self.y_cov[fidxs, :][:, fidxs]
+        #
+        #     cov = w_cov[None, :, :, None] * y_cov[:, None, None, :]
+        #     cov = cov.reshape(self.N * self.Npeople, self.N * self.Npeople)
+        #
+        #     y_w_cov_y_f = w_cov[None, :, :, None] * self.y[f:f+1, :].T.dot(self.y[f:f+1, :])[:, None, None, :]
+        #     y_w_cov_y_f = y_w_cov_y_f.reshape(self.N * self.Npeople, self.N * self.Npeople)
+        #     y_w_cov_y += y_w_cov_y_f
+        #
+        #     w_y_cov_w_f = y_cov[:, None, None, :] * self.w[:, f:f+1].dot(self.w[:, f:f+1].T)[None, :, :, None]
+        #     w_y_cov_w_f = w_y_cov_w_f.reshape(self.N * self.Npeople, self.N * self.Npeople)
+        #     w_y_cov_w += w_y_cov_w_f
+        #
+        #     prod_cov += cov
 
         # we want to replace this precision with the global values. w_gp and y_gp are different
         # because G is different in each.

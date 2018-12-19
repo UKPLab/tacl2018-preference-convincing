@@ -14,11 +14,9 @@ accumulate from small differences in the approximations.
 import datetime
 
 import numpy as np
-from scipy.optimize import fmin, minimize
 from scipy.stats import multivariate_normal as mvn, norm
 import logging
-from gp_pref_learning import GPPrefLearning, pref_likelihood
-from scipy.linalg import block_diag
+from gp_pref_learning import pref_likelihood
 from scipy.special import psi, binom
 from sklearn.cluster import MiniBatchKMeans
 
@@ -378,9 +376,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         batchsize = 500
         nbatches = int(np.ceil(self.N / float(batchsize) ))
 
-        self.Kw_file_tag = ''#datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+        self.Kw_file_tag = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
         if self.N > 500:
-            self.Kw = np.memmap('./Kw_%s.tmp' % self.Kw_file_tag, dtype=float, mode='w+', shape=(self.N, self.N))
+            self.Kw = np.memmap('./tmp/Kw_%s.tmp' % self.Kw_file_tag, dtype=float, mode='w+', shape=(self.N, self.N))
         else:
             self.Kw = np.zeros((self.N, self.N))
 
@@ -425,9 +423,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         batchsize = 500
         nbatches = int(np.ceil(self.Npeople / float(batchsize) ))
 
-        self.Ky_file_tag = ''#datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+        self.Ky_file_tag = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
         if self.Npeople > 500:
-            self.Ky = np.memmap('./Ky_%s.tmp' % self.Ky_file_tag, dtype=float, mode='w+', shape=(self.Npeople, self.Npeople))
+            self.Ky = np.memmap('./tmp/Ky_%s.tmp' % self.Ky_file_tag, dtype=float, mode='w+', shape=(self.Npeople, self.Npeople))
         else:
             self.Ky = np.zeros((self.Npeople, self.Npeople))
 
@@ -977,18 +975,18 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         if not self.use_t:
             return np.zeros(len(item_0_idxs))
 
-        if self.verbose:
-            logging.debug('Computing K_nm in predict_common')
-
         if item_features is None:
-            item_features = self.obs_coords
             K = self.K_nm
+            K_starstar = self.Kw
         else:
+            if self.verbose:
+                logging.debug('Computing K_nm in predict_common')
             K = self.kernel_func(item_features, self.ls, self.inducing_coords)
 
-        if self.verbose:
-            logging.debug('Computing K_nn in predict_common')
-        K_starstar = self.kernel_func(item_features, self.ls, item_features)
+            if self.verbose:
+                logging.debug('Computing K_nn in predict_common')
+            K_starstar = self.kernel_func(item_features, self.ls, item_features)
+
         covpair = K.dot(self.invK_mm)
         covpair_uS = covpair.dot(self.tS)
 

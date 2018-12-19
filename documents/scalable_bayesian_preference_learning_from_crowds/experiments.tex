@@ -374,21 +374,54 @@ The complete process, including subsampling, was repeated $25$ times.
 
 
 \begin{table}
-\begin{tabularx}{\textwidth}{| l | X | X | X | l | X | X | X | l |}
+\begin{tabularx}{\textwidth}{| p{1.1cm} | X | X | X | p{0.7cm} | X | X | X | p{0.7cm} | X | X | X | p{0.7cm} |}
 \hline
-& \multicolumn{4}{|c|}{\textbf{Sushi-A}} & \multicolumn{4}{c|}{\textbf{Sushi-B}} \\ 
-Method & Acc. & CEE & Kend. & Runtime & Acc. & CEE & Kend. & Runtime \\
+& \multicolumn{4}{|c|}{\textbf{Sushi-A-small}} & \multicolumn{4}{|c|}{\textbf{Sushi-A}} & \multicolumn{4}{c|}{\textbf{Sushi-B}} \\ 
+Method & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time \\
 \hline\hline
-%\input{../../results/sushi_10_4/results.tex}\\
-%\input{../../results/sushi_10_opt_4/results.tex}\\
-%\input{../../results/sushi_100_4/results.tex} \\ 
-%\input{../../results/sushi_100_opt_4/results.tex} \\
+\multicolumn{13}{| l | }{\textbf{crowdPL-} } \\
+full & .67 & .87 & .39 & 76.91 (27.23) %& .63 (.02) & .69 (.00) & .25 (.02)
+& .79 & .51 & .66 & 149.6 (20.86)
+\\
+full, opt. & & & & & .80 & .48 & .68 & 3718.20 (2193.72) \\
+$\backslash $induc & .70 & \textbf{.57} & .46 & 165.72 (14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
+& .84 & \textbf{.33} & .79 & 315.17 (50.17)
+\\
+$\backslash$cons & .67 & .80 & .39 & 7.45 (29.00) %& .61 (.02) & .69 (.00) & .19 (.03)
+& .79 & .57 & .65 & 158.51 (25.06)
+\\
+$\backslash u$ & .70 & .58 & .46 & 174.72 (24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
+& .84 & \textbf{.33} & \textbf{.80} & 336.42 (4.93)
+\\
+$\backslash u$, opt. & & & & & \textbf{.85} & \textbf{.33} &  \textbf{.80} & 5015.98 (1978.82) \\
+$\backslash u \backslash x$ & \textbf{.71} & \textbf{.57} & \textbf{.49} & 4.67 (3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
+& \textbf{.85} & \textbf{.33} & \textbf{.80} & 328.83 (12.12)
+\\
+$\backslash u$, FITC & .70 & .58 & .46 & 333.68 (57.36) %& .65 (.01) & .64 (.02) & .29 (.02)
+& \textbf{.85} & \textbf{.33} & \textbf{.80} & 551.56 (16.82)
+\\
+$\backslash u$$\backslash$ cons, FITC & .68 & .60 & .43 & 291.24 (48.62) %& .50 (.00) & .69 (.00) & nan (nan)
+& .84 & \textbf{.33} & .79 & 540.08 (12.15)
+\\ 
+$\backslash u$$\backslash$ cons, FITC & & & &  & .84 & \textbf{.33} & \textbf{.80} & 7413.53 (2849.63) \\
+\hline 
+pooled & .65 & .62 & .31 & \textbf{1.54} (.26) %& .65 (.02) & .63 (.02) & .30 (.03)
+& .66 & .62 & .32 & \textbf{1.83} (.38)
+\\
+per-user & .67 & .64 & .42 & 97.47 (1.12) %& .50 (.00) & .69 (.00) & nan (nan)
+& .83 & .40 & .79 & 67.23 (.44)
+\\
 \\ \hline
 \end{tabularx}
 \caption{Predicting personal preferences: performance on Sushi-A dataset and Sushi-B datasets.
-Runtimes given in seconds.}
+Runtimes given in seconds, with standard deviation between repeats in brackets.
+For accuracy, all standard deviations are $\leq 0.02$, for CEE $\leq 0.08$, for Kend. $\leq 0.03$.
+ }
 \label{tab:sushi}
 \end{table}
+%  -- the stds were removed because they're not very informative for acc, CEE, tau
+% The commented results are predictions on new users -- for sushiAsmall, the only interesting 
+% point is that excluding the consensus decreases accuracy. How does it make predictions without a t?
 The results in Table \ref{tab:sushi} illustrate the benefit of the crowd model over single-user GPPL. 
 For the methods of \citep{houlsby2012collaborative} and \citep{khan2014scalable}
 we re-state the previous performance metrics and did not re-implement these methods. 
