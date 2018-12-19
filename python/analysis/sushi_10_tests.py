@@ -816,7 +816,7 @@ methods = [
 optimize = True
 sushiB = False
 sushiA_small = False
-run_sushi_expt(methods, 'sushi_10_opt' + tag)
+# run_sushi_expt(methods, 'sushi_10_opt' + tag)
 
 vscales_A = vscales
 vscales_A = np.mean(vscales_A, axis=0)

@@ -52,20 +52,20 @@ class PersonalisedTestRunner(TestRunner):
         self.model = CollabPrefLearningSVI(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose,
                                            nfactors=nfactors, rate_ls=1.0 / np.mean(self.ls_initial),
                                            use_common_mean_t=common_mean, max_update_size=200, use_lb=True,
-                                           shape_s0=shape_s0, rate_s0=rate_s0, ninducing=M, delay=10)
+                                           shape_s0=shape_s0, rate_s0=rate_s0, ninducing=M, delay=30)
 
         self.model.max_iter = 500
 
         zero_centered_prefs = np.array(self.prefs_train, dtype=float) - 1
 
         # subsample for debugging!!!
-        self.chosen_people = np.unique(self.person_test)[:50]
-        tridxs = np.in1d(self.person_train, self.chosen_people)
+        # self.chosen_people = np.unique(self.person_test)[:50]
+        # tridxs = np.in1d(self.person_train, self.chosen_people)
 
-        self.model.uselowerbound = False
+        #self.model.uselowerbound = False
         self.model.use_local_obs_posterior_y = False
 
-        self.model.fit(self.person_train[tridxs], self.a1_train[tridxs], self.a2_train[tridxs], self.items_feat, zero_centered_prefs[tridxs],
+        self.model.fit(self.person_train, self.a1_train, self.a2_train, self.items_feat, zero_centered_prefs,
                        optimize=self.optimize_hyper, nrestarts=1, input_type='zero-centered')
 
     def run_persgppl(self):
@@ -218,22 +218,22 @@ if __name__ == '__main__':
     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
     embeddings_types = ['word_mean']
 
-    datasets = ['UKPConvArgCrowd']
+    datasets = ['UKPConvArgCrowdSample']
     methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
 
     if 'runner' not in globals():
-        runner = PersonalisedTestRunner('personalised_6', datasets, feature_types, embeddings_types, methods,
+        runner = PersonalisedTestRunner('personalised_7', datasets, feature_types, embeddings_types, methods,
                                         dataset_increment)
         runner.save_collab_model = True
 
     # PERSONALISED PREDICTION
-    runner.run_test_set(min_no_folds=0, max_no_folds=32)
+    runner.run_test_set(min_no_folds=0, max_no_folds=1)
 
     # # CONSENSUS PREDICTION
-    # runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-    # runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
-    # runner.run_test_set(min_no_folds=0, max_no_folds=32)
-    #
+    runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+    runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
+    runner.run_test_set(min_no_folds=0, max_no_folds=1)
+
     # # PERSONALISED WITH ARD
     # runner.datasets = ['UKPConvArgCrowdSample']
     # runner.methods = ['PersPrefGP_commonmean_weaksprior']
