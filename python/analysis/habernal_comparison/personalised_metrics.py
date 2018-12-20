@@ -11,7 +11,7 @@ if __name__ == '__main__':
 
     expt_settings['foldorderfile'] = None
 
-    expt_root_dir = 'personalised_6'
+    expt_root_dir = 'personalised_8'
 
     resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
     max_no_folds = 32
