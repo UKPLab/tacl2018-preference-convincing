@@ -240,13 +240,13 @@ if __name__ == '__main__':
 
     # PERSONALISED PREDICTION
     if test_to_run == 0:
-        runner.run_test_set(min_no_folds=1, max_no_folds=32)
+        runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
     # CONSENSUS PREDICTION
     elif test_to_run == 1:
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
         runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
-        runner.run_test_set(min_no_folds=1, max_no_folds=32)
+        runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
     # PERSONALISED WITH ARD
     elif test_to_run == 2:
