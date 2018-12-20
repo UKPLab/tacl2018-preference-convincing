@@ -12,6 +12,7 @@ accumulate from small differences in the approximations.
 
 """
 import datetime
+import os
 
 import numpy as np
 from scipy.stats import multivariate_normal as mvn, norm
@@ -376,13 +377,17 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         batchsize = 500
         nbatches = int(np.ceil(self.N / float(batchsize) ))
 
-        self.Kw_file_tag = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
         if self.N > 500:
+            self.Kw_file_tag = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+            if not os.path.exists('./tmp'):
+                os.mkdir('./tmp')
             self.Kw = np.memmap('./tmp/Kw_%s.tmp' % self.Kw_file_tag, dtype=float, mode='w+', shape=(self.N, self.N))
         else:
             self.Kw = np.zeros((self.N, self.N))
 
         for b in range(nbatches):
+
+            logging.debug('Computing Kw batch %i' % b)
 
             end1 = (b+1)*batchsize
             if end1 > self.N:
@@ -423,13 +428,17 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         batchsize = 500
         nbatches = int(np.ceil(self.Npeople / float(batchsize) ))
 
-        self.Ky_file_tag = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
         if self.Npeople > 500:
+            self.Ky_file_tag = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+            if not os.path.exists('./tmp'):
+                os.mkdir('./tmp')
             self.Ky = np.memmap('./tmp/Ky_%s.tmp' % self.Ky_file_tag, dtype=float, mode='w+', shape=(self.Npeople, self.Npeople))
         else:
             self.Ky = np.zeros((self.Npeople, self.Npeople))
 
         for b in range(nbatches):
+
+            logging.debug('Computing Ky batch %i' % b)
 
             end1 = (b+1)*batchsize
             if end1 > self.Npeople:

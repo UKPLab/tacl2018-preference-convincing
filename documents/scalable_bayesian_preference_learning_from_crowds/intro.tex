@@ -55,16 +55,43 @@ We show how to scale it using SVI and how to use the model to identify ground tr
 % We must learn this correlation by identifying the ground truth from either explicit user ratings
 % or consensus between relevant sources of information, defined a priori.
 
+%The experiments section notes the three main benefits of our method:
+% a) recovering an underlying consensus from noisy pairwise labels; --> 1
+% b) modeling personal preferences from pairwise labels;  --> 1
+% c) the scalability of our proposed Bayesian preference learning methods, GPPL and crowd-GPPL using SVI. --> 2
+% d) ? test the hyperparameter learning method to see if it improves cost of learning
+% over gradient-free methods.
+% Is this the clear benefit or are we missing something else?
+% Are these mentioned below?
+
+Structure of the introduction:
+motivate pairwise preference learning;
+motivate desire to find consensus from crowds;
+motivate modelling individual preferences for subjective tasks;
+why a combined model?
+Limitations of current methods at a high level.
+
+Structure of related work should also follow these questions:
+preference learning from crowds (okay); 
+Bayesian preference learning (where does it fit in these points? Small data/extrapolation to new examples);
+Bayesian matrix factorization (again, Bayesian part needs to be linked in better; this is about personal preference learning);
+SVI (okay, fits scalability part; but maybe talk about scalable Bayesian methods in general?);
+Nothing about hyperparameters (Nickisch, maybe don't separate this point out but make it part of the scalable Bayesian inference method?).
+
+% structure below is a little confusing? I think only a list of contributions + one or two questions is correct.
 In this paper, we develop methodology to solve the following questions:
 \begin{enumerate}
-  \item How can we learn a rating function over large sets of items given a large number of pairwise comparisons?
-  \item How do we account for the different personal preferences of annotators when inferring the ground truth?
+  \item How can we learn  user preference functions over large sets of items given a large number of pairwise comparisons?
+  \item How do we account for the different personal preferences of annotators when inferring a consensus preference function?
+  \item Can we provide a Bayesian approach to account for uncertainty in our learned model and confidence in its predictions? 
 \end{enumerate}
 To answer these questions we make the following technical contributions:
 \begin{enumerate}
- \item We propose a method for predicting either gold-standard or personalized ratings by aggregating crowdsourced preference labels using a model of the noise and biases of individual annotators. % say why this is not possible with Dawid and Skene
+ \item We propose a model of both personal preferences and the consensus of a crowd 
+  that aggregates pairwise preference labels
+  % using a model of the noise and biases of individual annotators. % say why this is not possible with Dawid and Skene
   \item %To enable collaborative preference learning % collaborative preference learning needs to be defined above
-   To enable this method to scale to large, real-world datasets, we develop
+   To enable inference on our model at the scale of large, real-world datasets, we develop
    stochastic variational inference for Bayesian matrix factorization and Gaussian process preference learning.
   \item To expedite hyper-parameter tuning, we introduce a technique for gradient-based length-scale optimization of Gaussian processes.
 \end{enumerate}
