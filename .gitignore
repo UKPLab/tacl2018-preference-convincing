@@ -1,3 +1,8 @@
+**/*.cluster
+tmp/*
+core.*
+*.err.*
+*.out.*
 Kw_.tmp
 **/**/*~
 
