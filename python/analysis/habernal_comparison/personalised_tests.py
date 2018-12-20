@@ -54,7 +54,8 @@ class PersonalisedTestRunner(TestRunner):
                                            use_common_mean_t=common_mean, max_update_size=200, use_lb=True,
                                            shape_s0=shape_s0, rate_s0=rate_s0, ninducing=M, delay=30)
 
-        self.model.max_iter = 500
+        self.model.max_iter = 200 # same as got single user GPPL
+        self.model.max_Kw_size = max_Kw_size
 
         zero_centered_prefs = np.array(self.prefs_train, dtype=float) - 1
 
@@ -82,41 +83,42 @@ class PersonalisedTestRunner(TestRunner):
 
         proba = self.model.predict(self.person_test, self.a1_test, self.a2_test)
 
-        people = np.unique(self.person_test)
+        # people = np.unique(self.person_test)
+        #
+        # text_out = ""
+        #
+        # for p in people:
+        #     text_out += '%i & ' % p
+        #     testidxs = self.person_test == p
+        #
+        #     trsize = np.sum(self.person_train == p)
+        #     logging.info("No. training egs: %i" % trsize)
+        #     text_out += '%i & ' % trsize
+        #
+        #     tesize = np.sum(self.person_test == p)
+        #     logging.info("No. test egs: %i" % tesize)
+        #     text_out += '%i & ' % tesize
+        #
+        #     proba = self.model.predict(self.person_test[testidxs], self.a1_test[testidxs],
+        #                            self.a2_test[testidxs])  # , self.items_feat)
+        #     common_proba = self.model.predict_common(None, self.a1_test[testidxs], self.a2_test[testidxs])
+        #
+        #     prefs_test = self.prefs_test[testidxs]
+        #
+        #     per_acc = np.sum(prefs_test[prefs_test != 1] == 2 * np.round(proba).flatten()[prefs_test != 1]
+        #                ) / float(np.sum(prefs_test != 1))
+        #     con_acc = np.sum(prefs_test[prefs_test != 1] == 2 * np.round(common_proba).flatten()[prefs_test != 1]
+        #                ) / float(np.sum(prefs_test != 1))
+        #
+        #     logging.info("Test personal accuracy = %f" % per_acc)
+        #
+        #     logging.info("Test consensus-to-personal accuracy = %f" % con_acc)
+        #
+        #     text_out += '%f & %f \\\\\n' % (per_acc, con_acc)
+        #
+        # with open(self.results_stem + '/personal_results_%i.tex' % self.foldidx, 'w') as fh:
+        #     fh.writelines(text_out)
 
-        text_out = ""
-
-        for p in people:
-            text_out += '%i & ' % p
-            testidxs = self.person_test == p
-
-            trsize = np.sum(self.person_train == p)
-            logging.info("No. training egs: %i" % trsize)
-            text_out += '%i & ' % trsize
-
-            tesize = np.sum(self.person_test == p)
-            logging.info("No. test egs: %i" % tesize)
-            text_out += '%i & ' % tesize
-
-            proba = self.model.predict(self.person_test[testidxs], self.a1_test[testidxs],
-                                   self.a2_test[testidxs])  # , self.items_feat)
-            common_proba = self.model.predict_common(None, self.a1_test[testidxs], self.a2_test[testidxs])
-
-            prefs_test = self.prefs_test[testidxs]
-
-            per_acc = np.sum(prefs_test[prefs_test != 1] == 2 * np.round(proba).flatten()[prefs_test != 1]
-                       ) / float(np.sum(prefs_test != 1))
-            con_acc = np.sum(prefs_test[prefs_test != 1] == 2 * np.round(common_proba).flatten()[prefs_test != 1]
-                       ) / float(np.sum(prefs_test != 1))
-
-            logging.info("Test personal accuracy = %f" % per_acc)
-
-            logging.info("Test consensus-to-personal accuracy = %f" % con_acc)
-
-            text_out += '%f & %f \\\\\n' % (per_acc, con_acc)
-
-        with open(self.results_stem + '/personal_results_%i.tex' % self.foldidx, 'w') as fh:
-            fh.writelines(text_out)
         # subsample for debugging!!!
         # testidxs = np.in1d(self.person_test, self.chosen_people)
 
@@ -220,10 +222,12 @@ if __name__ == '__main__':
     else:
         test_dir = 'personalised_9'
 
+    max_Kw_size = 2000
+
     dataset_increment = 0     
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
-    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
+    feature_types = ['debug'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
     embeddings_types = ['word_mean']
 
     datasets = ['UKPConvArgCrowdSample']
@@ -236,13 +240,13 @@ if __name__ == '__main__':
 
     # PERSONALISED PREDICTION
     if test_to_run == 0:
-        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+        runner.run_test_set(min_no_folds=1, max_no_folds=32)
 
     # CONSENSUS PREDICTION
     elif test_to_run == 1:
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
         runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
-        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+        runner.run_test_set(min_no_folds=1, max_no_folds=32)
 
     # PERSONALISED WITH ARD
     elif test_to_run == 2:

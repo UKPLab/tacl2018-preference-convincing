@@ -305,10 +305,12 @@ def check_convergence(newval, oldval, conv_threshold, positive_only, iter=-1, ve
             logging.debug('%s: diff = %f at iteration %i' % (label, diff, iter))
             # logging.debug(np.max(np.abs(newval - oldval)))
 
-    if positive_only and diff < - 10000 * conv_threshold:  # ignore any small errors as we are using approximations
-        logging.warning('%s = %.5f, changed by %.5f in iteration %i' % (label, newval, diff, iter))
-
     converged = diff < conv_threshold
+
+    if positive_only and diff < - 10000 * conv_threshold:  # ignore any small errors as we are using approximations
+        logging.warning('%s = %.5f, changed by %.5f (converged = %i) in iteration %i' %
+                        (label, newval, diff, converged, iter))
+
     return converged
 
 class GPClassifierVB(object):

@@ -105,6 +105,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         self.t_mu0 = mu0
 
+        self.max_Kw_size = 500 # maximum size to hold in memory. Larger matrices are saved to memmap files
+
         super(CollabPrefLearningSVI, self).__init__(nitem_features, nperson_features, shape_s0, rate_s0,
                                                     shape_ls, rate_ls, ls, shape_lsy, rate_lsy, lsy, verbose, nfactors, use_common_mean_t,
                                                     kernel_func, use_lb=use_lb)
@@ -377,7 +379,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         batchsize = 500
         nbatches = int(np.ceil(self.N / float(batchsize) ))
 
-        if self.N > 500:
+        if self.N > self.max_Kw_size:
             self.Kw_file_tag = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
             if not os.path.exists('./tmp'):
                 os.mkdir('./tmp')
