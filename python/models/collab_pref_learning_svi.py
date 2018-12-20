@@ -418,11 +418,13 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             return
 
     def _init_y(self):
+        self.y_var = np.ones((self.Nfactors, self.Npeople))
+
         if self.person_features is None:
             self.y = self.y_u
+            return
         else:
             self.y = self.Ky_nm.dot(self.invKy_mm).dot(self.y_u.T).T
-        self.y_var = np.ones((self.Nfactors, self.Npeople))
 
         # save for later
         batchsize = 500
