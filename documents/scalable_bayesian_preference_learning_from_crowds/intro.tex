@@ -71,6 +71,15 @@ motivate modelling individual preferences for subjective tasks;
 why a combined model?
 Limitations of current methods at a high level.
 
+Supervised learning relies on gold-standard labeled data for training, yet 
+many tasks are subjective or are difficult for even expert annotators to reach agreement on. For instance, in natural language processing tasks such as
+argument mining or summarisation, the most important arguments or sentences 
+to extract from a document may depend on the background knowledge of an individual user and their current information needs. From the user's point of view, the most effective solution to the task may be to find arguments that are more convincing to the user or sentences that contain information that is new to the user. 
+Similarly, recommendation tasks depend on the needs and prior experience of the user.
+In such user-dependent cases it is difficult to obtain a calibrated and verifiable 
+score for each item (argument, sentence, or item to consider recommending),
+since (a) we cannot query the user a large number of times and (b) the annotation tasks are inherently difficult.
+
 Structure of related work should also follow these questions:
 preference learning from crowds (okay); 
 Bayesian preference learning (where does it fit in these points? Small data/extrapolation to new examples);

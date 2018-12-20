@@ -238,7 +238,7 @@ class CollabPrefLearningVB(object):
 
         self.uselowerbound = use_lb
         if use_lb:
-            self.conv_threshold = 1e-5
+            self.conv_threshold = 1e-4
         else:
             self.conv_threshold = 1e-2
 
