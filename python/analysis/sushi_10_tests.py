@@ -102,6 +102,7 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
                                   forgetting_rate=forgetting_rate, verbose=True, use_lb=True,
                                   use_common_mean_t=use_common_mean, delay=delay)
     # model.use_local_obs_posterior_y = False
+    model.max_Kw_size = max_Kw_size
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
 
     if vscales is not None:
@@ -246,6 +247,7 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
                                   use_common_mean_t=True, delay=delay)
 
     model.use_local_obs_posterior_y = False
+    model.max_Kw_size = max_Kw_size
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
     fpred = model.predict_f(None, None)
@@ -267,6 +269,7 @@ def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test,
                                   ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
                                   verbose=True, use_lb=True, kernel_func='diagonal', delay=delay)
     model.use_local_obs_posterior_y = False
+    model.max_Kw_size = max_Kw_size
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
     fpred = model.predict_f(None, None)
@@ -291,6 +294,7 @@ def run_collab_FITC_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_te
                                    use_common_mean_t=use_common_mean, delay=delay)
 
     model.use_local_obs_posterior_y = False
+    model.max_Kw_size = max_Kw_size
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
     fpred = model.predict_f(None, None)
@@ -722,6 +726,7 @@ max_update_size = 200
 delay = 10
 ninducing = 25#5000
 forgetting_rate = 0.9
+max_Kw_size = 2000
 
 nreps = 25
 

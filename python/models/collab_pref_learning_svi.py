@@ -404,7 +404,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.Kw[b*batchsize:(b+1)*batchsize, :][:, b2*batchsize:(b2+1)*batchsize] = self.kernel_func(
                     self.obs_coords[b*batchsize:end1, :], self.ls, self.obs_coords[b2*batchsize:end2, :])
 
-        if self.N > 500:
+        if self.N > self.max_Kw_size:
             self.Kw.flush()
 
         if not self.new_obs:
