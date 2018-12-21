@@ -880,6 +880,8 @@ if debug_small:
 
 # SUSHI B, global parameter changes ------------------------------------------------------------------------------------
 
+max_update_size = 2000
+delay = 25
 ninducing = 500 # allow us to handle more users.
 
 # SUSHI B dataset, no opt. ---------------------------------------------------------------------------------------------

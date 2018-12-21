@@ -263,7 +263,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.y_u[:self.y_ninducing, :] = np.eye(self.y_ninducing)
                 self.y_u += np.random.rand(*self.y_u.shape) * 1e-6
             else:
-                self.y_u = mvn.rvs(np.zeros(self.y_ninducing), self.Ky_mm, self.Nfactors) ** 2
+                self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))**2
 
             self.yinvSm = np.concatenate([self.yinvS[f].dot(self.y_u[f:f+1].T) for f in range(self.Nfactors)], axis=1)
 

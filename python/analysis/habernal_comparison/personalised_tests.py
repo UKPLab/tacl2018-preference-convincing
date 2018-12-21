@@ -236,7 +236,7 @@ if __name__ == '__main__':
     if 'runner' not in globals():
         runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
                                         dataset_increment)
-        runner.save_collab_model = True
+        runner.save_collab_model = False
 
     # PERSONALISED PREDICTION
     if test_to_run == 0:
