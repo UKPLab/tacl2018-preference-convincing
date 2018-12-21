@@ -64,21 +64,65 @@ We show how to scale it using SVI and how to use the model to identify ground tr
 % Is this the clear benefit or are we missing something else?
 % Are these mentioned below?
 
-Structure of the introduction:
-motivate pairwise preference learning;
-motivate desire to find consensus from crowds;
-motivate modelling individual preferences for subjective tasks;
-why a combined model?
-Limitations of current methods at a high level.
+\subsubsection*{New Intro}
 
-Supervised learning relies on gold-standard labeled data for training, yet 
-many tasks are subjective or are difficult for even expert annotators to reach agreement on. For instance, in natural language processing tasks such as
-argument mining or summarisation, the most important arguments or sentences 
-to extract from a document may depend on the background knowledge of an individual user and their current information needs. From the user's point of view, the most effective solution to the task may be to find arguments that are more convincing to the user or sentences that contain information that is new to the user. 
-Similarly, recommendation tasks depend on the needs and prior experience of the user.
-In such user-dependent cases it is difficult to obtain a calibrated and verifiable 
-score for each item (argument, sentence, or item to consider recommending),
-since (a) we cannot query the user a large number of times and (b) the annotation tasks are inherently difficult.
+Supervised learning relies on gold-standard labels for training, 
+which can be hard to obtain in sufficient quantities 
+for subjective tasks or 
+when annotators fail to agree. 
+Consider natural language processing tasks such as
+argument mining or extractive summarisation, 
+where the goal is to identify a set of arguments or sentences from a corpus of documents.
+From a user's point of view, the best solution may be the set of arguments they find most convincing,
+or the sentences that contain the most important new information for them. 
+% Hence, the gold standard depends on the The selection may depend on the background knowledge of an individual user and their current information needs. 
+Similarly, recommendations made by a recommender system 
+often aim to satisfy a specific user's needs~\cite{??}.
+These tasks can be characterized as \emph{preference learning} problems:
+the aim is to learn rankings or numerical ratings of items that reflect their value.
+For subjective tasks such as these, the amount of gold-standard training 
+labels is limited by the user's ability and motivation to create annotations.
+
+In recommender systems, the lack of labeled data from a specific user is addressed through \emph{collaborative filtering}, whereby a user's model is informed by the preferences of similar users~\cite{?}... 
+A common approach is \emph{matrix factorization}~\cite{?}:
+a user-item matrix records the rating given by each user to each item; 
+this matrix is factorized approximately into two low-dimensional matrices;
+users and items with similar ratings have similar row vectors in the low-dimensional
+matrices; 
+multiplying the low-dimensional representations predicts ratings for unseen
+user-item pairs. 
+Traditional approaches are not able to extrapolate to new users or items,
+and require sufficient data for each to factorize them correctly. They do not take advantage of the item or user features
+~\cite{?} or require a hierarchical model that incorporates them outside the matrix factorization step~\cite{?}. 
+Collaborative filtering is therefore a way to aggregate preference data from multiple users to make up for a shortfall in labeled data for a target user whose preferences we 
+wish to predict.
+
+While preference data can take the form numerical ratings,
+different users may interpret values differently: a score of -1, say, from one annotator may be equivalent to a -20 from another~\cite{?}. Ratings may also be inconsistent
+over time~\cite{?}. 
+An alternative approach is \emph{pairwise preference labeling}, 
+in which the annotator compares pairs of items and selects the preferred item.
+Making pairwise choices places lower cognitive load on annotators than numerical ratings ~\citep{kendall1948rank,kingsley2010},
+and facilitates the total sorting of items, since it avoids cases where items have the same values, especially once any noise in numerical ratings has been accounted for.
+Pairwise preference labeling can be extended to comparing three or more items at once, for example, using 
+\emph{best-worst scaling}, in which the annotator selects the best and worst items from a set~\cite{??}. 
+Such comparisons can be converted to sets of pairwise labels to exploit techniques for 
+learning rankings or ratings from pairwise labels~\cite{billions of things}.
+Besides explicit annotations, pairwise preference labels can be extracted from
+user behavior logs, such as when a user selects one item from a list in preference
+to others~\cite{}. Pairwise preference labels therefore provide a potentially valuable
+source of information for learning user preferences.
+
+Whether provided explicitly or extracted from user behavior logs,
+pairwise preference labels may be noisy, and the amount of 
+data for any given user may be small.
+This motivates a Bayesian approach that can account for uncertainty in the model 
+and its predictions that results from noise, 
+small datasets and the aggregation of data from multiple sources.
+While Bayesian methods for pairwise preference learning have been proposed
+in previous work~\cite{chu2009preference,houlsby2012collaborative,khan2014scalable}, they do not scale to large numbers of items, users, or
+pairwise labels as computational and memory complexity is polynomial in the number
+of items and pairs and linear or worse in the number of users.
 
 Structure of related work should also follow these questions:
 preference learning from crowds (okay); 

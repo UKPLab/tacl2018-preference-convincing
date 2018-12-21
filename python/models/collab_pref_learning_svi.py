@@ -960,7 +960,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         return t_out, w_out, cov_t, cov_w
 
-    def predict_t(self, item_features):
+    def predict_t(self, item_features=None):
         '''
         Predict the common consensus function values using t
         '''
