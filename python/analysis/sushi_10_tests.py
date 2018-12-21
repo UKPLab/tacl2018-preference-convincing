@@ -423,7 +423,7 @@ def subsample_data():
     elif sushiB:
         nusers_tr = 5000
         npairs_tr = 10
-        npairs_test = 1
+        npairs_test = 10
         nusers_unseen = 0
     else:
         nusers_tr = 100#1000
@@ -726,7 +726,7 @@ max_update_size = 200
 delay = 10
 ninducing = 25#5000
 forgetting_rate = 0.9
-max_Kw_size = 2000
+max_Kw_size = 5000
 
 nreps = 25
 
@@ -889,10 +889,10 @@ vscales = None # don't record the v factor scale factors
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           'crowd-GPPL-noConsensus',
+           #'crowd-GPPL-noConsensus',
            'crowd-GPPL\\u',
            'crowd-BMF',
-           'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
+           #'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
            'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
            'GPPL-pooled',
            # 'GPPL-joint',
@@ -913,7 +913,7 @@ vscales = []
 methods = [
            'crowd-GPPL',
            'crowd-GPPL\\u',
-           'crowd-GPPL-FITC\\u-noConsensus', # Houlsby
+           #'crowd-GPPL-FITC\\u-noConsensus', # Houlsby
            ]
 
 # hyperparameters common to most models

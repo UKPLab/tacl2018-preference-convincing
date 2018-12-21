@@ -432,7 +432,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         batchsize = 500
         nbatches = int(np.ceil(self.Npeople / float(batchsize) ))
 
-        if self.Npeople > 500:
+        if self.Npeople > self.max_Kw_size:
             self.Ky_file_tag = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
             if not os.path.exists('./tmp'):
                 os.mkdir('./tmp')
@@ -442,7 +442,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         for b in range(nbatches):
 
-            logging.debug('Computing Ky batch %i' % b)
+            logging.debug('Computing Ky batch %i / %i' % (b, nbatches))
 
             end1 = (b+1)*batchsize
             if end1 > self.Npeople:
@@ -463,7 +463,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                     self.Ky[b * batchsize:(b + 1) * batchsize, :][:, b2 * batchsize:(b2 + 1) * batchsize] = np.zeros(
                         (end1 - b * batchsize, end2 - b2 * batchsize), dtype=float)
 
-        if self.Npeople > 500:
+        if self.Npeople > self.max_Kw_size:
             self.Ky.flush()
 
 
