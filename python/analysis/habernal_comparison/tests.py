@@ -305,8 +305,6 @@ class TestRunner:
 
         self.vscales = []  # record the latent factor scales
 
-        self.save_collab_model = False
-
 
     def load_features(self, feature_type, embeddings_type, a1_train, a2_train, uids, utexts=None):
         '''
@@ -1030,20 +1028,12 @@ class TestRunner:
                 if self.a_rank_test is not None and len(self.person_rank_test) == 0:
                     self.person_rank_test = np.zeros(len(self.a_rank_test)) # if no person IDs, make sure we default to 0
 
-                if self.save_collab_model:
-                    self.modelfile = results_stem + '/%s_model_fold%i_nseen%i.pkl' % (self.method, foldidx, nseen_so_far)
-
                 # run the method with the current data subset
                 method_runner_fun = self._choose_method_fun(feature_type)
 
                 proba, predicted_f, tr_proba = method_runner_fun()
             
                 endtime = time.time() 
-
-                # save the model for making other predictions
-                if self.save_collab_model:
-                    with open(self.modelfile, 'wb') as fh:
-                        pickle.dump(self.model, fh)
 
                 # make it the right shape
                 proba = np.array(proba)

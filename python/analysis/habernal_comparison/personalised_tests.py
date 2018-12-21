@@ -217,10 +217,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    if test_to_run == 0 or test_to_run == 2:
-        test_dir = 'personalised_8'
-    else:
-        test_dir = 'personalised_9'
+    test_dir = 'personalised_10'
 
     max_Kw_size = 2000
 
@@ -236,7 +233,6 @@ if __name__ == '__main__':
     if 'runner' not in globals():
         runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
                                         dataset_increment)
-        runner.save_collab_model = False
 
     # PERSONALISED PREDICTION
     if test_to_run == 0:
