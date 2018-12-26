@@ -423,7 +423,7 @@ def subsample_data():
     elif sushiB:
         nusers_tr = 5000
         npairs_tr = 10
-        npairs_test = 10
+        npairs_test = 1
         nusers_unseen = 0
     else:
         nusers_tr = 100#1000
