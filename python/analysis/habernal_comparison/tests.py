@@ -883,6 +883,8 @@ class TestRunner:
         else:
             fold_keys = list(self.folds.keys())
 
+        fold_keys = np.sort(fold_keys)
+
         for foldidx, self.fold in enumerate(fold_keys):
             self.foldidx = foldidx
             if foldidx in all_proba and dataset_increment==0:
