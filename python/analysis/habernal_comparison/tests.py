@@ -882,8 +882,7 @@ class TestRunner:
             fold_keys = np.genfromtxt(os.path.expanduser(results_stem + '/foldorder.txt'), dtype=str)
         else:
             fold_keys = list(self.folds.keys())
-
-        fold_keys = np.sort(fold_keys)
+            fold_keys = np.sort(fold_keys)
 
         for foldidx, self.fold in enumerate(fold_keys):
             self.foldidx = foldidx
