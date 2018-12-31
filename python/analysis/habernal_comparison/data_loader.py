@@ -459,11 +459,11 @@ def load_train_test_data(dataset):
     print(('Loading train/test data from %s...' % csvdirname))
     folds, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = load_my_data_separate_args(csvdirname,
                                                                                           embeddings_dir=embeddings_dir)
-    print(list(folds.keys())[0])
-    print(folds[list(folds.keys())[0]]["training"][0][:20][:10])
-    print(folds[list(folds.keys())[0]]["training"][1][:20][:10])
-    print(folds[list(folds.keys())[0]]["training"][2][:10])
-    print(folds[list(folds.keys())[0]]["training"][3][:20])
+    # print(list(folds.keys())[0])
+    # print(folds[list(folds.keys())[0]]["training"][0][:20][:10])
+    # print(folds[list(folds.keys())[0]]["training"][1][:20][:10])
+    # print(folds[list(folds.keys())[0]]["training"][2][:10])
+    # print(folds[list(folds.keys())[0]]["training"][3][:20])
     if ranking_csvdirname is not None:
         folds_regression, _ = load_my_data_regression(ranking_csvdirname, embeddings_dir=embeddings_dir,
                                                       load_embeddings=True)

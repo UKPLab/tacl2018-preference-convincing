@@ -250,7 +250,8 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
         if expt_settings['dataset'] != dataset_next or expt_settings['folds'] is None:
             expt_settings['dataset'] = dataset_next            
             expt_settings['folds'], expt_settings['folds_regression'], _, _, _ = load_train_test_data(expt_settings['dataset'])
-            
+
+
         for m, expt_settings['method'] in enumerate(methods):
         
             if d == 0 and m == 0:
@@ -344,26 +345,54 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                 pickle.dump(data_f, fh)
                         if pred_tr_disc is not None:                                                                         
                             print(str(pred_tr_disc.shape) + ', ' + str(pred_prob.shape) + ', ' + str(
-                                                                    pred_tr_disc.shape[0]+pred_prob.shape[0]))                 
-                            
+                                                                    pred_tr_disc.shape[0]+pred_prob.shape[0]))
+
+                        valididxs = gold_disc != 1
+                        gold_prob = gold_prob[valididxs]
+                        gold_disc = gold_disc[valididxs]
+                        pred_disc = pred_disc[valididxs, :]
+                        pred_prob = pred_prob[valididxs, :]
+
                         for AL_round, _ in enumerate(AL_rounds):
                             #print "fold %i " % f
                             #print AL_round
                             if AL_round >= pred_disc.shape[1]:
                                 continue
-                            results_f1[row, col, f, AL_round] = f1_score(gold_disc[gold_disc!=1], 
-                                                                         pred_disc[gold_disc!=1, AL_round], 
+
+                            _, _, _, _, tr_turkers, _, _ = expt_settings['folds'].get(fold)["training"]
+                            _, _, test_labels, _, test_turkers, _, _ = expt_settings['folds'].get(fold)["test"]
+
+                            print(len(test_labels))
+                            print(len(valididxs))
+                            if len(test_labels) > len(valididxs):
+                                test_turkers = test_turkers[:len(valididxs)]
+                            tr_turkers = np.array(tr_turkers)
+
+                            turker_tr_counts = np.array([np.sum(tr_turkers == tid) for tid in test_turkers])[valididxs]
+                            confidxs = turker_tr_counts > 10
+
+                            # confidxs = (pred_prob[:, AL_round] > 0.7) | (pred_prob[:, AL_round] < 0.3)
+                            print('Confident data points: %i / %i' % (np.sum(confidxs), confidxs.shape[0]))
+
+                            results_f1[row, col, f, AL_round] = f1_score(gold_disc[confidxs],
+                                                                         pred_disc[confidxs, AL_round],
                                                                          average='macro')
                             #skip the don't knows
-                            results_acc[row, col, f, AL_round] = accuracy_score(gold_disc[gold_disc!=1], 
-                                                                                pred_disc[gold_disc!=1, AL_round]) 
+                            results_acc[row, col, f, AL_round] = accuracy_score(gold_disc[confidxs],
+                                                                                pred_disc[confidxs, AL_round])
                             
-                            results_logloss[row, col, f, AL_round] = log_loss(gold_prob[gold_disc!=1], 
-                                                                              pred_prob[gold_disc!=1, AL_round])
+                            results_logloss[row, col, f, AL_round] = log_loss(gold_prob[confidxs],
+                                                                              pred_prob[confidxs, AL_round])
                             
-                            results_auc[row, col, f, AL_round] = roc_auc_score(gold_prob[gold_disc!=1], 
-                                                                               pred_prob[gold_disc!=1, AL_round]) # macro
-                                                
+                            results_auc[row, col, f, AL_round] = roc_auc_score(gold_prob[confidxs],
+                                                                               pred_prob[confidxs, AL_round]) # macro
+
+                            print('Results for fold %i: acc=%f, cee=%f, AUC=%f' % (f,
+                                                           results_acc[row, col, f, AL_round],
+                                                           results_logloss[row, col, f, AL_round],
+                                                           results_auc[row, col, f, AL_round])
+                                  )
+
                             if gold_rank is None and expt_settings['folds_regression'] is not None:
                                 if docids is None:
                                     _, docids = load_ling_features(expt_settings['dataset'])  

@@ -217,7 +217,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'personalised_10'
+    test_dir = 'personalised_11'
 
     max_Kw_size = 2000
 
