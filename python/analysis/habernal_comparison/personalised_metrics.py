@@ -22,21 +22,8 @@ if __name__ == '__main__':
 
     # Personalised predictions -- single-user methods
 
-    datasets = ['UKPConvArgCrowdSample']#, 'UKPConvArgCrowdSample_evalMACE']
-    methods = ['SinglePrefGP_noOpt_weaksprior']#, 'SinglePrefGP_weaksprior'] # 'GP+SVM','SinglePrefGP_noOpt_weaksprior', 'SingleGPC_noOpt_weaksprior',
-    feature_types = ['both'] # 'both'
-    embeddings_types = ['word_mean']
-
-    results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
-    tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-    = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                      max_no_folds=max_no_folds, foldername=expt_root_dir)
-    print("Completed compute metrics")
-
-    # Personalised predictions -- multi-user methods
-
-    # datasets = ['UKPConvArgCrowdSample']
-    # methods = ['PersPrefGP_commonmean_noOpt_weaksprior']#, 'PersPrefGP_commonmean_weaksprior']
+    # datasets = ['UKPConvArgCrowdSample', 'UKPConvArgCrowdSample_evalMACE']
+    # methods = ['SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior'] # 'GP+SVM','SinglePrefGP_noOpt_weaksprior', 'SingleGPC_noOpt_weaksprior',
     # feature_types = ['both'] # 'both'
     # embeddings_types = ['word_mean']
     #
@@ -44,8 +31,21 @@ if __name__ == '__main__':
     # tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
     # = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
     #                   max_no_folds=max_no_folds, foldername=expt_root_dir)
-    #
     # print("Completed compute metrics")
+
+    # Personalised predictions -- multi-user methods
+
+    datasets = ['UKPConvArgCrowdSample']
+    methods = ['PersPrefGP_commonmean_noOpt_weaksprior']#, 'PersPrefGP_commonmean_weaksprior']
+    feature_types = ['both'] # 'both'
+    embeddings_types = ['word_mean']
+
+    results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
+    tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
+    = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
+                      max_no_folds=max_no_folds, foldername=expt_root_dir)
+
+    print("Completed compute metrics")
 
     # Consensus predictions -- multi-user methods (single-user methods were already included in the TACL paper so
     # can be copied from there).
