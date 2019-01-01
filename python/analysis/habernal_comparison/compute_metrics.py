@@ -223,7 +223,7 @@ def load_results_data(data_root_dir, resultsfile_template, expt_settings, max_no
 
 def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, accuracy=1.0, di=0, npairs=0,
                     tag='', remove_seen_from_mean=False, max_no_folds=32, min_folds_desired=0,
-                    compute_tr_performance=False, flip_labels=[], foldername=expt_root_dir):
+                    compute_tr_performance=False, flip_labels=[], foldername=expt_root_dir, split_by_person=False):
         
     expt_settings['acc'] = accuracy
     expt_settings['di'] = di
@@ -353,39 +353,46 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                         pred_disc = pred_disc[valididxs, :]
                         pred_prob = pred_prob[valididxs, :]
 
+                        if split_by_person:
+                            _, _, _, _, tr_turkers, _, _ = expt_settings['folds'].get(fold)["training"]
+                            _, _, test_labels, _, test_turkers, _, _ = expt_settings['folds'].get(fold)["test"]
+
+                            valid_turk_idxs = np.in1d(test_turkers, tr_turkers)
+                            test_turkers = np.array(test_turkers)[valid_turk_idxs]
+
+                            tr_turkers = np.array(tr_turkers)
+
+                            turker_tr_counts = np.array([np.sum(tr_turkers == tid) for tid in test_turkers])[valididxs]
+                            turker_conf_filter = 50
+                            confidxs = turker_tr_counts > turker_conf_filter
+                            print('No. confident workers: %i ' % np.unique(test_turkers[valididxs][confidxs]).size)
+
+                            gold_disc = gold_disc[confidxs]
+                            pred_disc = pred_disc[confidxs, :]
+                            gold_prob = gold_prob[confidxs]
+                            pred_prob = pred_prob[confidxs, :]
+
                         for AL_round, _ in enumerate(AL_rounds):
                             #print "fold %i " % f
                             #print AL_round
                             if AL_round >= pred_disc.shape[1]:
                                 continue
 
-                            _, _, _, _, tr_turkers, _, _ = expt_settings['folds'].get(fold)["training"]
-                            _, _, test_labels, _, test_turkers, _, _ = expt_settings['folds'].get(fold)["test"]
-
-                            print(len(test_labels))
-                            print(len(valididxs))
-                            if len(test_labels) > len(valididxs):
-                                test_turkers = test_turkers[:len(valididxs)]
-                            tr_turkers = np.array(tr_turkers)
-
-                            turker_tr_counts = np.array([np.sum(tr_turkers == tid) for tid in test_turkers])[valididxs]
-                            confidxs = turker_tr_counts > 10
-
                             # confidxs = (pred_prob[:, AL_round] > 0.7) | (pred_prob[:, AL_round] < 0.3)
                             print('Confident data points: %i / %i' % (np.sum(confidxs), confidxs.shape[0]))
 
-                            results_f1[row, col, f, AL_round] = f1_score(gold_disc[confidxs],
-                                                                         pred_disc[confidxs, AL_round],
+                            results_f1[row, col, f, AL_round] = f1_score(gold_disc,
+                                                                         pred_disc[:, AL_round],
                                                                          average='macro')
                             #skip the don't knows
-                            results_acc[row, col, f, AL_round] = accuracy_score(gold_disc[confidxs],
-                                                                                pred_disc[confidxs, AL_round])
+                            results_acc[row, col, f, AL_round] = accuracy_score(gold_disc,
+                                                                                pred_disc[:, AL_round])
                             
-                            results_logloss[row, col, f, AL_round] = log_loss(gold_prob[confidxs],
-                                                                              pred_prob[confidxs, AL_round])
+                            results_logloss[row, col, f, AL_round] = log_loss(gold_prob,
+                                                                              pred_prob[:, AL_round])
                             
-                            results_auc[row, col, f, AL_round] = roc_auc_score(gold_prob[confidxs],
-                                                                               pred_prob[confidxs, AL_round]) # macro
+                            results_auc[row, col, f, AL_round] = roc_auc_score(gold_prob,
+                                                                               pred_prob[:, AL_round]) # macro
 
                             print('Results for fold %i: acc=%f, cee=%f, AUC=%f' % (f,
                                                            results_acc[row, col, f, AL_round],
@@ -397,15 +404,51 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                 if docids is None:
                                     _, docids = load_ling_features(expt_settings['dataset'])  
                                 # ranking data was not saved in original file. Get it from the expt_settings['folds_regression'] here
-                                _, rankscores_test, _, _ = expt_settings['folds_regression'].get(fold)["test"]
+                                _, rankscores_test, _, _, _ = expt_settings['folds_regression'].get(fold)["test"]
                                 gold_rank = np.array(rankscores_test)
 
                             if gold_rank is not None and pred_rank is not None:
-                                results_pearson[row, col, f, AL_round]  = pearsonr(gold_rank, 
+
+                                if split_by_person:
+                                    # compute the metrics separately for each turker because the gold scores between
+                                    # turkers are not comparable.
+                                    _, _, _, test_turkers, _ = expt_settings['folds_regression'].get(fold)["test"]
+
+                                    test_turkers = [tid.strip() for tid in test_turkers]
+
+                                    valid_turk_idxs = np.in1d(test_turkers, tr_turkers)
+                                    test_turkers = np.array(test_turkers)[valid_turk_idxs]
+
+                                    valid_turker_count = 0
+
+                                    for tid in np.unique(test_turkers):
+                                        if np.sum(test_turkers == tid) < 2 or \
+                                                np.sum(tr_turkers == tid) <= turker_conf_filter:
+                                            continue
+
+                                        tidxs = test_turkers == tid
+
+                                        r =  pearsonr(gold_rank[tidxs], pred_rank[tidxs, AL_round])[0]
+                                        rho = spearmanr(gold_rank[tidxs], pred_rank[tidxs, AL_round])[0]
+                                        tau = kendalltau(gold_rank[tidxs], pred_rank[tidxs, AL_round])[0]
+
+                                        if not np.isnan(r) and not np.isnan(rho) and not np.isnan(tau):
+                                            results_pearson[row, col, f, AL_round] += r
+                                            results_spearman[row, col, f, AL_round] += rho
+                                            results_kendall[row, col, f, AL_round] += tau
+
+                                            valid_turker_count += 1
+                                    print('No. confident workers (ranking): %i ' % valid_turker_count)
+
+                                    results_pearson[row, col, f, AL_round] /= valid_turker_count
+                                    results_spearman[row, col, f, AL_round] /= valid_turker_count
+                                    results_kendall[row, col, f, AL_round] /= valid_turker_count
+                                else:
+                                    results_pearson[row, col, f, AL_round]  = pearsonr(gold_rank,
                                                                                    pred_rank[:, AL_round])[0]
-                                results_spearman[row, col, f, AL_round] = spearmanr(gold_rank, 
+                                    results_spearman[row, col, f, AL_round] = spearmanr(gold_rank,
                                                                                     pred_rank[:, AL_round])[0]
-                                results_kendall[row, col, f, AL_round]  = kendalltau(gold_rank, 
+                                    results_kendall[row, col, f, AL_round]  = kendalltau(gold_rank,
                                                                                      pred_rank[:, AL_round])[0]
 
                             def mean_unseen(result, remove_seen_from_mean):

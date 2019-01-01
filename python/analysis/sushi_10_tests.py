@@ -723,7 +723,7 @@ max_facs = 20
 shape_s0 = 1.0
 rate_s0 = 100.0  #0.1
 max_update_size = 200
-delay = 10
+delay = 1
 ninducing = 25#5000
 forgetting_rate = 0.9
 max_Kw_size = 5000
@@ -784,15 +784,15 @@ methods = [
            'crowd-BMF',
            'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
            'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-           'GPPL-pooled',
+           # 'GPPL-pooled',
            # # 'GPPL-joint',
-           'GPPL-per-user',
+           # 'GPPL-per-user',
            ]
 
 optimize = False
 sushiB = False
 sushiA_small = False
-# run_sushi_expt(methods, 'sushi_10' + tag)
+run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
@@ -905,7 +905,7 @@ methods = [
 optimize = False
 sushiB = True
 sushiA_small = False
-run_sushi_expt(methods, 'sushi_100' + tag)
+# run_sushi_expt(methods, 'sushi_100' + tag)
 
 # SUSHI B dataset, ARD -------------------------------------------------------------------------------------------------
 
@@ -922,7 +922,7 @@ methods = [
 optimize = True
 sushiB = True
 sushiA_small = False
-run_sushi_expt(methods, 'sushi_100_opt' + tag)
+# run_sushi_expt(methods, 'sushi_100_opt' + tag)
 
 vscales_B = vscales
 

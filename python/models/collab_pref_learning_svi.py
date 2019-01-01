@@ -732,11 +732,16 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
                     if self.exhaustive_train:
                         self.min_iter = self.nsplits
-                        if self.max_iter < self.min_iter:
+                        if self.max_iter < self.min_iter * self.exhaustive_train:
                             self.max_iter = self.min_iter * self.exhaustive_train
 
                 # create nsplits random splits -- shuffle data and split
+
+                # ensure we sample from each person as soon as possible
+                people, first_occs = np.unique(self.personIDs, return_index=True)
+
                 rand_order = np.random.permutation(self.nobs)
+                rand_order = rand_order[np.invert(np.in1d(rand_order, first_occs))]
 
                 self.data_splits = []
 
