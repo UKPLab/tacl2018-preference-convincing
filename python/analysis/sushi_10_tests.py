@@ -101,7 +101,7 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=True, use_lb=True,
                                   use_common_mean_t=use_common_mean, delay=delay)
-    # model.use_local_obs_posterior_y = False
+    #model.use_local_obs_posterior_y = False
     model.max_Kw_size = max_Kw_size
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
 

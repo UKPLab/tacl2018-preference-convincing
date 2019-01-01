@@ -51,7 +51,7 @@ class PersonalisedTestRunner(TestRunner):
 
         self.model = CollabPrefLearningSVI(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose,
                                            nfactors=nfactors, rate_ls=1.0 / np.mean(self.ls_initial),
-                                           use_common_mean_t=common_mean, max_update_size=1000, use_lb=True,
+                                           use_common_mean_t=common_mean, max_update_size=1500, use_lb=True,
                                            shape_s0=shape_s0, rate_s0=rate_s0, ninducing=M, delay=1)
 
         self.model.max_iter = 200 # same as for single user GPPL
