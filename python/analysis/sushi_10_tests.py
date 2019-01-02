@@ -134,7 +134,11 @@ def run_GPPL_pooled(_, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, __, i1_test, i2_t
 
     fpred, _ = np.tile(model.predict_f(), (1, ufeats.shape[0]))
     rho_pred, _ = model.predict(None, i1_test, i2_test)
-    rho_pred_un, _ = model.predict(ifeats, i1_un, i2_un)
+
+    if len(i1_un):
+        rho_pred_un, _ = model.predict(ifeats, i1_un, i2_un)
+    else:
+        rho_pred_un = []
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred, np.tile(fpred[:, 0:1], (1, ufeats_un.shape[0])), rho_pred_un
@@ -734,7 +738,7 @@ sushiB = False
 vscales = None
 
 # Experiment name tag
-tag = '_14'
+tag = '_14_debug'
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
@@ -792,7 +796,7 @@ methods = [
 optimize = False
 sushiB = False
 sushiA_small = False
-run_sushi_expt(methods, 'sushi_10' + tag)
+# run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
@@ -890,22 +894,22 @@ vscales = None # don't record the v factor scale factors
 
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
-           'crowd-GPPL',
-           #'crowd-GPPL-noConsensus',
-           'crowd-GPPL\\u',
-           'crowd-BMF',
-           #'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
-           'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+           # 'crowd-GPPL',
+           # 'crowd-GPPL\\u',
+           # 'crowd-BMF',
+           # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
            'GPPL-pooled',
-           # 'GPPL-joint',
-           'GPPL-per-user',
-           ]
+           # 'GPPL-per-user',
+           #  # 'crowd-GPPL-noConsensus',
+           #  #'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
+           #  # 'GPPL-joint',
+]
 
 # hyperparameters common to most models
 optimize = False
 sushiB = True
 sushiA_small = False
-# run_sushi_expt(methods, 'sushi_100' + tag)
+run_sushi_expt(methods, 'sushi_100' + tag)
 
 # SUSHI B dataset, ARD -------------------------------------------------------------------------------------------------
 
