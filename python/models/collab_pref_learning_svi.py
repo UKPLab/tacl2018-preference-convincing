@@ -742,6 +742,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
                 rand_order = np.random.permutation(self.nobs)
                 rand_order = rand_order[np.invert(np.in1d(rand_order, first_occs))]
+                rand_order = np.concatenate((first_occs, rand_order))
 
                 self.data_splits = []
 
