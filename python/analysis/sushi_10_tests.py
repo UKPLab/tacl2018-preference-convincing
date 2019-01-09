@@ -738,7 +738,7 @@ sushiB = False
 vscales = None
 
 # Experiment name tag
-tag = '_14_debug'
+tag = '_improvedCrowdGPPL'
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
@@ -759,21 +759,21 @@ vscales = None # don't record the v scale factors
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           'crowd-GPPL-noInduc',
-           'crowd-GPPL-noConsensus',
-           'crowd-GPPL\\u',
-           'crowd-BMF',
-           'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
-           'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-           'GPPL-pooled',
-           # 'GPPL-joint',
-           'GPPL-per-user',
+           # 'crowd-GPPL-noInduc',
+           # 'crowd-GPPL-noConsensus',
+           # 'crowd-GPPL\\u',
+           # 'crowd-BMF',
+           # 'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
+           # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+           # 'GPPL-pooled',
+           # # 'GPPL-joint',
+           # 'GPPL-per-user',
            ]
 
 optimize = False
 sushiB = False
 sushiA_small = True
-# run_sushi_expt(methods, 'sushi_10small' + tag)
+run_sushi_expt(methods, 'sushi_10small' + tag)
 
 # Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
 
@@ -782,21 +782,21 @@ vscales = None # don't record the v scale factors
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           'crowd-GPPL-noInduc',
-           'crowd-GPPL-noConsensus',
-           'crowd-GPPL\\u',
-           'crowd-BMF',
-           'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
-           'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-           # 'GPPL-pooled',
-           # # 'GPPL-joint',
-           # 'GPPL-per-user',
+           # 'crowd-GPPL-noInduc',
+           # 'crowd-GPPL-noConsensus',
+           # 'crowd-GPPL\\u',
+           # 'crowd-BMF',
+           # 'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
+           # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+           # # 'GPPL-pooled',
+           # # # 'GPPL-joint',
+           # # 'GPPL-per-user',
            ]
 
 optimize = False
 sushiB = False
 sushiA_small = False
-# run_sushi_expt(methods, 'sushi_10' + tag)
+run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
@@ -885,7 +885,7 @@ if debug_small:
 # SUSHI B, global parameter changes ------------------------------------------------------------------------------------
 
 max_update_size = 2000
-delay = 25
+delay = 5
 ninducing = 500 # allow us to handle more users.
 
 # SUSHI B dataset, no opt. ---------------------------------------------------------------------------------------------
@@ -894,15 +894,15 @@ vscales = None # don't record the v factor scale factors
 
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
-           # 'crowd-GPPL',
-           # 'crowd-GPPL\\u',
-           # 'crowd-BMF',
-           # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-           'GPPL-pooled',
-           # 'GPPL-per-user',
-           #  # 'crowd-GPPL-noConsensus',
-           #  #'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
-           #  # 'GPPL-joint',
+           'crowd-GPPL',
+           # # 'crowd-GPPL\\u',
+           # # 'crowd-BMF',
+           # # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+           # 'GPPL-pooled',
+           # # 'GPPL-per-user',
+           # #  # 'crowd-GPPL-noConsensus',
+           # #  #'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
+           # #  # 'GPPL-joint',
 ]
 
 # hyperparameters common to most models
