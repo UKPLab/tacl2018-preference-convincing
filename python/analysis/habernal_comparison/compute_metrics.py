@@ -363,7 +363,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             tr_turkers = np.array(tr_turkers)
 
                             turker_tr_counts = np.array([np.sum(tr_turkers == tid) for tid in test_turkers])[valididxs]
-                            turker_conf_filter = 50
+                            turker_conf_filter = 20
                             confidxs = turker_tr_counts > turker_conf_filter
                             print('No. confident workers: %i ' % np.unique(test_turkers[valididxs][confidxs]).size)
 

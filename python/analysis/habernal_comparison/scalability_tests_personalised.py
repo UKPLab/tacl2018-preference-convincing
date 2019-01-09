@@ -5,7 +5,7 @@ if __name__ == '__main__':
     acc = 1.0
     dataset_increment = 0
 
-    # For plots 1 and 2 ------------------------------------------------------------------------------------------------
+    # For plots 0 and 1 ------------------------------------------------------------------------------------------------
     datasets = ['UKPConvArgCrowdSample_evalMACE']
     methods = [
                'SinglePrefGP_noOpt_weaksprior_M2',
@@ -30,6 +30,40 @@ if __name__ == '__main__':
                         dataset_increment)
     runner.run_test_set(min_no_folds=0, max_no_folds=15, npairs=0)
 
+    # For plot 2: scaling with no. pairs -------------------------------------------------------------------------------
+    datasets = ['UKPConvArgCrowdSample_evalMACE']
+    methods = ['SinglePrefGP_noOpt_weaksprior_M0', 'SinglePrefGP_noOpt_weaksprior_M100',
+               'PersPrefGP_noOpt_weaksprior_M0', 'PersPrefGP_noOpt_weaksprior_M100',
+               #'BI-LSTM'#'SVM', 'BI-LSTM'
+        ] # M0 will mean no SVI
+    feature_types = ['embeddings']
+    embeddings_types = ['word_mean']
+
+    runner = TestRunner('personalised_P1000', datasets, feature_types, embeddings_types, methods,
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=1000)
+
+    runner = TestRunner('personalised_P2000', datasets, feature_types, embeddings_types, methods,
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=2000)
+
+    runner = TestRunner('personalised_P4000', datasets, feature_types, embeddings_types, methods,
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=4000)
+
+    runner = TestRunner('personalised_P6000', datasets, feature_types, embeddings_types, methods,
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=6000)
+
+    runner = TestRunner('personalised_P8000', datasets, feature_types, embeddings_types, methods,
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=8000)
+
+    runner = TestRunner('personalised_P1000', datasets, feature_types, embeddings_types, methods,
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=1000)
+
+    # The tests below are less important and may not make it to the new paper.
     # For Plot 3: Scaling with N_tr ------------------------------------------------------------------------------------
     datasets = ['UKPConvArgCrowdSample_evalMACE']
     methods = ['SinglePrefGP_noOpt_weaksprior_M0', 'SinglePrefGP_noOpt_weaksprior_M100',
