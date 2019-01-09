@@ -281,6 +281,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
     def _post_sample(self, K_nm, invK_mm, w_u, wS, t_u, tS,
                      Ky_nm, invKy_mm, y_u, y_var, v, u, expectedlog=False):
+        # TODO: this is wrong because it ignores the remaining uncertainty in t given t_u. Check whether we need this?
 
         # sample the inducing points because we don't have full covariance matrix. In this case, f_cov should be Ks_nm
         nsamples = 500
@@ -350,20 +351,33 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
     def _estimate_obs_noise(self):
 
         # to make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
-        m_prior, not_m_prior, v_prior = self._post_sample(self.K_nm, self.invK_mm,
-                                                          np.zeros((self.ninducing, self.Nfactors)), self.K_mm * self.rate_sw0 / self.shape_sw0,
-                                                          self.t_mu0, self.K_mm * self.rate_st0 / self.shape_st0,
-                                                          self.Ky_nm, self.invKy_mm, np.zeros((self.Nfactors, self.y_ninducing)), 1,
-                                                          self.pref_v, self.pref_u)
+        # m_prior, not_m_prior, v_prior = self._post_sample(self.K_nm, self.invK_mm,
+        #                           np.zeros((self.ninducing, self.Nfactors)), self.K_mm * self.rate_sw0 / self.shape_sw0,
+        #                           self.t_mu0, self.K_mm * self.rate_st0 / self.shape_st0,
+        #                           self.Ky_nm, self.invKy_mm, np.zeros((self.Nfactors, self.y_ninducing)), 1,
+        #                           self.pref_v, self.pref_u)
+
+        # the below is a very rough approximation because it ignores the covariance between points,
+        # hence m_prior values will be more extreme and v_prior likely larger.
+        # In practice this seemed to work well in the single user model and is quick to compute.
+        # Assume that each data point has the same prior...
+        f_samples = np.random.normal(loc=0, scale=np.sqrt(self.rate_st0 / self.shape_st0
+                        + np.sum(self.rate_sw * self.rate_sy / (self.shape_sw * self.shape_sy)) ),
+                        size=int(2 * 1e8))
+
+        phi = pref_likelihood(f_samples, v=np.arange(1e8, dtype=int), u=np.arange(1e8, dtype=int) + int(1e8) )
+        m_prior = np.mean(phi)
+        not_m_prior = 1 - m_prior
+        v_prior = np.var(phi)
 
         # find the beta parameters
         a_plus_b = 1.0 / (v_prior / (m_prior*not_m_prior)) - 1
-        a = (a_plus_b * m_prior)
-        b = (a_plus_b * not_m_prior)
+        a = a_plus_b * m_prior
+        b = a_plus_b * not_m_prior
 
         nu0 = np.array([b, a])
         # Noise in observations
-        nu0_total = np.sum(nu0, axis=0)
+        nu0_total = np.sum(nu0)
         obs_mean = (self.z + nu0[1]) / (1 + nu0_total)
         var_obs_mean = obs_mean * (1 - obs_mean) / (1 + nu0_total + 1)  # uncertainty in obs_mean
         Q = (obs_mean * (1 - obs_mean) + var_obs_mean)

@@ -208,7 +208,7 @@ class CollabPrefLearningVB(object):
         self.rate_sy0 = rate_s0
 
         self.shape_st0 = shape_s0
-        self.rate_st0 = rate_s0
+        self.rate_st0 = rate_s0 #* self.Nfactors # this rebalances the prior expected variance of t against the latent components
 
         # posterior moments
         self.shape_st = self.shape_st0

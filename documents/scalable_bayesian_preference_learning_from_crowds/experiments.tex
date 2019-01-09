@@ -286,8 +286,8 @@ Effect of varying $M$ on accuracy and runtime (training+prediction) for GPPL and
  %Bi-LSTM & .73 &  .55 & .21 & .64 & .64 & .21 \\
  GPPL medi. & \textbf{.77} & \textbf{.50} &  \textbf{.40} & .71 & .56 & .07 \\
  GPPL opt. & & & & .70 & .58 &  .06 \\
- Crowd-GPPL medi. & .51 & .69 & .01 & .71 & .69 & .06 \\
- Crowd-GPPL opt. & .51 & .69 & .01 & .70 & .69 & .06
+ Crowd-GPPL medi. & .70 & .69 & .51 & .70 & .62 & .19 \\
+ Crowd-GPPL opt. & ? & .69 & ? & ? & ? & ?
  %PL+ SVR & .75 & .55 & \textbf{.40} & .75 & & .40 \\
  %GPC & .73 & .53 & - & .68 & .59 & - \\
  \\\hline
@@ -306,11 +306,12 @@ to the model's predictions. This indicates that our Bayesian approach, in which 
 of the latent factors have mean zero, preferred a simpler model even when a larger number
 of latent factors was available.
 \begin{figure}
+\centering
 \subfloat[UKPConvArgCrowdSample]{
-%\includegraphics[width=.35\columnwidth]{../../results/conv_factors/UKPConvArgCrowdSample_factor_scales.pdf}
+\includegraphics[trim=10 0 3 0,clip=true,width=.4\textwidth]{../../results/conv_factors/UKPConvArgCrowdSample_factor_scales.pdf}
 }
-\subfloat[Sushi-A and Sushi-B]{
-%\includegraphics[width=.35\columnwidth]{../../results/sushi_factors/sushi_factor_scales}
+\subfloat[Sushi-A]{
+\includegraphics[trim=20 0 0 0,clip=true,width=.4\textwidth]{../../results/sushi_factors/sushi_factor_scales}
 }
 \caption{
 Distribution of latent factor variances, $1/s_c$, for crowd-GPPL on UKPConvArgCrowdSample, Sushi-A and Sushi-B, averaged over all runs.
@@ -378,48 +379,59 @@ The complete process, including subsampling, was repeated $25$ times.
 
 
 \begin{table}
-\begin{tabularx}{\textwidth}{| p{1.1cm} | X | X | X | p{0.7cm} | X | X | X | p{0.7cm} | X | X | X | p{0.7cm} |}
+\small
+\begin{tabularx}{\textwidth}{| p{1.1cm} | X | X | X | p{0.55cm} | X | X | X | p{0.7cm} | X | X | X | p{0.7cm} |}
 \hline
-& \multicolumn{4}{|c|}{\textbf{Sushi-A-small}} & \multicolumn{4}{|c|}{\textbf{Sushi-A}} & \multicolumn{4}{c|}{\textbf{Sushi-B}} \\ 
+& \multicolumn{4}{c|}{\textbf{Sushi-A-small}} & \multicolumn{4}{c|}{\textbf{Sushi-A}} & \multicolumn{4}{c|}{\textbf{Sushi-B}} \\ 
 Method & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time \\
 \hline\hline
-\multicolumn{13}{| l | }{\textbf{crowdPL-} } \\
-full & .67 & .87 & .39 & 76.91 (27.23) %& .63 (.02) & .69 (.00) & .25 (.02)
-& .79 & .51 & .66 & 149.6 (20.86)
-& .65 & 3.59 & .33 & 2880 (1 rep)
+\textit{crowdPL} & & & & & & & & & & & & \\
+full & .67 & .87 & .39 & 77%76.91 %(27.23) %& .63 (.02) & .69 (.00) & .25 (.02)
+& .79 & .51 & .66 & 150%149.6 %(20.86)
+& .69 & 2.23 & .45 & 9163 
 \\
-full, opt. & & & & & .80 & .48 & .68 & 3718.20 (2193.72) \\
-$\backslash $induc & .70 & \textbf{.57} & .46 & 165.72 (14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
-& .84 & \textbf{.33} & .79 & 315.17 (50.17) & - & - & - & -
+full, opt. & & & & & .80 & .48 & .68 & 3718 
+& - & - & - & - 
+\\%(2193.72) \\
+$\backslash $induc & .70 & \textbf{.57} & .46 & 166 %(14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
+& .84 & \textbf{.33} & .79 & 315 %(50.17) 
+& - & - & - & -
 \\
 %$\backslash t$ & .67 & .80 & .39 & 7.45 (29.00) %& .61 (.02) & .69 (.00) & .19 (.03)
 %& .79 & .57 & .65 & 158.51 (25.06)
 %\\
-$\backslash u$ & .70 & .58 & .46 & 174.72 (24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
-& .84 & \textbf{.33} & \textbf{.80} & 336.42 (4.93)
+$\backslash u$ & .70 & .58 & .46 & 175 %(24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
+& .84 & \textbf{.33} & \textbf{.80} & 336 %(4.93)
+& \textbf{.76} & \textbf{.47} & \textbf{.60} & 21052
 \\
-$\backslash u$, opt. & & & & & \textbf{.85} & \textbf{.33} &  \textbf{.80} & 5015.98 (1978.82) \\
-$\backslash u \backslash x$ & \textbf{.71} & \textbf{.57} & \textbf{.49} & 4.67 (3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
-& \textbf{.85} & \textbf{.33} & \textbf{.80} & 328.83 (12.12)
+$\backslash u$, opt. & & & & & \textbf{.85} & \textbf{.33} &  \textbf{.80} & 5016 %(1978.82) \\
+& - & - & - & - \\
+$\backslash u \backslash x$ & \textbf{.71} & \textbf{.57} & \textbf{.49} & 5 %(3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
+& \textbf{.85} & \textbf{.33} & \textbf{.80} & 329 %(12.12)
+& \textbf{.76} & .48 & \textbf{.60} & 15478
 \\
 %$\backslash u$, FITC & .70 & .58 & .46 & 333.68 (57.36) %& .65 (.01) & .64 (.02) & .29 (.02)
 %& \textbf{.85} & \textbf{.33} & \textbf{.80} & 551.56 (16.82)
 %\\
-$\backslash u$$\backslash t$, FITC & .68 & .60 & .43 & 291.24 (48.62) %& .50 (.00) & .69 (.00) & nan (nan)
-& .84 & \textbf{.33} & .79 & 540.08 (12.15)
+$\backslash u$$\backslash t$ % this is also FITC to emulate Houlsby -- mention it in the text, not here
+& .68 & .60 & .43 & 291 %(48.62) %& .50 (.00) & .69 (.00) & nan (nan)
+& .84 & \textbf{.33} & .79 & 540 %(12.15) 
+& .75 & .49 & .59 & 30484
 \\ 
 %$\backslash u$$\backslash t$, FITC, opt. & & & &  & .84 & \textbf{.33} & \textbf{.80} & 7413.53 (2849.63) \\
 \hline 
-pooled & .65 & .62 & .31 & \textbf{1.54} (.26) %& .65 (.02) & .63 (.02) & .30 (.03)
-& .66 & .62 & .32 & \textbf{1.83} (.38)
+\textit{singlePL}& & & & & & & & & & & & \\
+pooled & .65 & .62 & .31 & \textbf{2} %(.26) %& .65 (.02) & .63 (.02) & .30 (.03)
+& .66 & .62 & .32 & \textbf{2} %(.38) & 
+& .65 & .62 & .31 & \textbf{51}
 \\
-per-user & .67 & .64 & .42 & 97.47 (1.12) %& .50 (.00) & .69 (.00) & nan (nan)
-& .83 & .40 & .79 & 67.23 (.44)
+per-user & .67 & .64 & .42 & 97 %(1.12) %& .50 (.00) & .69 (.00) & nan (nan)
+& .83 & .40 & .79 & 67 %(.44)
 \\
 \hline
-Houlsby et al CP & & & & & .84 \\
-Houlsby et al CPU & & & & & .83 
-\\ \hline
+%Houlsby et al CP & & & & & .84 \\
+%Houlsby et al CPU & & & & & .83 
+%\\ \hline
 \end{tabularx}
 \caption{Predicting personal preferences: performance on Sushi-A dataset and Sushi-B datasets.
 Runtimes given in seconds, with standard deviation between repeats in brackets.

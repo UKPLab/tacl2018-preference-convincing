@@ -443,7 +443,6 @@ class GPPrefLearning(GPClassifierSVI):
         else:
             return m_post
 
-        return return_vals
 
     def predict_pairs_from_features(self, out_feats=None, out_1_feats=None, mu0_out=None, mu0_out_1=None,
                                     expectedlog=False, return_var=True):

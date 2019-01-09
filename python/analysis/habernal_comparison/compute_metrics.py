@@ -222,7 +222,7 @@ def load_results_data(data_root_dir, resultsfile_template, expt_settings, max_no
     return data, nFolds, resultsdir, resultsfile          
 
 def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, accuracy=1.0, di=0, npairs=0,
-                    tag='', remove_seen_from_mean=False, max_no_folds=32, min_folds_desired=0,
+                    tag='', remove_seen_from_mean=False, max_fold_no=32, min_fold_no=0,
                     compute_tr_performance=False, flip_labels=[], foldername=expt_root_dir, split_by_person=False):
         
     expt_settings['acc'] = accuracy
@@ -291,8 +291,8 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                     embeddings_to_use = embeddings_types
                 for expt_settings['embeddings_type'] in embeddings_to_use:
                     data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template,
-                                                              expt_settings, max_no_folds, foldername)
-                    min_folds = min_folds_desired
+                                                                              expt_settings, max_fold_no, foldername)
+                    min_folds = min_fold_no
                     foldrange = None
 
                     for f in range(nFolds):
@@ -372,14 +372,15 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             gold_prob = gold_prob[confidxs]
                             pred_prob = pred_prob[confidxs, :]
 
+                            # confidxs = (pred_prob[:, AL_round] > 0.7) | (pred_prob[:, AL_round] < 0.3)
+                            print('Confident data points: %i / %i' % (np.sum(confidxs), confidxs.shape[0]))
+
                         for AL_round, _ in enumerate(AL_rounds):
                             #print "fold %i " % f
                             #print AL_round
                             if AL_round >= pred_disc.shape[1]:
                                 continue
 
-                            # confidxs = (pred_prob[:, AL_round] > 0.7) | (pred_prob[:, AL_round] < 0.3)
-                            print('Confident data points: %i / %i' % (np.sum(confidxs), confidxs.shape[0]))
 
                             results_f1[row, col, f, AL_round] = f1_score(gold_disc,
                                                                          pred_disc[:, AL_round],
@@ -492,7 +493,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                 tr_results_logloss[row, col, f, AL_round] = 0                                                             
                           
                         for AL_round in range(results_f1.shape[3]):
-                            foldrange = np.arange(min_folds, max_no_folds) # skip any rounds that did not complete when taking the mean
+                            foldrange = np.arange(min_folds, max_fold_no) # skip any rounds that did not complete when taking the mean
                             foldrange = foldrange[results_f1[row, col, foldrange, AL_round] != 0]
                             
                             results_f1[row, col, -1, AL_round] = np.mean(results_f1[row, col, foldrange, AL_round], axis=0)
@@ -604,7 +605,7 @@ if __name__ == '__main__':
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
     tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
     = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                      max_no_folds=max_no_folds)
+                      max_fold_no=max_no_folds)
 
     print(results_acc)
 

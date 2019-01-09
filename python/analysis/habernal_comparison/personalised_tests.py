@@ -51,8 +51,8 @@ class PersonalisedTestRunner(TestRunner):
 
         self.model = CollabPrefLearningSVI(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose,
                                            nfactors=nfactors, rate_ls=1.0 / np.mean(self.ls_initial),
-                                           use_common_mean_t=common_mean, max_update_size=1500, use_lb=True,
-                                           shape_s0=shape_s0, rate_s0=rate_s0, ninducing=M, delay=1)
+                                           use_common_mean_t=common_mean, max_update_size=1000, use_lb=True,
+                                           shape_s0=shape_s0, rate_s0=rate_s0, ninducing=M, delay=2)
 
         self.model.max_iter = 200 # same as for single user GPPL
         self.model.max_Kw_size = max_Kw_size
@@ -217,14 +217,14 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'personalised_12'
+    test_dir = 'personalised_13_bigger_t'
 
     max_Kw_size = 2000
 
     dataset_increment = 0     
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
-    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
+    feature_types = ['debug'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
     embeddings_types = ['word_mean']
 
     datasets = ['UKPConvArgCrowdSample']

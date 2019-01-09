@@ -66,14 +66,6 @@ import numpy as np
 ndebug_features = 10
 verbose = True
     
-def save_fold_order(resultsdir, folds=None, dataset=None):
-    if folds is None and dataset is not None:
-        folds, _, _, _, _ = load_train_test_data(dataset)        
-    elif folds is None:
-        print("Need to provide a dataset label or a set of fold data...")
-        return 
-    np.savetxt(resultsdir + "/foldorder.txt", np.array(list(folds.keys()))[:, None], fmt="%s")
-    
 # Lengthscale initialisation -------------------------------------------------------------------------------------------
 # use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.
 # First, grab a sample of points because N^2 could be too large.    
@@ -999,7 +991,7 @@ class TestRunner:
     
             # Run the chosen method with active learning simulation if required---------------------------------------------
             while nseen_so_far < npairs_f:
-                logging.info('****** Fitting model with %i pairs in fold %i ******' % (len(pair_subset), foldidx))
+                logging.info('****** Fitting model with %i pairs in fold %i, %s ******' % (len(pair_subset), foldidx, self.fold))
                 
                 # get the indexes of data points that are not yet seen        
                 if not test_on_all_training_pairs:
@@ -1138,8 +1130,8 @@ class TestRunner:
                     pickle.dump(results, fh)
     
                 if not os.path.isfile(results_stem + "/foldorder.txt"):
-                    save_fold_order(results_stem, self.folds)
-                    
+                    np.savetxt(results_stem + "/foldorder.txt", fold_keys[:, None], fmt="%s")
+
                 #with open(modelfile % foldidx, 'w') as fh:
                 #        pickle.dump(model, fh)
     
