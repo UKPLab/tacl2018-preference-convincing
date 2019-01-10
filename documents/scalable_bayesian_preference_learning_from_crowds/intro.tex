@@ -66,24 +66,55 @@ We show how to scale it using SVI and how to use the model to identify ground tr
 
 \subsubsection*{New Intro}
 
-Supervised learning relies on gold-standard labels for training, 
-yet for many tasks, annotators have divergent opinions on the correct label
-for any given data point.
+
+%for instance, the best way to summarise a text document may depend on the reader’s 
+%prior knowledge of the topic. 
+%However, state-of-the-art methods rely heavily on large quantities of labelled training data, 
+%making adaptation to user or context difficult. This leads to the following questions:
+%How can users be empowered to adapt existing models to their individual changing needs?
+%Can we train NLP models without acquiring large numbers of labelled examples?
+%How can decisions made using machine learning be explained users to build their trust?
+
+% TODO: starts off too general. This is about preference learning, not annotation!
+% TODO: what is the purpose of the consensus? Is it a de-biased ground truth for some objective task or task for which a consensus is desirable? If so, does this fall under the category of subjective tasks? Perhaps a better skew on this is 
+% to think about preference learning foremost as the topic: ranking with pairwise labels. If this is desirable, then we 
+% encounter two problems: 1, the biased labellers, and 2, subjective tasks.
+
+%Comparing the values of items according to a particular quality is a 
+
+% learing -> infers a function for comparing
+%
+\emph{Preference learning} is the task of learning to compare the values of a set of alternatives
+according to a particular quality~\citep{furnkranz2010preference}. Here, we focus on ranking 
+instances and or predicting the instance with the highest value in a pair.
+For many preference learning tasks, annotators have divergent opinions on the correct labels,
+which impedes the acquisition of training data.
+%for any given data point.
+%For many learning tasks, the desired output is inherently subjective or context-dependent, 
+%yet supervised learning learning relies on gold-standard training labels. 
+%yet for many tasks, 
 %which can be hard to obtain in sufficient quantities 
 %for subjective tasks or 
 %when annotators fail to agree due to their individual viewpoints or preferences.
-In the field of argument mining, for example, one goal may be to train a model to 
+For example, in the field of argument mining, one goal is to 
 identify convincing arguments from a corpus of documents~\citep{habernal2016argument}. 
 Whether a particular argument is convincing or not depends on the reader's point of view and prior knowledge~\citep{lukin2017argument}.
-Similarly, recommender systems typically perform better if they make recommendations tailored
-to a specific user~\citep{??}.
-While large amounts of data may be available from
-many different users, the amount of gold-standard training data for any particular user
-may be very small~\citep{?}.
-Disagreements between annotators also present a problem when using crowdsourcing to 
-obtain a single set of gold labels~\citep{?}.
-Subjective tasks therefore require methods for learning individual preferences given 
-limited data and obtaining gold standard labels from crowds of biased annotators.
+Similarly, recommender systems can perform better if they make recommendations tailored
+to a specific user~\citep{resnick1997recommender}.
+%However, while large amounts of data may be available from
+%many different users, the amount of data for any particular user
+%may be very small~\citep{?}.
+%When large amounts of labeled data are required for machine learning,
+Crowdsourcing is frequently used as a cost-effective source of labeled data, 
+yet disagreements between annotators must be resolved to obtain a gold-stanard
+training set, typically requiring redundant labeling and increased annotation costs~\citep{snow2008cheap,banerji2010galaxy,gaunt2016training}.
+% TODO should be saying 'instance' not 'item' because preferences could be over abstract instances, such as states a robot could enter
+%Current methods for preference learning
+%are either unable to model differences of opinion\citep{G?},
+%do not scale to realistic dataset sizes\citep{chu2005preference},
+%or cannot generalize to new instances or users\citep{BMF?best worst scaling?}.
+Therefore, solutions are required for modeling individual preferences given
+limited data per user and producing gold standard labels from crowds of annotators with different opinions.
 
 % not sure I like this because previous paragraph starts of super general,
 % then here we seem to focus arbitrarily on ranking and rating?
@@ -91,78 +122,91 @@ limited data and obtaining gold standard labels from crowds of biased annotators
 % assigning numerical ratings.
 % We put pairwise stuff here because it narrows the scope early. One could also talk about collaborative filtering here instead.
 % Here we are searching for the right form of annotation...
-Many subjective tasks can be cast as \emph{preference learning} problems,
-in which the aim is to learn rankings or numerical ratings of items that reflect their value.
-While preferences can be expressed as numerical ratings,
-different annotators may interpret values differently: 
-a score of -1, say, from one annotator may be equivalent to a -20 from another~\cite{?}. 
+A preference model can be trained using numerical ratings, yet 
+each annotator may interpret the values differently: 
+a score of -1, say, from one annotator may be equivalent to a -20 from another. 
 The annotators may also assign ratings inconsistently
-over time~\cite{?}. 
+over time~\citep{?}. 
 An alternative is \emph{pairwise preference labeling}, 
-in which the annotator compares pairs of items and selects the preferred item.
-Making pairwise choices places lower cognitive load on annotators than numerical ratings ~\citep{kendall1948rank,kingsley2010},
-and facilitates the total sorting of items, since it avoids cases where items have the same values.
+in which the annotator compares pairs of instances and selects the preferred one in each pair.
+Making pairwise choices places lower cognitive load on annotators than numerical ratings ~\citep{kendall1948rank,kingsley2010preference},
+and facilitates the total sorting of instances, since it avoids cases where instances have the same values.
 Besides explicit annotations, pairwise preference labels can be extracted from
 user behavior logs, such as when a user selects one item from a list in preference
-to others~\cite{}. 
-Pairwise preference labels therefore provide a potentially valuable
-source of information for learning individual preferences and reducing 
-the incompatibility of labels provided by different annotators.
-% TODO How do pairwise labels related to the previous problem of subjective tasks?
+to others~\citep{joachims2002optimizing}. 
+However, such \emph{implicit annotations} can be noisy, as are crowdsourced preference labels~\citep{habernal2016argument}.
+Therefore, while pairwise labels provide a valuable
+form of training data, preference learning methods must be able to 
+to aggregate noisy sources of pairwise data from crowds 
+or from different types of implicit annotation.
+%individual preferences and reducing 
+%the incompatibility of labels provided by different annotators.
 
-In recommender systems, the lack of labeled data from a specific user is addressed through \emph{collaborative filtering}, whereby predictions of a user's preferences are
-informed by the observed preferences of similar users~\citep{?}.
-By representing the preferences as a user-item matrix
-This is often achieved using \emph{matrix factorization}~\cite{?},
-in which a  records the rating given by each user to each item; 
-this matrix is factorized approximately into two low-dimensional matrices;
-users and items with similar ratings have similar row vectors in the low-dimensional
-matrices; 
-multiplying the low-dimensional representations predicts ratings for unseen
+% TODO could consider swapping the order of BMF and Bayesian paragraphs? Or better linking the pairwise and BMF paragraphs?
+In recommender systems, information from different sources -- in this case, different users --
+ is aggregated using \emph{collaborative filtering},  
+which predicts a user's preferences for an unseen instance using the observed preferences of similar users for that instance~\citep{?}.
+A typical approach is to represent observed ratings in a user-instance matrix,
+then apply \emph{matrix factorization}~\citep{?}
+to decompose a user-instance matrix into two low-dimensional matrices.
+Users and items with similar observed ratings have similar row vectors in the low-dimensional
+matrices, and multiplying the low-dimensional representations predicts ratings for unseen
 user-item pairs. 
-Traditional approaches are not able to extrapolate to new users or items,
-and require sufficient data for each to factorize them correctly. They do not take advantage of the item or user features
-~\cite{?} or require a hierarchical model that incorporates them outside the matrix factorization step~\cite{?}. 
-Collaborative filtering is therefore a way to aggregate preference data from multiple users to make up for a shortfall in labeled data for a target user whose preferences we 
-wish to predict.
+However, traditional approaches are not able to handle pairwise labels,
+extrapolate to new users or items,
+nor perform well with very small numbers of observations per user\citep{?}. 
+%They do not take advantage of the item or user features
+%~\cite{?} or require a hierarchical model that incorporates them outside the matrix factorization step~\cite{?}. 
+%Collaborative filtering is therefore a way to aggregate preference data from multiple users 
+%to make up for a shortfall in labeled data for a target user whose preferences we 
+%wish to predict.
 
-Whether provided explicitly or extracted from user behavior logs,
-pairwise preference labels may be noisy, and the amount of 
-data for any given user may be small.
-This motivates a Bayesian approach that can account for uncertainty in the model 
-and its predictions that results from noise, 
-small datasets and the aggregation of data from multiple sources.
-While Bayesian methods for pairwise preference learning have been proposed
-in previous work~\cite{chu2009preference,houlsby2012collaborative,khan2014scalable}, they do not scale to large numbers of items, users, or
+The limited amount of data for each user,
+as well as the desire to aggregate data from multiple sources, users or annotators,
+motivates a Bayesian approach that can account for uncertainty in the model.
+While Bayesian methods for pairwise preference learning have been proposed previously
+~\citep{chu2009preference,houlsby2012collaborative,khan2014scalable}, 
+they do not scale to large numbers of items, users, or
 pairwise labels as computational and memory complexity is polynomial in the number
-of items and pairs and linear or worse in the number of users.
+of items and pairs, and linear or worse in the number of users.
 
-
-
+In this paper, we propose a scalable Bayesian approach to pairwise preference learning with crowds,
+whose members may be annotators, users or sources of implicit annotations.
+We introduce a model that %for aggregating pairwise  labels from multiple sources that
+captures both personal preferences and the consensus of a crowd by combining 
+matrix factorization and Gaussian processes. % preference learning~\citep{chu2005preference}.
+To enable inference at the scale of large, real-world datasets,
+we derive a stochastic variational inference scheme~\citep{hoffman2013stochastic} for our approach.
+%Our method is able to model both the individual preferences of members of the crowd,
+%and to extract a gold-standard consensus from crowdsourced annotations.
 % Structure of related work should also follow these questions:
 % preference learning from crowds (okay); 
 % Bayesian preference learning (where does it fit in these points? Small data/extrapolation to new examples);
 % Bayesian matrix factorization (again, Bayesian part needs to be linked in better; this is about personal preference learning);
 % SVI (okay, fits scalability part; but maybe talk about scalable Bayesian methods in general?);
 % Nothing about hyperparameters (Nickisch, maybe don't separate this point out but make it part of the scalable Bayesian inference method?).
-
-% structure below is a little confusing? I think only a list of contributions + one or two questions is correct.
-In this paper, we develop methodology to solve the following questions:
-\begin{enumerate}
-  \item How can we learn  user preference functions over large sets of items given a large number of pairwise comparisons?
-  \item How do we account for the different personal preferences of annotators when inferring a consensus preference function?
-  \item Can we provide a Bayesian approach to account for uncertainty in our learned model and confidence in its predictions? 
-\end{enumerate}
-To answer these questions we make the following technical contributions:
-\begin{enumerate}
- \item We propose a model of both personal preferences and the consensus of a crowd 
-  that aggregates pairwise preference labels
-  % using a model of the noise and biases of individual annotators. % say why this is not possible with Dawid and Skene
-  \item %To enable collaborative preference learning % collaborative preference learning needs to be defined above
-   To enable inference on our model at the scale of large, real-world datasets, we develop
-   stochastic variational inference for Bayesian matrix factorization and Gaussian process preference learning.
-  \item To expedite hyper-parameter tuning, we introduce a technique for gradient-based length-scale optimization of Gaussian processes.
-\end{enumerate}
+% % structure below is a little confusing? I think only a list of contributions + one or two questions is correct.
+%  develop methodology to solve the following questions:
+% \begin{enumerate}
+%   \item How can we learn  user preference functions over large sets of items given a large number of pairwise comparisons?
+%   \item How do we account for the different personal preferences of annotators when inferring a consensus preference function?
+%   \item Can we provide a Bayesian approach to account for uncertainty in our learned model and confidence in its predictions? 
+% \end{enumerate}
+% Our technical contributions can be summarized as follows:
+% \begin{enumerate}
+%  \item We propose a model for aggregating pairwise preference labels from multiple sources that
+%  models both personal preferences and the consensus of a crowd;
+%   % using a model of the noise and biases of individual annotators. % say why this is not possible with Dawid and Skene
+%   \item %To enable collaborative preference learning % collaborative preference learning needs to be defined above
+%    %To enable inference on our model at the scale of large, real-world datasets, 
+%    We derive a stochastic variational inference method for Bayesian matrix factorization and Gaussian process preference learning.
+% %  \item To expedite hyper-parameter tuning, we introduce a technique for gradient-based length-scale optimization of Gaussian processes.
+% \end{enumerate}
+By providing a scalable Bayesian approach we open preference learning up to novel applications
+for which annotations or sparse, noisy and biased, and where the number of users, instances and pairwise labels is large.
+Our empirical evaluation demonstrates the scalability of our approach,
+and its ability to predict personal preferences as well as an objective gold-standard given crowdsourced data.
+% TODO how much do we really test data sparsity?
 
 The next section of the paper discusses related work.
 We then we develop our model for preference learning from crowds in Section \ref{sec:model},
