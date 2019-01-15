@@ -1,22 +1,5 @@
 \section{Introduction}\label{sec:intro}
 
-Many tasks are more suited to pairwise comparisons than classification etc. 
-Crowds of non-expert annotators may label more accurately if presented with pairs. 
-Implicit feedback may be taken from user actions in an application that can be represented as a preference, such as choosing
-an option over other options.
-
-There are several works for learning from noisy pairwise comparisons so far (Horvitz et al. 2013 or something like that?). 
-However, these do not provide a way to take account of item features or to model different but valid subjective viewpoints. 
-They assume there is a single ground truth and can therefore model only one task and one user's (or a consensus of all users) preferences at once. 
-
-Work by Felt et al. 2015, Simpson et al. 2015 etc. shows that item features are particularly useful when combining crowdsourced data. A Gaussian process has not been tested for this purpose before?
-
-GP preference learning presents a way to learn from noisy preferences but assumes constant noise and a single underlying preference function. 
-The collaborative Gaussian process (Houlsby et al. 2012) learns multiple users' preferences. 
-However existing implementations do not scale and do not identify ground truth. 
-
-We show how to scale it using SVI and how to use the model to identify ground truth from subjective preferences. 
-
 %Things we assume are discussed in the intro:
 % -- recommendation -- item-item similarity, user-user similarity (CF), user-item matching
 % -- learning from implicit preferences/user actions
@@ -63,9 +46,6 @@ We show how to scale it using SVI and how to use the model to identify ground tr
 % over gradient-free methods.
 % Is this the clear benefit or are we missing something else?
 % Are these mentioned below?
-
-\subsubsection*{New Intro}
-
 
 %for instance, the best way to summarise a text document may depend on the reader’s 
 %prior knowledge of the topic. 
@@ -123,14 +103,12 @@ limited data per user and producing gold standard labels from crowds of annotato
 % We put pairwise stuff here because it narrows the scope early. One could also talk about collaborative filtering here instead.
 % Here we are searching for the right form of annotation...
 A preference model can be trained using numerical ratings, yet 
-each annotator may interpret the values differently: 
+each annotator may interpret the values differently and may label inconsistently depending on the order in which they annotate instances~\citep{ovadia2004ratings,yannakakis2011ranking}: 
 a score of -1, say, from one annotator may be equivalent to a -20 from another. 
-The annotators may also assign ratings inconsistently
-over time~\citep{?}. 
 An alternative is \emph{pairwise preference labeling}, 
 in which the annotator compares pairs of instances and selects the preferred one in each pair.
-Making pairwise choices places lower cognitive load on annotators than numerical ratings ~\citep{kendall1948rank,kingsley2010preference},
-and facilitates the total sorting of instances, since it avoids cases where instances have the same values.
+Making pairwise choices places lower cognitive load on annotators than numerical ratings~\citep{yang2011ranking},
+and facilitates the total sorting of instances, since it avoids cases where instances have the same values~\citep{kendall1948rank,kingsley2010preference}.
 Besides explicit annotations, pairwise preference labels can be extracted from
 user behavior logs, such as when a user selects one item from a list in preference
 to others~\citep{joachims2002optimizing}. 
@@ -145,16 +123,17 @@ or from different types of implicit annotation.
 % TODO could consider swapping the order of BMF and Bayesian paragraphs? Or better linking the pairwise and BMF paragraphs?
 In recommender systems, information from different sources -- in this case, different users --
  is aggregated using \emph{collaborative filtering},  
-which predicts a user's preferences for an unseen instance using the observed preferences of similar users for that instance~\citep{?}.
+which predicts a user's preferences for an unseen instance using the observed preferences of 
+similar users for that instance~\citep{resnick1997recommender}.
 A typical approach is to represent observed ratings in a user-instance matrix,
-then apply \emph{matrix factorization}~\citep{?}
+then apply \emph{matrix factorization}~\citep{koren2009matrix}
 to decompose a user-instance matrix into two low-dimensional matrices.
 Users and items with similar observed ratings have similar row vectors in the low-dimensional
 matrices, and multiplying the low-dimensional representations predicts ratings for unseen
 user-item pairs. 
 However, traditional approaches are not able to handle pairwise labels,
-extrapolate to new users or items,
-nor perform well with very small numbers of observations per user\citep{?}. 
+nor extrapolate to new users or items.
+%nor perform well with very small numbers of observations per user\citep{mnih2008probabilistic}. 
 %They do not take advantage of the item or user features
 %~\cite{?} or require a hierarchical model that incorporates them outside the matrix factorization step~\cite{?}. 
 %Collaborative filtering is therefore a way to aggregate preference data from multiple users 
@@ -164,11 +143,15 @@ nor perform well with very small numbers of observations per user\citep{?}.
 The limited amount of data for each user,
 as well as the desire to aggregate data from multiple sources, users or annotators,
 motivates a Bayesian approach that can account for uncertainty in the model.
-While Bayesian methods for pairwise preference learning have been proposed previously
-~\citep{chu2009preference,houlsby2012collaborative,khan2014scalable}, 
-they do not scale to large numbers of items, users, or
+Matrix factorization, for example, has been shown to benefit from a Bayesian treatment when data is sparse~\citep{salakhutdinov2008bayesian}. 
+Previous work has introduced a Bayesian approach for combining crowdsourced preferences, but this does models only ground truth rather than individual preferences and cannot make predictions for new users or instances~\citep{chen2013pairwise}.
+For classification tasks, \citet{simpson2017bayesian} show that modeling instance features using a Gaussian process can improve performance, but this has not yet been adapted for preference learning.
+Gaussian processes have also been used in previous work to make predictions on test instances using a Bayesian framework
+~\citep{chu2005preference,houlsby2012collaborative,khan2014scalable}, 
+but they do not scale to large numbers of items, users, or
 pairwise labels as computational and memory complexity is polynomial in the number
 of items and pairs, and linear or worse in the number of users.
+%these methods also do not 
 
 In this paper, we propose a scalable Bayesian approach to pairwise preference learning with crowds,
 whose members may be annotators, users or sources of implicit annotations.

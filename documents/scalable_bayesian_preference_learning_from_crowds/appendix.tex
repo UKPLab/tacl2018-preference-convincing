@@ -1,6 +1,36 @@
+\section{Posterior Inference}
+
+Due to the non-Gaussian likelihood, Equation \ref{eq:plphi},
+the posterior distribution over $\bs f$ contains intractable integrals:
+\begin{flalign}
+p(\bs f | \bs y, k_{\theta}, \alpha_0, \beta_0) = 
+\frac{\int \prod_{p=1}^P \Phi(z_p) \mathcal{N}(\bs f; \bs 0, \bs K_{\theta}/s) 
+\mathcal{G}(s; \alpha_0, \beta_0) d s}{\int \int \prod_{p=1}^P \Phi(z_p) \mathcal{N}(\bs f'; \bs 0, \bs K_{\theta}/s) 
+\mathcal{G}(s; \alpha_0, \beta_0) d s d f' }.
+\label{eq:post_single}
+\end{flalign}
+To simplify the integral in the denominator,
+ we approximate the preference likelihood with a Gaussian:
+\begin{flalign}
+\prod_{p=1}^P \Phi(z_p) \approx \mathcal{N}(\bs y; \Phi(\bs z), \bs Q),
+\label{eq:likelihood_approx}
+\end{flalign}
+where $\bs z=\{z_1, ..., z_P\}$
+and $\bs Q$ is a diagonal noise covariance matrix.
 
 \section{Variational Inference}
 \label{sec:vb_eqns}
+
+\begin{flalign}
+\log q(\bs f_m) &= \log \mathcal{N}\left(\bs y; \tilde{\Phi}(\bs z), \bs Q\right)]
++ \log\mathcal{N}\left(\bs f_m; \bs 0, \bs K_{mm}/\mathbb{E}\left[s\right]\right)  + \textrm{const}, \nonumber \\
+%&= \log \int \mathcal{N}(\bs y - 0.5; \bs G \bs f, \bs Q) 
+%\mathcal{N}(\bs f; \bs A \bs f_m, \bs K - \bs A \bs K_{nm}^T) & \nonumber\\
+%& \hspace{3.2cm} \mathcal{N}(\bs f_m; \bs 0, \bs K_{mm}\mathbb{E}[1/s]) \textrm{d} \bs f + \textrm{const} & \nonumber\\
+ & = \log \mathcal{N}(\bs f_m; \hat{\bs f}_m, \bs S ), \\
+\bs S^{-1} &= \bs K^{-1}_{mm}/\mathbb{E}[s] + \bs A^T \bs G^T \bs Q^{-1} \bs G \bs A, \label{eq:S}\\
+\hat{\bs f}_m &= \bs S \bs A^T \bs G^T \bs Q^{-1} (\bs y - \Phi(\mathbb{E}[\bs z]) + \bs G \mathbb{E}[\bs f] ), \label{eq:fhat_m}
+\end{flalign}
 
 We derive the variational lower bound as follows:
 \begin{flalign}
@@ -42,6 +72,23 @@ Finally, we use a Taylor-series linearisation to make the remaining expectation 
 \end{flalign}
 where $\Gamma()$ is the gamma function, 
 $\mathbb{E}[\log s] = \Psi(a) - \log(b)$, and $\Psi()$ is the digamma function.
+
+\begin{flalign}
+\mathcal{L} =\; & \mathbb{E}_{q(\bs f, \bs f_m, s)}[\log p(\bs y | \bs f) + \log p(\bs f_m, s | \bs K, 
+\alpha_0, \beta_0) -\log q(\bs f_m) - \log q(s) ] & \nonumber \\ \label{eq:lowerbound}
+=\; & \sum_{p=1}^P \mathbb{E}_{q(\bs f)}[\log p(y_p | f_{a_p}, f_{b_p})] - \frac{1}{2} \bigg\{ \log|\bs K_{mm}| - \mathbb{E}[\log s] - \log|\bs S| - M
+\nonumber &\\
+& + \hat{\bs f}_m^T\mathbb{E}[s] \bs K_{mm}^{-1}\hat{\bs f}_m + 
+\textrm{tr}(\mathbb{E}[s] \bs K_{mm}^{-1} \bs S) \bigg\}  + \log\Gamma(\alpha) - \log\Gamma(\alpha_0)  + \alpha_0(\log \beta_0) \nonumber\\
+& + (\alpha_0-\alpha)\mathbb{E}[\log s]+ (\beta-\beta_0) \mathbb{E}[s] - \alpha \log \beta, &
+\label{eq:full_L_singleuser}
+\end{flalign}
+where the terms relating to $\mathbb{E}[p(\bs f | \bs f_m) - q(\bs f)]$ cancel and we compute as follows:
+\begin{flalign}
+\mathbb{E}[s] & = \frac{2\alpha_0 + M}{2\beta} \label{eq:Es}\\
+\mathbb{E}[\log s] & = \Psi(2\alpha_0 + M) - \log(2\beta), \label{eq:Elogs}
+\end{flalign}
+where $\Psi$ is the digamma function.
 
 The gradient of $\mathcal{L}(q)$ with respect to the lengthscale, $l_d$, is as follows:
 \begin{flalign}
