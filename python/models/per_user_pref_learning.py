@@ -7,6 +7,15 @@ from scipy.stats import norm
 from gp_pref_learning import GPPrefLearning
 
 
+def usermodel_predict_f(model, item_features):
+    if model.vb_iter == 0:
+        # not trained, skip it
+        fpredu = np.zeros((item_features.shape[0], 1))
+    else:
+        fpredu, _ = model.predict_f(item_features)
+
+    return fpredu
+
 class GPPrefPerUser():
     '''
     Runs a separate preference learning model for each user. I.e. multiple users but no collaborative learning.
@@ -45,15 +54,6 @@ class GPPrefPerUser():
             chosen_users = range(self.Npeople)
         else:
             chosen_users = personids
-
-        def usermodel_predict_f(model, item_features):
-            if model.vb_iter == 0:
-                # not trained, skip it
-                fpredu = np.zeros((item_features.shape[0], 1))
-            else:
-                fpredu, _ = model.predict_f(item_features)
-
-            return fpredu
 
         num_jobs = multiprocessing.cpu_count()
         fpredus = Parallel(n_jobs=num_jobs, backend='threading')(delayed(usermodel_predict_f)(
