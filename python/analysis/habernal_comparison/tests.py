@@ -353,16 +353,7 @@ class TestRunner:
     
     # Methods for running the prediction methods --------------------------------------------------------------------------
     def run_gppl(self):
-        # TODO: Find out whether updates to preference learning code or the test framework seem to have reduced accuracy.
-        #   - Convergence taking longer, method runs for 200 iterations without completing. Maybe step size in the SVI
-        # updates should be increased, but this does not explain the change. ***Caused by change to logpt?*** 
-        # ***Covariance means we can't treat f_var in same way as noise! Was there some reason we previously thought the var cancelled out?***
-        #   - Delay changed from 1 to 10. This may mean it doesn't converge in the permitted no. iterations. ***Testing again with delay of 1 didn't change result much***
-        #   - Lengthscale median heuristic should be the same. 
-        #   - Changes to the way the output is computed to account for uncertainty in f might be responsible? This 
-        # could be making data points with higher mean phi but greater uncertainty have same predictions as those with 
-        # lower mean phi and greater certainty. 
-        
+
         if 'additive' in self.method:
             kernel_combination = '+'
         else:

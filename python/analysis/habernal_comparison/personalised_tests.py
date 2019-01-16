@@ -50,6 +50,9 @@ class PersonalisedTestRunner(TestRunner):
         else:
             M = 500
 
+        if M == 0:
+            M = self.items_feat.shape[0]
+
         self.model = CollabPrefLearningSVI(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose,
                                            nfactors=nfactors, rate_ls=1.0 / np.mean(self.ls_initial),
                                            use_common_mean_t=common_mean, max_update_size=1000, use_lb=True,

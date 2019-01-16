@@ -141,21 +141,21 @@ latent factors even when $C$ is set too high.
 % I think this needs us to vary C and keep C_true=3, otherwise we don't know whether the 
 % performance differences are due to the mismatched no. factors or due to different underlying dataset, i.e. we need to keep the data the same to compare!
 \begin{figure}
-\subfloat[Inferring preferences for a single user]{
-\label{fig:simA}
-\includegraphics[width=.35\columnwidth]{../../results/synth_3/single_user/tau_test}
-}
+%\subfloat[Inferring preferences for a single user]{
+%\label{fig:simA}
+%\includegraphics[width=.35\columnwidth]{../../results/synth_3/single_user/tau_test}
+%}
 \subfloat[Inferring consensus function from crowdsourced labels]{
 \label{fig:simB}
-\includegraphics[width=.35\columnwidth]{../../results/synth_sandbox/multi_user_consensus/tau_test}
-} \\
+\includegraphics[width=.315\columnwidth,clip=false,trim=5 0 14 0]{../../results/synth_sandbox/multi_user_consensus/tau_test}
+}
 \subfloat[Inferring personal preferences for members of a crowd]{
 \label{fig:simC}
-\includegraphics[width=.4\columnwidth]{../../results/synth_sandbox/multi_user_personal/tau_test}
+\includegraphics[width=.32\columnwidth,clip=true,trim=2 0 13 0]{../../results/synth_sandbox/multi_user_personal/tau_test}
 }
 \subfloat[Inferring the latent factors]{
 \label{fig:simD}
-\includegraphics[width=.35\columnwidth]{../../results/synth_3/multi_factor_correlations_P/num_pairs_r}
+\includegraphics[width=.32\columnwidth,clip=true,trim=3 0 13 0]{../../results/synth_3/multi_factor_correlations_P/num_pairs_r}
 }
 \caption{Rank correlation between true and inferred preference values for different inference tasks.  (a)--(c) varying level of noise in pairwise training labels, (d) varying number of pairwise training labels. 
 }
