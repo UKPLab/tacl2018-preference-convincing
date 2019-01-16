@@ -1,1 +1,18 @@
-\section{Conclusions and Future Work}
+\section{Conclusions}
+
+We proposed a Bayesian preference learning approach 
+for modeling both the individual utilities of members of a crowd 
+and forming a consensus from 
+unreliable annotations, such as those provided by a crowd or through implicit user feedback.
+The model learns the latent utilities of items from pairwise comparisons using a combination of Gaussian processes and Bayesian matrix factorization.
+To enable inference at the scale of real-world datasets in fields such as NLP,
+we derived a stochastic variational inference scheme.
+Our empirical results confirm that our approach scales far better than previous
+Gaussian process preference learning methods without harming  
+performance on individual utility prediction and significantly improving performance
+on consensus learning.
+Future work will evaluate the benefit of learning inducing point locations from data,
+and investigate the possibility of integrating deep models 
+for learning feature representations from input data.
+%the models can readily be adapted to regression or classification tasks by swapping out the preference likelihood, resulting in 
+%different values for $\bs G$ and $\bs H$.

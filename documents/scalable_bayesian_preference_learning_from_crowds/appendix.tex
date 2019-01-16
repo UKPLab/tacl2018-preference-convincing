@@ -1,26 +1,67 @@
-\section{Posterior Inference}
+\section{Variational Inference}
+\label{sec:vb_eqns}
 
 Due to the non-Gaussian likelihood, Equation \ref{eq:plphi},
 the posterior distribution over $\bs f$ contains intractable integrals:
 \begin{flalign}
-p(\bs f | \bs y, k_{\theta}, \alpha_0, \beta_0) = 
+p(\bs f | \bs y, k_{\theta}, \alpha_0, \alpha_0) = 
 \frac{\int \prod_{p=1}^P \Phi(z_p) \mathcal{N}(\bs f; \bs 0, \bs K_{\theta}/s) 
 \mathcal{G}(s; \alpha_0, \beta_0) d s}{\int \int \prod_{p=1}^P \Phi(z_p) \mathcal{N}(\bs f'; \bs 0, \bs K_{\theta}/s) 
 \mathcal{G}(s; \alpha_0, \beta_0) d s d f' }.
 \label{eq:post_single}
 \end{flalign}
-To simplify the integral in the denominator,
- we approximate the preference likelihood with a Gaussian:
+
+We can derive a variational lower bound as follows, beginning with an approximation that does not use inducing points:
 \begin{flalign}
-\prod_{p=1}^P \Phi(z_p) \approx \mathcal{N}(\bs y; \Phi(\bs z), \bs Q),
-\label{eq:likelihood_approx}
+\mathcal{L}_1 = \sum_{i=1}^{L} \mathbb{E}_{q}\left[ \log p\left( v_i \succ u_i | f(v_i), f(u_i) \right) \right]
++ \mathbb{E}_{q}\left[ \log \frac{p\left( \bs f | \bs\mu, \bs K/s \right)}{q\left(\bs f\right)} \right]
++ \mathbb{E}_{q}\left[ \log \frac{p\left( s | \alpha_0, \beta_0\right)}{q\left(s \right)} \right] &&
+\label{eq:vblb}
 \end{flalign}
-where $\bs z=\{z_1, ..., z_P\}$
-and $\bs Q$ is a diagonal noise covariance matrix.
-
-\section{Variational Inference}
-\label{sec:vb_eqns}
-
+Substituting the forms of the distributions with their variational parameters, we get:
+\begin{flalign}
+\mathcal{L}_1 & = \mathbb{E}_{q}\Bigg[ \sum_{i=1}^{L} [v_i \succ u_i]\log\Phi(z_i) + [v_i \prec u_i]\left(1-\log\Phi(z_i)\right) \Bigg] \nonumber&&\\
+& + \log \mathcal{N}\left(\hat{\bs f}; \bs\mu, \bs K/\hat{s} \right) 
+- \log\mathcal{N}\left(\hat{\bs f}; \hat{\bs f}, \bs C \right)
+ + \mathbb{E}_{q}\left[ \log\mathcal{G}\left( s; \alpha_0, \beta_0\right) - \log\mathcal{G}\left(s; \alpha, \beta \right) \right]  &&
+\end{flalign}
+We now replace the likelihood with a Gaussian approximation:
+\begin{flalign}
+\mathcal{L}_1 \approx \mathcal{L}_2 & = \mathbb{E}_{q}\left[ \mathcal{N}( \bs y | \Phi(\bs z), \bs Q) \right]
+ + \log \mathcal{N}\left(\bs f; \bs\mu, \bs K/\hat{s} \right) - \log\mathcal{N}\left(\bs f; \hat{\bs f}, \bs C \right) 
+&\nonumber\\
+& + \mathbb{E}_q\left[ \log\mathcal{G}\left( s; \alpha_0, \beta_0\right) - \log\mathcal{G}\left(s; \alpha, \beta \right) \right] \nonumber&\\
+& =  - \frac{1}{2} \left\{ L \log 2\pi + \log |\bs Q| - \log|\bs C| 
+ + \log|\bs K/s| + (\hat{\bs f} - \bs\mu)\hat{s}\bs K^{-1}
+(\hat{\bs f} - \bs\mu) \right. \nonumber &\\
+& \left. + \mathbb{E}_q\left[ (\bs y - \Phi(\bs z))^T \bs Q^{-1} (\bs y - \Phi(\bs z)) \right] \right\}
+ - \Gamma(\alpha_0) + \alpha_0(\log \beta_0) + (\alpha_0-\alpha)\mathbb{E}[\log s] \nonumber&\\
+& + \Gamma(\alpha) + (\beta-\beta_0) \hat{s} - \alpha \log \beta,  &
+\end{flalign}
+where $\mathbb{E}[s] = \frac{\alpha}{\beta}$, $\mathbb{E}[\log s] = \Psi(2\alpha) - \log(2\beta)$,
+$\Psi$ is the digamma function and $\Gamma()$ is the gamma function, 
+Finally, we use a Taylor-series linearisation to make the remaining expectation tractable:
+\begin{flalign}
+\mathcal{L}_2 & \approx \mathcal{L}_3 = - \frac{1}{2} \left\{ L \log 2\pi + \log |\bs Q| - \log|\bs C| \right.
+ \left. + \log|\bs K/\hat{s}| + (\hat{\bs f} - \bs\mu)\hat{s}\bs K^{-1}(\hat{\bs f} - \bs\mu) \right. \nonumber&&\\
+ & \left. + (\bs y - \Phi(\hat{\bs z}))^T \bs Q^{-1} (\bs y - \Phi(\hat{\bs z}))\right\}
+ - \Gamma(\alpha_0) + \alpha_0(\log \beta_0) + (\alpha_0-\alpha)\mathbb{E}[\log s] \nonumber&&\\
+& + \Gamma(\alpha) + (\beta-\beta_0) \hat{s} - \alpha \log \beta. &&
+\label{eq:vblb_terms} 
+\end{flalign}
+Now, we can introduce the sparse approximation to obtain the bound in Equation \ref{eq:lowerbound}:
+\begin{flalign}
+\mathcal{L} =\; & \mathbb{E}_{q(\bs f, \bs f_m, s)}[\log p(\bs y | \bs f) + \log p(\bs f_m, s | \bs K, 
+\alpha_0, \beta_0) -\log q(\bs f_m) - \log q(s) ] & \nonumber \\ 
+=\; & \sum_{p=1}^P \mathbb{E}_{q(\bs f)}[\log p(y_p | f_{a_p}, f_{b_p})] - \frac{1}{2} \bigg\{ \log|\bs K_{mm}| - \mathbb{E}[\log s] - \log|\bs S| - M
+\nonumber &\\
+& + \hat{\bs f}_m^T\mathbb{E}[s] \bs K_{mm}^{-1}\hat{\bs f}_m + 
+\textrm{tr}(\mathbb{E}[s] \bs K_{mm}^{-1} \bs S) \bigg\}  + \log\Gamma(\alpha) - \log\Gamma(\alpha_0)  + \alpha_0(\log \beta_0) \nonumber\\
+& + (\alpha_0-\alpha)\mathbb{E}[\log s]+ (\beta-\beta_0) \mathbb{E}[s] - \alpha \log \beta, &
+\label{eq:full_L_singleuser}
+\end{flalign}
+where the terms relating to $\mathbb{E}[p(\bs f | \bs f_m) - q(\bs f)]$ cancel.
+Without stochastic sampling, the variational factor $\log q(\bs f_m)$ is given by:
 \begin{flalign}
 \log q(\bs f_m) &= \log \mathcal{N}\left(\bs y; \tilde{\Phi}(\bs z), \bs Q\right)]
 + \log\mathcal{N}\left(\bs f_m; \bs 0, \bs K_{mm}/\mathbb{E}\left[s\right]\right)  + \textrm{const}, \nonumber \\
@@ -29,80 +70,58 @@ and $\bs Q$ is a diagonal noise covariance matrix.
 %& \hspace{3.2cm} \mathcal{N}(\bs f_m; \bs 0, \bs K_{mm}\mathbb{E}[1/s]) \textrm{d} \bs f + \textrm{const} & \nonumber\\
  & = \log \mathcal{N}(\bs f_m; \hat{\bs f}_m, \bs S ), \\
 \bs S^{-1} &= \bs K^{-1}_{mm}/\mathbb{E}[s] + \bs A^T \bs G^T \bs Q^{-1} \bs G \bs A, \label{eq:S}\\
-\hat{\bs f}_m &= \bs S \bs A^T \bs G^T \bs Q^{-1} (\bs y - \Phi(\mathbb{E}[\bs z]) + \bs G \mathbb{E}[\bs f] ), \label{eq:fhat_m}
+\hat{\bs f}_m &= \bs S \bs A^T \bs G^T \bs Q^{-1} (\bs y - \Phi(\mathbb{E}[\bs z]) + \bs G \mathbb{E}[\bs f] ). \label{eq:fhat_m}
 \end{flalign}
 
-We derive the variational lower bound as follows:
+For the crowdGPPL model, the variational lower bound is:
 \begin{flalign}
-& \mathcal{L}(q) = \sum_{i=1}^{L} \mathbb{E}_{q}\left[ \log p\left( v_i \succ u_i | f(v_i), f(u_i) \right) \right] \nonumber&&\\
-& + \mathbb{E}_{q}\left[ \log \frac{p\left( \bs f | \bs\mu, \bs K/s \right)}{q\left(\bs f\right)} \right]
-+ \mathbb{E}_{q}\left[ \log \frac{p\left( s | a_0, b_0\right)}{q\left(s \right)} \right] 
-\label{eq:vblb}
+\mathcal{L}_{cr} & = \label{eq:lowerbound_crowd_full}
+\sum_{p=1}^P \mathbb{E}_{q(\bs f)}[\log p(y_p | \bs v_{a_p}^T \! \bs w_{a_p} \!+ t_{a_p}\!, \bs v_{b_p}^T\! \bs w_{b_p} \!+ t_{b_p})] 
+- \frac{1}{2} 
+\Bigg\{  \sum_{c=1}^C \bigg\{  \! - \! M_n \! - \! M_u & \nonumber \\
+&  
+ + \log|\bs K_{v,mm}| + \log|\bs K_{w,mm}|
+- \log|\bs S_{v,c}|  - \mathbb{E}[\log s_c] 
++ \hat{\bs v}_{m,c}^T \mathbb{E}[s_c]\bs K_{v,mm}^{-1}\hat{\bs v}_{m,c} & \nonumber \\
+& 
++ \textrm{tr}(\mathbb{E}[s_c] \bs K_{v,mm}^{-1} \bs S_{v,c}) 
+- \log|\bs \Sigma_{c}|  + \hat{\bs w}_{m,c}^T \bs K_{w,mm}^{-1}\hat{\bs w}_{m,c} 
++ \textrm{tr}(\bs K_{w,mm}^{-1} \bs \Sigma_{c})
+\bigg\}
+& \nonumber \\
+&  
+- M_n + \log|\bs K_{t,mm}|
+- \log|\bs S_{t}|  - \mathbb{E}[\log \sigma] 
++ \hat{\bs t}^T \mathbb{E}[\sigma] \bs K_{t,mm}^{-1} \hat{\bs t}  &
+\nonumber \\
+&
++ \textrm{tr}(\mathbb{E}[\sigma] \bs K_{t,mm}^{-1} \bs S_{t})
+\Bigg\} 
+- (C+1)(\log\Gamma(\alpha_0)  + \alpha_0(\log \beta_0))
+& \nonumber \\
+& + \sum_{c=1}^C \bigg\{ 
+\log\Gamma(\alpha_c) + (\alpha_0 - \alpha_c)\mathbb{E}[\log s_c]
++ (\beta_c - \beta_0) \mathbb{E}[s_c] - \alpha_c \log \beta_c \bigg\}
+ & 
+\nonumber \\ 
+& + \log\Gamma(\alpha_{\sigma}) + (\alpha_0 - \alpha_{\sigma})\mathbb{E}[\log \sigma]
++ (\beta_{\sigma} - \beta_0) \mathbb{E}[s_c] - \alpha_{\sigma} \log \beta_{\sigma}
+, &
 \end{flalign}
-Substituting the forms of the distributions with their variational parameters, we get:
-\begin{flalign}
-\mathcal{L}(q) = & \mathbb{E}_{q}\Bigg[ \sum_{i=1}^{L} [v_i \succ u_i]\log\Phi(z_i) && \nonumber\\
-& + [v_i \prec u_i]\left(1-\log\Phi(z_i)\right) \Bigg] \nonumber&&\\
-& + \log \mathcal{N}\left(\hat{\bs f}; \bs\mu, \bs K/\hat{s} \right) 
-- \log\mathcal{N}\left(\hat{\bs f}; \hat{\bs f}, \bs C \right) \nonumber&&\\
-& + \mathbb{E}_{q}\left[ \log\mathcal{G}\left( s; a_0, b_0\right) - \log\mathcal{G}\left(s; a, b \right) \right]  &&
-\end{flalign}
-We now replace the likelihood with a Gaussian approximation:
-\begin{flalign}
-\mathcal{L}(q) & \approx  \mathbb{E}_{q}\left[ \mathcal{N}( \bs y | \Phi(\bs z), \bs Q) \right]
-&\nonumber\\
-& + \log \mathcal{N}\left(\bs f; \bs\mu, \bs K/\hat{s} \right) - \log\mathcal{N}\left(\bs f; \hat{\bs f}, \bs C \right) 
-&\nonumber\\
-& + \mathbb{E}_q\left[ \log\mathcal{G}\left( s; a_0, b_0\right) - \log\mathcal{G}\left(s; a, b \right) \right] \nonumber&\\
-& \approx  - \frac{1}{2} \left\{ L \log 2\pi + \log |\bs Q| - \log|\bs C| \right. \nonumber&\\
-& \left. + \log|\bs K/s| + (\hat{\bs f} - \bs\mu)\hat{s}\bs K^{-1}
-(\hat{\bs f} - \bs\mu) \right. \nonumber&\\
-& \left. + \mathbb{E}_q\left[ (\bs y - \Phi(\bs z))^T \bs Q^{-1} (\bs y - \Phi(\bs z)) \right] \right\} \nonumber&\\
-& - \Gamma(a_0) + a_0(\log b_0) + (a_0-a)\mathbb{E}[\log s] \nonumber&\\
-& + \Gamma(a) + (b-b_0) \hat{s} - a \log b  &
-\end{flalign}
-Finally, we use a Taylor-series linearisation to make the remaining expectation tractable:
-\begin{flalign}
-\mathcal{L}(q) & \approx - \frac{1}{2} \left\{ L \log 2\pi + \log |\bs Q| - \log|\bs C| \right. \nonumber&&\\
-& \left. + \log|\bs K/\hat{s}| + (\hat{\bs f} - \bs\mu)\hat{s}\bs K^{-1}(\hat{\bs f} - \bs\mu) \right. \nonumber&&\\
-& \left. + (\bs y - \Phi(\hat{\bs z}))^T \bs Q^{-1} (\bs y - \Phi(\hat{\bs z}))\right\} \nonumber&&\\
-& - \Gamma(a_0) + a_0(\log b_0) + (a_0-a)\mathbb{E}[\log s] \nonumber&&\\
-& + \Gamma(a) + (b-b_0) \hat{s} - a \log b, &&
-\label{eq:vblb_terms}
-\end{flalign}
-where $\Gamma()$ is the gamma function, 
-$\mathbb{E}[\log s] = \Psi(a) - \log(b)$, and $\Psi()$ is the digamma function.
 
+The gradient of $\mathcal{L}_3$ with respect to the lengthscale, $l_d$, is as follows:
 \begin{flalign}
-\mathcal{L} =\; & \mathbb{E}_{q(\bs f, \bs f_m, s)}[\log p(\bs y | \bs f) + \log p(\bs f_m, s | \bs K, 
-\alpha_0, \beta_0) -\log q(\bs f_m) - \log q(s) ] & \nonumber \\ \label{eq:lowerbound}
-=\; & \sum_{p=1}^P \mathbb{E}_{q(\bs f)}[\log p(y_p | f_{a_p}, f_{b_p})] - \frac{1}{2} \bigg\{ \log|\bs K_{mm}| - \mathbb{E}[\log s] - \log|\bs S| - M
-\nonumber &\\
-& + \hat{\bs f}_m^T\mathbb{E}[s] \bs K_{mm}^{-1}\hat{\bs f}_m + 
-\textrm{tr}(\mathbb{E}[s] \bs K_{mm}^{-1} \bs S) \bigg\}  + \log\Gamma(\alpha) - \log\Gamma(\alpha_0)  + \alpha_0(\log \beta_0) \nonumber\\
-& + (\alpha_0-\alpha)\mathbb{E}[\log s]+ (\beta-\beta_0) \mathbb{E}[s] - \alpha \log \beta, &
-\label{eq:full_L_singleuser}
-\end{flalign}
-where the terms relating to $\mathbb{E}[p(\bs f | \bs f_m) - q(\bs f)]$ cancel and we compute as follows:
-\begin{flalign}
-\mathbb{E}[s] & = \frac{2\alpha_0 + M}{2\beta} \label{eq:Es}\\
-\mathbb{E}[\log s] & = \Psi(2\alpha_0 + M) - \log(2\beta), \label{eq:Elogs}
-\end{flalign}
-where $\Psi$ is the digamma function.
-
-The gradient of $\mathcal{L}(q)$ with respect to the lengthscale, $l_d$, is as follows:
-\begin{flalign}
-\nabla_{l_d} \mathcal{L}(q) & =  - \frac{1}{2} \left\lbrace 
+\nabla_{l_d} \mathcal{L}_3 & =  - \frac{1}{2} \left\lbrace 
 \frac{\partial \log|\bs K/\hat{s}|}{\partial l_d} - \frac{\partial \log|\bs C|}{\partial l_d} 
-\nonumber \right. \\
-& \left.  - (\hat{\bs f}-\bs\mu)\hat{s} \frac{\partial K^{-1}}{\partial l_d} (\hat{\bs f}-\bs\mu)
+\nonumber \right.
+ \left.  - (\hat{\bs f}-\bs\mu)\hat{s} \frac{\partial K^{-1}}{\partial l_d} (\hat{\bs f}-\bs\mu)
 \right\rbrace \nonumber & \\
 %& = \frac{1}{2} \hat{s} \left\lbrace \frac{\partial \log |\bs C \bs K^{-1}|}{\partial l_d}
 %\right. \\
 %& \left.  - (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
 %\right\rbrace  \nonumber \\
-& =  -\frac{1}{2} \left\lbrace  \frac{\partial \log | \frac{1}{\hat{s}}\bs K \bs C^{-1} |}{\partial l_d} \right. \nonumber & \\
-& \left.  + \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
+& =  -\frac{1}{2} \left\lbrace  \frac{\partial \log | \frac{1}{\hat{s}}\bs K \bs C^{-1} |}{\partial l_d} \right. 
+\left.  + \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
 \right\rbrace   &
 %& =  - \frac{1}{2} \left\lbrace \frac{\partial \log|\bs K/s| }{\partial l_d} + \frac{\partial \log |\bs K^{-1}s + \bs G\bs Q^{-1}\bs G^T|}{\partial l_d}
 %\right. \\
@@ -115,13 +134,13 @@ The gradient of $\mathcal{L}(q)$ with respect to the lengthscale, $l_d$, is as f
 \end{flalign}
 Using the fact that $\log | A | = \mathrm{tr}(\log A)$, $\bs C = \left[\bs K^{-1} - \bs G \bs Q^{-1} \bs G^T \right]^{-1}$, and $\bs C = \bs C^{T}$, we obtain:
 \begin{flalign}
-& =  -\frac{1}{2} \mathrm{tr}\left(\left(\hat{s}\bs K^{-1}\bs C\right) \bs G\bs Q^{-1}\bs G^T \frac{\partial \bs K}{\partial l_d}
-\right) \nonumber \\
-& + \frac{1}{2}\hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)  \nonumber\\ 
+\nabla_{l_d} \mathcal{L}_3 & =  -\frac{1}{2} \mathrm{tr}\left(\left(\hat{s}\bs K^{-1}\bs C\right) \bs G\bs Q^{-1}\bs G^T \frac{\partial \bs K}{\partial l_d}
+\right)
+ + \frac{1}{2}\hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)  \nonumber\\ 
 & =  -\frac{1}{2} \mathrm{tr}\left(\left(\hat{s}\bs K^{-1}\bs C\right)
 \left(\bs C^{-1} - \bs K^{-1}/\hat{s}\right) \frac{\partial \bs K}{\partial l_d}
-\right) \nonumber \\
-& + \frac{1}{2}\hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu).  \label{eq:gradient_ls}
+\right) 
++ \frac{1}{2}\hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu).  \label{eq:gradient_ls}
 \end{flalign}
 Assuming a product over kernels for each feature, $\bs K=\prod_{d=1}^{D} \bs K_d$, we can compute the kernel gradient 
 as follows for the Mat\'ern $\frac{3}{2}$ kernel function:
@@ -131,3 +150,106 @@ as follows for the Mat\'ern $\frac{3}{2}$ kernel function:
 \label{eq:kernel_der}
 \end{flalign}
 where $|\bs x_d - \bs x_d'|$ is the distance between input points.
+
+\section{Converged Lower Bound Derivatives}
+\label{sec:gradients}
+
+When $\mathcal{L}$ has converged to a maximum, 
+$\nabla_{l_{\! d}} \mathcal{L}$ simplifies to:
+\begin{flalign}
+ &\nabla_{\!l_{\! d}} \mathcal{L} \longrightarrow 
+\frac{1}{2} \mathrm{tr}\!\left(\! \left(
+\mathbb{E}[s](\hat{\bs f}_{\! m} \hat{\bs f}_{\! m}^T + \bs S^T)\bs K_{\! mm}^{-1} \! -  \bs I \! \right)
+ \!\frac{\partial \bs K_{\! mm}}{\partial l_d} \bs K_{\! mm}^{-1} \right) \!. &
+\label{eq:gradient_single}
+\end{flalign}
+For crowdGPPL, assuming that $\bs V$ and $\bs t$ have the same kernel function,
+the gradient
+%The gradients with respect to the length-scale, $l_{w,d}$,
+for the $d$th item feature is given by:
+\begin{flalign}
+ &\nabla_{l_{ v,d}} \mathcal{L}_{cr} \longrightarrow
+%  \sum_{c=1}^{C} \bigg\{ \mathbb{E}[s_c] 
+%  \hat{\bs v}_{ m,c}^T \bs K_{ mm,v}^{-1} 
+% \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \bs K_{ mm,v}^{-1} \hat{\bs v}_{ m,c} 
+%  + & \nonumber \\
+%  & \mathrm{tr}\left( \left(
+% \mathbb{E}[s_c]\bs S_{v,c}^T\bs K_{ mm,v}^{-1}  - \frac{1}{2} \bs I  \right)
+%  \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \bs K_{ mm,v}^{-1} \right) \bigg\}
+%  + & \nonumber \\
+%  & \mathbb{E}[\sigma] 
+%  \hat{\bs t}_{ m}^T \bs K_{ mm,t}^{-1} 
+% \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \hat{\bs t}_{ m} 
+%  + \mathrm{tr}\left( \left(
+% \mathbb{E}[\sigma]\bs S_{t}^T\bs K_{ mm,t}^{-1}  - \frac{1}{2} \bs I  \right)
+%  \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \right)
+%  & \nonumber \\
+% & = 
+\frac{1}{2} \mathrm{tr}\left( \left( \sum_{c=1}^{C} \mathbb{E}[s_c] \left\{ \hat{\bs v}_{m,c} 
+ \hat{\bs v}_{m,c}^T + \bs S_{v,c}^T \right\}
+ \bs K_{ mm,v}^{-1}  - C\bs I  \right)
+ \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \right.
+ & \nonumber \\
+ & \left.  \bs K_{ mm,v}^{-1} \right) + \frac{1}{2}\mathrm{tr}\left( \left(
+\mathbb{E}[\sigma](\hat{\bs t}_{ m}\hat{\bs t}_{ m}^T + \bs S_{t}^T) \bs K_{ mm,t}^{-1}  
+- \bs I  \right)
+ \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \right)
+.&
+\label{eq:gradient_crowd_items}
+\end{flalign}
+% If different kernels are used for different components, then the equation above can be modified to
+% simply sum over terms relating to the components with a shared kernel function. 
+The gradients for the $d$th user feature length-scale, $l_{w,d}$, follows the same form:
+\begin{flalign}
+ &\nabla_{l_{w,d}} \mathcal{L}_{cr} \!\!\!\longrightarrow \frac{1}{2} 
+ \!\mathrm{tr}\left( \!\left( \sum_{c=1}^{C} \left\{ \hat{\bs w}_{m,c} \hat{\bs w}_{m,c}^T \!+
+\bs \Sigma_c^T\right\} \!\bs K_{mm,w}^{-1} \! - C\bs I  \right)
+ \frac{\partial \bs K_{mm,w}}{\partial l_{w,d}} \bs K_{mm,w}^{-1} \!\right) \!. &
+\label{eq:gradient_crowd_users}
+\end{flalign}
+
+% When combining kernel functions for each features using a product,
+% as in Equation \ref{eq:kernel}, the partial derivative of the covariance matrix $\bs K_{mm}$ with respect to 
+% $l_d$ is given by:
+% \begin{flalign}
+% \frac{\partial \bs K_{mm}}{\partial l_d} 
+% & = \frac{\bs K_{mm}}{\bs K_{d}}
+% \frac{ \bs K_{d}(|\bs x_{mm,d}, \bs x'_{mm,d})}{\partial l_d} \nonumber ,\\
+% \end{flalign}
+The partial derivative of the covariance matrix $\bs K_{mm}$ with respect to 
+$l_d$ depends on the choice of kernel function. 
+The Mat\`ern $\frac{3}{2}$ function is a widely-applicable, differentiable kernel function 
+that has been shown empirically to outperform other well-established kernels 
+such as the squared exponential, and makes weaker assumptions of smoothness of 
+the latent function~\citep{rasmussen_gaussian_2006}. 
+It is defined as:
+\begin{flalign}
+k_d\left(\frac{|x_d - x_d'|}{l_d} \right) = \left(1 + \frac{\sqrt{3} | x_d - x_d'|}{l_d}\right) 
+\exp \left(- \frac{\sqrt {3} | x_d - x_d'|}{l_d}\right).
+\end{flalign}
+%For the Mat\`ern $\frac{3}{2}$ kernel,  
+Assuming that the kernel functions for each feature, $k_d$, are combined using
+a product, as in Equation \ref{eq:kernel}, 
+the partial derivative $\frac{\partial \bs K_{mm}}{\partial l_d}$ is a matrix, where each 
+entry, $i,j$,  is defined by:
+\begin{flalign}
+& \frac{\partial K_{mm,ij}}{\partial l_d} = 
+\prod_{d'=1, d' \neq d}^D k_{d'}\left(\frac{|x_{d'} - x_{d'}'|}{l_{d'}}\right)
+\frac{3 (\bs x_{i,d} - \bs x_{j,d})^2}{l_d^3} \exp\left( - \frac{\sqrt{3} \bs |\bs x_{i,d} - \bs x_{j,d}|}{l_d} \right), &
+\label{eq:kernel_der}
+\end{flalign}
+where we assume the use of Equation\ref{eq:kernel} to combine kernel 
+functions over features using a product.
+
+
+To make use of Equations \ref{eq:gradient_single} to \ref{eq:kernel_der},
+we nest the variational algorithm defined in Section \ref{sec:inf} inside
+an iterative gradient-based optimization method.
+Optimization then begins with an initial guess for all length-scales, $l_d$,
+such as the median heuristic.
+Given the current values of $l_d$, the optimizer (e.g. L-BFGS-B)
+runs the VB algorithm to convergence, 
+computes $\nabla_{l_{\! d}} \mathcal{L}$,
+then proposes a new candidate value of $l_d$.
+The process repeats until the optimizer converges or reaches a maximum number 
+of iterations, and returns the value of $l_d$ that maximized $\mathcal{L}$.

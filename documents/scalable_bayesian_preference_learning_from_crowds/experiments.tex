@@ -26,16 +26,18 @@ each category as a separate feature.
 \end{table}
 % NOTE: possible problem with convincingness data is that some users have very few observations in training data.
 We use the datasets summarized in Table \ref{tab:datasets} to test the key aspects of our proposed methods: recovering an underlying consensus from noisy pairwise labels; modeling personal preferences from pairwise labels; and the scalability of our proposed Bayesian preference learning methods, GPPL and crowd-GPPL using SVI.
-In Section \ref{sec:exp_synth}, we use simulated data to test the ability of our method to recover preference functions from noisy data when the correct number of latent factors is unknown. 
-Section \ref{sec:exp_scale} evaluates our approach on an NLP task with high-dimensional feature vectors and
-a larger number of items, which involves using pairwise judgments of arguments from online debate forums 
-to learn a function of argument \emph{convincingness}. We use the \emph{UKPConvArgSample},
-which is
+In Section \ref{sec:exp_synth}, we use simulated data to test the robustness of our method to noise, small training sets and unknown numbers of latent components.
+% from noisy data when the correct number of latent factors is unknown. 
+Section \ref{sec:exp_scale} evaluates the ability of our approach to
+recover personal and consensus utilities on an NLP task with high-dimensional feature vectors.
+%, which 
+The task  involves using pairwise judgments of arguments from online debate forums
+to learn a function of argument \emph{convincingness}. We use the \emph{UKPConvArgSample} dataset,
 sampled from data provided by ~\citet{habernal2016argument} dataset.
-This section first analyzes the scalability of our SVI approach, then its performance in 
-predicting preferences. 
-Finally, in Section \ref{sec:sushi}, we compare our method against previous approaches for predicting the preferences
-of thousands of users on the \emph{Sushi} datasets~\citep{kamishima2003nantonac}.
+Using the same dataset, we then analyze the scalability of our SVI approach. 
+Finally, in Section \ref{sec:sushi}, 
+we compare our method against previous approaches for predicting the 
+personal preferences of thousands of users on the \emph{Sushi} datasets~\citep{kamishima2003nantonac}.
 
 \subsection{Methods Compared}
 

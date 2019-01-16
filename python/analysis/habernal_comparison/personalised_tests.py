@@ -21,6 +21,7 @@ from collab_pref_learning_svi import CollabPrefLearningSVI
 import numpy as np
 
 nfactors = 50
+max_Kw_size = 2000
 
 class PersonalisedTestRunner(TestRunner):
 
@@ -218,8 +219,6 @@ if __name__ == '__main__':
     test_to_run = int(sys.argv[1])
 
     test_dir = 'personalised_13_bigger_t'
-
-    max_Kw_size = 2000
 
     dataset_increment = 0     
     # UKPConvArgCrowdSample tests prediction of personal data.

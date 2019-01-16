@@ -230,13 +230,12 @@ and $\hat{\bs z}_i = \{ \mathbb{E}[\bs z_p] \forall p \in P_i \}$.
 The update equations optimize the natural parameters of the Gaussian distribution by following the
 natural gradient~\citep{hensman2015scalable}:
 \begin{flalign}
-\bs S^{-1}_i  & = (1 - \rho_i) \bs S^{-1}_{i-1} + \rho_i\left( \mathbb{E}[s]\bs K_{mm}^{-1} + w_i\bs K_{mm}^{-1}\bs K_{im}^T \bs G^T_{i} \bs Q^{-1}_i \bs G_{i} \bs K_{im} \bs K_{mm}^{-T} \right)& 
+\bs S^{-1}_i  & = (1 - \rho_i) \bs S^{-1}_{i-1} + \rho_i\left( \mathbb{E}[s]\bs K_{mm}^{-1} + w_i\bs A_i^T \bs G^T_{i} \bs Q^{-1}_i \bs G_{i} \bs A_{i} \right)& 
 \label{eq:S_stochastic} \\
 \hat{\bs f}_{m,i}  & = \bs S_i \left( (1 - \rho_i) \bs S^{-1}_{i-1} \hat{\bs f}_{m,i-1}  + 
 \right. \nonumber \\
-& \hspace{1.5cm} \rho_i w_i 
-\bs K_{mm}^{-1} 
-\left.\bs K_{im}^T \bs G_{i}^T \bs Q_i^{-1} \left( \bs y_i  - \Phi(\mathbb{E}[\bs z_i]) + \bs G_{i} \bs A_i \hat{\bs f}_{m,i} \right) \right) & 
+& \left.\hspace{1.5cm} \rho_i w_i  
+\bs A_{i}^{T} \bs G_{i}^T \bs Q_i^{-1} \left( \bs y_i  - \Phi(\mathbb{E}[\bs z_i]) + \bs G_{i} \bs A_i \hat{\bs f}_{m,i} \right) \right) & 
 \label{eq:fhat_stochastic}
 \end{flalign}
 where
@@ -245,9 +244,8 @@ $w_i = \frac{P}{|P_i|}$ weights each update according so sample size,
  $\epsilon$ is a delay hyperparameter and $r$ is a forgetting rate~\citep{hoffman2013stochastic}.
 
 For the inverse scale, %, $s$, %can also be learned as part of the SVI procedure. Its variational factor,
-$q(s)$ is updated using Equation \ref{eq:qs}, then its expect value is computed as %has the following update equations:
-$\mathbb{E}[s] & = \frac{2\alpha_0 + M}{2\beta}$.
-
+$q(s)$ is updated using Equation \ref{eq:qs}, then its expected value is computed as %has the following update equations:
+$\mathbb{E}[s] = \frac{\alpha}{\beta}$.
 
 \begin{algorithm}[t]
  \KwIn{ Pairwise labels, $\bs y$, training item features, $\bs x$, 
@@ -300,10 +298,31 @@ to approximate the crowd model defined in Equation \ref{eq:joint_crowd}:
 & p( \bs V, \bs V_m, \bs W, \bs W_m, \bs t, \bs t_m, s_1, ..., s_C, \sigma | \bs y, \bs x, \bs x_m, \bs u, \bs u_m, k, \alpha_0, \beta_0 ) \approx & \nonumber \\
 & \hspace{3.2cm} q(\bs V)q(\bs W)q(\bs t)q(\bs V_m)q(\bs W_m)q(\bs t_m)\prod_{c=1}^{C}q(s_c)q(\sigma), &
 \end{flalign}
-where $\bs u_m$ are the feature vectors of inducing users.
+where $\bs u_m$ are the feature vectors of inducing users. By updating 
+each of the $q$ factors in turn,
+the SVI procedure optimizes the lower bound on the marginal likelihood 
+(see also Equation \ref{eq:lowerbound_crowd_full} in the Appendix):
+\begin{flalign}
+& \mathcal{L}_{cr} = \label{eq:lowerbound_crowd}
+\mathbb{E}_{q%(\bs t, \bs t_m, \bs V, \bs V_m, \bs W, \bs W_m, s_1,...,s_c,\sigma)
+} \left[ 
+\log p(\bs y | \bs F) +
+\sum_{c=1}^C \left\{ \log p(\bs v_{m,c}, s_c | \bs K_{mm}, \alpha_0, \beta_0) - \log q(\bs v_{m,c}) \right. \right. & \nonumber\\
+& \left. \left. + \log p(\bs w_{m,c} | \bs K_{w,mm} )
+ - \log q(\bs w_{m,c} ) \right\}
++ \log p(\bs t_m, \sigma | \bs K_{mm}, \alpha_0, \beta_0)
+- \log q(\bs t_m)
+\right]. &
+\end{flalign}
+The algorithm follows the same pattern as Algorithm \ref{al:singleuser}, computing means and covariances
+for  $\bs V_m$, $\bs W_m$ and $\bs T_m$ instead of $\bs f_m$ using the equations given below.
+
+The expectations for the inverse scales, $s_1,...,s_c$ and $\sigma$, can be 
+computed using Equation \ref{eq:qs} by
+substituting in the corresponding terms for each $\bs v_c$ or $\bs t$ instead of $\bs f$. 
 %This approximation factorizes the joint distribution between the latent item factors, $\bs V$, the latent user factors, $\bs W$, and the common means, $\bs t$. 
 %but does not requiring factorization across the latent dimensions $\bs w_1,...,\bs w_C$ and $\bs v_1,...,\bs v_C$.
-The variational factors for the inducing points can be obtained by deriving expectations as follows, beginning with the latent item factors:
+The variational factor for the inducing item factors is:
 %TODO make the vectors all lower case for V_c and W_c
 %TODO do something to make sure all the block diags are properly indiciated including A_v... but actually I think they are useless because the off-diagonal blocks only affect the collapsed posterior covariance and are never used in computing any other variables.
 %TODO intialization of the factors
@@ -317,135 +336,120 @@ The variational factors for the inducing points can be obtained by deriving expe
 % are the dimensions collapsed to a single MVN?
 = \;& \sum_{c=1}^C \log \mathcal{N}(\bs v_{m,c}; \hat{\bs v}_{m,c}, \bs S_{v,c}). &
 \end{flalign}
-where the precision is given by:
+The precision estimate for $\bs S^{-1}_{v,c}$ at iteration $i$ is given by:
 \begin{flalign}
-\bs S_{v,c}^{-1} = \;\;& \bs K^{-1}_{v,mm}\mathbb{E}[s_c] 
-+ \bs A_v^T \bs G^T \textrm{diag}(\hat{\bs w}_{c,\bs u}^2 + \bs\Sigma_{c,\bs u,\bs u})\bs Q^{-1} \bs G \bs A_v, &
+\bs S_{v,c,i}^{-1} & = (1-\rho_i)\bs S^{-1}_{v,c,i-1} + \rho_i\left( \bs K^{-1}_{v,mm}\mathbb{E}[s_c] 
+\right. \nonumber & \\ 
+& \left. \hspace{1.5cm} + w_i \bs A_{v,i}^T \bs G_i^T \textrm{diag}(\hat{\bs w}_{c,\bs u}^2 + \bs\Sigma_{c,\bs u,\bs u})\bs Q_i^{-1} \bs G_i \bs A_{v,i} \right), &
 \end{flalign}
-where $\bs A_v = \bs K_{v,nm} \bs K_{v,mm}^{-1}$, 
-$\hat{\bs w}_{c}$ and $\bs\Sigma_{c}$ are the variational mean and covariance of the $c$th latent user component (defined below in Equations \ref{eq:what} and \ref{eq:Sigma}),
-and the subscript ${\bs u} = \{ u_p \forall p \in 1,...,P \}$ is the vector of user indexes in the observations, $\bs y$.
-The term $\textrm{diag}(\hat{\bs W}_{c,\bs j}^2 + \bs\Sigma_{c,\bs j})$ 
-scales the diagonal observation precision, $\bs Q^{-1}$, by the latent user factors.
-We use $\bs S_{v,c}^{-1}$ to compute the variational means for each row of $\bs V_m$ as follows:
+where $\bs A_{i} = \bs K_{im} \bs K_{mm}^{-1}$, 
+$\hat{\bs w}_{c}$ and $\bs\Sigma_{c}$ are the variational mean and covariance of 
+the $c$th latent user component (defined below in Equations \ref{eq:what} and \ref{eq:Sigma}),
+and ${\bs u} = \{ u_p \forall p \in P_i \}$ is the vector of user indexes in the sample of observations.
+%The term $\textrm{diag}(\hat{\bs w}_{c,\bs j}^2 + \bs\Sigma_{c,\bs j})$ 
+%scales the diagonal observation precision, $\bs Q^{-1}$, by the latent user factors.
+We use $\bs S_{v,c}^{-1}$ to compute the means for each row of $\bs V_m$:
 \begin{flalign}
-\hat{\bs v}_{m,c} = \;\;& \bs S_{v,c} \bs A_v^T \bs G^T \textrm{diag}(\hat{\bs w}_{c,\bs u}) \bs Q^{-1}\left(\bs y - \Phi(\mathbb{E}[\bs z]) + \sum_{j=1}^U \bs H_{j}(\hat{\bs v}_c^T \hat{\bs w}_{c,j})\right), &
+\hat{\bs v}_{m,c,i} & = \bs S_{v,c,i}\left( 
+(1-\rho_i)\bs S^{-1}_{v,c,i-1}\hat{\bs v}_{m,c,i-1} + \rho_i w_i \bigg(
+\bs S_{v,c,i} \bs A_{i}^T \bs G_i^T \textrm{diag}(\hat{\bs w}_{c,\bs u}) \bs Q_i^{-1} \right. & \nonumber \\
+&  \Big(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \sum_{j=1}^U \bs H^{(i)}_{j}(\hat{\bs v}_c^T \hat{\bs w}_{c,j})\Big) \bigg) \bigg), &
 \end{flalign}
-where $\bs H_j \in P \times N$ contains partial derivatives of the pairwise likelihood
-with respect to $F_{i,j} = \hat{v}_{c,i} \hat{w}_{c,j}$, 
+where $\bs H^{(i)}_{j} \in |P_i| \times N$ contains partial derivatives of the pairwise likelihood
+with respect to $F_{n,j} = \hat{v}_{c,n} \hat{w}_{c,j}$, 
 with elements given by:
 \begin{flalign}
-H_{j,p,i} &= \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p])) (2y_p - 1)( [i = a_p] - [i = b_p]) [j = u_p].
+H^{(i)}_{j,p,n} & = \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p])) (2y_p - 1)( [n = a_p] - [n = b_p]) [j = u_p]. &
 \end{flalign}
-This is needed to replace $\bs G$ in the single-user model, since the vector of latent function values,
-$\bs f$, has been replaced by the matrix $\bs F$, where each column of $\bs F$ corresponds to a single user.
+%This is needed to replace $\bs G$ in the single-user model, since the vector of utilities,
+%$\bs f$, has been replaced by the matrix $\bs F$, where each column of $\bs F$ corresponds to a single user.
 
 The variational component for the inducing points of the common item mean follows a similar pattern:
 \begin{flalign}
-\log q(\bs t_m) = \;\;& \mathbb{E}_{q(\bs V)q(\bs W)}[\log \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right)] 
+\log q(\bs t_m) = \;\;& \mathbb{E}[\log \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right)] 
 + \mathbb{E}[\log\mathcal{N}(\bs t_m; \bs 0, \bs K_{t,mm}/s)] 
 + \textrm{const} & \nonumber \\
 = \;\;& \log \mathcal{N}\left( \bs t; \hat{\bs t}, \bs S_t \right) & \\
-\bs S_t^{-1} = \;\;& \bs K^{-1}_{t,mm}/\mathbb{E}[\sigma] 
-+ \bs A_t^T \bs G^T \bs Q^{-1} \bs G \bs A_t & \\
-\hat{\bs t}_{m} = \;\;& \bs S_{t} \bs A_t^T \bs G^T \bs Q^{-1}
-\left(\bs y - \Phi(\mathbb{E}[\bs z]) + \bs G(\hat{\bs t})\right), &
+\bs S_{t,i}^{-1} = \;\;& (1-\rho_i)\bs S^{-1}_{t,i-1} + \rho_i\bs K^{-1}_{t,mm}/\mathbb{E}[\sigma] 
++ \rho_i w_i \bs A_{i}^T \bs G_i^T \bs Q_i^{-1} \bs G_i \bs A_{i} & \\
+\hat{\bs t}_{m,i} = \;\;& \bs S_{t,i}\left(
+(1 - \rho_i) \bs S_{t,i-1}^{-1}\hat{\bs t}_{m,i-1}  \right. & \nonumber \\
+& \left. + \rho_i w_i \bs A_{i}^T \bs G_i^T \bs Q_i^{-1}
+\left(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \bs G_i \bs A_{i} \hat{\bs t}_{m,i} \right) \right). &
 \end{flalign}
-where $\bs A_t = \bs K_{t,nm} \bs K_{t,mm}^{-1}$.
 
-Finally, for the latent user factors, $\bs W$,
-%require a different linearization matrix, $\bs J \in P \times U$, containing partial derivatives 
+Finally, %require a different linearization matrix, $\bs J \in P \times U$, containing partial derivatives 
 %of the pairwise likelihood with respect to $\hat{w}_c$. Its elements are given by:
 %\begin{flalign}
 %J_{p,j} = \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p]) (2y_p - 1) [u_p = j] % needs to be added or subtracted depending on a or b
 %\end{flalign} 
 %now multiply by V. What about covariances between v?
-the variational distribution for the inducing points is:% then as follows:
+the variational distribution for the inducing users factors is:% then as follows:
 \begin{flalign}
-\log q(\bs W_m) = \;\;& \mathbb{E}_{q(\bs V)q(\bs t)}[\log \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right)] 
+\log q(\bs W_m) = \;\;& \mathbb{E}\left[\log \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right)\right] 
 + \sum_{c=1}^C \mathbb{E}[\log\mathcal{N}(\bs w_c; \bs 0, \bs K_{w,mm})]
 + \textrm{const} & \nonumber \\
-= \;\;& \sum_{c=1}^C \log \mathcal{N}\left( \bs w_c; \hat{\bs w}_c, \bs \Sigma \right), & 
+= \;\;& \sum_{c=1}^C \log \mathcal{N}\left( \bs w_c; \hat{\bs w}_c, \bs \Sigma \right). & 
 \end{flalign}
-where the variational parameters are:
+The SVI updates for the parameters are:
 \begin{flalign}
-\bs \Sigma^{-1}_{c} = \;\;& \bs K^{-1}_{w,mm}
-+ \bs A_w^T \left( \sum_{p=1}^P \bs H_{.,p}^T \textrm{diag}\left(\hat{\bs v}_{c,\bs a}^2 + \bs S_{c,\bs a, \bs a} + 
-\hat{\bs v}_{c,\bs b}^2 + \bs S_{c,\bs b, \bs b} \right.\right. & \nonumber \\
-& \left.\left.  - 2\hat{\bs v}_{c,\bs a}\hat{\bs v}_{c,\bs b} - 2\bs S_{c,\bs a, \bs b} \right) \bs Q^{-1} \sum_{p=1}^P \bs H_{.,p} \right) \bs A_w & \label{eq:Sigma} \\
+& \bs \Sigma^{-1}_{c,i} = (1-\rho_i)\bs \Sigma^{-1}_{c,i-1}
++ \rho_i\bs K^{-1}_{w,mm}
++ \rho_i w_i \bs A_{w,i}^T \bigg( \sum_{p \in P_i} \bs H^{(i)T}_{.,p} \textrm{diag}\left(\hat{\bs v}_{c,\bs a}^2 + \right. &\nonumber \\
+& \left. \bs S_{c,\bs a, \bs a} + 
+\hat{\bs v}_{c,\bs b}^2 + \bs S_{c,\bs b, \bs b}  
+- 2\hat{\bs v}_{c,\bs a}\hat{\bs v}_{c,\bs b} - 2\bs S_{c,\bs a, \bs b} \right) \bs Q_i^{-1} \sum_{p \in P_i} \bs H^{(i)}_{.,p} \bigg) \bs A_{w,i} & \label{eq:Sigma} \\
 %%%%
-\hat{\bs w}_{m,c} = \;\;& \bs \Sigma_{c} \bs A_w^T \sum_{p=1}^P \bs H_{.,p}
-\left( \textrm{diag}(\hat{\bs v}_{c,\bs a}) - \textrm{diag}(\hat{\bs v}_{c,\bs b}) \right) \bs Q^{-1} & \nonumber \\
-& \left(\bs y - \Phi(\mathbb{E}[\bs z]) + \sum_{j=1}^U \bs H_u (\hat{\bs v}_c^T \hat{\bs w}_{c,j})\right), & \label{eq:what}
+& \hat{\bs w}_{m,c,i} = \bs \Sigma_{c,i} \bigg( (1 - \rho_i)\bs \Sigma_{c,i-1}\hat{\bs w}_{m,c,i-1} + 
+ \rho_i w_i \bs A_{w,i}^T \sum_{p \in P_i} \bs H^{(i)}_{.,p}
+\left( \textrm{diag}(\hat{\bs v}_{c,\bs a}) \right. & \nonumber  \\
+& \left. - \textrm{diag}(\hat{\bs v}_{c,\bs b}) \right) \bs Q_i^{-1} 
+\bigg(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \sum_{j=1}^U \bs H^{(i)}_u (\hat{\bs v}_c^T \hat{\bs w}_{c,j})\bigg) \bigg), & \label{eq:what}
 \end{flalign}
-where the subscripts $._{\bs a} = \{ ._{a_p} \forall p \in 1,...,P \}$
-and  $._{\bs b} = \{ ._{b_p} \forall p \in 1,...,P \}$ are lists of indices to the first and 
-second items in the pairs, respectively, and $\bs A_w = \bs K_{w,um} \bs K_{w,mm}^{-1}$.
+where the subscripts $\bs a = \{ a_p \forall p \in P_i \}$
+and  $\bs b = \{b_p \forall p \in P_i \}$ are lists of indices to the first and 
+second items in the pairs, respectively, and $\bs A_{w,i} = \bs K_{w,im} \bs K_{w,mm}^{-1}$.
 
-The equations for the means and covariances 
-can be adapted for stochastic updating by applying weighted sums over
-the stochastic update and the previous values in the 
-same way as  Equation \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}.
-The stochastic updates for the inducing points of the latent factors depend 
-on expectations with respect to the observed points. 
-As with the single user case, the variational factors at the observed items are independent of the observations given the variational factors of the inducing points
-(likewise for the observed users):
+% The equations for the means and covariances 
+% can be adapted for stochastic updating by applying weighted sums over
+% the stochastic update and the previous values in the 
+% same way as  Equation \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}.
+% The stochastic updates for the inducing points of the latent factors depend 
+% on expectations with respect to the observed points. 
+% As with the single user case, the variational factors at the observed items are independent of the observations given the variational factors of the inducing points
+% (likewise for the observed users):
+% \begin{flalign}
+% \log q(\bs V) & = \sum_{c=1}^C \log \mathcal{N}\left( \bs v_c; \bs A_v\hat{\bs v}_{m,c}, 
+% \frac{\bs K_{v}}{\mathbb{E}[s_c]} + \bs A_v (\bs S_{m,c} - \frac{\bs K_{v,mm}}{\mathbb{E}[s_c]})\bs A_v \right) & \label{eq:qv} \\
+% \log q(\bs t) & = \log \mathcal{N}\left( \bs t; \bs A_t \hat{\bs t}_m, 
+% \frac{\bs K_{t}}{\mathbb{E}[\sigma]} + \bs A_t (\bs S_t - \frac{\bs K_{t,mm}}{\mathbb{E}[\sigma]})\bs A_t \right)  & \label{eq:qt}\\
+% \log q(\bs W) & = \sum_{c=1}^C \log \mathcal{N}\left( \bs w_c; \bs A_w \hat{\bs w}_{m,c}, \bs K_{w} + \bs A_w (\bs\Sigma - \bs K_{w,mm}) \bs A_w \right). &
+% \label{eq:qw}
+% \end{flalign}
+
+Predictions for crowdGPPL can be made by computing the posterior mean utilities, $\bs F^*$, 
+and the covariance $\bs \Lambda_u^*$ for all users $u$ in the test set:
 \begin{flalign}
-\log q(\bs V) & = \sum_{c=1}^C \log \mathcal{N}\left( \bs v_c; \bs A_v\hat{\bs v}_{m,c}, 
-\frac{\bs K_{v}}{\mathbb{E}[s_c]} + \bs A_v (\bs S_{m,c} - \frac{\bs K_{v,mm}}{\mathbb{E}[s_c]})\bs A_v \right) & \label{eq:qv} \\
-\log q(\bs t) & = \log \mathcal{N}\left( \bs t; \bs A_t \hat{\bs t}_m, 
-\frac{\bs K_{t}}{\mathbb{E}[\sigma]} + \bs A_t (\bs S_t - \frac{\bs K_{t,mm}}{\mathbb{E}[\sigma]})\bs A_t \right)  & \label{eq:qt}\\
-\log q(\bs W) & = \sum_{c=1}^C \log \mathcal{N}\left( \bs w_c; \bs A_w \hat{\bs w}_{m,c}, \bs K_{w} + \bs A_w (\bs\Sigma - \bs K_{w,mm}) \bs A_w \right). &
-\label{eq:qw}
+&\bs F^* = \hat{\bs t}^* + \sum_{c=1}^C \hat{\bs v}_{c}^{*T} \hat{\bs w}_{c}^*, \hspace{1cm} \bs \Lambda_u^* = \bs C_{t}^* + \sum_{c=1}^C \omega_{c,u}^* \bs C_{v,c}^* + \hat{w}_{c,u}^2  \bs C_{v,c}^*  +\omega_{c,u}^* \hat{\bs v}_{c}\hat{\bs v}_{c}^T, &\\
+&\hat{\bs t}^* = \bs K_{*m} \bs K^{-1}_{mm} \hat{\bs t}_{m}, \hspace{0.7cm}
+\hat{\bs v}_{c}^* = \bs K_{*m} \bs K^{-1}_{mm} \hat{\bs v}_{m,c}, \hspace{0.7cm}
+\hat{\bs w}_{c}^* = \bs K_{w,*m} \bs K^{-1}_{w,mm} \hat{\bs w}_{m,c}, & \\
+&\bs C_{t}^* \!= \frac{\bs K_{**}}{\mathbb{E}[\sigma]} + \bs A_{*m}(\bs S_{t} \!-\! \bs K_{mm}) \bs A_{*m}^T, \hspace{0.5cm}
+\bs C_{v,c}^* \!= \frac{\bs K_{**}}{\mathbb{E}[s_c]} + \bs A_{*m}(\bs S_{v,c} \!\!-\! \bs K_{mm}) \bs A_{*m}^T  & \\
+&\omega_{c,u}^* = 1 + \bs A_{w,um}(\bs \Sigma_{w,c} - \bs K_{w,mm}) \bs A_{w,um}^T &
 \end{flalign}
-The expectations for the inverse scales, $s_1,...,s_c$ and $\sigma$, can be 
-computed using the formulas in Equations \ref{eq:Es} and \ref{eq:Elogs} by
-substituting in the corresponding terms for each $\bs v_c$ or $\bs t$ instead of $\bs f$. 
-Predictions in the latent component model can be made using Equations \ref{eq:qv}, \ref{eq:qt} and \ref{eq:qw} by substituting the covariance
-terms relating to observation items, $\bs x$, and users, $\bs u$, with corresponding
-covariance terms for the prediction items and users.
+where  $\bs A_{*m}=\bs K_{*m}\bs K_{mm}^{-1}$,
+$\bs A_{w,um}=\bs K_{w,um}\bs K_{w,mm}^{-1}$ and $\bs K_{w,um}$ is the covariance between user $u$ and the inducing 
+users.
+The mean and covariance estimates can be inserted into Equations \ref{eq:predict_z} and \ref{eq:plphi} to predict pairwise labels.
+In practice, the full covariance terms are needed only for Equations \ref{eq:predict_z}, so need only be computed
+between items for which we wish to predict pairwise labels. %Hence, the covariance for a large test set need not be computed at once.
 
-As with the single user model, the lower bound on the marginal likelihood 
-contains sums over the observations, hence is suitable for stochastic variational
-updates:
-% APPENDIXIFY
-\begin{flalign}
-\mathcal{L}_{crowd} & = \label{eq:lowerbound_crowd}
-\sum_{p=1}^P \mathbb{E}_{q(\bs f)}[\log p(y_p | \bs v_{a_p}^T \! \bs w_{a_p} \!+ t_{a_p}\!, \bs v_{b_p}^T\! \bs w_{b_p} \!+ t_{b_p})] 
-- \frac{1}{2} 
-\Bigg\{  \sum_{c=1}^C \bigg\{  \! - \! M_n \! - \! M_u & \nonumber \\
-&  
- + \log|\bs K_{v,mm}| + \log|\bs K_{w,mm}|
-- \log|\bs S_{v,c}|  - \mathbb{E}[\log s_c] 
-+ \hat{\bs v}_{m,c}^T \mathbb{E}[s_c]\bs K_{v,mm}^{-1}\hat{\bs v}_{m,c} & \nonumber \\
-& 
-+ \textrm{tr}(\mathbb{E}[s_c] \bs K_{v,mm}^{-1} \bs S_{v,c}) 
-- \log|\bs \Sigma_{c}|  + \hat{\bs w}_{m,c}^T \bs K_{w,mm}^{-1}\hat{\bs w}_{m,c} 
-+ \textrm{tr}(\bs K_{w,mm}^{-1} \bs \Sigma_{c})
-\bigg\}
-& \nonumber \\
-&  
-- M_n + \log|\bs K_{t,mm}|
-- \log|\bs S_{t}|  - \mathbb{E}[\log \sigma] 
-+ \hat{\bs t}^T \mathbb{E}[\sigma] \bs K_{t,mm}^{-1} \hat{\bs t}  &
-\nonumber \\
-&
-+ \textrm{tr}(\mathbb{E}[\sigma] \bs K_{t,mm}^{-1} \bs S_{t})
-\Bigg\} 
-- (C+1)(\log\Gamma(\alpha_0)  + \alpha_0(\log \beta_0))
-& \nonumber \\
-& + \sum_{c=1}^C \bigg\{ 
-\log\Gamma(\alpha_c) + (\alpha_0 - \alpha_c)\mathbb{E}[\log s_c]
-+ (\beta_c - \beta_0) \mathbb{E}[s_c] - \alpha_c \log \beta_c \bigg\}
- & 
-\nonumber \\ 
-& + \log\Gamma(\alpha_{\sigma}) + (\alpha_0 - \alpha_{\sigma})\mathbb{E}[\log \sigma]
-+ (\beta_{\sigma} - \beta_0) \mathbb{E}[s_c] - \alpha_{\sigma} \log \beta_{\sigma}
-, &
-\end{flalign}
-
-In this section, we proposed an SVI scheme for Bayesian matrix factorization given pairwise observations. The inference scheme can readily be adapted to regression or classification tasks by swapping out the preference likelihood, resulting in 
-different values for $\bs G$ and $\bs H$. We now show how to learn the  
-length-scale parameter required to compute covariances using typical kernel functions, then demonstrate how our method can be applied to learning user preferences or
-consensus opinion when faced with disagreement.
+%In this section, we proposed an SVI scheme for GPPL and crowdGPPL, 
+%which can readily be adapted to regression or classification tasks by swapping out the preference likelihood, resulting in 
+%different values for $\bs G$ and $\bs H$. 
+% We now show how to learn the  
+% length-scale parameters required to compute the prior covariances using typical kernel functions.
+%then demonstrate how our method can be applied to learning user preferences or
+%consensus opinion when faced with disagreement.
  
