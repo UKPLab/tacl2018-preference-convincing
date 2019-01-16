@@ -1003,7 +1003,7 @@ class TestRunner:
                 self.a1_train = a1_train[pair_subset]
                 self.a2_train = a2_train[pair_subset]
                 self.prefs_train = prefs_train[pair_subset]
-                self.person_train = person_train
+                self.person_train = person_train[pair_subset]
                 
                 self.a1_test = a1_test
                 self.a2_test = a2_test
