@@ -7,7 +7,7 @@ if __name__ == '__main__':
     acc = 1.0
     dataset_increment = 0
 
-    max_no_folds = 15
+    max_no_folds = 10
 
     if len(sys.argv) > 1:
         test_to_run = int(sys.argv[1])
@@ -44,8 +44,10 @@ if __name__ == '__main__':
     # For plot 2: scaling with no. pairs -------------------------------------------------------------------------------
     if test_to_run == 2:
         datasets = ['UKPConvArgCrowdSample_evalMACE']
-        methods = ['SinglePrefGP_noOpt_weaksprior_M0', 'SinglePrefGP_noOpt_weaksprior_M100',
-                   'PersPrefGP_noOpt_weaksprior_M0', 'PersPrefGP_noOpt_weaksprior_M100',
+        methods = [#'SinglePrefGP_noOpt_weaksprior_M0',
+                   'SinglePrefGP_noOpt_weaksprior_M100',
+                   #'PersPrefGP_noOpt_weaksprior_M0',
+                   'PersPrefGP_noOpt_weaksprior_M100',
                    #'BI-LSTM'#'SVM', 'BI-LSTM'
             ] # M0 will mean no SVI
         feature_types = ['embeddings']
@@ -79,8 +81,11 @@ if __name__ == '__main__':
     # For Plot 3: Scaling with N_tr ------------------------------------------------------------------------------------
     if test_to_run == 3:
         datasets = ['UKPConvArgCrowdSample_evalMACE']
-        methods = ['SinglePrefGP_noOpt_weaksprior_M0', 'SinglePrefGP_noOpt_weaksprior_M100',
-                   'PersPrefGP_noOpt_weaksprior_M0', 'PersPrefGP_noOpt_weaksprior_M100',
+        methods = [
+            #'SinglePrefGP_noOpt_weaksprior_M0',
+            'SinglePrefGP_noOpt_weaksprior_M100',
+            #'PersPrefGP_noOpt_weaksprior_M0',
+            'PersPrefGP_noOpt_weaksprior_M100',
                    #'BI-LSTM'#'SVM', 'BI-LSTM'
             ] # M0 will mean no SVI
         feature_types = ['embeddings']

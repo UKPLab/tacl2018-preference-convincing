@@ -75,13 +75,13 @@ pairwise labels. Limited data for each user also present a challenge when predic
 %In applications such as recommendation it is also necessary to predict the preferences of individual annotators or users. 
 %and identify common preferences between users. % use of the latent factors 
 %We address these challenges by combining matrix factorization to model individual preferences with 
-%Gaussian processes to integrate user and instance features. By taking a Bayesian approach, our model
+%Gaussian processes to integrate user and item features. By taking a Bayesian approach, our model
 We address these challenges by combining matrix factorization with 
 Gaussian processes in a Bayesian approach that
 accounts for uncertainty arising from sparse data and annotation noise.
 Previous methods for Gaussian process preference learning (GPPL) do not scale to datasets with large numbers
- of users, instances or pairwise labels, so we propose an inference method using stochastic variational inference (SVI)
-%that can scale to large numbers of instances, users, and pairwise labels 
+ of users, items or pairwise labels, so we propose an inference method using stochastic variational inference (SVI)
+%that can scale to large numbers of items, users, and pairwise labels 
 that can handle constraints on computational and memory costs.
 Our experiments on a computational argumentation task
 demonstrate the method's scalability and
@@ -92,7 +92,8 @@ On a recommendation task, accuracy is competitive with previous methods
 We also show how to  %that robustness to %able to learn the effective number of components required to model the data and
 %choosing more latent components than required,
 apply gradient-based optimization to length-scale hyper-parameters to improve performance.
-We make our software and documentation publicly available for use in future work.
+We make our software and documentation publicly available for use in future 
+work\footnote{\url{https://github.com/UKPLab/tacl2018-preference-convincing/tree/crowdGPPL}}.
 %We show how to make collaborative preference learning work at scale and how it can be used to learn
 %a target preference function from crowdsourced data or other noisy preference labels. 
 %The collaborative model captures the reliability of each worker or data source and models their biases and error rates. 

@@ -221,7 +221,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'personalised_13_bigger_t'
+    test_dir = 'personalised_14'
 
     dataset_increment = 0     
     # UKPConvArgCrowdSample tests prediction of personal data.

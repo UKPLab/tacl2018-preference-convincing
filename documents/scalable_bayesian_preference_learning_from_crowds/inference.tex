@@ -40,7 +40,7 @@ In practice, GFITC is unsuitable for datasets with more than a few thousands poi
 as the $\mathcal{O}(NM^2)$ computational and $\mathcal{O}(NM)$ costs become prohibitively high
 when $N$ is large,
 and GFITC is not amenable to distributed computation~\citep{hensman2015scalable}.  
-In contrast to crowdGPPL, \citet{houlsby2012collaborative} place GPs over the space of pairs rather than instances,
+In contrast to crowdGPPL, \citet{houlsby2012collaborative} place GPs over the space of pairs rather than items,
 which is typically much larger, meaning that $\mathcal{O}(PM^2 + UM^2)$ computational and $\mathcal{O}(PM + UM)$
 memory costs dominate. 
 We derive a more scalable approach for GPPL and crowdGPPL using
@@ -127,16 +127,16 @@ us to limit the size of the covariance matrices we need to work with.
 % that needs to be inverted,
 %and permit stochastic inference methods that consider only a subset of the $P$ observations at each iteration
 %~\citep{hensman2013gaussian,hensman2015scalable}. 
-To do this, we introduce a set of $M \ll N$ \emph{inducing} instances with inputs 
+To do this, we introduce a set of $M \ll N$ \emph{inducing} items with inputs 
 $\bs x_m$,
 utilities $\bs f_m$, covariance $\bs K_{mm}$,
-and covariance between the observed and inducing instances, $\bs K_{nm}$.
+and covariance between the observed and inducing items, $\bs K_{nm}$.
 % The inducing points act as proxies for the observed points during inference,
 % and thereby reduce the number of data points we have to perform costly operations % over.
 %We modify the variational approximation in Equation \ref{eq:vb_approx} to introduce the inducing points 
 For clarity, we omit $\theta$ from this point on, and provide further detailed equations in 
 Appendix \ref{sec:vb_eqns}.
-The posterior over the inducing and training instances is approximated as:
+The posterior over the inducing and training items is approximated as:
 \begin{flalign}
 p(\bs f, \bs f_m, s | \bs y, \bs x, \bs x_m, k_{\theta}, \alpha_0, \beta_0) &\approx q(\bs f, \bs f_m, s) = q(s)q(\bs f)q(\bs f_m). \label{eq:svi_approx} &&
 \end{flalign}

@@ -70,7 +70,7 @@ Without stochastic sampling, the variational factor $\log q(\bs f_m)$ is given b
 %& \hspace{3.2cm} \mathcal{N}(\bs f_m; \bs 0, \bs K_{mm}\mathbb{E}[1/s]) \textrm{d} \bs f + \textrm{const} & \nonumber\\
  & = \log \mathcal{N}(\bs f_m; \hat{\bs f}_m, \bs S ), \\
 \bs S^{-1} &= \bs K^{-1}_{mm}/\mathbb{E}[s] + \bs A^T \bs G^T \bs Q^{-1} \bs G \bs A, \label{eq:S}\\
-\hat{\bs f}_m &= \bs S \bs A^T \bs G^T \bs Q^{-1} (\bs y - \Phi(\mathbb{E}[\bs z]) + \bs G \mathbb{E}[\bs f] ). \label{eq:fhat_m}
+\hat{\bs f}_m &= \bs S \bs A^T \bs G^T \bs Q^{-1} (\bs y - \Phi(\mathbb{E}[\bs z]) + \bs G \mathbb{E}[\bs f] ). %\label{eq:fhat_m}
 \end{flalign}
 
 For the crowdGPPL model, the variational lower bound is:
@@ -109,50 +109,49 @@ For the crowdGPPL model, the variational lower bound is:
 , &
 \end{flalign}
 
-The gradient of $\mathcal{L}_3$ with respect to the lengthscale, $l_d$, is as follows:
-\begin{flalign}
-\nabla_{l_d} \mathcal{L}_3 & =  - \frac{1}{2} \left\lbrace 
-\frac{\partial \log|\bs K/\hat{s}|}{\partial l_d} - \frac{\partial \log|\bs C|}{\partial l_d} 
-\nonumber \right.
- \left.  - (\hat{\bs f}-\bs\mu)\hat{s} \frac{\partial K^{-1}}{\partial l_d} (\hat{\bs f}-\bs\mu)
-\right\rbrace \nonumber & \\
-%& = \frac{1}{2} \hat{s} \left\lbrace \frac{\partial \log |\bs C \bs K^{-1}|}{\partial l_d}
-%\right. \\
-%& \left.  - (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
-%\right\rbrace  \nonumber \\
-& =  -\frac{1}{2} \left\lbrace  \frac{\partial \log | \frac{1}{\hat{s}}\bs K \bs C^{-1} |}{\partial l_d} \right. 
-\left.  + \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
-\right\rbrace   &
-%& =  - \frac{1}{2} \left\lbrace \frac{\partial \log|\bs K/s| }{\partial l_d} + \frac{\partial \log |\bs K^{-1}s + \bs G\bs Q^{-1}\bs G^T|}{\partial l_d}
-%\right. \\
-%& \left.  - \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
-%\right\rbrace  \nonumber\\
-%& =  -\frac{1}{2} \left\lbrace \frac{\partial \log |\bs I + \bs K/s\bs G\bs Q^{-1}\bs G^T|}{\partial l_d}
-%\right. \\
-%& \left.  - \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
-%\right\rbrace  \nonumber
-\end{flalign}
-Using the fact that $\log | A | = \mathrm{tr}(\log A)$, $\bs C = \left[\bs K^{-1} - \bs G \bs Q^{-1} \bs G^T \right]^{-1}$, and $\bs C = \bs C^{T}$, we obtain:
-\begin{flalign}
-\nabla_{l_d} \mathcal{L}_3 & =  -\frac{1}{2} \mathrm{tr}\left(\left(\hat{s}\bs K^{-1}\bs C\right) \bs G\bs Q^{-1}\bs G^T \frac{\partial \bs K}{\partial l_d}
-\right)
- + \frac{1}{2}\hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)  \nonumber\\ 
-& =  -\frac{1}{2} \mathrm{tr}\left(\left(\hat{s}\bs K^{-1}\bs C\right)
-\left(\bs C^{-1} - \bs K^{-1}/\hat{s}\right) \frac{\partial \bs K}{\partial l_d}
-\right) 
-+ \frac{1}{2}\hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu).  \label{eq:gradient_ls}
-\end{flalign}
-Assuming a product over kernels for each feature, $\bs K=\prod_{d=1}^{D} \bs K_d$, we can compute the kernel gradient 
-as follows for the Mat\'ern $\frac{3}{2}$ kernel function:
-\begin{flalign}
-\frac{\partial \bs K}{\partial l_d} & = \prod_{d'=1,d'\neq d}^D K_{d} \frac{\partial K_{l_d}}{\partial l_d} \\
-\frac{\partial K_{l_d}}{\partial l_d} & = \frac{3\bs |\bs x_d - \bs x_d'|^2}{l_d^3} \exp\left( - \frac{\sqrt{3} \bs |\bs x_d - \bs x_d'|}{l_d} \right)
-\label{eq:kernel_der}
-\end{flalign}
-where $|\bs x_d - \bs x_d'|$ is the distance between input points.
-
 \section{Converged Lower Bound Derivatives}
 \label{sec:gradients}
+% The gradient of $\mathcal{L}_3$ with respect to the lengthscale, $l_d$, is as follows:
+% \begin{flalign}
+% \nabla_{l_d} \mathcal{L}_3 & =  - \frac{1}{2} \left\lbrace 
+% \frac{\partial \log|\bs K/\hat{s}|}{\partial l_d} - \frac{\partial \log|\bs C|}{\partial l_d} 
+% \nonumber \right.
+%  \left.  - (\hat{\bs f}-\bs\mu)\hat{s} \frac{\partial K^{-1}}{\partial l_d} (\hat{\bs f}-\bs\mu)
+% \right\rbrace \nonumber & \\
+% %& = \frac{1}{2} \hat{s} \left\lbrace \frac{\partial \log |\bs C \bs K^{-1}|}{\partial l_d}
+% %\right. \\
+% %& \left.  - (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
+% %\right\rbrace  \nonumber \\
+% & =  -\frac{1}{2} \left\lbrace  \frac{\partial \log | \frac{1}{\hat{s}}\bs K \bs C^{-1} |}{\partial l_d} \right. 
+% \left.  + \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
+% \right\rbrace   &
+% %& =  - \frac{1}{2} \left\lbrace \frac{\partial \log|\bs K/s| }{\partial l_d} + \frac{\partial \log |\bs K^{-1}s + \bs G\bs Q^{-1}\bs G^T|}{\partial l_d}
+% %\right. \\
+% %& \left.  - \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
+% %\right\rbrace  \nonumber\\
+% %& =  -\frac{1}{2} \left\lbrace \frac{\partial \log |\bs I + \bs K/s\bs G\bs Q^{-1}\bs G^T|}{\partial l_d}
+% %\right. \\
+% %& \left.  - \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
+% %\right\rbrace  \nonumber
+% \end{flalign}
+% Using the fact that $\log | A | = \mathrm{tr}(\log A)$, $\bs C = \left[\bs K^{-1} - \bs G \bs Q^{-1} \bs G^T \right]^{-1}$, and $\bs C = \bs C^{T}$, we obtain:
+% \begin{flalign}
+% \nabla_{l_d} \mathcal{L}_3 & =  -\frac{1}{2} \mathrm{tr}\left(\left(\hat{s}\bs K^{-1}\bs C\right) \bs G\bs Q^{-1}\bs G^T \frac{\partial \bs K}{\partial l_d}
+% \right)
+%  + \frac{1}{2}\hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)  \nonumber\\ 
+% & =  -\frac{1}{2} \mathrm{tr}\left(\left(\hat{s}\bs K^{-1}\bs C\right)
+% \left(\bs C^{-1} - \bs K^{-1}/\hat{s}\right) \frac{\partial \bs K}{\partial l_d}
+% \right) 
+% + \frac{1}{2}\hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu).  \label{eq:gradient_ls}
+% \end{flalign}
+% Assuming a product over kernels for each feature, $\bs K=\prod_{d=1}^{D} \bs K_d$, we can compute the kernel gradient 
+% as follows for the Mat\'ern $\frac{3}{2}$ kernel function:
+% \begin{flalign}
+% \frac{\partial \bs K}{\partial l_d} & = \prod_{d'=1,d'\neq d}^D K_{d} \frac{\partial K_{l_d}}{\partial l_d} \\
+% \frac{\partial K_{l_d}}{\partial l_d} & = \frac{3\bs |\bs x_d - \bs x_d'|^2}{l_d^3} \exp\left( - \frac{\sqrt{3} \bs |\bs x_d - \bs x_d'|}{l_d} \right)
+% \label{eq:kernel_der}
+% \end{flalign}
+% where $|\bs x_d - \bs x_d'|$ is the distance between input points.
 
 When $\mathcal{L}$ has converged to a maximum, 
 $\nabla_{l_{\! d}} \mathcal{L}$ simplifies to:

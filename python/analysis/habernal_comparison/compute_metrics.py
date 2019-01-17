@@ -295,6 +295,8 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                     min_folds = min_fold_no
                     foldrange = None
 
+                    coverage = 0.0
+
                     for f in range(nFolds):
                         print("Processing fold %i" % f)
                         if expt_settings['fold_order'] is None: # fall back to the order on the current machine
@@ -364,7 +366,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
 
                             turker_tr_counts = np.array([np.sum(tr_turkers == tid) for tid in test_turkers])[valididxs]
                             turker_conf_filter = 0
-                            confidxs = turker_tr_counts > turker_conf_filter
+                            confidxs = ((pred_prob > 0.8) | (pred_prob < 0.2)).flatten() #turker_tr_counts > turker_conf_filter
                             print('No. confident workers: %i ' % np.unique(test_turkers[valididxs][confidxs]).size)
 
                             gold_disc = gold_disc[confidxs]
@@ -375,25 +377,73 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             # confidxs = (pred_prob[:, AL_round] > 0.7) | (pred_prob[:, AL_round] < 0.3)
                             print('Confident data points: %i / %i' % (np.sum(confidxs), confidxs.shape[0]))
 
+                            coverage += np.sum(confidxs) / float(confidxs.shape[0])
+
                         for AL_round, _ in enumerate(AL_rounds):
                             #print "fold %i " % f
                             #print AL_round
                             if AL_round >= pred_disc.shape[1]:
                                 continue
 
+                            if split_by_person:
+                                # compute the metrics separately for each turker because the gold scores between
+                                # turkers are not comparable.
+                                test_turkers = np.array([tid.strip() for tid in test_turkers[valididxs][confidxs]])
 
-                            results_f1[row, col, f, AL_round] = f1_score(gold_disc,
-                                                                         pred_disc[:, AL_round],
-                                                                         average='macro')
-                            #skip the don't knows
-                            results_acc[row, col, f, AL_round] = accuracy_score(gold_disc,
-                                                                                pred_disc[:, AL_round])
-                            
-                            results_logloss[row, col, f, AL_round] = log_loss(gold_prob,
-                                                                              pred_prob[:, AL_round])
-                            
-                            results_auc[row, col, f, AL_round] = roc_auc_score(gold_prob,
-                                                                               pred_prob[:, AL_round]) # macro
+                                valid_turker_count = 0
+
+                                for tid in np.unique(test_turkers):
+                                    tidxs = test_turkers == tid
+
+                                    if np.sum(test_turkers == tid) < 2 or \
+                                        np.sum(tr_turkers == tid) <= turker_conf_filter or \
+                                        np.unique(gold_disc[tidxs]).size < 1:
+                                        continue
+
+                                    f1 = f1_score(gold_disc[tidxs], pred_disc[tidxs, AL_round], average='macro')
+                                    acc = accuracy_score(gold_disc[tidxs], pred_disc[tidxs, AL_round])
+                                    cee = log_loss(gold_prob[tidxs], pred_prob[tidxs, AL_round], labels=[0,1])
+                                    if np.unique(gold_disc[tidxs]).size < 2:
+                                        auc = 1
+                                    else:
+                                        auc = roc_auc_score(gold_prob[tidxs], pred_prob[tidxs, AL_round])  #
+
+                                    if not np.isnan(f1) and not np.isnan(acc) and not np.isnan(cee) and not np.isnan(auc):
+
+                                        results_f1[row, col, f, AL_round] += f1
+                                        results_acc[row, col, f, AL_round] += acc
+                                        results_logloss[row, col, f, AL_round] += cee
+                                        results_auc[row, col, f, AL_round] += auc
+
+                                        valid_turker_count += 1
+                                    else:
+                                        print('Invalid ranking metrics.')
+
+                                if valid_turker_count > 0:
+
+                                    results_f1[row, col, f, AL_round] /= valid_turker_count
+                                    results_acc[row, col, f, AL_round] /= valid_turker_count
+                                    results_logloss[row, col, f, AL_round] /= valid_turker_count
+                                    results_auc[row, col, f, AL_round] /= valid_turker_count
+                                else:
+                                    results_f1[row, col, f, AL_round] = 1
+                                    results_acc[row, col, f, AL_round] = 1
+                                    results_logloss[row, col, f, AL_round] = 0
+                                    results_auc[row, col, f, AL_round] = 1
+
+                            else:
+                                results_f1[row, col, f, AL_round] = f1_score(gold_disc,
+                                                                             pred_disc[:, AL_round],
+                                                                             average='macro')
+                                #skip the don't knows
+                                results_acc[row, col, f, AL_round] = accuracy_score(gold_disc,
+                                                                                    pred_disc[:, AL_round])
+
+                                results_logloss[row, col, f, AL_round] = log_loss(gold_prob,
+                                                                                  pred_prob[:, AL_round])
+
+                                results_auc[row, col, f, AL_round] = roc_auc_score(gold_prob,
+                                                                                   pred_prob[:, AL_round]) # macro
 
                             print('Results for fold %i: acc=%f, cee=%f, AUC=%f' % (f,
                                                            results_acc[row, col, f, AL_round],
@@ -429,16 +479,25 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
 
                                         tidxs = test_turkers == tid
 
+                                        if np.unique(gold_rank[tidxs]).size == 1:
+                                            continue
+
                                         r =  pearsonr(gold_rank[tidxs], pred_rank[tidxs, AL_round])[0]
                                         rho = spearmanr(gold_rank[tidxs], pred_rank[tidxs, AL_round])[0]
                                         tau = kendalltau(gold_rank[tidxs], pred_rank[tidxs, AL_round])[0]
 
                                         if not np.isnan(r) and not np.isnan(rho) and not np.isnan(tau):
-                                            results_pearson[row, col, f, AL_round] += r
-                                            results_spearman[row, col, f, AL_round] += rho
-                                            results_kendall[row, col, f, AL_round] += tau
 
-                                            valid_turker_count += 1
+                                            weight = 1#np.sum(tr_turkers == tid) # weight by total number of data points
+
+                                            results_pearson[row, col, f, AL_round] += r * weight
+                                            results_spearman[row, col, f, AL_round] += rho * weight
+                                            results_kendall[row, col, f, AL_round] += tau * weight
+
+                                            valid_turker_count += weight
+                                        else:
+                                            print('Invalid ranking metrics.')
+
                                     print('No. confident workers (ranking): %i ' % valid_turker_count)
 
                                     results_pearson[row, col, f, AL_round] /= valid_turker_count
@@ -509,6 +568,8 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             tr_results_acc[row, col, -1, AL_round] = np.mean(tr_results_acc[row, col, foldrange, AL_round], axis=0)
                             tr_results_logloss[row, col, -1, AL_round] = np.mean(tr_results_logloss[row, col, foldrange, AL_round], axis=0)
                             tr_results_auc[row, col, -1, AL_round] = np.mean(tr_results_auc[row, col, foldrange, AL_round], axis=0)
+
+                    print('Coverage = %f' % (coverage/nFolds))
 
                     if foldrange is not None:
                         print('p-values for %s, %s, %s, %s:' % (expt_settings['dataset'], expt_settings['method'],
