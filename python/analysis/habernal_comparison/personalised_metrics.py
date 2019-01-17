@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
     resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
     min_fold_no = 0
-    max_fold_no = 4
+    max_fold_no = 32
 
     npairs = 0
     acc = 1.0
@@ -110,7 +110,7 @@ if __name__ == '__main__':
         # Personalised predictions -- multi-user methods
 
         datasets = ['UKPConvArgCrowdSample']
-        methods = ['PersPrefGP_commonmean_weaksprior']
+        methods = ['SinglePrefGP_weaksprior', 'PersPrefGP_commonmean_weaksprior']
         feature_types = ['both']  # 'both'
         embeddings_types = ['word_mean']
 
@@ -125,7 +125,7 @@ if __name__ == '__main__':
         # Consensus predictions -- multi-user methods (single-user methods were already included in the TACL paper so
         # can be copied from there).
         datasets = ['UKPConvArgCrowdSample_evalMACE']
-        methods = ['PersConsensusPrefGP_commonmean_weaksprior']
+        methods = ['SinglePrefGP_weaksprior', 'PersConsensusPrefGP_commonmean_weaksprior']
         feature_types = ['both']  # 'both'
         embeddings_types = ['word_mean']
 
