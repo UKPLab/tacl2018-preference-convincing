@@ -81,7 +81,7 @@ if __name__ == '__main__':
     if not os.path.exists(figure_root_path):
         os.mkdir(figure_root_path)
 
-    nreps = 1
+    nreps = 25
     P = 400
 
     # NOISE TEST, SINGLE USER DATA, SINGLE USER MODEL ------------------------------------------------------------------
@@ -240,7 +240,7 @@ if __name__ == '__main__':
             ))
 
             # Create a GPPrefLearning model
-            model = GPPrefLearning(2, mu0=0, shape_s0=0.1, rate_s0=0.1, ls_initial=None, use_svi=True, ninducing=ninducing,
+            model = GPPrefLearning(2, mu0=0, shape_s0=1, rate_s0=100, ls_initial=None, use_svi=True, ninducing=ninducing,
                                    max_update_size=1000, forgetting_rate=0.9, verbose=True)
 
             print(("--- Repeating pooled-GPPL test, rep %i ---" % rep))
@@ -251,7 +251,7 @@ if __name__ == '__main__':
             ))
 
             # Create a GPPrefLearning model per person
-            model = GPPrefPerUser(Npeople, max_update_size=1000, shape_s0=0.1, rate_s0=0.1)
+            model = GPPrefPerUser(Npeople, max_update_size=1000, shape_s0=1, rate_s0=100)
 
             print(("--- Repeating separate user test, rep %i ---" % rep))
             results_s.append(evaluate_multiuser_consensus(
