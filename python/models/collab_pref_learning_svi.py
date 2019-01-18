@@ -281,64 +281,58 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
     def _post_sample(self, K_nm, invK_mm, w_u, wS, t_u, tS,
                      Ky_nm, invKy_mm, y_u, y_var, v, u, expectedlog=False):
-        # TODO: this is wrong because it ignores the remaining uncertainty in t given t_u. Check whether we need this?
+        # TODO this ignores the remaining uncertainty in t given t_u.
         #  This is also in GPPL and will underestimate the variance between neighbouring points.
 
         # sample the inducing points because we don't have full covariance matrix. In this case, f_cov should be Ks_nm
         nsamples = 500
 
-        # if wS.ndim == 3:
-        #     w_samples = np.array([mvn.rvs(mean=w_u[:, f], cov=wS[f], size=(nsamples))
-        #                       for f in range(self.Nfactors)])
-        # else:
-        #     w_samples = np.array([mvn.rvs(mean=w_u[:, f], cov=wS, size=(nsamples))
-        #                           for f in range(self.Nfactors)])
-        #
-        # if self.use_t:
-        #     if np.isscalar(t_u):
-        #         t_u = np.zeros(tS.shape[0]) + t_u
-        #     else:
-        #         t_u = t_u.flatten()
-        #
-        #     t_samples = mvn.rvs(mean=t_u, cov=tS, size=(nsamples))
-        #
-        # N = y_u.shape[1]
-        # if np.isscalar(y_var):
-        #     y_var = np.zeros((self.Nfactors * N)) + y_var
-        # else:
-        #     y_var = y_var.flatten()
-        #
-        # y_samples = np.random.normal(loc=y_u.flatten()[:, None], scale=np.sqrt(y_var)[:, None],
-        #                              size=(N * self.Nfactors, nsamples)).reshape(self.Nfactors, N, nsamples)
-        #
-        # # w_samples: F x nsamples x N
-        # # t_samples: nsamples x N
-        # # y_samples: F x Npeople x nsamples
-        #
-        # if K_nm is not None:
-        #     covpair_w = K_nm.dot(invK_mm)
-        #     w_samples = np.array([covpair_w.dot(w_samples[f].T).T for f in range(self.Nfactors)])  # assume zero mean
-        #     if self.use_t:
-        #         t_samples = K_nm.dot(invK_mm).dot(t_samples.T).T  # assume zero mean
-        #
-        #     if self.person_features is not None:
-        #         covpair_y = Ky_nm.dot(invKy_mm)
-        #         y_samples = np.array([covpair_y.dot(y_samples[f]) for f in range(self.Nfactors)])  # assume zero mean
-        #
-        # if self.use_t:
-        #     f_samples = np.array([w_samples[:, s, :].T.dot(y_samples[:, :, s]).T + t_samples[s][None, :]for s in range(nsamples)])
-        # else:
-        #     f_samples = np.array([w_samples[:, s, :].T.dot(y_samples[:, :, s]).T for s in range(nsamples)])
-        #
-        # f_samples = f_samples.reshape(nsamples, self.N * self.Npeople).T
+        if wS.ndim == 3:
+            w_samples = np.array([mvn.rvs(mean=w_u[:, f], cov=wS[f], size=(nsamples))
+                              for f in range(self.Nfactors)])
+        else:
+            w_samples = np.array([mvn.rvs(mean=w_u[:, f], cov=wS, size=(nsamples))
+                                  for f in range(self.Nfactors)])
 
-        f_mean, K_star = self.predict_f(return_cov=True)
-        f_mean = f_mean[v] - f_mean[u]
-        var = K_star[v, v] + K_star[u, u] - K_star[v, u] - K_star[u, v]
+        if self.use_t:
+            if np.isscalar(t_u):
+                t_u = np.zeros(tS.shape[0]) + t_u
+            else:
+                t_u = t_u.flatten()
 
-        f_samples = norm.rvs(loc=f_mean, scale=var, size=(len(v), 1000)).T
+            t_samples = mvn.rvs(mean=t_u, cov=tS, size=(nsamples))
 
-        phi = norm.cdf(f_samples / np.sqrt(2))
+        N = y_u.shape[1]
+        if np.isscalar(y_var):
+            y_var = np.zeros((self.Nfactors * N)) + y_var
+        else:
+            y_var = y_var.flatten()
+
+        y_samples = np.random.normal(loc=y_u.flatten()[:, None], scale=np.sqrt(y_var)[:, None],
+                                     size=(N * self.Nfactors, nsamples)).reshape(self.Nfactors, N, nsamples)
+
+        # w_samples: F x nsamples x N
+        # t_samples: nsamples x N
+        # y_samples: F x Npeople x nsamples
+
+        if K_nm is not None:
+            covpair_w = K_nm.dot(invK_mm)
+            w_samples = np.array([covpair_w.dot(w_samples[f].T).T for f in range(self.Nfactors)])  # assume zero mean
+            if self.use_t:
+                t_samples = K_nm.dot(invK_mm).dot(t_samples.T).T  # assume zero mean
+
+            if self.person_features is not None:
+                covpair_y = Ky_nm.dot(invKy_mm)
+                y_samples = np.array([covpair_y.dot(y_samples[f]) for f in range(self.Nfactors)])  # assume zero mean
+
+        if self.use_t:
+            f_samples = np.array([w_samples[:, s, :].T.dot(y_samples[:, :, s]).T + t_samples[s][None, :]for s in range(nsamples)])
+        else:
+            f_samples = np.array([w_samples[:, s, :].T.dot(y_samples[:, :, s]).T for s in range(nsamples)])
+
+        f_samples = f_samples.reshape(nsamples, self.N * self.Npeople).T
+
+        phi = pref_likelihood(f_samples, v=v, u=u)
         phi = temper_extreme_probs(phi)
         notphi = 1 - phi
 

@@ -1110,7 +1110,10 @@ class CollabPrefLearningVB(object):
 
         # covariance of a product of two independent gaussians (product-Gaussian distribution)
         for f in range(self.Nfactors):
-            cov_f += (var_y[f][:, None, None] * cov_w[f][None, :, :])
+            cov_f_f = np.zeros((Npeople, N, N))
+            cov_f_f += var_y[f][:, None, None]
+            cov_f_f *= cov_w[f][None, :, :]
+            cov_f += cov_f_f
 
             yscaling = y[f, :]**2
             cov_wf = cov_w[f][None, :, :] * yscaling[:, None, None]

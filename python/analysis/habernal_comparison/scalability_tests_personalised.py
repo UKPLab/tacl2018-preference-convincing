@@ -46,8 +46,8 @@ if __name__ == '__main__':
         datasets = ['UKPConvArgCrowdSample_evalMACE']
         methods = [#'SinglePrefGP_noOpt_weaksprior_M0',
                    #'SinglePrefGP_noOpt_weaksprior_M100',
-                   #'PersPrefGP_noOpt_weaksprior_M0',
-                   'PersPrefGP_noOpt_weaksprior_M100_F5',
+                   #'PersPrefGP_noOpt_weaksprior_commonmean_M0',
+                   'PersPrefGP_noOpt_weaksprior_commonmean_M100_F5',
                    #'BI-LSTM'#'SVM', 'BI-LSTM'
             ] # M0 will mean no SVI
         feature_types = ['embeddings']
@@ -84,8 +84,8 @@ if __name__ == '__main__':
         methods = [
             #'SinglePrefGP_noOpt_weaksprior_M0',
             'SinglePrefGP_noOpt_weaksprior_M100',
-            #'PersPrefGP_noOpt_weaksprior_M0',
-            'PersPrefGP_noOpt_weaksprior_M100_F5',
+            #'PersPrefGP_noOpt_weaksprior_commonmean_M0',
+            'PersPrefGP_noOpt_weaksprior_commonmean_M100_F5',
                    #'BI-LSTM'#'SVM', 'BI-LSTM'
             ] # M0 will mean no SVI
         feature_types = ['embeddings']
@@ -120,7 +120,7 @@ if __name__ == '__main__':
     if test_to_run == 4:
 
         datasets = ['UKPConvArgCrowdSample_evalMACE']
-        methods = ['PersPrefGP_noOpt_weaksprior_M500', 'SinglePrefGP_noOpt_weaksprior_M500']#, 'SVM', 'BI-LSTM']
+        methods = ['PersPrefGP_noOpt_weaksprior_commonmean_M500', 'SinglePrefGP_noOpt_weaksprior_M500']#, 'SVM', 'BI-LSTM']
         feature_types = ['debug']
         ndebug_features = 30
         embeddings_types = ['word_mean']
@@ -131,7 +131,7 @@ if __name__ == '__main__':
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0)
 
         datasets = ['UKPConvArgCrowdSample_evalMACE']
-        methods = ['SinglePrefGP_noOpt_weaksprior_M500', 'PersPrefGP_noOpt_weaksprior_M500']#, 'SVM', 'BI-LSTM']
+        methods = ['SinglePrefGP_noOpt_weaksprior_M500', 'PersPrefGP_noOpt_weaksprior_commonmean_M500']#, 'SVM', 'BI-LSTM']
         feature_types = ['debug']
         ndebug_features = 3000
         embeddings_types = ['word_mean']
