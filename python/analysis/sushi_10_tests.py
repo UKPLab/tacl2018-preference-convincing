@@ -425,7 +425,7 @@ def subsample_data():
         npairs_test = 25
         nusers_unseen = 100
     elif sushiB:
-        nusers_tr = 5000
+        nusers_tr = 100#5000
         npairs_tr = 10
         npairs_test = 1
         nusers_unseen = 0
@@ -738,7 +738,7 @@ sushiB = False
 vscales = None
 
 # Experiment name tag
-tag = '_improvedCrowdGPPL'
+tag = '_improvedCrowdGPPL2'
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
@@ -773,7 +773,19 @@ methods = [
 optimize = False
 sushiB = False
 sushiA_small = True
-run_sushi_expt(methods, 'sushi_10small' + tag)
+# run_sushi_expt(methods, 'sushi_10small' + tag)
+
+# SMALL-A with OPTIMIZATION --------------------------------------------------------------------------------------------
+
+methods = [
+           'crowd-GPPL',
+           'crowd-GPPL\\u',
+           ]
+
+optimize = False
+sushiB = False
+sushiA_small = True
+# run_sushi_expt(methods, 'sushi_10small' + tag)
 
 # Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
 
@@ -796,21 +808,9 @@ methods = [
 optimize = False
 sushiB = False
 sushiA_small = False
-run_sushi_expt(methods, 'sushi_10' + tag)
+# run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
-
-# TODO: test with a single user comparing crowd-GPPL and GPPL-per-user. Can we get to 80% with crowd GPPL?
-# Then, try with 2 users.
-#
-# the difference in performance between the per-user method (working well) and joint models (working
-# poorly) is apparently due to bad lengthscales that can be optimised with ARD.
-#
-# Is there any chance of the IDs being mixed
-# up or something? It's notable, however, that the CEE values for Khan are comparable to ours.
-# Note that in the synth tests, "multi-user-consensus", we get the opposite, i.e. f1score and acc for per-user is very
-# poor.
-#
 
 vscales = []
 
@@ -894,12 +894,12 @@ vscales = None # don't record the v factor scale factors
 
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
-           'crowd-GPPL',
+           # 'crowd-GPPL',
            # # 'crowd-GPPL\\u',
            # # 'crowd-BMF',
            # # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
            # 'GPPL-pooled',
-           # # 'GPPL-per-user',
+           'GPPL-per-user',
            # #  # 'crowd-GPPL-noConsensus',
            # #  #'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
            # #  # 'GPPL-joint',
