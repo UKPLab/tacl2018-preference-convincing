@@ -53,29 +53,29 @@ if __name__ == '__main__':
         feature_types = ['embeddings']
         embeddings_types = ['word_mean']
 
-        runner = TestRunner('personalised_P1000', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p2_P500', datasets, feature_types, embeddings_types, methods,
+                                dataset_increment)
+        runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=500)
+
+        runner = TestRunner('p2_P1000', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=1000)
 
-        runner = TestRunner('personalised_P2000', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p2_P2000', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=2000)
 
-        runner = TestRunner('personalised_P4000', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p2_P4000', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=4000)
 
-        runner = TestRunner('personalised_P6000', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p2_P7000', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
-        runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=6000)
+        runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=7000)
 
-        runner = TestRunner('personalised_P8000', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p2_P10000', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
-        runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=8000)
-
-        runner = TestRunner('personalised_P1000', datasets, feature_types, embeddings_types, methods,
-                                dataset_increment)
-        runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=1000)
+        runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=10000)
 
     # The tests below are less important and may not make it to the new paper.
     # For Plot 3: Scaling with N_tr ------------------------------------------------------------------------------------
@@ -91,27 +91,27 @@ if __name__ == '__main__':
         feature_types = ['embeddings']
         embeddings_types = ['word_mean']
 
-        runner = TestRunner('personalised_50', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p2_50', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0, subsample_tr=50)
 
-        runner = TestRunner('personalised_100', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p2_100', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0, subsample_tr=100)
 
-        runner = TestRunner('personalised_200', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p2_200', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0, subsample_tr=200)
 
-        runner = TestRunner('personalised_300', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p2_300', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0, subsample_tr=300)
 
-        runner = TestRunner('personalised_400', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p2_400', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0, subsample_tr=400)
 
-        runner = TestRunner('personalised_500', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p2_500', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0, subsample_tr=500)
 
