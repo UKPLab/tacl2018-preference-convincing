@@ -1047,7 +1047,7 @@ class CollabPrefLearningVB(object):
 
         if person_features is None:
             # Make predictions for all the users seen during training
-            y, y_var = self._predict_y_tr(return_cov)
+            y, var_y = self._predict_y_tr(return_cov)
 
             if personids is not None:
                 # get the subset of people specified by personids
@@ -1068,7 +1068,7 @@ class CollabPrefLearningVB(object):
 
                 if return_cov:
                     for f in range(self.Nfactors):
-                        var_y_sub[f, people_from_training] = y_var[f, upeople[people_from_training]]
+                        var_y_sub[f, people_from_training] = var_y[f, upeople[people_from_training]]
 
                 y = y_sub
                 var_y = var_y_sub

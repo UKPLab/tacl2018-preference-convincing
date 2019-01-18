@@ -46,15 +46,21 @@ class PersonalisedTestRunner(TestRunner):
 
         if '_M' in self.method:
             validx = self.method.find('_M') + 2
-            M = int(self.method[validx:])
+            M = int(self.method[validx:].split('_')[0])
         else:
             M = 500
 
         if M == 0:
             M = self.items_feat.shape[0]
 
+        if '_F' in self.method:
+            valididx = self.method.find('_F') + 2
+            F = int(self.method[valididx:].split('_')[0])
+        else:
+            F = nfactors
+
         self.model = CollabPrefLearningSVI(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose,
-                                           nfactors=nfactors, rate_ls=1.0 / np.mean(self.ls_initial),
+                                           nfactors=F, rate_ls=1.0 / np.mean(self.ls_initial),
                                            use_common_mean_t=common_mean, max_update_size=1000, use_lb=True,
                                            shape_s0=shape_s0, rate_s0=rate_s0, ninducing=M, delay=2)
 
