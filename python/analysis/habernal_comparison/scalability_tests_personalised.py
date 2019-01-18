@@ -19,20 +19,20 @@ if __name__ == '__main__':
     if test_to_run == 0:
         datasets = ['UKPConvArgCrowdSample_evalMACE']
         methods = [
-                   'SinglePrefGP_noOpt_weaksprior_M2',
-                   'SinglePrefGP_noOpt_weaksprior_M10',
-                   'SinglePrefGP_noOpt_weaksprior_M100',
-                   'SinglePrefGP_noOpt_weaksprior_M200',
-                   'SinglePrefGP_noOpt_weaksprior_M300',
-                   'SinglePrefGP_noOpt_weaksprior_M400',
-                   'SinglePrefGP_noOpt_weaksprior_M500',
-                   'PersPrefGP_commonmean_noOpt_weaksprior_M2',
-                   'PersPrefGP_commonmean_noOpt_weaksprior_M10',
-                   'PersPrefGP_commonmean_noOpt_weaksprior_M100',
-                   'PersPrefGP_commonmean_noOpt_weaksprior_M200',
-                   'PersPrefGP_commonmean_noOpt_weaksprior_M300',
-                   'PersPrefGP_commonmean_noOpt_weaksprior_M400',
-                   'PersPrefGP_commonmean_noOpt_weaksprior_M500',
+                   # 'SinglePrefGP_noOpt_weaksprior_M2',
+                   # 'SinglePrefGP_noOpt_weaksprior_M10',
+                   # 'SinglePrefGP_noOpt_weaksprior_M100',
+                   # 'SinglePrefGP_noOpt_weaksprior_M200',
+                   # 'SinglePrefGP_noOpt_weaksprior_M300',
+                   # 'SinglePrefGP_noOpt_weaksprior_M400',
+                   # 'SinglePrefGP_noOpt_weaksprior_M500',
+                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M2',
+                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M10',
+                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100',
+                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M200',
+                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M300',
+                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M400',
+                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M500',
                 ]
         feature_types = ['both', 'embeddings']
         embeddings_types = ['word_mean']
