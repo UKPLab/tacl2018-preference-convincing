@@ -81,7 +81,7 @@ if __name__ == '__main__':
     if not os.path.exists(figure_root_path):
         os.mkdir(figure_root_path)
 
-    nreps = 25
+    nreps = 1
     P = 400
 
     # NOISE TEST, SINGLE USER DATA, SINGLE USER MODEL ------------------------------------------------------------------
