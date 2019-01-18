@@ -7,7 +7,7 @@ if __name__ == '__main__':
     acc = 1.0
     dataset_increment = 0
 
-    max_no_folds = 10
+    max_no_folds = 3
 
     if len(sys.argv) > 1:
         test_to_run = int(sys.argv[1])
@@ -37,7 +37,7 @@ if __name__ == '__main__':
         feature_types = ['both', 'embeddings']
         embeddings_types = ['word_mean']
 
-        runner = TestRunner('personalised', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p3', datasets, feature_types, embeddings_types, methods,
                             dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0)
 

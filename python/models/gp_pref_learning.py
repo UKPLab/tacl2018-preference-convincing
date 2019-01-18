@@ -463,16 +463,10 @@ class GPPrefLearning(GPClassifierSVI):
         return self.predict(out_feats, item_0_idxs, item_1_idxs, mu0_out)
 
     def _logpt(self):
-        if self.use_svi:
-            K_star = self.K_nm
-            f_mean = 0
-        else:
-            K_star = self.obs_C
-            f_mean = self.obs_f
+        rho = pref_likelihood(self.obs_f, v=self.pref_v, u=self.pref_u)
+        rho = temper_extreme_probs(rho)
 
-        logrho, lognotrho, _ = self._post_sample(f_mean, None, expectedlog=True, K_star=K_star)
-
-        return logrho, lognotrho
+        return np.log(rho), np.log(1 - rho)
 
     def _post_sample(self, f_mean, f_var=None, expectedlog=False, K_star=None, v=None, u=None):
 

@@ -827,19 +827,13 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         return data_ll
 
     def _logpD(self):
-        # K_star, um_minus_mu0, uS, invK_mm, v, u
-        if self.person_features is None:
-            y_var = self.yS
-        else:
-            y_var = np.array([np.diag(self.yS[f]) for f in range(self.Nfactors)])
-
-        logrho, lognotrho, _ = self._post_sample(self.K_nm, self.invK_mm, self.w_u, self.wS, self.t_u, self.tS,
-                                                 self.Ky_nm, self.invKy_mm, self.y_u,
-                                                 y_var,
-                                                 self.pref_v, self.pref_u, expectedlog=True)
-
-
-        data_ll = self.data_ll(logrho, lognotrho)
+        # this is possible because the probit likelihood can be split into a discrete and a Gaussian noise component.
+        # The Gaussian noise component has log p = 0 so is ignored. The noise component ends up depending only on the
+        # mean of the latent function and works out to this -- see notes on variational probit regression here:
+        # https://rpubs.com/cakapourani/variational-bayes-bpr
+        rho = pref_likelihood(self.obs_f, v=self.pref_v, u=self.pref_u)
+        rho = temper_extreme_probs(rho)
+        data_ll = self.data_ll(np.log(rho), np.log(1 - rho))
 
         return data_ll
 
