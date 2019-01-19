@@ -101,7 +101,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         self.forgetting_rate = forgetting_rate
         self.delay = delay
 
-        self.conv_threshold_G = 1e-5
+        self.conv_threshold_G = 1e-4
 
         self.t_mu0 = mu0
 
