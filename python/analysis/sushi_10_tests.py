@@ -732,7 +732,7 @@ ninducing = 25#5000
 forgetting_rate = 0.9
 max_Kw_size = 5000
 
-nreps = 25
+nreps = 5#25
 
 sushiB = False
 vscales = None
@@ -779,10 +779,18 @@ sushiA_small = True
 
 methods = [
            'crowd-GPPL',
+          ]
+
+optimize = True
+sushiB = False
+sushiA_small = True
+run_sushi_expt(methods, 'sushi_10small' + tag)
+
+methods = [
            'crowd-GPPL\\u',
            ]
 
-optimize = False
+optimize = True
 sushiB = False
 sushiA_small = True
 run_sushi_expt(methods, 'sushi_10small' + tag)
