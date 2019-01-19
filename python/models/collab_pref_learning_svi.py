@@ -362,19 +362,17 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
     def _estimate_obs_noise(self):
 
         # to make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
-        m_prior, not_m_prior, v_prior = self._post_sample(self.K_nm, self.invK_mm,
-                                  np.zeros((self.ninducing, self.Nfactors)), self.K_mm * self.rate_sw0 / self.shape_sw0,
-                                  self.t_mu0, self.K_mm * self.rate_st0 / self.shape_st0,
-                                  self.Ky_nm, self.invKy_mm, np.zeros((self.Nfactors, self.y_ninducing)), 1,
-                                  self.pref_v, self.pref_u)
-
-
+        # m_prior, not_m_prior, v_prior = self._post_sample(self.K_nm, self.invK_mm,
+        #                           np.zeros((self.ninducing, self.Nfactors)), self.K_mm * self.rate_sw0 / self.shape_sw0,
+        #                           self.t_mu0, self.K_mm * self.rate_st0 / self.shape_st0,
+        #                           self.Ky_nm, self.invKy_mm, np.zeros((self.Nfactors, self.y_ninducing)), 1,
+        #                           self.pref_v, self.pref_u)
 
         # the below is a very rough approximation because it ignores the covariance between points,
         # hence m_prior values will be more extreme and v_prior likely larger.
         # In practice this seemed to work well in the single user model and is quick to compute.
         # Assume that each data point has the same prior...
-        # nsamples = 500#int(1e5)
+        nsamples = 500#int(1e5)
         #
         # K_nn = self.K_nm.dot(self.K_mm).dot(self.K_nm.T)
         # scale = 2 - K_nn[self.tpref_v, self.tpref_u] - K_nn[self.tpref_v, self.tpref_u]
@@ -384,21 +382,20 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         # z_samples = np.random.normal(loc=0, scale=np.sqrt(scale + 2), size=(nsamples, len(scale)))
         # phi = norm.cdf(z_samples)
         #
-        # f_samples = np.random.normal(loc=0, scale=np.sqrt(np.mean(scale + 2)),
-        #                              size=(nsamples))
-        # phi2 = pref_likelihood(f_samples, v=np.arange(nsamples / 2, dtype=int),
-        #                        u=np.arange(nsamples / 2, dtype=int) + int(nsamples/2) )
-        # m_prior2 = np.mean(phi2)
-        # v_prior2 = np.var(phi2)
-        #
+        f_samples = np.random.normal(loc=0, scale=np.sqrt(2), size=(nsamples))
+        phi2 = pref_likelihood(f_samples, v=np.arange(nsamples / 2, dtype=int),
+                               u=np.arange(nsamples / 2, dtype=int) + int(nsamples/2) )
+        m_prior = 0.5#np.mean(phi2)
+        v_prior = np.var(phi2)
+
         # m_prior = np.mean(phi, axis=0)
         # not_m_prior = 1 - m_prior
         # v_prior = np.var(phi, axis=0)
 
         # find the beta parameters
-        a_plus_b = 1.0 / (v_prior / (m_prior*not_m_prior)) - 1
+        a_plus_b = 1.0 / (v_prior / (m_prior*(1-m_prior))) - 1
         a = a_plus_b * m_prior
-        b = a_plus_b * not_m_prior
+        b = a_plus_b * 1 - m_prior
 
         nu0 = np.array([b, a])
         # Noise in observations
