@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     expt_settings['foldorderfile'] = None
 
-    expt_root_dir = 'personalised_14_different_q'#10_from_cluster'
+    expt_root_dir = 'personalised_13_bigger_t'#10_from_cluster'
 
     resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
     min_fold_no = 0
@@ -80,7 +80,7 @@ if __name__ == '__main__':
         # Personalised predictions -- multi-user methods
 
         datasets = ['UKPConvArgCrowdSample']
-        methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
+        methods = ['SinglePrefGP_noOpt_weaksprior', 'PersPrefGP_commonmean_noOpt_weaksprior']
         feature_types = ['both'] # 'both'
         embeddings_types = ['word_mean']
 
