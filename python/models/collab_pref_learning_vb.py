@@ -204,8 +204,8 @@ class CollabPrefLearningVB(object):
         self.shape_sw0 = shape_s0
         self.rate_sw0 = rate_s0
 
-        self.shape_sy0 = shape_s0
-        self.rate_sy0 = rate_s0
+        self.shape_sy0 = 1#shape_s0
+        self.rate_sy0 = 1#rate_s0
 
         self.shape_st0 = shape_s0
         self.rate_st0 = rate_s0 #* self.Nfactors # this rebalances the prior expected variance of t against the latent components
@@ -721,12 +721,12 @@ class CollabPrefLearningVB(object):
         self.y, self.y_cov = update_gaussian(self.invKy, 1, y_prec, x)
         self.y = np.reshape(self.y, (self.Nfactors, self.Npeople))  # y is Npeople x Nfactors
 
-        for f in range(self.Nfactors):
-            fidxs = np.arange(self.Npeople) + (self.Npeople * f)
-            self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.Npeople,
-                                                                   self.invKy_block, self.y[f:f + 1, :].T,
-                                                                   np.zeros((self.Npeople, 1)),
-                                                                   f_cov=self.y_cov[fidxs, :][:, fidxs])
+        # for f in range(self.Nfactors):
+        #     fidxs = np.arange(self.Npeople) + (self.Npeople * f)
+        #     self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.Npeople,
+        #                                                            self.invKy_block, self.y[f:f + 1, :].T,
+        #                                                            np.zeros((self.Npeople, 1)),
+        #                                                            f_cov=self.y_cov[fidxs, :][:, fidxs])
 
     def _logpD(self):
         fmean = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
