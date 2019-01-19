@@ -732,7 +732,7 @@ ninducing = 25#5000
 forgetting_rate = 0.9
 max_Kw_size = 5000
 
-nreps = 5#25
+nreps = 1#25
 
 sushiB = False
 vscales = None
@@ -759,21 +759,21 @@ vscales = None # don't record the v scale factors
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           # 'crowd-GPPL-noInduc',
-           # 'crowd-GPPL-noConsensus',
-           # 'crowd-GPPL\\u',
-           # 'crowd-BMF',
-           # 'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
-           # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-           # 'GPPL-pooled',
-           # # 'GPPL-joint',
-           # 'GPPL-per-user',
+           'crowd-GPPL-noInduc',
+           'crowd-GPPL-noConsensus',
+           'crowd-GPPL\\u',
+           'crowd-BMF',
+           'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
+           'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+           'GPPL-pooled',
+           # 'GPPL-joint',
+           'GPPL-per-user',
            ]
 
 optimize = False
 sushiB = False
 sushiA_small = True
-# run_sushi_expt(methods, 'sushi_10small' + tag)
+run_sushi_expt(methods, 'sushi_10small' + tag)
 
 # SMALL-A with OPTIMIZATION --------------------------------------------------------------------------------------------
 
@@ -784,7 +784,7 @@ methods = [
 optimize = True
 sushiB = False
 sushiA_small = True
-run_sushi_expt(methods, 'sushi_10small' + tag)
+# run_sushi_expt(methods, 'sushi_10small' + tag)
 
 methods = [
            'crowd-GPPL\\u',
@@ -793,7 +793,7 @@ methods = [
 optimize = True
 sushiB = False
 sushiA_small = True
-run_sushi_expt(methods, 'sushi_10small' + tag)
+# run_sushi_expt(methods, 'sushi_10small' + tag)
 
 # Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
 
@@ -802,21 +802,21 @@ vscales = None # don't record the v scale factors
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
            'crowd-GPPL',
-           # 'crowd-GPPL-noInduc',
-           # 'crowd-GPPL-noConsensus',
-           # 'crowd-GPPL\\u',
-           # 'crowd-BMF',
+           'crowd-GPPL-noInduc',
+           'crowd-GPPL-noConsensus',
+           'crowd-GPPL\\u',
+           'crowd-BMF',
            # 'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
-           # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-           # # 'GPPL-pooled',
-           # # # 'GPPL-joint',
-           # # 'GPPL-per-user',
+           'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+           'GPPL-pooled',
+           # # 'GPPL-joint',
+           'GPPL-per-user',
            ]
 
 optimize = False
 sushiB = False
 sushiA_small = False
-# run_sushi_expt(methods, 'sushi_10' + tag)
+run_sushi_expt(methods, 'sushi_10' + tag)
 
 # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
 
@@ -902,13 +902,13 @@ vscales = None # don't record the v factor scale factors
 
 # Repeat 25 times... Run each method and compute its metrics.
 methods = [
-           # 'crowd-GPPL',
-           # # 'crowd-GPPL\\u',
-           # # 'crowd-BMF',
-           # # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-           # 'GPPL-pooled',
+           'crowd-GPPL',
+           'crowd-GPPL\\u',
+           'crowd-BMF',
+           'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+           'GPPL-pooled',
            'GPPL-per-user',
-           # #  # 'crowd-GPPL-noConsensus',
+           'crowd-GPPL-noConsensus',
            # #  #'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
            # #  # 'GPPL-joint',
 ]
