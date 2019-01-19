@@ -555,7 +555,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                         for AL_round in range(results_f1.shape[3]):
                             foldrange = np.arange(min_folds, max_fold_no) # skip any rounds that did not complete when taking the mean
                             foldrange = foldrange[results_f1[row, col, foldrange, AL_round] != 0]
-                            
+
                             results_f1[row, col, -1, AL_round] = np.mean(results_f1[row, col, foldrange, AL_round], axis=0)
                             results_acc[row, col, -1, AL_round] = np.mean(results_acc[row, col, foldrange, AL_round], axis=0)
                             results_logloss[row, col, -1, AL_round] = np.mean(results_logloss[row, col, foldrange, AL_round], axis=0)
@@ -571,6 +571,13 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             tr_results_auc[row, col, -1, AL_round] = np.mean(tr_results_auc[row, col, foldrange, AL_round], axis=0)
 
                     print('Coverage = %f' % (coverage/nFolds))
+
+                    sortidxs = np.argsort(expt_settings['fold_order'])
+
+                    print(expt_settings['fold_order'][sortidxs])
+                    for idx in sortidxs:
+                        print('%f,' % results_acc[row, col, idx, 0])
+                    print('----')
 
                     if foldrange is not None:
                         print('p-values for %s, %s, %s, %s:' % (expt_settings['dataset'], expt_settings['method'],
