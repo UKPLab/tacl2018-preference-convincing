@@ -753,10 +753,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             if diff < self.conv_threshold_G:
                 break
 
-        for f in range(self.Nfactors):
-            self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.y_ninducing,
-                                                                   self.invKy_mm, self.y_u[f:f + 1, :], np.zeros((self.y_ninducing, 1)),
-                                                                   f_cov=self.yS[f])
+        # for f in range(self.Nfactors):
+        #     self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.y_ninducing,
+        #                                                            self.invKy_mm, self.y_u[f:f + 1, :], np.zeros((self.y_ninducing, 1)),
+        #                                                            f_cov=self.yS[f])
 
 
     def _update_sample_idxs(self, data_obs_idx_i=None, compute_y_var=True):
