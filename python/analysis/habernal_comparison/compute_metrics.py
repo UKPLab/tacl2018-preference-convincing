@@ -366,7 +366,8 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
 
                             turker_tr_counts = np.array([np.sum(tr_turkers == tid) for tid in test_turkers])[valididxs]
                             turker_conf_filter = 0
-                            confidxs = ((pred_prob > 0.8) | (pred_prob < 0.2)).flatten() #turker_tr_counts > turker_conf_filter
+                            conflevel = 0.5
+                            confidxs = ((pred_prob > conflevel) | (pred_prob <= (1-conflevel) )).flatten() #turker_tr_counts > turker_conf_filter
                             print('No. confident workers: %i ' % np.unique(test_turkers[valididxs][confidxs]).size)
 
                             gold_disc = gold_disc[confidxs]

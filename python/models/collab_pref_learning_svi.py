@@ -156,9 +156,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             if init_size < self.ninducing:
                 init_size = self.ninducing
             kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.ninducing)
-            kmeans.fit(self.obs_coords)
+            kmeans.fit(self.obs_coords / self.ls[None, :])
 
-            self.inducing_coords = kmeans.cluster_centers_
+            self.inducing_coords = kmeans.cluster_centers_ * self.ls[None, :]
 
         # Kernel over items (used to construct priors over w and t)
         if self.verbose:
@@ -223,7 +223,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.y_ninducing)
                 kmeans.fit(self.person_features / self.lsy[None, :])
 
-                # self.y_inducing_coords = self.person_features[np.random.choice(self.Npeople,
+                #self.y_inducing_coords = self.person_features[np.random.choice(self.Npeople,
                 #                                                                self.y_ninducing,
                 #                                                                replace=False)]
                 self.y_inducing_coords = kmeans.cluster_centers_ * self.lsy[None, :]# self.person_features[:self.y_ninducing]
@@ -317,13 +317,23 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         if K_nm is not None:
             covpair_w = K_nm.dot(invK_mm)
-            w_samples = np.array([covpair_w.dot(w_samples[f].T).T for f in range(self.Nfactors)])  # assume zero mean
+            w_samples = np.array([covpair_w.dot(w_samples[f].T).T +
+                norm.rvs(scale=np.sqrt(self.rate_sw[f] / self.shape_sw[f]*(1 - np.diag(K_nm.dot(invK_mm).dot(K_nm.T)))),
+                         size=(nsamples, K_nm.shape[0]))
+                for f in range(self.Nfactors)])
+            # assume zero mean
             if self.use_t:
-                t_samples = K_nm.dot(invK_mm).dot(t_samples.T).T  # assume zero mean
+                t_samples = K_nm.dot(invK_mm).dot(t_samples.T).T + \
+                norm.rvs(scale=np.sqrt(self.rate_st / self.shape_st*(1 - np.diag(K_nm.dot(invK_mm).dot(K_nm.T)))),
+                         size=(nsamples, K_nm.shape[0]))  # assume zero mean
 
             if self.person_features is not None:
                 covpair_y = Ky_nm.dot(invKy_mm)
-                y_samples = np.array([covpair_y.dot(y_samples[f]) for f in range(self.Nfactors)])  # assume zero mean
+                y_samples = np.array([covpair_y.dot(y_samples[f])
+                      + norm.rvs(scale=np.sqrt(self.rate_sy[f] / self.shape_sy[f]*
+                                               (1 - np.diag(Ky_nm.dot(invKy_mm).dot(Ky_nm.T)))),
+                                         size=(nsamples, Ky_nm.shape[0])).T
+                              for f in range(self.Nfactors)])  # assume zero mean
 
         if self.use_t:
             f_samples = np.array([w_samples[:, s, :].T.dot(y_samples[:, :, s]).T + t_samples[s][None, :]for s in range(nsamples)])
@@ -352,26 +362,38 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
     def _estimate_obs_noise(self):
 
         # to make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
-        # m_prior, not_m_prior, v_prior = self._post_sample(self.K_nm, self.invK_mm,
-        #                           np.zeros((self.ninducing, self.Nfactors)), self.K_mm * self.rate_sw0 / self.shape_sw0,
-        #                           self.t_mu0, self.K_mm * self.rate_st0 / self.shape_st0,
-        #                           self.Ky_nm, self.invKy_mm, np.zeros((self.Nfactors, self.y_ninducing)), 1,
-        #                           self.pref_v, self.pref_u)
+        m_prior, not_m_prior, v_prior = self._post_sample(self.K_nm, self.invK_mm,
+                                  np.zeros((self.ninducing, self.Nfactors)), self.K_mm * self.rate_sw0 / self.shape_sw0,
+                                  self.t_mu0, self.K_mm * self.rate_st0 / self.shape_st0,
+                                  self.Ky_nm, self.invKy_mm, np.zeros((self.Nfactors, self.y_ninducing)), 1,
+                                  self.pref_v, self.pref_u)
+
+
 
         # the below is a very rough approximation because it ignores the covariance between points,
         # hence m_prior values will be more extreme and v_prior likely larger.
         # In practice this seemed to work well in the single user model and is quick to compute.
         # Assume that each data point has the same prior...
-        nsamples = int(1e5)
-        f_samples = np.random.normal(loc=0, scale=np.sqrt(self.rate_st0 / self.shape_st0
-                        + np.sum(self.rate_sw * self.rate_sy / (self.shape_sw * self.shape_sy)) ),
-                        size=nsamples)
-
-        phi = pref_likelihood(f_samples, v=np.arange(nsamples / 2, dtype=int),
-                              u=np.arange(nsamples / 2, dtype=int) + int(nsamples/2) )
-        m_prior = np.mean(phi)
-        not_m_prior = 1 - m_prior
-        v_prior = np.var(phi)
+        # nsamples = 500#int(1e5)
+        #
+        # K_nn = self.K_nm.dot(self.K_mm).dot(self.K_nm.T)
+        # scale = 2 - K_nn[self.tpref_v, self.tpref_u] - K_nn[self.tpref_v, self.tpref_u]
+        # scale = scale * self.rate_st0 / self.shape_st0 + np.sum(scale[:, None] * self.rate_sw[None, :] * self.rate_sy[None, :] /
+        #                                     (self.shape_sw[None, :] * self.shape_sy[None, :]), axis=1)
+        #
+        # z_samples = np.random.normal(loc=0, scale=np.sqrt(scale + 2), size=(nsamples, len(scale)))
+        # phi = norm.cdf(z_samples)
+        #
+        # f_samples = np.random.normal(loc=0, scale=np.sqrt(np.mean(scale + 2)),
+        #                              size=(nsamples))
+        # phi2 = pref_likelihood(f_samples, v=np.arange(nsamples / 2, dtype=int),
+        #                        u=np.arange(nsamples / 2, dtype=int) + int(nsamples/2) )
+        # m_prior2 = np.mean(phi2)
+        # v_prior2 = np.var(phi2)
+        #
+        # m_prior = np.mean(phi, axis=0)
+        # not_m_prior = 1 - m_prior
+        # v_prior = np.var(phi, axis=0)
 
         # find the beta parameters
         a_plus_b = 1.0 / (v_prior / (m_prior*not_m_prior)) - 1
