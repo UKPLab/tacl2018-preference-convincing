@@ -919,7 +919,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         if self.verbose:
             logging.debug('s_w=%s' % (sw))
             logging.debug('s_y=%s' % (sy))
-            logging.debug('s_t=%.2f' % (st))
+            logging.debug('s_t=%f' % (st))
 
         if self.verbose:
             logging.debug('likelihood=%.3f, wterms=%.3f, yterms=%.3f, tterms=%.3f' % (data_ll, w_terms, y_terms, t_terms))

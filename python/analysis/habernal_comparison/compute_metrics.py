@@ -367,7 +367,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             turker_tr_counts = np.array([np.sum(tr_turkers == tid) for tid in test_turkers])[valididxs]
                             turker_conf_filter = 0
                             conflevel = 0.5
-                            confidxs = ((pred_prob > conflevel) | (pred_prob <= (1-conflevel) )).flatten() #turker_tr_counts > turker_conf_filter
+                            confidxs = np.argsort(np.abs(pred_prob.flatten() - 0.5))[int(len(pred_prob)*conflevel):].flatten() #turker_tr_counts > turker_conf_filter
                             print('No. confident workers: %i ' % np.unique(test_turkers[valididxs][confidxs]).size)
 
                             gold_disc = gold_disc[confidxs]
@@ -376,9 +376,9 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             pred_prob = pred_prob[confidxs, :]
 
                             # confidxs = (pred_prob[:, AL_round] > 0.7) | (pred_prob[:, AL_round] < 0.3)
-                            print('Confident data points: %i / %i' % (np.sum(confidxs), confidxs.shape[0]))
+                            print('Confident data points: %i / %i' % (len(confidxs), len(pred_prob.flatten())))
 
-                            coverage += np.sum(confidxs) / float(confidxs.shape[0])
+                            coverage += len(confidxs) / float(len(pred_prob.flatten()))
 
                         for AL_round, _ in enumerate(AL_rounds):
                             #print "fold %i " % f
@@ -572,12 +572,13 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
 
                     print('Coverage = %f' % (coverage/nFolds))
 
-                    sortidxs = np.argsort(expt_settings['fold_order'])
+                    if expt_settings['fold_order'] is not None:
+                        sortidxs = np.argsort(expt_settings['fold_order'])
 
-                    print(expt_settings['fold_order'][sortidxs])
-                    for idx in sortidxs:
-                        print('%f,' % results_acc[row, col, idx, 0])
-                    print('----')
+                        print(expt_settings['fold_order'][sortidxs])
+                        for idx in sortidxs:
+                            print('%f,' % results_acc[row, col, idx, 0])
+                        print('----')
 
                     if foldrange is not None:
                         print('p-values for %s, %s, %s, %s:' % (expt_settings['dataset'], expt_settings['method'],

@@ -20,7 +20,7 @@ sys.path.append("./python/analysis/habernal_comparison")
 from collab_pref_learning_svi import CollabPrefLearningSVI
 import numpy as np
 
-nfactors = 10
+nfactors = 50
 max_Kw_size = 2000
 
 class PersonalisedTestRunner(TestRunner):

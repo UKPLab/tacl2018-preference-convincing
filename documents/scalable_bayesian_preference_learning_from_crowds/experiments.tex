@@ -232,7 +232,7 @@ although the difference is small and required approximately $5$ times longer to 
  %Bi-LSTM & .73 &  .55 & .21 & .64 & .64 & .21 \\
  GPPL medi. & .77 & .50 & .40 & .71 & .56 & .32 \\
  GPPL opt. & .76 & .51 & .47 & .70 & .58 &  .30 \\
- crowdGPPL medi. & .78 & .48 & .51 & .70 & .59 & .30 \\
+ crowdGPPL medi. & .78 & .48 & .51 & .71 & .59 & .32 \\
  crowdGPPL opt. & .78 & .48 & .50 & .69 & .59 & .29
  %PL+ SVR & .75 & .55 & \textbf{.40} & .75 & & .40 \\
  %GPC & .73 & .53 & - & .68 & .59 & - \\
@@ -291,10 +291,10 @@ with $N_{tr}$ or $P$.
 % SCALABILITY ----------------------------------------------------------
 \begin{figure}
 \subfloat[300 GloVe features]{
- %   \includegraphics[width=.35\columnwidth]{../../results/scalability/num_features}
+ \includegraphics[width=.5\columnwidth]{../../results/scalability/num_inducing_300_features}
 }
 \subfloat[33210 ling+GloVe features]{
-%    \includegraphics[width=.35\columnwidth]{../../results/scalability/num_arguments}
+ \includegraphics[width=.5\columnwidth]{../../results/scalability/num_inducing_32310_features}
 }
 \caption{
 Effect of varying $M$ on accuracy and runtime (training+prediction) for GPPL and crowdGPPL on UKPConvArgCrowdSample. Means over 32 runs.
@@ -304,11 +304,11 @@ Effect of varying $M$ on accuracy and runtime (training+prediction) for GPPL and
 \begin{figure}
 \subfloat[Varying number of items in training set.]{
 \label{fig:Ntr}
-%    \includegraphics[width=.35\columnwidth]{../../results/scalability/num_inducing_32310_features}
+%    \includegraphics[width=.35\columnwidth]{../../results/scalability/num_arguments}
 }
 \subfloat[Varying no. pairwise training labels. ]{
 \label{fig:Npairs}
- %   \includegraphics[width=.35\columnwidth]{../../results/scalability/num_inducing_300_features}
+ %   \includegraphics[width=.35\columnwidth]{../../results/scalability/num_features}
 }
 \caption{
     Runtimes for training+prediction on UKPConvArgCrowdSample with varying subsample size. 300 GloVe features. Means over 32 runs. 
