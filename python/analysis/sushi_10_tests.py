@@ -726,7 +726,7 @@ if debug_small:
 max_facs = 20
 shape_s0 = 1.0
 rate_s0 = 100.0  #0.1
-max_update_size = 2000
+max_update_size = 200
 delay = 5
 ninducing = 25#5000
 forgetting_rate = 0.9

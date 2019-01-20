@@ -26,23 +26,21 @@ if __name__ == '__main__':
     else:
         test_to_run = 0
 
-
-    if 'expt_settings' not in globals():
-        expt_settings = {}
-        expt_settings['dataset'] = None
-        expt_settings['folds'] = None 
-    expt_settings['foldorderfile'] = None    
+    expt_settings = {}
+    expt_settings['folds'] = None
+    expt_settings['foldorderfile'] = None
     data_root_dir = "./data/"
     resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
 
+    expt_settings['dataset'] = 'UKPConvArgCrowdSample_evalMACE'
+
+    expt_settings['acc'] = 1.0
+    expt_settings['di'] = 0.0
+    max_no_folds = 32
+    expt_settings['embeddings_type'] = 'word_mean'
+
     if test_to_run == 0:
         foldername = 'p3'
-
-        expt_settings['dataset'] = 'UKPConvArgCrowdSample_evalMACE'
-
-        expt_settings['acc'] = 1.0
-        expt_settings['di'] = 0.0
-        max_no_folds = 32
 
         # Create a plot for the runtime/accuracy against M + include other methods with ling + Glove features
         methods =  ['SinglePrefGP_noOpt_weaksprior_M2',
@@ -67,7 +65,6 @@ if __name__ == '__main__':
 
         # Load the results for accuracy and runtime vs. no. inducing points with both feature sets
         expt_settings['feature_type'] = 'both'
-        expt_settings['embeddings_type'] = 'word_mean'
 
         docids = None
 
@@ -266,18 +263,18 @@ if __name__ == '__main__':
         plt.tight_layout()
         plt.savefig(figure_save_path + '/num_inducing_300_features.pdf')
 
-    # Third plot: training set size N versus runtime (with Glove features) ---------------------------------------------
-    if test_to_run == 3:
+    # Third plot: number of pairs, P, versus runtime (with Glove features) ---------------------------------------------
+    if test_to_run == 2:
         expt_settings['feature_type'] = 'embeddings'
-        methods = ['SinglePrefGP_noOpt_weaksprior_M100', 'SinglePrefGP_noOpt_weaksprior_M0',
-                   'PersPrefGP_commonmean_noOpt_weaksprior_M100', 'PersPrefGP_commonmean_noOpt_weaksprior_M1052',
-                   'SVM', 'BI-LSTM']
+        methods = ['SinglePrefGP_noOpt_weaksprior_M100', #'SinglePrefGP_noOpt_weaksprior_M0',
+                   'PersPrefGP_noOpt_weaksprior_commonmean_M100_F5'] #'PersPrefGP_commonmean_noOpt_weaksprior_M1052',
+                   #'SVM', 'BI-LSTM']
 
-        Nvals = [50, 100, 200, 300, 400, 500]
+        Nvals = [500, 1000, 2000, 4000, 7000, 10000]
         runtimes_N = np.zeros((len(methods), len(Nvals)))
 
         for n, N in enumerate(Nvals):
-            foldername = 'personalised_%i/' % N
+            foldername = 'p2_P%i/' % N
 
             for m, expt_settings['method'] in enumerate(methods):
                 print("Processing method %s" % expt_settings['method'])
@@ -328,27 +325,103 @@ if __name__ == '__main__':
 
                 runtimes_N[m, n] = np.mean(runtimes_m)
 
-        fig3, ax3 = plt.subplots(figsize=(5, 4))
+        fig3, ax3 = plt.subplots(figsize=(4, 2.5))
 
         ax3.plot(Nvals, runtimes_N[0], label='GPPL M=100', marker='o', color='blue', linewidth=2, linestyle='-.',
-                 linemarkersize=8)
-        ax3.plot(Nvals, runtimes_N[1], label='GPPL no SVI', marker='x', color='blue', linewidth=2, markersize=8)
-        ax3.plot(Nvals, runtimes_N[0], label='Crowd-GPPL M=100', marker='<', color='green', linestyle='-.',
+                 markersize=8)
+        ax3.plot(Nvals, runtimes_N[1], label='Crowd-GPPL M=100', marker='<', color='green', linestyle='-.',
                  linewidth=2, markersize=8)
-        ax3.plot(Nvals, runtimes_N[1], label='Crowd-GPPL no SVI', marker='+', color='green', linewidth=2, markersize=8)
-        ax3.plot(Nvals, runtimes_N[2], label='SVM', marker='>', color='black', linewidth=2, markersize=8)
-        ax3.plot(Nvals, runtimes_N[3], label='BiLSTM', marker='^', color='red', linewidth=2, markersize=8)
 
-        ax3.set_xlabel('N_tr (no. arguments in training set)')
+        ax3.set_xlabel('No. pairwise training labels')
         ax3.set_ylabel('Runtime (s)')
         ax3.yaxis.grid('on')
-        ax3.set_ylim(-5, 205)
-        plt.legend(loc='center')
+        #ax3.set_ylim(-5, 205)
+        plt.legend(loc='best')
 
         plt.tight_layout()
-        plt.savefig(figure_save_path + '/num_arguments.pdf')
+        plt.savefig(figure_save_path + '/num_pairs.pdf')
 
-    # Fourth plot: no. features versus runtime -------------------------------------------------------------------------
+        # Fourth plot: training set size N versus runtime (with Glove features) ---------------------------------------------
+        if test_to_run == 3:
+            expt_settings['feature_type'] = 'embeddings'
+            methods = ['SinglePrefGP_noOpt_weaksprior_M100',  # 'SinglePrefGP_noOpt_weaksprior_M0',
+                       'PersPrefGP_noOpt_weaksprior_commonmean_M100_F5']  # 'PersPrefGP_commonmean_noOpt_weaksprior_M1052',
+            # 'SVM', 'BI-LSTM']
+
+            Nvals = [50, 100, 200, 300, 400, 500]
+            runtimes_N = np.zeros((len(methods), len(Nvals)))
+
+            for n, N in enumerate(Nvals):
+                foldername = 'p2_%i/' % N
+
+                for m, expt_settings['method'] in enumerate(methods):
+                    print("Processing method %s" % expt_settings['method'])
+
+                    data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir,
+                                                                              resultsfile_template, expt_settings,
+                                                                              max_no_folds=max_no_folds,
+                                                                              foldername=foldername)
+
+                    runtimes_m = np.zeros(nFolds)
+
+                    for f in range(nFolds):
+                        print("Processing fold %i" % f)
+                        fold = expt_settings['fold_order'][f]
+                        if fold[-2] == "'" and fold[0] == "'":
+                            fold = fold[1:-2]
+                        elif fold[-1] == "'" and fold[0] == "'":
+                            fold = fold[1:-1]
+                        expt_settings['fold_order'][f] = fold
+
+                        # look for new-style data in separate files for each fold. Prefer new-style if both are found.
+                        foldfile = resultsdir + '/fold%i.pkl' % f
+                        if os.path.isfile(foldfile):
+                            with open(foldfile, 'rb') as fh:
+                                data_f = pickle.load(fh, encoding='latin1')
+                        else:  # convert the old stuff to new stuff
+                            if data is None:
+                                min_folds = f + 1
+                                print('Skipping fold with no data %i' % f)
+                                print("Skipping results for %s, %s, %s, %s" % (expt_settings['method'],
+                                                                               expt_settings['dataset'],
+                                                                               expt_settings['feature_type'],
+                                                                               expt_settings['embeddings_type']))
+                                print("Skipped filename was: %s, old-style results file would be %s" % (foldfile,
+                                                                                                        resultsfile))
+                                continue
+
+                            if not os.path.isdir(resultsdir):
+                                os.mkdir(resultsdir)
+                            data_f = []
+                            for thing in data:
+                                if f in thing:
+                                    data_f.append(thing[f])
+                                else:
+                                    data_f.append(thing)
+                            with open(foldfile, 'wb') as fh:
+                                pickle.dump(data_f, fh)
+
+                        runtimes_m[f] = data_f[6]
+
+                    runtimes_N[m, n] = np.mean(runtimes_m)
+
+            fig3, ax3 = plt.subplots(figsize=(4, 2.5))
+
+            ax3.plot(Nvals, runtimes_N[0], label='GPPL M=100', marker='o', color='blue', linewidth=2, linestyle='-.',
+                     markersize=8)
+            ax3.plot(Nvals, runtimes_N[1], label='Crowd-GPPL M=100', marker='<', color='green', linestyle='-.',
+                     linewidth=2, markersize=8)
+
+            ax3.set_xlabel('No. arguments in training set')
+            ax3.set_ylabel('Runtime (s)')
+            ax3.yaxis.grid('on')
+            # ax3.set_ylim(-5, 205)
+            plt.legend(loc='best')
+
+            plt.tight_layout()
+            plt.savefig(figure_save_path + '/num_arguments.pdf')
+
+    # Fifth plot: no. features versus runtime -------------------------------------------------------------------------
     if test_to_run == 4:
         expt_settings['feature_type'] = 'debug'
         for n, dim in enumerate(['30feats', '', '3000feats']):
