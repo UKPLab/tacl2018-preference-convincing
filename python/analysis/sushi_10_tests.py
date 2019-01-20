@@ -430,9 +430,9 @@ def subsample_data():
         npairs_test = 1
         nusers_unseen = 0
     else:
-        nusers_tr = 100#1000
-        npairs_tr = 20#15
-        npairs_test = 25#5
+        nusers_tr = 1000
+        npairs_tr = 15
+        npairs_test = 5
         nusers_unseen = 100
 
     # select 1000 random users # select the first N users
@@ -529,7 +529,7 @@ def run_sushi_expt(methods, expt_name):
     tau_unseen_all = []
 
     # for repeatability
-    np.random.seed(30)
+    np.random.seed(31)
 
     results_path = './results/' + expt_name
     if not os.path.exists(results_path):
@@ -726,8 +726,8 @@ if debug_small:
 max_facs = 20
 shape_s0 = 1.0
 rate_s0 = 100.0  #0.1
-max_update_size = 200
-delay = 1
+max_update_size = 2000
+delay = 5
 ninducing = 25#5000
 forgetting_rate = 0.9
 max_Kw_size = 5000
