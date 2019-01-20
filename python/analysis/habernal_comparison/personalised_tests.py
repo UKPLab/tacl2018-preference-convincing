@@ -227,16 +227,16 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'personalised_16'
+    test_dir = 'personalised_17'
 
     dataset_increment = 0     
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
-    feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
+    feature_types = ['embeddings'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
     embeddings_types = ['word_mean']
 
     datasets = ['UKPConvArgCrowdSample']
-    methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
+    methods = ['PersPrefGP_commonmean_noOpt_weakersprior']
 
     if 'runner' not in globals():
         runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
@@ -312,5 +312,15 @@ if __name__ == '__main__':
     elif test_to_run == 5:
         methods = ['SinglePrefGP_weaksprior']
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+        runner.methods = methods
+        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+
+    elif test_to_run == 6:
+        methods = [
+               # 'SVM', 'GP+SVM', 'Bi-LSTM' # forget these methods as the other paper showed they were worse already, and the SVM
+               # does not scale either -- it's worse than the GP.
+               'SinglePrefGP_noOpt_weaksprior' # 'SinglePrefGP_noOpt_weaksprior',
+            ]
+        runner.datasets = ['UKPConvArgCrowdSample']
         runner.methods = methods
         runner.run_test_set(min_no_folds=0, max_no_folds=32)

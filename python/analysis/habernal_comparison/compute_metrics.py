@@ -365,15 +365,20 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             tr_turkers = np.array(tr_turkers)
 
                             turker_tr_counts = np.array([np.sum(tr_turkers == tid) for tid in test_turkers])[valididxs]
-                            turker_conf_filter = 0
-                            conflevel = 0.5
-                            confidxs = np.argsort(np.abs(pred_prob.flatten() - 0.5))[int(len(pred_prob)*conflevel):].flatten() #turker_tr_counts > turker_conf_filter
+                            turker_conf_filter = 40
+                            conflevel = 0
+                            #confidxs = np.argsort(np.abs(pred_prob.flatten() - 0.5))[int(len(pred_prob)*conflevel):].flatten() #
+                            confidxs = np.argwhere(turker_tr_counts > turker_conf_filter).flatten()
                             print('No. confident workers: %i ' % np.unique(test_turkers[valididxs][confidxs]).size)
 
                             gold_disc = gold_disc[confidxs]
                             pred_disc = pred_disc[confidxs, :]
                             gold_prob = gold_prob[confidxs]
                             pred_prob = pred_prob[confidxs, :]
+                            #pred_prob = 0.5 + np.abs(pred_prob - 0.5)**0.4 * (pred_prob > 0.5) - np.abs(pred_prob - 0.5)**0.4 * (pred_prob < 0.5)
+
+                            print(pred_prob.flatten()[:5])
+
 
                             # confidxs = (pred_prob[:, AL_round] > 0.7) | (pred_prob[:, AL_round] < 0.3)
                             print('Confident data points: %i / %i' % (len(confidxs), len(pred_prob.flatten())))
