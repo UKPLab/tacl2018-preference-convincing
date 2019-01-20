@@ -738,7 +738,7 @@ sushiB = False
 vscales = None
 
 # Experiment name tag
-tag = '_improvedCrowdGPPL3'
+tag = '_improvedCrowdGPPL4'
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
