@@ -83,9 +83,8 @@ Noise in the observations is explained by a Gaussian-distributed noise term, $\d
 Integrating out the unknown values of $\delta_a$ and $\delta_b$ gives:
 \begin{align}
 p( y(a \succ b) | f(\bs x_a), f(\bs x_b),  ) 
-& = \int\int p( y(a \succ b) | f(\bs x_a), f(\bs x_b), , \delta_{a}, \delta_{b} ) & \nonumber\\
-& \mathcal{N}(\delta_{a}; 0, 0.5)\mathcal{N}(\delta_{b}; 0, 0.5) d\delta_{a} d\delta_{b} &\nonumber\\
-& = \Phi\left( z \right), 
+= \Phi\left( z \right) = & \int\int p( y(a \succ b) | f(\bs x_a), f(\bs x_b), , \delta_{a}, \delta_{b} ) \nonumber\\
+& \mathcal{N}(\delta_{a}; 0, 0.5)\mathcal{N}(\delta_{b}; 0, 0.5) d\delta_{a} d\delta_{b}, 
 \label{eq:plphi}
 \end{align}
 where $z = f(\bs x_a) - f(\bs x_b)$,
@@ -116,10 +115,12 @@ and $s$ is an inverse scale drawn from a gamma prior,
 $s \sim \mathcal{G}(\alpha_0, \beta_0)$, with shape $\alpha_0$ and scale $\beta_0$.
 The value of $s$ determines the variance of $f$ and therefore its magnitude, which affects the level of certainty
 in the pairwise label likelihood (Equation \ref{eq:plphi}).
-The kernel function takes item features as inputs and determines the covariance between values of $f$ for different items. Typically, we choose a kernel function that produces higher covariance between items with similar feature values,
-such as the \emph{squared exponential} or \emph{Mat\'ern} functions.
-The choice of kernel function is a model selection problem as it controls the shape and smoothness of the function 
-across the feature space. The Mat\'ern and squared exponential make minimal assumptions and so are effective in a wide range of tasks (see ~\citet{rasmussen_gaussian_2006} for more). 
+The kernel function takes item features as inputs and determines the covariance between values of $f$ for different items. 
+The choice of kernel function and its hyperparameters controls the shape and smoothness of the function 
+across the feature space and is often treated as a model selection problem.
+Typical choices of kernel function include the \emph{squared exponential} or \emph{Mat\'ern} functions~\citep{rasmussen_gaussian_2006},
+which produce higher covariance between items with similar feature values.
+These kernel functions make minimal assumptions and so are effective in a wide range of tasks. 
 % Covariance of different items with same feature: worth mentioning here? We need to multiply the kernel by a small
 % amount < 1 to ensure covariance is not 1 and the values can differ.
 Given a set of $P$ pairwise labels, %for a single user, 
@@ -130,13 +131,16 @@ we can write the joint distribution over all variables as follows:
 \begin{flalign}
 p\left( \bs{y}, \bs f, s | k_{\theta}, \alpha_0, \beta_0 \right) 
 =  \prod_{p=1}^P p( y_p | \bs f ) 
-\mathcal{N}(\bs f; \bs 0, \bs K_{\theta}/s) \mathcal{G}(s; \alpha_0, \beta_0) \nonumber \\
-=  \prod_{p=1}^P \Phi\left( z_p \right) 
-\mathcal{N}(\bs f; \bs 0, \bs K_{\theta}/s) \mathcal{G}(s; \alpha_0, \beta_0), &
+\mathcal{N}(\bs f; \bs 0, \bs K_{\theta}/s) \mathcal{G}(s; \alpha_0, \beta_0) %\nonumber \\
+%=  \prod_{p=1}^P \Phi\left( z_p \right) 
+%\mathcal{N}(\bs f; \bs 0, \bs K_{\theta}/s) \mathcal{G}(s; \alpha_0, \beta_0), &
 \label{eq:joint_single}
 \end{flalign}
-where $\bs f = \{f(\bs {x}_1),...,f(\bs {x}_N)\}$
-are the utilities of the $N$ items referred to by $\bs y$.%, and $\theta$, $\alpha_0$ and $\beta_0$ are hyper-parameters.
+where 
+$\bs f = \{f(\bs {x}_1),...,f(\bs {x}_N)\}$
+are the utilities of the $N$ items referred to by $\bs y$,
+and $p( y_p | \bs f ) = \Phi\left( z_p \right)$ is the pairwise likelihood (Equation \ref{eq:plphi}). 
+%, and $\theta$, $\alpha_0$ and $\beta_0$ are hyper-parameters.
 We henceforth refer to this single-user model as \emph{GPPL}.
 
 \subsection{Crowd Preference Learning} \label{sec:crowd_model}
@@ -216,9 +220,10 @@ p\left( \bs{y}, \bs V, \bs W, \bs t, s_1, ..., s_C, \sigma_t | k_{\theta}, \alph
  && \nonumber \\ 
 \mathcal{G}({\sigma_t}; \alpha_0, \beta_0)\prod_{c=1}^C \left\{
 \mathcal{N}(\bs v_c; \bs 0, \bs K_{v,\theta} /s_c) 
-\mathcal{N}(\bs w_c; \bs 0, \bs K_{w,\theta}) \mathcal{G}(s_c; \alpha_0, \beta_0) \right\}, && \\
-\textrm{where } z_p = \bs v_{.,a_p}^T \bs{w}_{.,u_p} + t_{a_p} - \bs v_{.,b_p}^T \bs{w}_{.,u_p} - t_{b_p} , && 
+\mathcal{N}(\bs w_c; \bs 0, \bs K_{w,\theta}) \mathcal{G}(s_c; \alpha_0, \beta_0) \right\}, 
 \label{eq:joint_crowd}
 \end{flalign}
-and $\sigma_t$ is the inverse scale of $t$.
-The index $p$ now refers to a tuple, $\{u_p, a_p, b_p \}$, that identifies the user and a pair of items.
+where 
+$z_p = \bs v_{.,a_p}^T \bs{w}_{.,u_p} + t_{a_p} - \bs v_{.,b_p}^T \bs{w}_{.,u_p} - t_{b_p}$,
+ $\sigma_t$ is the inverse scale of $t$,
+and index $p$ refers to a tuple, $\{u_p, a_p, b_p \}$, which identifies the user and a pair of items.

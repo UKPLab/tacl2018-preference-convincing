@@ -2,8 +2,8 @@
 \RequirePackage{fix-cm}
 %
 %\documentclass{svjour3}                     % onecolumn (standard format)
-%\documentclass[smallcondensed]{svjour3}     % onecolumn (ditto)
-\documentclass[smallextended,natbib]{svjour3}       % onecolumn (second format)
+\documentclass[smallcondensed,natbib]{svjour3}     % onecolumn (ditto)
+%\documentclass[smallextended,natbib]{svjour3}       % onecolumn (second format)
 %\documentclass[twocolumn]{svjour3}          % twocolumn
 %
 \smartqed  % flush right qed marks, e.g. at end of proof
@@ -89,9 +89,9 @@ demonstrate the method's scalability and
 an inferred gold standard.
 On a recommendation task, accuracy is competitive with previous methods
  while the model is able to scale to far larger datasets.
-We also show how to  %that robustness to %able to learn the effective number of components required to model the data and
+%We also show how to  %that robustness to %able to learn the effective number of components required to model the data and
 %choosing more latent components than required,
-apply gradient-based optimization to length-scale hyper-parameters to improve performance.
+%apply gradient-based optimization to length-scale hyper-parameters to improve performance.
 We make our software and documentation publicly available for use in future 
 work\footnote{\url{https://github.com/UKPLab/tacl2018-preference-convincing/tree/crowdGPPL}}.
 %We show how to make collaborative preference learning work at scale and how it can be used to learn
@@ -122,7 +122,7 @@ work\footnote{\url{https://github.com/UKPLab/tacl2018-preference-convincing/tree
 \input{related_work}
 \input{model}
 \input{inference}
-\input{hyperparameters}
+%\input{hyperparameters}
 \input{experiments}
 \input{discussion}
 

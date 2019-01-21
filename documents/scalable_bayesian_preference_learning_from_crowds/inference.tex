@@ -67,11 +67,10 @@ we moment match the diagonal entries of $\bs Q$ to the expected variance of a be
 \begin{flalign}
 Q_{p,p} & = \mathbb{E}_{f}[\Phi(z_p)(1 - \Phi(z_p))] 
 %= \mathbb{E}_{\bs f}[\Phi(z_p)] - \mathbb{E}_{\bs f}[\Phi(z_p)]^2 - \mathbb{V}_{\bs f}[\Phi(z_p)], 
- \nonumber \\
-& \approx \frac{ (y_p + \gamma_0)(1-y_p + \lambda_0) }{ (\gamma_0 + \lambda_0 + 1)} - \frac{ (y_p + \gamma_0)(1-y_p + \lambda_0) }{ (\gamma_0 + \lambda_0 + 1)^2(\gamma_0 + \lambda_0 + 2)}, &
+ \approx \frac{ (y_p + \gamma)(1-y_p + \lambda) }{ (\gamma + \lambda + 1)} - \frac{ (y_p + \gamma)(1-y_p + \lambda) }{ (\gamma + \lambda + 1)^2(\gamma + \lambda + 2)}, &
 \end{flalign}
-where $\gamma_0$ and $\lambda_0$ are parameters of a beta distribution with the same variance as the prior 
-$p(\Phi(z_p) | \bs K_{\theta}, \alpha_0, \beta_0)$ estimated using numerical integration.
+where $\gamma$ and $\lambda$ are parameters of a beta distribution with the same variance as the prior,
+$p(\Phi(z_p) | \bs K_{\theta}, \alpha_0, \beta_0)$, and are estimated using numerical integration.
 %Setting $\bs Q$ in this way matches the moments of the true likelihood, $\Phi(z_p)$,
 %to those of the Gaussian approximation.
 
@@ -143,7 +142,7 @@ p(\bs f, \bs f_m, s | \bs y, \bs x, \bs x_m, k_{\theta}, \alpha_0, \beta_0) &\ap
 We marginalize $\bs f$ to obtain the factor for $\bs f_m$:
 \begin{flalign}
 \log q(\bs f_m) &= \log \mathcal{N}\left(\bs y; \tilde{\Phi}(\bs z), \bs Q\right)]
-+ \log\mathcal{N}\left(\bs f_m; \bs 0, \bs K_{mm}/\mathbb{E}\left[s\right]\right)  + \textrm{const}, & , \nonumber \\
++ \log\mathcal{N}\left(\bs f_m; \bs 0, \bs K_{mm}/\mathbb{E}\left[s\right]\right)  + \textrm{const}, & \nonumber \\
  & = \log \mathcal{N}(\bs f_m; \hat{\bs f}_m, \bs S ),
  \label{eq:fhat_m}
 \end{flalign}
@@ -195,13 +194,13 @@ by maximizing a lower bound, $\mathcal{L}$, on the log marginal likelihood:
 %(see also Equation \ref{eq:full_L_singleuser} in the Appendix):%, $\log p(\bs y | \bs K, \alpha_0, \beta_0)$ :
 \begin{flalign}
 \log p(\bs y | \bs K, \alpha_0, \beta_0) = \textrm{KL}(q(\bs f, \bs f_m, s)  || p(\bs f, \bs f_m, s | \bs y, \bs K, \alpha_0, \beta_0)) 
-+ \mathcal{L}. &&\label{eq:lowerbound}
++ \mathcal{L} &&\label{eq:lowerbound}
 \\
 %\end{flalign}
 %Taking expectations with respect to the variational $q$ distributions, $\mathcal{L}$ is:
 %\begin{flalign}
 \mathcal{L} = \mathbb{E}_{q(\bs f, \bs f_m, s)}[\log p(\bs y | \bs f) + \log p(\bs f_m, s | \bs K, 
-\alpha_0, \beta_0) -\log q(\bs f_m) - \log & q(s) ] & \nonumber
+\alpha_0, \beta_0) -\log q(\bs f_m) - \log & q(s) ]. && \nonumber
 \end{flalign}
 %         invK_mm_expecFF = self.invK_mm.dot(self.uS + self.um_minus_mu0.dot(self.um_minus_mu0.T))
 %         self.rate_s = self.rate_s0 + 0.5 * np.trace(invK_mm_expecFF)
@@ -233,8 +232,9 @@ natural gradient~\citep{hensman2015scalable}:
 \bs S^{-1}_i  & = (1 - \rho_i) \bs S^{-1}_{i-1} + \rho_i\left( \mathbb{E}[s]\bs K_{mm}^{-1} + w_i\bs A_i^T \bs G^T_{i} \bs Q^{-1}_i \bs G_{i} \bs A_{i} \right)& 
 \label{eq:S_stochastic} \\
 \hat{\bs f}_{m,i}  & = \bs S_i \left( (1 - \rho_i) \bs S^{-1}_{i-1} \hat{\bs f}_{m,i-1}  + 
-\right. \nonumber \\
-& \left.\hspace{1.5cm} \rho_i w_i  
+%\right. \nonumber \\
+%& \left.\hspace{1.5cm} 
+\rho_i w_i  
 \bs A_{i}^{T} \bs G_{i}^T \bs Q_i^{-1} \left( \bs y_i  - \Phi(\mathbb{E}[\bs z_i]) + \bs G_{i} \bs A_i \hat{\bs f}_{m,i} \right) \right) & 
 \label{eq:fhat_stochastic}
 \end{flalign}
@@ -268,6 +268,7 @@ $\mathbb{E}[s] = \frac{\alpha}{\beta}$.
 \nl Use converged values of $\mathbb{E}[\bs f]$and $\hat{\bs f}_m$ to estimate
 posterior over $\bs f^*$ at test points \;
 \KwOut{ Posterior mean of the test values, $\mathbb{E}[\bs f^*]$ and covariance, $\bs C^*$ }
+\vspace{0.5cm}
 \caption{The SVI algorithm for preference learning with a single user.}
 \label{al:singleuser}
 \end{algorithm}
@@ -277,8 +278,8 @@ $\bs G$.
 The inferred distribution over the inducing points can be used 
 for predicting the values of test items, $f(\bs x^*)$:
 \begin{flalign}
-\bs f^* &= \bs K_{*m} \bs K_{mm}^{-1} \hat{\bs f}_m, \\
-\bs C^* &= \bs K_{**} + \bs K_{*m} \bs K_{mm}^{-1} (\bs S - \bs K_{mm} / \mathbb{E}[s] ) \bs K_{*m}^T \bs K_{mm}^{-1},
+\bs f^* \! \! &= \bs K_{*m} \bs K_{mm}^{-1} \hat{\bs f}_m, &
+\bs C^* \! \! = \bs K_{**} + \bs K_{*m} \bs K_{mm}^{-1} (\bs S - \bs K_{mm} / \mathbb{E}[s] ) \bs K_{*m}^T \bs K_{mm}^{-1},
 \end{flalign}
 where $\bs C^*$ is the posterior covariance of the test items, $\bs K_{**}$ is their prior covariance, and
 $\bs K_{*m}$ is the covariance between test and inducing items.
@@ -296,7 +297,7 @@ To begin with, we extend the variational posterior in Equation \ref{eq:svi_appro
 to approximate the crowd model defined in Equation \ref{eq:joint_crowd}:
 \begin{flalign}
 & p( \bs V, \bs V_m, \bs W, \bs W_m, \bs t, \bs t_m, s_1, ..., s_C, \sigma | \bs y, \bs x, \bs x_m, \bs u, \bs u_m, k, \alpha_0, \beta_0 ) \approx & \nonumber \\
-& \hspace{3.2cm} q(\bs V)q(\bs W)q(\bs t)q(\bs V_m)q(\bs W_m)q(\bs t_m)\prod_{c=1}^{C}q(s_c)q(\sigma), &
+& \hspace{3.7cm} q(\bs V)q(\bs W)q(\bs t)q(\bs V_m)q(\bs W_m)q(\bs t_m)\prod_{c=1}^{C}q(s_c)q(\sigma), &
 \end{flalign}
 where $\bs u_m$ are the feature vectors of inducing users. By updating 
 each of the $q$ factors in turn,
@@ -304,14 +305,14 @@ the SVI procedure optimizes the lower bound on the marginal likelihood
 (see also Equation \ref{eq:lowerbound_crowd_full} in the Appendix):
 \begin{flalign}
 & \mathcal{L}_{cr} = \label{eq:lowerbound_crowd}
-\mathbb{E}_{q%(\bs t, \bs t_m, \bs V, \bs V_m, \bs W, \bs W_m, s_1,...,s_c,\sigma)
-} \left[ 
+\mathbb{E}_{q}%(\bs t, \bs t_m, \bs V, \bs V_m, \bs W, \bs W_m, s_1,...,s_c,\sigma)
+\left[ 
 \log p(\bs y | \bs F) +
-\sum_{c=1}^C \left\{ \log p(\bs v_{m,c}, s_c | \bs K_{mm}, \alpha_0, \beta_0) - \log q(\bs v_{m,c}) \right. \right. & \nonumber\\
-& \left. \left. + \log p(\bs w_{m,c} | \bs K_{w,mm} )
- - \log q(\bs w_{m,c} ) \right\}
+\sum_{c=1}^C \big\{ \log p(\bs v_{m,c}, s_c | \bs K_{mm}, \alpha_0, \beta_0) - \log q(\bs v_{m,c}) \right. & \\
+& \left. + \log p(\bs w_{m,c} | \bs K_{w,mm} )
+  - \log q(\bs w_{m,c} ) \big\}
 + \log p(\bs t_m, \sigma | \bs K_{mm}, \alpha_0, \beta_0)
-- \log q(\bs t_m)
+- \log q(\bs t_m)\nonumber
 \right]. &
 \end{flalign}
 The algorithm follows the same pattern as Algorithm \ref{al:singleuser}, computing means and covariances
@@ -334,50 +335,23 @@ The variational factor for the inducing item factors is:
  + \sum_{c=1}^C \log\mathcal{N}\left(\bs v_{m,c}; \bs 0, \frac{\bs K_{v,mm}}{\mathbb{E}[s_c]}\right) 
 + \textrm{const} & \nonumber \\
 % are the dimensions collapsed to a single MVN?
-= \;& \sum_{c=1}^C \log \mathcal{N}(\bs v_{m,c}; \hat{\bs v}_{m,c}, \bs S_{v,c}). &
+= \;& \sum_{c=1}^C \log \mathcal{N}(\bs v_{m,c}; \hat{\bs v}_{m,c}, \bs S_{v,c}), &
 \end{flalign}
-The precision estimate for $\bs S^{-1}_{v,c}$ at iteration $i$ is given by:
-\begin{flalign}
-\bs S_{v,c,i}^{-1} & = (1-\rho_i)\bs S^{-1}_{v,c,i-1} + \rho_i\left( \bs K^{-1}_{v,mm}\mathbb{E}[s_c] 
-\right. \nonumber & \\ 
-& \left. \hspace{1.5cm} + w_i \bs A_{v,i}^T \bs G_i^T \textrm{diag}(\hat{\bs w}_{c,\bs u}^2 + \bs\Sigma_{c,\bs u,\bs u})\bs Q_i^{-1} \bs G_i \bs A_{v,i} \right), &
-\end{flalign}
-where $\bs A_{i} = \bs K_{im} \bs K_{mm}^{-1}$, 
-$\hat{\bs w}_{c}$ and $\bs\Sigma_{c}$ are the variational mean and covariance of 
-the $c$th latent user component (defined below in Equations \ref{eq:what} and \ref{eq:Sigma}),
-and ${\bs u} = \{ u_p \forall p \in P_i \}$ is the vector of user indexes in the sample of observations.
-%The term $\textrm{diag}(\hat{\bs w}_{c,\bs j}^2 + \bs\Sigma_{c,\bs j})$ 
-%scales the diagonal observation precision, $\bs Q^{-1}$, by the latent user factors.
-We use $\bs S_{v,c}^{-1}$ to compute the means for each row of $\bs V_m$:
-\begin{flalign}
-\hat{\bs v}_{m,c,i} & = \bs S_{v,c,i}\left( 
-(1-\rho_i)\bs S^{-1}_{v,c,i-1}\hat{\bs v}_{m,c,i-1} + \rho_i w_i \bigg(
-\bs S_{v,c,i} \bs A_{i}^T \bs G_i^T \textrm{diag}(\hat{\bs w}_{c,\bs u}) \bs Q_i^{-1} \right. & \nonumber \\
-&  \Big(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \sum_{j=1}^U \bs H^{(i)}_{j}(\hat{\bs v}_c^T \hat{\bs w}_{c,j})\Big) \bigg) \bigg), &
-\end{flalign}
-where $\bs H^{(i)}_{j} \in |P_i| \times N$ contains partial derivatives of the pairwise likelihood
-with respect to $F_{n,j} = \hat{v}_{c,n} \hat{w}_{c,j}$, 
-with elements given by:
-\begin{flalign}
-H^{(i)}_{j,p,n} & = \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p])) (2y_p - 1)( [n = a_p] - [n = b_p]) [j = u_p]. &
-\end{flalign}
-%This is needed to replace $\bs G$ in the single-user model, since the vector of utilities,
-%$\bs f$, has been replaced by the matrix $\bs F$, where each column of $\bs F$ corresponds to a single user.
-
+where the posterior mean $\hat{\bs v}_{m,c}$ and covariance $\bs S_{v,c}$ are computed using 
+update equations of the same form as those of the single user GPPL in 
+Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}.
+For reasons of space, we provide the complete equations for $\hat{\bs v}_{m,c}$ and $\bs S_{v,c}$ in 
+Appendix \ref{sec:post_params}, Equations \ref{eq:Sv} and \ref{eq:hatv}.
 The variational component for the inducing points of the common item mean follows a similar pattern:
 \begin{flalign}
 \log q(\bs t_m) = \;\;& \mathbb{E}[\log \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right)] 
 + \mathbb{E}[\log\mathcal{N}(\bs t_m; \bs 0, \bs K_{t,mm}/s)] 
 + \textrm{const} & \nonumber \\
-= \;\;& \log \mathcal{N}\left( \bs t; \hat{\bs t}, \bs S_t \right) & \\
-\bs S_{t,i}^{-1} = \;\;& (1-\rho_i)\bs S^{-1}_{t,i-1} + \rho_i\bs K^{-1}_{t,mm}/\mathbb{E}[\sigma] 
-+ \rho_i w_i \bs A_{i}^T \bs G_i^T \bs Q_i^{-1} \bs G_i \bs A_{i} & \\
-\hat{\bs t}_{m,i} = \;\;& \bs S_{t,i}\left(
-(1 - \rho_i) \bs S_{t,i-1}^{-1}\hat{\bs t}_{m,i-1}  \right. & \nonumber \\
-& \left. + \rho_i w_i \bs A_{i}^T \bs G_i^T \bs Q_i^{-1}
-\left(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \bs G_i \bs A_{i} \hat{\bs t}_{m,i} \right) \right). &
+= \;\;& \log \mathcal{N}\left( \bs t; \hat{\bs t}, \bs S_t \right), &
 \end{flalign}
-
+where again, the posterior mean $\hat{\bs t}$ and covariance $\bs S_{t}$ use similar updates to Equation
+Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}, and their full definitions
+are given in Appendix \ref{sec:post_params}, Equations \ref{eq:St} and \ref{eq:hatt}.
 Finally, %require a different linearization matrix, $\bs J \in P \times U$, containing partial derivatives 
 %of the pairwise likelihood with respect to $\hat{w}_c$. Its elements are given by:
 %\begin{flalign}
@@ -389,26 +363,11 @@ the variational distribution for the inducing users factors is:% then as follows
 \log q(\bs W_m) = \;\;& \mathbb{E}\left[\log \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right)\right] 
 + \sum_{c=1}^C \mathbb{E}[\log\mathcal{N}(\bs w_c; \bs 0, \bs K_{w,mm})]
 + \textrm{const} & \nonumber \\
-= \;\;& \sum_{c=1}^C \log \mathcal{N}\left( \bs w_c; \hat{\bs w}_c, \bs \Sigma \right). & 
+= \;\;& \sum_{c=1}^C \log \mathcal{N}\left( \bs w_c; \hat{\bs w}_c, \bs \Sigma_c \right), & 
 \end{flalign}
-The SVI updates for the parameters are:
-\begin{flalign}
-& \bs \Sigma^{-1}_{c,i} = (1-\rho_i)\bs \Sigma^{-1}_{c,i-1}
-+ \rho_i\bs K^{-1}_{w,mm}
-+ \rho_i w_i \bs A_{w,i}^T \bigg( \sum_{p \in P_i} \bs H^{(i)T}_{.,p} \textrm{diag}\left(\hat{\bs v}_{c,\bs a}^2 + \right. &\nonumber \\
-& \left. \bs S_{c,\bs a, \bs a} + 
-\hat{\bs v}_{c,\bs b}^2 + \bs S_{c,\bs b, \bs b}  
-- 2\hat{\bs v}_{c,\bs a}\hat{\bs v}_{c,\bs b} - 2\bs S_{c,\bs a, \bs b} \right) \bs Q_i^{-1} \sum_{p \in P_i} \bs H^{(i)}_{.,p} \bigg) \bs A_{w,i} & \label{eq:Sigma} \\
-%%%%
-& \hat{\bs w}_{m,c,i} = \bs \Sigma_{c,i} \bigg( (1 - \rho_i)\bs \Sigma_{c,i-1}\hat{\bs w}_{m,c,i-1} + 
- \rho_i w_i \bs A_{w,i}^T \sum_{p \in P_i} \bs H^{(i)}_{.,p}
-\left( \textrm{diag}(\hat{\bs v}_{c,\bs a}) \right. & \nonumber  \\
-& \left. - \textrm{diag}(\hat{\bs v}_{c,\bs b}) \right) \bs Q_i^{-1} 
-\bigg(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \sum_{j=1}^U \bs H^{(i)}_u (\hat{\bs v}_c^T \hat{\bs w}_{c,j})\bigg) \bigg), & \label{eq:what}
-\end{flalign}
-where the subscripts $\bs a = \{ a_p \forall p \in P_i \}$
-and  $\bs b = \{b_p \forall p \in P_i \}$ are lists of indices to the first and 
-second items in the pairs, respectively, and $\bs A_{w,i} = \bs K_{w,im} \bs K_{w,mm}^{-1}$.
+where $\hat{\bs w}_c$ and $\bs \Sigma_{c}$ also follow the pattern of Equation
+Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}, and their full definitions
+are given in Appendix \ref{sec:post_params}, Equations \ref{eq:St} and \ref{eq:hatt}.
 
 % The equations for the means and covariances 
 % can be adapted for stochastic updating by applying weighted sums over
@@ -428,20 +387,15 @@ second items in the pairs, respectively, and $\bs A_{w,i} = \bs K_{w,im} \bs K_{
 % \end{flalign}
 
 Predictions for crowdGPPL can be made by computing the posterior mean utilities, $\bs F^*$, 
-and the covariance $\bs \Lambda_u^*$ for all users $u$ in the test set:
-\begin{flalign}
-&\bs F^* = \hat{\bs t}^* + \sum_{c=1}^C \hat{\bs v}_{c}^{*T} \hat{\bs w}_{c}^*, \hspace{1cm} \bs \Lambda_u^* = \bs C_{t}^* + \sum_{c=1}^C \omega_{c,u}^* \bs C_{v,c}^* + \hat{w}_{c,u}^2  \bs C_{v,c}^*  +\omega_{c,u}^* \hat{\bs v}_{c}\hat{\bs v}_{c}^T, &\\
-&\hat{\bs t}^* = \bs K_{*m} \bs K^{-1}_{mm} \hat{\bs t}_{m}, \hspace{0.7cm}
-\hat{\bs v}_{c}^* = \bs K_{*m} \bs K^{-1}_{mm} \hat{\bs v}_{m,c}, \hspace{0.7cm}
-\hat{\bs w}_{c}^* = \bs K_{w,*m} \bs K^{-1}_{w,mm} \hat{\bs w}_{m,c}, & \\
-&\bs C_{t}^* \!= \frac{\bs K_{**}}{\mathbb{E}[\sigma]} + \bs A_{*m}(\bs S_{t} \!-\! \bs K_{mm}) \bs A_{*m}^T, \hspace{0.5cm}
-\bs C_{v,c}^* \!= \frac{\bs K_{**}}{\mathbb{E}[s_c]} + \bs A_{*m}(\bs S_{v,c} \!\!-\! \bs K_{mm}) \bs A_{*m}^T  & \\
-&\omega_{c,u}^* = 1 + \bs A_{w,um}(\bs \Sigma_{w,c} - \bs K_{w,mm}) \bs A_{w,um}^T &
+and the covariance $\bs \Lambda_u^*$ for each users $u$ in the test set:
+\begin{flalign} \label{eq:predict_crowd}
+&\bs F^* = \hat{\bs t}^* + \sum_{c=1}^C \hat{\bs v}_{c}^{*T} \hat{\bs w}_{c}^*, \hspace{1cm} \bs \Lambda_u^* = \bs C_{t}^* + \sum_{c=1}^C \omega_{c,u}^* \bs C_{v,c}^* + \hat{w}_{c,u}^2  \bs C_{v,c}^*  +\omega_{c,u}^* \hat{\bs v}_{c}\hat{\bs v}_{c}^T, &
 \end{flalign}
-where  $\bs A_{*m}=\bs K_{*m}\bs K_{mm}^{-1}$,
-$\bs A_{w,um}=\bs K_{w,um}\bs K_{w,mm}^{-1}$ and $\bs K_{w,um}$ is the covariance between user $u$ and the inducing 
-users.
-The mean and covariance estimates can be inserted into Equations \ref{eq:predict_z} and \ref{eq:plphi} to predict pairwise labels.
+where $\hat{\bs t}^*$, $\hat{\bs v}_{c}^*$ and $\hat{\bs w}_{c}^*$ are posterior means of the predictions,
+$\bs C_{t}^*$ and $\bs C_{v,c}^*$ are posterior item covariances of the predictions,
+and $\omega_{c,u}^*$ is the posterior variance for the user components for the predicted users. These
+terms are defined in Appendix \ref{sec:predictions}, Equations \ref{eq:tstar} to \ref{eq:omegastar}.
+The mean $\bs F^*$ and covariances $\Lambda^*_u$ can be inserted into Equations \ref{eq:predict_z} and \ref{eq:plphi} to predict pairwise labels.
 In practice, the full covariance terms are needed only for Equations \ref{eq:predict_z}, so need only be computed
 between items for which we wish to predict pairwise labels. %Hence, the covariance for a large test set need not be computed at once.
 

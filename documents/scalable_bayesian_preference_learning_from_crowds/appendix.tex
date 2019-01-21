@@ -51,7 +51,7 @@ Finally, we use a Taylor-series linearisation to make the remaining expectation 
 \end{flalign}
 Now, we can introduce the sparse approximation to obtain the bound in Equation \ref{eq:lowerbound}:
 \begin{flalign}
-\mathcal{L} =\; & \mathbb{E}_{q(\bs f, \bs f_m, s)}[\log p(\bs y | \bs f) + \log p(\bs f_m, s | \bs K, 
+\mathcal{L} \approx \mathcal{L}_3 =\; & \mathbb{E}_{q(\bs f, \bs f_m, s)}[\log p(\bs y | \bs f) + \log p(\bs f_m, s | \bs K, 
 \alpha_0, \beta_0) -\log q(\bs f_m) - \log q(s) ] & \nonumber \\ 
 =\; & \sum_{p=1}^P \mathbb{E}_{q(\bs f)}[\log p(y_p | f_{a_p}, f_{b_p})] - \frac{1}{2} \bigg\{ \log|\bs K_{mm}| - \mathbb{E}[\log s] - \log|\bs S| - M
 \nonumber &\\
@@ -61,19 +61,18 @@ Now, we can introduce the sparse approximation to obtain the bound in Equation \
 \label{eq:full_L_singleuser}
 \end{flalign}
 where the terms relating to $\mathbb{E}[p(\bs f | \bs f_m) - q(\bs f)]$ cancel.
-Without stochastic sampling, the variational factor $\log q(\bs f_m)$ is given by:
-\begin{flalign}
-\log q(\bs f_m) &= \log \mathcal{N}\left(\bs y; \tilde{\Phi}(\bs z), \bs Q\right)]
-+ \log\mathcal{N}\left(\bs f_m; \bs 0, \bs K_{mm}/\mathbb{E}\left[s\right]\right)  + \textrm{const}, \nonumber \\
-%&= \log \int \mathcal{N}(\bs y - 0.5; \bs G \bs f, \bs Q) 
-%\mathcal{N}(\bs f; \bs A \bs f_m, \bs K - \bs A \bs K_{nm}^T) & \nonumber\\
-%& \hspace{3.2cm} \mathcal{N}(\bs f_m; \bs 0, \bs K_{mm}\mathbb{E}[1/s]) \textrm{d} \bs f + \textrm{const} & \nonumber\\
- & = \log \mathcal{N}(\bs f_m; \hat{\bs f}_m, \bs S ), \\
-\bs S^{-1} &= \bs K^{-1}_{mm}/\mathbb{E}[s] + \bs A^T \bs G^T \bs Q^{-1} \bs G \bs A, \label{eq:S}\\
-\hat{\bs f}_m &= \bs S \bs A^T \bs G^T \bs Q^{-1} (\bs y - \Phi(\mathbb{E}[\bs z]) + \bs G \mathbb{E}[\bs f] ). %\label{eq:fhat_m}
-\end{flalign}
-
-For the crowdGPPL model, the variational lower bound is:
+% Without stochastic sampling, the variational factor $\log q(\bs f_m)$ is given by:
+% \begin{flalign}
+% \log q(\bs f_m) &= \log \mathcal{N}\left(\bs y; \tilde{\Phi}(\bs z), \bs Q\right)]
+% + \log\mathcal{N}\left(\bs f_m; \bs 0, \bs K_{mm}/\mathbb{E}\left[s\right]\right)  + \textrm{const}, \nonumber \\
+% %&= \log \int \mathcal{N}(\bs y - 0.5; \bs G \bs f, \bs Q) 
+% %\mathcal{N}(\bs f; \bs A \bs f_m, \bs K - \bs A \bs K_{nm}^T) & \nonumber\\
+% %& \hspace{3.2cm} \mathcal{N}(\bs f_m; \bs 0, \bs K_{mm}\mathbb{E}[1/s]) \textrm{d} \bs f + \textrm{const} & \nonumber\\
+%  & = \log \mathcal{N}(\bs f_m; \hat{\bs f}_m, \bs S ), \\
+% \bs S^{-1} &= \bs K^{-1}_{mm}/\mathbb{E}[s] + \bs A^T \bs G^T \bs Q^{-1} \bs G \bs A, \label{eq:S}\\
+% \hat{\bs f}_m &= \bs S \bs A^T \bs G^T \bs Q^{-1} (\bs y - \Phi(\mathbb{E}[\bs z]) + \bs G \mathbb{E}[\bs f] ). %\label{eq:fhat_m}
+% \end{flalign}
+For crowdGPPL, our approximate variational lower bound is:
 \begin{flalign}
 \mathcal{L}_{cr} & = \label{eq:lowerbound_crowd_full}
 \sum_{p=1}^P \mathbb{E}_{q(\bs f)}[\log p(y_p | \bs v_{a_p}^T \! \bs w_{a_p} \!+ t_{a_p}\!, \bs v_{b_p}^T\! \bs w_{b_p} \!+ t_{b_p})] 
@@ -109,146 +108,226 @@ For the crowdGPPL model, the variational lower bound is:
 , &
 \end{flalign}
 
-\section{Converged Lower Bound Derivatives}
-\label{sec:gradients}
-% The gradient of $\mathcal{L}_3$ with respect to the lengthscale, $l_d$, is as follows:
+\section{Posterior Parameters for Variational Factors in CrowdGPPL}
+\label{sec:post_params}
+
+For the latent item components, the posterior precision estimate for $\bs S^{-1}_{v,c}$ at iteration $i$ is given by:
+\begin{flalign}
+\bs S_{v,c,i}^{-1} & = (1-\rho_i)\bs S^{-1}_{v,c,i-1} + \rho_i\left( \bs K^{-1}_{v,mm}\mathbb{E}[s_c] 
+\right. \nonumber & \\ 
+& \left. \hspace{1.5cm} + w_i \bs A_{v,i}^T \bs G_i^T \textrm{diag}(\hat{\bs w}_{c,\bs u}^2 + \bs\Sigma_{c,\bs u,\bs u})\bs Q_i^{-1} \bs G_i \bs A_{v,i} \right), &
+\label{eq:Sv}
+\end{flalign}
+where $\bs A_{i} = \bs K_{im} \bs K_{mm}^{-1}$, 
+$\hat{\bs w}_{c}$ and $\bs\Sigma_{c}$ are the variational mean and covariance of 
+the $c$th latent user component (defined below in Equations \ref{eq:what} and \ref{eq:Sigma}),
+and ${\bs u} = \{ u_p \forall p \in P_i \}$ is the vector of user indexes in the sample of observations.
+%The term $\textrm{diag}(\hat{\bs w}_{c,\bs j}^2 + \bs\Sigma_{c,\bs j})$ 
+%scales the diagonal observation precision, $\bs Q^{-1}$, by the latent user factors.
+We use $\bs S_{v,c}^{-1}$ to compute the means for each row of $\bs V_m$:
+\begin{flalign}
+\hat{\bs v}_{m,c,i} & = \bs S_{v,c,i}\left( 
+(1-\rho_i)\bs S^{-1}_{v,c,i-1}\hat{\bs v}_{m,c,i-1} + \rho_i w_i \bigg(
+\bs S_{v,c,i} \bs A_{i}^T \bs G_i^T \textrm{diag}(\hat{\bs w}_{c,\bs u}) \bs Q_i^{-1} \right. & \nonumber \\
+&  \Big(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \sum_{j=1}^U \bs H^{(i)}_{j}(\hat{\bs v}_c^T \hat{\bs w}_{c,j})\Big) \bigg) \bigg), &
+\label{eq:hatv}
+\end{flalign}
+where $\bs H^{(i)}_{j} \in |P_i| \times N$ contains partial derivatives of the pairwise likelihood
+with respect to $F_{n,j} = \hat{v}_{c,n} \hat{w}_{c,j}$, 
+with elements given by:
+\begin{flalign}
+H^{(i)}_{j,p,n} & = \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p])) (2y_p - 1)( [n = a_p] - [n = b_p]) [j = u_p]. &
+\end{flalign}
+
+For the consensus, the precision and mean are updated according to the following:
+%This is needed to replace $\bs G$ in the single-user model, since the vector of utilities,
+%$\bs f$, has been replaced by the matrix $\bs F$, where each column of $\bs F$ corresponds to a single user.
+\begin{flalign}
+\bs S_{t,i}^{-1} = \;\;& (1-\rho_i)\bs S^{-1}_{t,i-1} + \rho_i\bs K^{-1}_{t,mm}/\mathbb{E}[\sigma] 
++ \rho_i w_i \bs A_{i}^T \bs G_i^T \bs Q_i^{-1} \bs G_i \bs A_{i} & \label{eq:St}\\
+\hat{\bs t}_{m,i} = \;\;& \bs S_{t,i}\left(
+(1 - \rho_i) \bs S_{t,i-1}^{-1}\hat{\bs t}_{m,i-1}  \right. & \nonumber \\
+& \left. + \rho_i w_i \bs A_{i}^T \bs G_i^T \bs Q_i^{-1}
+\left(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \bs G_i \bs A_{i} \hat{\bs t}_{m,i} \right) \right). & \label{eq:hatt}
+\end{flalign}
+
+For the latent user components, the SVI updates for the parameters are:
+\begin{flalign}
+& \bs \Sigma^{-1}_{c,i} = (1-\rho_i)\bs \Sigma^{-1}_{c,i-1}
++ \rho_i\bs K^{-1}_{w,mm}
++ \rho_i w_i \bs A_{w,i}^T \bigg( \sum_{p \in P_i} \bs H^{(i)T}_{.,p} \textrm{diag}\left(\hat{\bs v}_{c,\bs a}^2 + \right. &\nonumber \\
+& \left. \bs S_{c,\bs a, \bs a} + 
+\hat{\bs v}_{c,\bs b}^2 + \bs S_{c,\bs b, \bs b}  
+- 2\hat{\bs v}_{c,\bs a}\hat{\bs v}_{c,\bs b} - 2\bs S_{c,\bs a, \bs b} \right) \bs Q_i^{-1} \sum_{p \in P_i} \bs H^{(i)}_{.,p} \bigg) \bs A_{w,i} & \label{eq:Sigma} \\
+%%%%
+& \hat{\bs w}_{m,c,i} = \bs \Sigma_{c,i} \bigg( (1 - \rho_i)\bs \Sigma_{c,i-1}\hat{\bs w}_{m,c,i-1} + 
+ \rho_i w_i \bs A_{w,i}^T \sum_{p \in P_i} \bs H^{(i)}_{.,p}
+\left( \textrm{diag}(\hat{\bs v}_{c,\bs a}) \right. & \nonumber  \\
+& \left. - \textrm{diag}(\hat{\bs v}_{c,\bs b}) \right) \bs Q_i^{-1} 
+\bigg(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \sum_{j=1}^U \bs H^{(i)}_u (\hat{\bs v}_c^T \hat{\bs w}_{c,j})\bigg) \bigg), & \label{eq:what}
+\end{flalign}
+where the subscripts $\bs a = \{ a_p \forall p \in P_i \}$
+and  $\bs b = \{b_p \forall p \in P_i \}$ are lists of indices to the first and 
+second items in the pairs, respectively, and $\bs A_{w,i} = \bs K_{w,im} \bs K_{w,mm}^{-1}$.
+
+
+\section{Predictions with CrowdGPPL}
+\label{sec:predictions}
+
+The means, item covariances and user variance required for predictions with crowdGPPL (Equation \ref{eq:predict_crowd})
+ are defined as follows:
+\begin{flalign}
+&\hat{\bs t}^* = \bs K_{*m} \bs K^{-1}_{mm} \hat{\bs t}_{m}, \hspace{0.7cm} 
+\hat{\bs v}_{c}^* = \bs K_{*m} \bs K^{-1}_{mm} \hat{\bs v}_{m,c}, \hspace{0.7cm}
+\hat{\bs w}_{c}^* = \bs K_{w,*m} \bs K^{-1}_{w,mm} \hat{\bs w}_{m,c}, & \label{eq:tstar}\\
+&\bs C_{t}^* \!= \frac{\bs K_{**}}{\mathbb{E}[\sigma]} + \bs A_{*m}(\bs S_{t} \!-\! \bs K_{mm}) \bs A_{*m}^T, \hspace{0.5cm}
+\bs C_{v,c}^* \!= \frac{\bs K_{**}}{\mathbb{E}[s_c]} + \bs A_{*m}(\bs S_{v,c} \!\!-\! \bs K_{mm}) \bs A_{*m}^T  & \\
+&\omega_{c,u}^* = 1 + \bs A_{w,um}(\bs \Sigma_{w,c} - \bs K_{w,mm}) \bs A_{w,um}^T & \label{eq:omegastar}
+\end{flalign}
+where  $\bs A_{*m}=\bs K_{*m}\bs K_{mm}^{-1}$,
+$\bs A_{w,um}=\bs K_{w,um}\bs K_{w,mm}^{-1}$ and $\bs K_{w,um}$ is the covariance between user $u$ and the inducing 
+users.
+
+% \section{Converged Lower Bound Derivatives}
+% \label{sec:gradients}
+% % The gradient of $\mathcal{L}_3$ with respect to the lengthscale, $l_d$, is as follows:
+% % \begin{flalign}
+% % \nabla_{l_d} \mathcal{L}_3 & =  - \frac{1}{2} \left\lbrace 
+% % \frac{\partial \log|\bs K/\hat{s}|}{\partial l_d} - \frac{\partial \log|\bs C|}{\partial l_d} 
+% % \nonumber \right.
+% %  \left.  - (\hat{\bs f}-\bs\mu)\hat{s} \frac{\partial K^{-1}}{\partial l_d} (\hat{\bs f}-\bs\mu)
+% % \right\rbrace \nonumber & \\
+% % %& = \frac{1}{2} \hat{s} \left\lbrace \frac{\partial \log |\bs C \bs K^{-1}|}{\partial l_d}
+% % %\right. \\
+% % %& \left.  - (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
+% % %\right\rbrace  \nonumber \\
+% % & =  -\frac{1}{2} \left\lbrace  \frac{\partial \log | \frac{1}{\hat{s}}\bs K \bs C^{-1} |}{\partial l_d} \right. 
+% % \left.  + \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
+% % \right\rbrace   &
+% % %& =  - \frac{1}{2} \left\lbrace \frac{\partial \log|\bs K/s| }{\partial l_d} + \frac{\partial \log |\bs K^{-1}s + \bs G\bs Q^{-1}\bs G^T|}{\partial l_d}
+% % %\right. \\
+% % %& \left.  - \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
+% % %\right\rbrace  \nonumber\\
+% % %& =  -\frac{1}{2} \left\lbrace \frac{\partial \log |\bs I + \bs K/s\bs G\bs Q^{-1}\bs G^T|}{\partial l_d}
+% % %\right. \\
+% % %& \left.  - \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
+% % %\right\rbrace  \nonumber
+% % \end{flalign}
+% % Using the fact that $\log | A | = \mathrm{tr}(\log A)$, $\bs C = \left[\bs K^{-1} - \bs G \bs Q^{-1} \bs G^T \right]^{-1}$, and $\bs C = \bs C^{T}$, we obtain:
+% % \begin{flalign}
+% % \nabla_{l_d} \mathcal{L}_3 & =  -\frac{1}{2} \mathrm{tr}\left(\left(\hat{s}\bs K^{-1}\bs C\right) \bs G\bs Q^{-1}\bs G^T \frac{\partial \bs K}{\partial l_d}
+% % \right)
+% %  + \frac{1}{2}\hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)  \nonumber\\ 
+% % & =  -\frac{1}{2} \mathrm{tr}\left(\left(\hat{s}\bs K^{-1}\bs C\right)
+% % \left(\bs C^{-1} - \bs K^{-1}/\hat{s}\right) \frac{\partial \bs K}{\partial l_d}
+% % \right) 
+% % + \frac{1}{2}\hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu).  \label{eq:gradient_ls}
+% % \end{flalign}
+% % Assuming a product over kernels for each feature, $\bs K=\prod_{d=1}^{D} \bs K_d$, we can compute the kernel gradient 
+% % as follows for the Mat\'ern $\frac{3}{2}$ kernel function:
+% % \begin{flalign}
+% % \frac{\partial \bs K}{\partial l_d} & = \prod_{d'=1,d'\neq d}^D K_{d} \frac{\partial K_{l_d}}{\partial l_d} \\
+% % \frac{\partial K_{l_d}}{\partial l_d} & = \frac{3\bs |\bs x_d - \bs x_d'|^2}{l_d^3} \exp\left( - \frac{\sqrt{3} \bs |\bs x_d - \bs x_d'|}{l_d} \right)
+% % \label{eq:kernel_der}
+% % \end{flalign}
+% % where $|\bs x_d - \bs x_d'|$ is the distance between input points.
+%
+% When $\mathcal{L}$ has converged to a maximum, 
+% $\nabla_{l_{\! d}} \mathcal{L}$ simplifies to:
 % \begin{flalign}
-% \nabla_{l_d} \mathcal{L}_3 & =  - \frac{1}{2} \left\lbrace 
-% \frac{\partial \log|\bs K/\hat{s}|}{\partial l_d} - \frac{\partial \log|\bs C|}{\partial l_d} 
-% \nonumber \right.
-%  \left.  - (\hat{\bs f}-\bs\mu)\hat{s} \frac{\partial K^{-1}}{\partial l_d} (\hat{\bs f}-\bs\mu)
-% \right\rbrace \nonumber & \\
-% %& = \frac{1}{2} \hat{s} \left\lbrace \frac{\partial \log |\bs C \bs K^{-1}|}{\partial l_d}
-% %\right. \\
-% %& \left.  - (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
-% %\right\rbrace  \nonumber \\
-% & =  -\frac{1}{2} \left\lbrace  \frac{\partial \log | \frac{1}{\hat{s}}\bs K \bs C^{-1} |}{\partial l_d} \right. 
-% \left.  + \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
-% \right\rbrace   &
-% %& =  - \frac{1}{2} \left\lbrace \frac{\partial \log|\bs K/s| }{\partial l_d} + \frac{\partial \log |\bs K^{-1}s + \bs G\bs Q^{-1}\bs G^T|}{\partial l_d}
-% %\right. \\
-% %& \left.  - \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
-% %\right\rbrace  \nonumber\\
-% %& =  -\frac{1}{2} \left\lbrace \frac{\partial \log |\bs I + \bs K/s\bs G\bs Q^{-1}\bs G^T|}{\partial l_d}
-% %\right. \\
-% %& \left.  - \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
-% %\right\rbrace  \nonumber
+%  &\nabla_{\!l_{\! d}} \mathcal{L} \longrightarrow 
+% \frac{1}{2} \mathrm{tr}\!\left(\! \left(
+% \mathbb{E}[s](\hat{\bs f}_{\! m} \hat{\bs f}_{\! m}^T + \bs S^T)\bs K_{\! mm}^{-1} \! -  \bs I \! \right)
+%  \!\frac{\partial \bs K_{\! mm}}{\partial l_d} \bs K_{\! mm}^{-1} \right) \!. &
+% \label{eq:gradient_single}
 % \end{flalign}
-% Using the fact that $\log | A | = \mathrm{tr}(\log A)$, $\bs C = \left[\bs K^{-1} - \bs G \bs Q^{-1} \bs G^T \right]^{-1}$, and $\bs C = \bs C^{T}$, we obtain:
+% For crowdGPPL, assuming that $\bs V$ and $\bs t$ have the same kernel function,
+% the gradient
+% %The gradients with respect to the length-scale, $l_{w,d}$,
+% for the $d$th item feature is given by:
 % \begin{flalign}
-% \nabla_{l_d} \mathcal{L}_3 & =  -\frac{1}{2} \mathrm{tr}\left(\left(\hat{s}\bs K^{-1}\bs C\right) \bs G\bs Q^{-1}\bs G^T \frac{\partial \bs K}{\partial l_d}
-% \right)
-%  + \frac{1}{2}\hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)  \nonumber\\ 
-% & =  -\frac{1}{2} \mathrm{tr}\left(\left(\hat{s}\bs K^{-1}\bs C\right)
-% \left(\bs C^{-1} - \bs K^{-1}/\hat{s}\right) \frac{\partial \bs K}{\partial l_d}
-% \right) 
-% + \frac{1}{2}\hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu).  \label{eq:gradient_ls}
+%  &\nabla_{l_{ v,d}} \mathcal{L}_{cr} \longrightarrow
+% %  \sum_{c=1}^{C} \bigg\{ \mathbb{E}[s_c] 
+% %  \hat{\bs v}_{ m,c}^T \bs K_{ mm,v}^{-1} 
+% % \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \bs K_{ mm,v}^{-1} \hat{\bs v}_{ m,c} 
+% %  + & \nonumber \\
+% %  & \mathrm{tr}\left( \left(
+% % \mathbb{E}[s_c]\bs S_{v,c}^T\bs K_{ mm,v}^{-1}  - \frac{1}{2} \bs I  \right)
+% %  \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \bs K_{ mm,v}^{-1} \right) \bigg\}
+% %  + & \nonumber \\
+% %  & \mathbb{E}[\sigma] 
+% %  \hat{\bs t}_{ m}^T \bs K_{ mm,t}^{-1} 
+% % \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \hat{\bs t}_{ m} 
+% %  + \mathrm{tr}\left( \left(
+% % \mathbb{E}[\sigma]\bs S_{t}^T\bs K_{ mm,t}^{-1}  - \frac{1}{2} \bs I  \right)
+% %  \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \right)
+% %  & \nonumber \\
+% % & = 
+% \frac{1}{2} \mathrm{tr}\left( \left( \sum_{c=1}^{C} \mathbb{E}[s_c] \left\{ \hat{\bs v}_{m,c} 
+%  \hat{\bs v}_{m,c}^T + \bs S_{v,c}^T \right\}
+%  \bs K_{ mm,v}^{-1}  - C\bs I  \right)
+%  \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \right.
+%  & \nonumber \\
+%  & \left.  \bs K_{ mm,v}^{-1} \right) + \frac{1}{2}\mathrm{tr}\left( \left(
+% \mathbb{E}[\sigma](\hat{\bs t}_{ m}\hat{\bs t}_{ m}^T + \bs S_{t}^T) \bs K_{ mm,t}^{-1}  
+% - \bs I  \right)
+%  \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \right)
+% .&
+% \label{eq:gradient_crowd_items}
 % \end{flalign}
-% Assuming a product over kernels for each feature, $\bs K=\prod_{d=1}^{D} \bs K_d$, we can compute the kernel gradient 
-% as follows for the Mat\'ern $\frac{3}{2}$ kernel function:
+% % If different kernels are used for different components, then the equation above can be modified to
+% % simply sum over terms relating to the components with a shared kernel function. 
+% The gradients for the $d$th user feature length-scale, $l_{w,d}$, follows the same form:
 % \begin{flalign}
-% \frac{\partial \bs K}{\partial l_d} & = \prod_{d'=1,d'\neq d}^D K_{d} \frac{\partial K_{l_d}}{\partial l_d} \\
-% \frac{\partial K_{l_d}}{\partial l_d} & = \frac{3\bs |\bs x_d - \bs x_d'|^2}{l_d^3} \exp\left( - \frac{\sqrt{3} \bs |\bs x_d - \bs x_d'|}{l_d} \right)
+%  &\nabla_{l_{w,d}} \mathcal{L}_{cr} \!\!\!\longrightarrow \frac{1}{2} 
+%  \!\mathrm{tr}\left( \!\left( \sum_{c=1}^{C} \left\{ \hat{\bs w}_{m,c} \hat{\bs w}_{m,c}^T \!+
+% \bs \Sigma_c^T\right\} \!\bs K_{mm,w}^{-1} \! - C\bs I  \right)
+%  \frac{\partial \bs K_{mm,w}}{\partial l_{w,d}} \bs K_{mm,w}^{-1} \!\right) \!. &
+% \label{eq:gradient_crowd_users}
+% \end{flalign}
+%
+% % When combining kernel functions for each features using a product,
+% % as in Equation \ref{eq:kernel}, the partial derivative of the covariance matrix $\bs K_{mm}$ with respect to 
+% % $l_d$ is given by:
+% % \begin{flalign}
+% % \frac{\partial \bs K_{mm}}{\partial l_d} 
+% % & = \frac{\bs K_{mm}}{\bs K_{d}}
+% % \frac{ \bs K_{d}(|\bs x_{mm,d}, \bs x'_{mm,d})}{\partial l_d} \nonumber ,\\
+% % \end{flalign}
+% The partial derivative of the covariance matrix $\bs K_{mm}$ with respect to 
+% $l_d$ depends on the choice of kernel function. 
+% The Mat\`ern $\frac{3}{2}$ function is a widely-applicable, differentiable kernel function 
+% that has been shown empirically to outperform other well-established kernels 
+% such as the squared exponential, and makes weaker assumptions of smoothness of 
+% the latent function~\citep{rasmussen_gaussian_2006}. 
+% It is defined as:
+% \begin{flalign}
+% k_d\left(\frac{|x_d - x_d'|}{l_d} \right) = \left(1 + \frac{\sqrt{3} | x_d - x_d'|}{l_d}\right) 
+% \exp \left(- \frac{\sqrt {3} | x_d - x_d'|}{l_d}\right).
+% \end{flalign}
+% %For the Mat\`ern $\frac{3}{2}$ kernel,  
+% Assuming that the kernel functions for each feature, $k_d$, are combined using
+% a product, as in Equation \ref{eq:kernel}, 
+% the partial derivative $\frac{\partial \bs K_{mm}}{\partial l_d}$ is a matrix, where each 
+% entry, $i,j$,  is defined by:
+% \begin{flalign}
+% & \frac{\partial K_{mm,ij}}{\partial l_d} = 
+% \prod_{d'=1, d' \neq d}^D k_{d'}\left(\frac{|x_{d'} - x_{d'}'|}{l_{d'}}\right)
+% \frac{3 (\bs x_{i,d} - \bs x_{j,d})^2}{l_d^3} \exp\left( - \frac{\sqrt{3} \bs |\bs x_{i,d} - \bs x_{j,d}|}{l_d} \right), &
 % \label{eq:kernel_der}
 % \end{flalign}
-% where $|\bs x_d - \bs x_d'|$ is the distance between input points.
-
-When $\mathcal{L}$ has converged to a maximum, 
-$\nabla_{l_{\! d}} \mathcal{L}$ simplifies to:
-\begin{flalign}
- &\nabla_{\!l_{\! d}} \mathcal{L} \longrightarrow 
-\frac{1}{2} \mathrm{tr}\!\left(\! \left(
-\mathbb{E}[s](\hat{\bs f}_{\! m} \hat{\bs f}_{\! m}^T + \bs S^T)\bs K_{\! mm}^{-1} \! -  \bs I \! \right)
- \!\frac{\partial \bs K_{\! mm}}{\partial l_d} \bs K_{\! mm}^{-1} \right) \!. &
-\label{eq:gradient_single}
-\end{flalign}
-For crowdGPPL, assuming that $\bs V$ and $\bs t$ have the same kernel function,
-the gradient
-%The gradients with respect to the length-scale, $l_{w,d}$,
-for the $d$th item feature is given by:
-\begin{flalign}
- &\nabla_{l_{ v,d}} \mathcal{L}_{cr} \longrightarrow
-%  \sum_{c=1}^{C} \bigg\{ \mathbb{E}[s_c] 
-%  \hat{\bs v}_{ m,c}^T \bs K_{ mm,v}^{-1} 
-% \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \bs K_{ mm,v}^{-1} \hat{\bs v}_{ m,c} 
-%  + & \nonumber \\
-%  & \mathrm{tr}\left( \left(
-% \mathbb{E}[s_c]\bs S_{v,c}^T\bs K_{ mm,v}^{-1}  - \frac{1}{2} \bs I  \right)
-%  \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \bs K_{ mm,v}^{-1} \right) \bigg\}
-%  + & \nonumber \\
-%  & \mathbb{E}[\sigma] 
-%  \hat{\bs t}_{ m}^T \bs K_{ mm,t}^{-1} 
-% \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \hat{\bs t}_{ m} 
-%  + \mathrm{tr}\left( \left(
-% \mathbb{E}[\sigma]\bs S_{t}^T\bs K_{ mm,t}^{-1}  - \frac{1}{2} \bs I  \right)
-%  \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \right)
-%  & \nonumber \\
-% & = 
-\frac{1}{2} \mathrm{tr}\left( \left( \sum_{c=1}^{C} \mathbb{E}[s_c] \left\{ \hat{\bs v}_{m,c} 
- \hat{\bs v}_{m,c}^T + \bs S_{v,c}^T \right\}
- \bs K_{ mm,v}^{-1}  - C\bs I  \right)
- \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \right.
- & \nonumber \\
- & \left.  \bs K_{ mm,v}^{-1} \right) + \frac{1}{2}\mathrm{tr}\left( \left(
-\mathbb{E}[\sigma](\hat{\bs t}_{ m}\hat{\bs t}_{ m}^T + \bs S_{t}^T) \bs K_{ mm,t}^{-1}  
-- \bs I  \right)
- \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \right)
-.&
-\label{eq:gradient_crowd_items}
-\end{flalign}
-% If different kernels are used for different components, then the equation above can be modified to
-% simply sum over terms relating to the components with a shared kernel function. 
-The gradients for the $d$th user feature length-scale, $l_{w,d}$, follows the same form:
-\begin{flalign}
- &\nabla_{l_{w,d}} \mathcal{L}_{cr} \!\!\!\longrightarrow \frac{1}{2} 
- \!\mathrm{tr}\left( \!\left( \sum_{c=1}^{C} \left\{ \hat{\bs w}_{m,c} \hat{\bs w}_{m,c}^T \!+
-\bs \Sigma_c^T\right\} \!\bs K_{mm,w}^{-1} \! - C\bs I  \right)
- \frac{\partial \bs K_{mm,w}}{\partial l_{w,d}} \bs K_{mm,w}^{-1} \!\right) \!. &
-\label{eq:gradient_crowd_users}
-\end{flalign}
-
-% When combining kernel functions for each features using a product,
-% as in Equation \ref{eq:kernel}, the partial derivative of the covariance matrix $\bs K_{mm}$ with respect to 
-% $l_d$ is given by:
-% \begin{flalign}
-% \frac{\partial \bs K_{mm}}{\partial l_d} 
-% & = \frac{\bs K_{mm}}{\bs K_{d}}
-% \frac{ \bs K_{d}(|\bs x_{mm,d}, \bs x'_{mm,d})}{\partial l_d} \nonumber ,\\
-% \end{flalign}
-The partial derivative of the covariance matrix $\bs K_{mm}$ with respect to 
-$l_d$ depends on the choice of kernel function. 
-The Mat\`ern $\frac{3}{2}$ function is a widely-applicable, differentiable kernel function 
-that has been shown empirically to outperform other well-established kernels 
-such as the squared exponential, and makes weaker assumptions of smoothness of 
-the latent function~\citep{rasmussen_gaussian_2006}. 
-It is defined as:
-\begin{flalign}
-k_d\left(\frac{|x_d - x_d'|}{l_d} \right) = \left(1 + \frac{\sqrt{3} | x_d - x_d'|}{l_d}\right) 
-\exp \left(- \frac{\sqrt {3} | x_d - x_d'|}{l_d}\right).
-\end{flalign}
-%For the Mat\`ern $\frac{3}{2}$ kernel,  
-Assuming that the kernel functions for each feature, $k_d$, are combined using
-a product, as in Equation \ref{eq:kernel}, 
-the partial derivative $\frac{\partial \bs K_{mm}}{\partial l_d}$ is a matrix, where each 
-entry, $i,j$,  is defined by:
-\begin{flalign}
-& \frac{\partial K_{mm,ij}}{\partial l_d} = 
-\prod_{d'=1, d' \neq d}^D k_{d'}\left(\frac{|x_{d'} - x_{d'}'|}{l_{d'}}\right)
-\frac{3 (\bs x_{i,d} - \bs x_{j,d})^2}{l_d^3} \exp\left( - \frac{\sqrt{3} \bs |\bs x_{i,d} - \bs x_{j,d}|}{l_d} \right), &
-\label{eq:kernel_der}
-\end{flalign}
-where we assume the use of Equation\ref{eq:kernel} to combine kernel 
-functions over features using a product.
-
-
-To make use of Equations \ref{eq:gradient_single} to \ref{eq:kernel_der},
-we nest the variational algorithm defined in Section \ref{sec:inf} inside
-an iterative gradient-based optimization method.
-Optimization then begins with an initial guess for all length-scales, $l_d$,
-such as the median heuristic.
-Given the current values of $l_d$, the optimizer (e.g. L-BFGS-B)
-runs the VB algorithm to convergence, 
-computes $\nabla_{l_{\! d}} \mathcal{L}$,
-then proposes a new candidate value of $l_d$.
-The process repeats until the optimizer converges or reaches a maximum number 
-of iterations, and returns the value of $l_d$ that maximized $\mathcal{L}$.
+% where we assume the use of Equation\ref{eq:kernel} to combine kernel 
+% functions over features using a product.
+%
+%
+% To make use of Equations \ref{eq:gradient_single} to \ref{eq:kernel_der},
+% we nest the variational algorithm defined in Section \ref{sec:inf} inside
+% an iterative gradient-based optimization method.
+% Optimization then begins with an initial guess for all length-scales, $l_d$,
+% such as the median heuristic.
+% Given the current values of $l_d$, the optimizer (e.g. L-BFGS-B)
+% runs the VB algorithm to convergence, 
+% computes $\nabla_{l_{\! d}} \mathcal{L}$,
+% then proposes a new candidate value of $l_d$.
+% The process repeats until the optimizer converges or reaches a maximum number 
+% of iterations, and returns the value of $l_d$ that maximized $\mathcal{L}$.

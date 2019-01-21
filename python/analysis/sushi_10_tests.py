@@ -350,8 +350,8 @@ def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, 
     # shape_s0 = np.exp(opt_hyperparams[0])
     # rate_s0 = np.exp(opt_hyperparams[1])
 
-    sh_vals = [0.1, 1, 10, 100, 1000]
-    r_vals = [0.1, 1, 10, 100, 1000]
+    sh_vals = [0.1, 1, 10, 100]
+    r_vals = [0.1, 1, 10, 100, 1000, 10000]
 
     minval = np.inf
     min_sh_idx = -1
@@ -742,15 +742,15 @@ tag = '_improvedCrowdGPPL5'
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 
-# print('Optimizing function scales ...')
-# np.random.seed(2309234)
-# sushiA_small = False
-# u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, chosen_users, _, _, _, _, _, _ = subsample_data()
-# shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
-#                                          item_features, user_features, prefs_tr,
-#                                          u_test, i1_test, i2_test, prefs_test, chosen_users)
-# print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
-# np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
+print('Optimizing function scales ...')
+np.random.seed(2309234)
+sushiA_small = False
+u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, chosen_users, _, _, _, _, _, _ = subsample_data()
+shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
+                                         item_features, user_features, prefs_tr,
+                                         u_test, i1_test, i2_test, prefs_test, chosen_users)
+print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
+np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
 
 # SMALL data test to show benefits of user features --------------------------------------------------------------------
 
@@ -763,7 +763,7 @@ methods = [
            'crowd-GPPL-noConsensus',
            'crowd-GPPL\\u',
            'crowd-BMF',
-           'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
+           #'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
            'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
            'GPPL-pooled',
            # 'GPPL-joint',

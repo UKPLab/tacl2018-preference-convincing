@@ -65,9 +65,9 @@
 % learing -> infers a function for comparing
 %
 \emph{Preference learning} is the task of learning to compare the values of a set of alternatives
-according to a particular quality~\citep{furnkranz2010preference}. Here, we focus on ranking 
-items and predicting the item with the highest value in a pair.
-For many preference learning tasks, annotators have divergent opinions on the correct labels,
+according to a particular quality~\citep{furnkranz2010preference}. The goal may be to 
+rank items by preference, or given a pair of items, to select the item with the highest utility.
+For many preference learning tasks, annotators have divergent opinions on the correct rankings or utilities,
 which impedes the acquisition of training data.
 %for any given data point.
 %For many learning tasks, the desired output is inherently subjective or context-dependent, 
@@ -93,8 +93,8 @@ training set, typically requiring redundant labeling and increased annotation co
 %are either unable to model differences of opinion\citep{G?},
 %do not scale to realistic dataset sizes\citep{chu2005preference},
 %or cannot generalize to new instances or users\citep{BMF?best worst scaling?}.
-Therefore, solutions are required for modeling individual preferences given
-limited data per user and producing gold standard labels from crowds of annotators with different opinions.
+Therefore, we require solutions for modeling individual preferences given
+limited data per user and producing a gold standard from crowds of annotators with different opinions.
 
 % not sure I like this because previous paragraph starts of super general,
 % then here we seem to focus arbitrarily on ranking and rating?
@@ -105,17 +105,17 @@ limited data per user and producing gold standard labels from crowds of annotato
 A preference model can be trained using numerical ratings, yet 
 each annotator may interpret the values differently and may label inconsistently depending on the order in which they annotate items~\citep{ovadia2004ratings,yannakakis2011ranking}: 
 a score of -1, say, from one annotator may be equivalent to a -20 from another. 
-An alternative is \emph{pairwise preference labeling}, 
+An alternative is \emph{pairwise labeling}, 
 in which the annotator compares pairs of items and selects the preferred one in each pair.
 Making pairwise choices places lower cognitive load on annotators than numerical ratings~\citep{yang2011ranking},
 and facilitates the total sorting of items, since it avoids cases where two items have the same value~\citep{kendall1948rank,kingsley2010preference}.
 Besides explicit annotations, pairwise preference labels can be extracted from
 user behavior logs, such as when a user selects one item from a list in preference
 to others~\citep{joachims2002optimizing}. 
-However, such \emph{implicit annotations} can be noisy, as are crowdsourced preference labels~\citep{habernal2016argument}.
+However, such \emph{implicit annotations} can be noisy, as are crowdsourced pairwise labels~\citep{habernal2016argument}.
 Therefore, while pairwise labels provide a valuable
 form of training data, preference learning methods must be able to 
-to aggregate noisy sources of pairwise data from crowds 
+aggregate noisy sources of pairwise data from crowds 
 or from different types of implicit annotation.
 We henceforth refer to the annotators, users or implicit data sources simply as \emph{users}
 whose preferences we wish to model.
@@ -125,18 +125,17 @@ and could be states or actions as well as physical objects.
 %the incompatibility of labels provided by different annotators.
 
 % TODO could consider swapping the order of BMF and Bayesian paragraphs? Or better linking the pairwise and BMF paragraphs?
-In recommender systems, information from different sources -- in this case, different users --
- is aggregated using \emph{collaborative filtering},  
+In recommender systems, information from different users is aggregated using \emph{collaborative filtering},  
 which predicts a user's preferences for an item they have not annotated using the observed preferences of 
 similar users for that item~\citep{resnick1997recommender}.
 A typical approach is to represent observed ratings in a user-item matrix,
 then apply \emph{matrix factorization}~\citep{koren2009matrix}
 to decompose a user-item matrix into two low-dimensional matrices.
 Users and items with similar observed ratings have similar row vectors in the low-dimensional
-matrices, and multiplying the low-dimensional representations predicts ratings for unseen
+matrices. Multiplying the low-dimensional representations predicts ratings for unseen
 user-item pairs. 
 However, traditional approaches are not able to handle pairwise labels,
-nor extrapolate to new users or items.
+nor extrapolate effectively to new users or items.
 %nor perform well with very small numbers of observations per user\citep{mnih2008probabilistic}. 
 %They do not take advantage of the item or user features
 %~\cite{?} or require a hierarchical model that incorporates them outside the matrix factorization step~\cite{?}. 
@@ -144,23 +143,24 @@ nor extrapolate to new users or items.
 %to make up for a shortfall in labeled data for a target user whose preferences we 
 %wish to predict.
 
-The limited amount of data for each user,
+The limited amount of noisy data for each user,
 as well as the desire to aggregate data from multiple users,
 motivates a Bayesian approach that can account for uncertainty in the model.
-Matrix factorization, for example, has been shown to benefit from a Bayesian treatment when data is sparse~\citep{salakhutdinov2008bayesian}. 
-Previous work has introduced a Bayesian approach for combining crowdsourced preferences, but this does models only ground truth rather than individual preferences and cannot make predictions for new users or items~\citep{chen2013pairwise}.
-For classification tasks, \citet{simpson2017bayesian} show that modeling item features using a Gaussian process can improve performance, but this has not yet been adapted for preference learning.
-Gaussian processes have also been used in previous work to make predictions on test items using a Bayesian framework
+Matrix factorization, has been shown to benefit from a Bayesian treatment when data is sparse~\citep{salakhutdinov2008bayesian}. 
+Previous work has also introduced a Bayesian approach for combining crowdsourced preferences, but this models only ground truth rather than individual preferences and cannot make predictions for new users or items~\citep{chen2013pairwise}.
+For crowdsourced classification tasks, \citet{simpson2017bayesian} show that modeling item features using a Gaussian process can improve performance, but this has not yet been adapted for preference learning.
+Gaussian processes have also been used in previous work to provide a Bayesian framework for preference learning
 ~\citep{chu2005preference,houlsby2012collaborative,khan2014scalable}, 
-but they do not scale to large numbers of items, users, or
-pairwise labels as computational and memory complexity is polynomial in the number
-of items and pairs, and linear or worse in the number of users.
+but these methods do not scale to large numbers of items, users, or
+pairwise labels as it is unclear how to parallelize them or constrain their memory requirements.
+% to computational and memory complexity is at best linear in the number of items, users and labels.
 %these methods also do not 
 
 In this paper, we propose a scalable Bayesian approach to pairwise preference learning with crowds,
 whose members may be annotators, users or sources of implicit annotations.
-We introduce a model that %for aggregating pairwise  labels from multiple sources that
-captures both personal preferences and the consensus of a crowd by combining 
+Our approach is designed for preference learning over items, rather than over labels (see discussion in \citet{furnkranz2010preference}),
+and jointly models %for aggregating pairwise  labels from multiple sources that
+personal preferences and the consensus of a crowd by combining 
 matrix factorization and Gaussian processes. % preference learning~\citep{chu2005preference}.
 To enable inference at the scale of large, real-world datasets,
 we derive a stochastic variational inference scheme~\citep{hoffman2013stochastic} for our approach.
@@ -190,15 +190,15 @@ we derive a stochastic variational inference scheme~\citep{hoffman2013stochastic
 % %  \item To expedite hyper-parameter tuning, we introduce a technique for gradient-based length-scale optimization of Gaussian processes.
 % \end{enumerate}
 By providing a scalable Bayesian approach we open preference learning up to novel applications
-for which annotations or sparse, noisy and biased, and where the number of users, items and pairwise labels is large.
+for which annotations are sparse, noisy and biased, and where the number of users, items and pairwise labels is large.
 Our empirical evaluation demonstrates the scalability of our approach,
 and its ability to predict personal preferences as well as an objective gold-standard given crowdsourced data.
 % TODO how much do we really test data sparsity?
 
 The next section of the paper discusses related work.
 We then we develop our model for preference learning from crowds in Section \ref{sec:model},
-followed by our proposed inference method in Section \ref{sec:inf} and
-hyper-parameter optimisation technique in Section \ref{sec:ls}.
+followed by our proposed inference method in Section \ref{sec:inf}.
+%and hyper-parameter optimisation technique in Section \ref{sec:ls}.
 Then, in Section \ref{sec:expts}, 
-we evaluate our approach empirically, showing first its behaviour on synthetic data, 
-then its scalability and predictive performance on several real-world datasets.
+we evaluate our approach empirically, showing its behaviour on synthetic data, 
+its scalability and its predictive performance on several real-world datasets.
