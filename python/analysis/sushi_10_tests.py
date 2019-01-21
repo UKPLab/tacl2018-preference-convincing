@@ -732,7 +732,7 @@ ninducing = 25#5000
 forgetting_rate = 0.9
 max_Kw_size = 5000
 
-nreps = 1#25
+nreps = 5#25
 
 sushiB = False
 vscales = None
