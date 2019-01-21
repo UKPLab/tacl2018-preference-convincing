@@ -725,7 +725,7 @@ if debug_small:
 # Hyperparameters common to most models --------------------------------------------------------------------------------
 max_facs = 20
 shape_s0 = 1.0
-rate_s0 = 100.0  #0.1
+rate_s0 = 1000.0  #0.1
 max_update_size = 200
 delay = 5
 ninducing = 25#5000
@@ -738,7 +738,7 @@ sushiB = False
 vscales = None
 
 # Experiment name tag
-tag = '_improvedCrowdGPPL4'
+tag = '_improvedCrowdGPPL5'
 
 # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
 

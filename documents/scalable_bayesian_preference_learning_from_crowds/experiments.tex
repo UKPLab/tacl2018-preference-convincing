@@ -3,22 +3,23 @@
 % TODO: needs to show comparison of no. iterations required for optimizing using LBFGS vs. without gradient. Or compare performance after 20 iterations of each.
 
 \begin{table}
-\begin{tabularx}{\textwidth}{| p{1.9cm} | X | X | X | X | X | X | X | X |}
+\begin{tabularx}{\textwidth}{| p{1.8cm} | X | X | X | X | X | X | X | X |}
 \hline
 Dataset & Folds /subs-amples & Users & Items & Pairs, train & Pairs, test & Pref vals, test & Item features & User features \\
 \hline\hline
-Simulation (a) & 25 & 25 & 100 & 900 & 0  & 100 & 2 & 2\\
-Simulation (b) & 25 & 25 & 100 & 900 & 0 & 100 & 2 & 2 \\
-Simulation (c) & 25 & 25 & 100 & 900 & 0 & 100 & 2 & 2\\
-Simulation (d) & 25 & 25 & 100 & 36 - 2304 & 0 & 100 & 2 & 2\\
+%Simulation (a) & 25 & 25 & 100 & 900 & 0  & 100 & 2 & 2\\
+Simulation a & 25 & 25 & 100 & 900 & 0 & 100 & 2 & 2 \\
+Simulation b & 25 & 25 & 100 & 900 & 0 & 100 & 2 & 2\\
+Simulation c & 25 & 25 & 100 & 36-2304 & 0 & 100 & 2 & 2\\
 \hline
+Sushi A-small & 25 & 100 & 10 & 500 & 2500 & 1000 & 18 & 123 \\
 Sushi A & 25 & 1000 & 10 & 15000 & 5000 & 10000 & 18 & 123 \\
 Sushi B & 25 & 5000 & 100 & 50000 & 5000 & 500000 &  18 & 123 \\
 \hline
 UKPConvArg-CrowdSample & 32 & 1442 & 1052 & 16398 & 529 & 33 & 32310 & 0
 \\ \hline
 \end{tabularx}
-\caption{Summary of datasets showing mean counts per subsample or per fold. For the simulation datasets, generate the subsamples of data independently, for the Sushi dataset we select subsamples independently from the complete dataset, while  
+\caption{Summary of datasets showing mean counts per subsample or per fold. For the simulation datasets, we generate the subsamples of data independently, for Sushi we select subsamples independently from the dataset.  
 UKPConvArgCrowdSample is divided into folds, where the test data in each fold corresponds to a single topic and stance. The numbers of features are given after categorical labels have been converted to one-hot encoding, counting
 each category as a separate feature.
 }
@@ -71,27 +72,30 @@ components when $C$ is set larger than necessary.
 \label{fig:simD}
 \includegraphics[width=.32\columnwidth,clip=true,trim=3 0 13 0]{../../results/synth_3/multi_factor_correlations_P/num_pairs_r}
 }
-\caption{Rank correlation between true and inferred preference values for different inference tasks.  (a) \& (b) varying level of noise in pairwise training labels, (d) varying number of pairwise training labels. 
+\caption{Simulations: Rank correlation between true and inferred preference values for different inference tasks.  (a) \& (b) varying level of noise in pairwise training labels, (d) varying number of pairwise training labels. 
 }
 \end{figure}
 First, we test how well crowdGPPL is able to recover an underlying consensus function
 from pairwise labels with varying amounts of noise.
-We compare crowdGPPL against GPPL trained on all users' preference labels to learn a single  function (\emph{GPPL}), %and a Gaussian process over the joint feature space of users and items 
+We compare crowdGPPL against \emph{GPPL} trained on all users' preference labels to learn a single  function, %and a Gaussian process over the joint feature space of users and items 
 %(\emph{joint-GPPL}), as proposed by \citet{guo2010gaussian}.
 %For datasets up to 100 users (simulated data, subsamples of the real datasets), 
 and separate GPPL instances per user with no collaborative
 learning (\emph{GPPL-per-user}). The consensus for GPPL-per-user is the mean of all users' predicted utilities. For all models, we set hyperparameters
-$\alpha_0 = 1$, $\beta_0 = 100$ and, for crowdGPPL, $C=25$.
+$\alpha_0 = 1$, $\beta_0 = 100$,
+determine kernel length-scales using the median heuristic,
+ and for crowdGPPL set $C=25$. The SVI hyperparameters were set to 
+ $r=0.9$, $|P_i|=1000$ and $\epsilon=1$.
 
 For the first test,
 we generate data by selecting $100$ points at random
-from a $10x10$ grid and choosing $500$ pairs of these points at random. 
-We generate pairwise labels by drawing from crowdGPPL
+from a $10x10$ grid and choosing $500$ pairs of these points at random,
+which are split into  50\% training and test sets.
+For each point, we generate pairwise labels by drawing from crowdGPPL
 with $25$ users, $5$ latent components, and 
 $s=0.001$.
 We vary the precision of the consensus function, $\sigma$ to control the noise in 
 the consensus function. 
-The chosen points are split into 50\% training and test sets.
 %, and
 %train our models on all pairs involving only points in the training set.
 %We then predict the consensus function
@@ -100,7 +104,7 @@ The chosen points are split into 50\% training and test sets.
 %We repeat this process, varying the value of $s$ in the generation step, 
 %which controls the precision of a latent preference function: as $s$ is increased, the latent
 %function values have a smaller amplitude and the pairwise labels become noisier.
-We repeat the complete experiment $25$ times, including generating new data 
+The complete experiment was repeated $25$ times, including generating new data 
 for each value of $\sigma$.
 
 %The results of the first test in Figure \ref{fig:simA} show that increasing
@@ -117,22 +121,21 @@ for each value of $\sigma$.
 %and crowdGPPL with $C=25$ so that there is one factor per user. 
 Figure \ref{fig:simB} shows that the crowdGPPL model is better able recover the latent consensus
 function than the other methods, even when noise levels are high. 
-The pooled model's predictions may be worsened by biased users whose preferences deviate
+GPPL's predictions may be worsened by biased users whose preferences deviate
  consistently from the consensus. GPPL-per-user relies on separate instances of GPPL, so 
- does not benefit from sharing information between users when training the model.
+ does not benefit from sharing information between users when training.
 
-The second simulation repeats the same setup as the first, 
-but here we evaluate the methods'
+The second simulation modifies the previous setup by fixing $\sigma = 10$ and varying $s$
+to evaluate the methods'
 ability to to recover the personal preferences of simulated users.
-We fix $\sigma = 10$ and vary $s$.
 Results in Figure \ref{fig:simC} show that crowdGPPL is able to make better 
 predictions when noise is below $0.3$ but its benefit disappears when 
 the noise level increases further. 
 
 %In the final simulation, %we evaluate the effect of the quantity of training data 
 %with different numbers of latent factors in the generating model.
-We hypothesize that when the generating model has 
-a larger number of latent components, more training data is required to learn
+We hypothesize that generating models with a larger number of latent components
+require more training data to learn
 the more complex model.
 %scenario that would require more training data. 
 In the third simulation, we generate data using the same setup as before, but fix $s=0.2$ and $\sigma=1$
@@ -172,12 +175,12 @@ contains arguments written by users
 of online debating forums
 and crowdsourced judgments for pairs of arguments
  indicating the most convincing argument.
-It is a subsample obtained by~\citet{simpson2018finding}
+\emph{UKPConvArgCrowdSample} was subsampled by~\citet{simpson2018finding}
 from the crowdsourced data provided by ~\citet{habernal2016argument}.
 %The task is to quantify how convincing each argument is
 %by learning a model from pairwise preference labels obtained from crowdworkers
 %on Amazon Mechanical Turk. 
-Each argument is are represented by $32,310$ numerical features and the
+Each argument is represented by $32,310$ numerical features and the
 dataset is divided into $32$ folds ($16$ topics, each of which has two opposing stances). For each fold, we train on $31$ folds and test on the remaining fold.
 %thereby performing a cross-topic evaluation.
 %test the ability of the preference learning methods to predict the consensus
@@ -190,30 +193,34 @@ Gaussian process classifier methods at consensus prediction for \emph{UKPConvArg
 %ability to predict the raw crowdsourced labels, i.e. the individual preference labels
 %supplied by each worker.
 We hypothesize that a worker's view of convincingness 
-depends somewhat on their prior beliefs and understanding of the subject 
-discussed and the language used, and therefore
+depends on their prior beliefs and understanding of the subject 
+discussed, and that crowdGPPL may therefore
 %If this is the case, then provided that the data is sufficiently informative,
-crowdGPPL may more accurately predict unseen 
-pairwise labels or rankings for individual workers,
-and may be better able to predict the consensus preference function by accounting 
+predict unseen 
+pairwise labels or rankings for individual workers or the consensus more accurately than GPPL,
+by accounting 
 for the biases of individual workers.
 
-Table \ref{tab:convarg} shows performance for GPPL and crowdGPPL with the median
-heuristic (\emph{medi.}) and with gradient-based optimization (\emph{opt.}).
-The hyperparameters were set to $\alpha_0 = 2$, $\beta_0 = 200$ by comparing
-training set accuracy against $\alpha_0=2, \beta_0 = 20000$ and $\alpha_0 = 2, \beta_0 = 2$.
-We set $C=50$ and did not optimize this value.
+Table \ref{tab:convarg} shows performance for GPPL and crowdGPPL. 
+%with the median
+%heuristic (\emph{medi.}) and with gradient-based optimization (\emph{opt.}).
+The hyperparameters were kept the same as in Section \ref{sec:exp_synth} 
+except for: $\alpha_0 = 2$, $\beta_0 = 200$, set by comparing
+training set accuracy of GPPL 
+against $\alpha_0=2, \beta_0 = 20000$ and $\alpha_0 = 2, \beta_0 = 2$;
+and $C=50$ and $\epsilon=2$, which were not optimized.
 CrowdGPPL outperforms GPPL at predicting the consensus pairwise labels
-(all significant with $p<0.05$, Wilcoxon signed-rank test), 
 shown by classification accuracy (\emph{acc}) and cross entropy error (\emph{CEE}),
-and the consensus ranking ($p<0.05$), shown by Kendall's tau rank correlation (\emph{Kend}).
-For the personal preference predictions, crowdGPPL outperforms 
-GPPL at ranking ($p<0.05$) but pairwise label prediction performance is comparable.
-This may be because the pairwise comparisons in the test folds are noisy and contain
-numerous contradictions~\citep{habernal2016argument}, 
-which are not present in the gold standard rankings, and hence are difficult to predict.
-Length-scale optimization improves performance over the median heuristic,
-although the difference is small and required approximately $5$ times longer to run.
+and the consensus ranking (significant with $p<0.05$, Wilcoxon signed-rank test), 
+shown by Kendall's $\tau$ rank correlation.
+For the personal preference predictions, crowdGPPL also outperforms 
+GPPL at ranking pairwise label accuracy, suggesting that there is a benefit
+to modeling individual workers when predicting the consensus. 
+The benefits of crowdGPPL on this task may be restricted
+because the pairwise comparisons in the test folds are noisy and contain
+numerous contradictions~\citep{habernal2016argument}.
+%Length-scale optimization improves performance over the median heuristic,
+%although the difference is small and required approximately $5$ times longer to run.
 % PERFORMANCE ----------------------------------------------------
 % TODO: exclude tau from the personal column -- not enough data to compute the gold standard correctly, only pairwise labels are real gold!
 % Things we could do:
@@ -230,7 +237,7 @@ although the difference is small and required approximately $5$ times longer to 
 \begin{tabularx}{\columnwidth}{ | l | X | X | X | X | X | X |}
 \hline
  & \multicolumn{3}{|X|}{Consensus}&\multicolumn{3}{| X |}{Personal} \\ \hline
- Method & Acc & CEE & Kend. & Acc & CEE & Kend. \\ \hline
+ Method & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ \\ \hline
  %SVM & .70 & .58 & .31 & .63 & .66 & .31 \\
  %Bi-LSTM & .73 &  .55 & .21 & .64 & .64 & .21 \\
  GPPL %medi.
@@ -261,25 +268,31 @@ while \emph{Kend.} shows Kendall's tau for the predicted preference function.}
 % TODO explain that tau is computed per person then averaged. 
 % TODO exclude the personalised metrics for conv if they don't work. But why don't they if the consensus is good?
 
-We assess our proposed SVI inference method by evaluating GPPL and crowdGPPL with
-different numbers of inducing points, $M$. Figure \ref{fig:M} shows the trade-off between
-runtime and accuracy as an effect of choosing $M$. Accuracy close to the peak is attained
-using $M=200$, after which the accuracy levels off, while the runtime increases rapidly
-as $M$ increases.
-With $300$ features, the polynomial training time complexity is visible in the runtime. 
-However, with $33,210$ features, the runtime plot appears almost linear, since 
-the cost of computing covariance matrices, which is linear in the number of features,
-dominates the runtimes. The plots show that the SVI method provides a substantial cut
-in runtimes while maintaining good prediction accuracy.
+We examine the scalability of our SVI implementation by evaluating GPPL and crowdGPPL with
+different numbers of inducing points, $M$. Here, we fix $C=5$ and keep other model hyperparameters 
+and experimental setup the same as for Table \ref{tab:convarg}. 
+Figure \ref{fig:M} shows the trade-off between
+runtime and accuracy as an effect of choosing $M$. Accuracy peaks
+using $M=200$ while the runtime continues to increase rapidly in a polynomial fashion
+With $33,210$ features, the runtime includes large overheads due to the computation of
+the covariance matrices, which is linear in the number of features. 
+%The plots show that the SVI method provides a substantial cut
+%in runtimes while maintaining good prediction accuracy.
 
 Figures \ref{fig:Ntr} and \ref{fig:Npairs} show runtimes as a
-function of the training set size, $N_{tr}$,
-and the number of pairwise training labels, $P$, respectively.
-The methods labeled "no SVI" show runtimes
-for GPPL and crowdGPPL with variational inference but no stochastic updates 
-or inducing points. 
-When using SVI, runtimes increase very little 
-with $N_{tr}$ or $P$. 
+function of the number of items in the training set, $N_{tr}$,
+and the number of pairwise training labels, $P$, respectively (all other settings remain as in Figure \ref{fig:M}).
+The runtime increase with $N_{tr}$ for GPPL is almost imperceptible,
+while for crowdGPPL it increases almost linearly as more
+computations over the set of items are required than for GPPL, and the method takes more iterations to converge with more items. 
+However, many of the additional computations can be parallelized
+in future implementations.
+Increasing the number of pairwise labels, $P$, however does not affect the runtimes to a large degree.
+%The methods labeled "no SVI" show runtimes
+%for GPPL and crowdGPPL with variational inference but no stochastic updates 
+%or inducing points. 
+%When using SVI, runtimes increase very little 
+%with $N_{tr}$ or $P$. 
 %These are compared with Bi-LSTM and SVM classifiers trained to 
 %output probabilities of pairwise labels. 
 %The plots clearly show the rapid increases
@@ -298,12 +311,13 @@ with $N_{tr}$ or $P$.
 % \end{enumerate}
 % SCALABILITY ----------------------------------------------------------
 \begin{figure}
-\subfloat[300 GloVe features]{
- \includegraphics[width=.5\columnwidth]{../../results/scalability/num_inducing_300_features}
-}
-\subfloat[33210 ling+GloVe features]{
+\centering
+%\subfloat[300 GloVe features]{
+% \includegraphics[width=.5\columnwidth]{../../results/scalability/num_inducing_300_features}
+%}
+%\subfloat[33210 ling+GloVe features]{
  \includegraphics[width=.5\columnwidth]{../../results/scalability/num_inducing_32310_features}
-}
+%}
 \caption{
 Effect of varying $M$ on accuracy and runtime (training+prediction) for GPPL and crowdGPPL on UKPConvArgCrowdSample. Means over 15 runs.
 }
@@ -326,41 +340,46 @@ Effect of varying $M$ on accuracy and runtime (training+prediction) for GPPL and
 \subsection{Sushi Preferences}\label{sec:sushi}
 
 %TODO sushi-A small needs describing or cutting out.
-We use two datasets, Sushi-A and Sushi-B (shown in Table \ref{tab:datasets}),
+We use Sushi preference data (shown in Table \ref{tab:datasets}),
 to benchmark the classification and ranking performance of GPPL and crowdGPPL, 
-as well as their runtimes, against previous approaches, 
+against previous approaches 
 and investigate the use of user features for predicting preferences.
 The datasets contain, for each user, a gold standard preference ranking 
 of $10$ types of sushi,
 from which we generate gold-standard pairwise labels. 
 %These labels can be considered noise-free, since
 %they are derived directly from the gold standard ranking.  
-For Sushi-A, we select a subset of $1000$ workers at random, then 
+To test performance with very few training pairs, we obtain Sushi-A-small
+by selecting $100$ users at random from the complete $Sushi-A$ dataset,
+then selecting $5$ pairs for training and $25$ for testing per user.
+For Sushi-A, we select a subset of $1000$ users at random from the complete dataset, then 
 split the data into training and test sets by randomly
 selecting $15$ pairs for each user for training and $5$ for testing. 
 For Sushi-B, we use all $5000$ workers, and subsample $10$ training pairs and $1$ test pair per user.
+%These subsampling steps are repeated $25$ times.
 Beside GPPL, crowdGPPL and GPPL-per-user, we 
 % but this could not be applied to larger datasets as the 
 %computation costs were too high.
 introduce four further baselines: 
-\emph{crowdGPPL$\mathbf{\setminus \bs u}$}, which ignores the user features;
- \emph{crowdGPPL$\mathbf{\setminus \bs u \setminus \bs x}$}, which ignores both user and item features and so does not use GPs at all;
- \emph{crowdGPPL$\mathbf{\setminus \bs u \setminus \bs t}$}, which 
+\emph{crowdGPPL$\mathbf{\backslash \bs u}$}, which ignores the user features;
+ \emph{crowdGPPL$\mathbf{\backslash \bs u \backslash \bs x}$}, which ignores both user and item features;
+ \emph{crowdGPPL$\mathbf{\backslash \bs u \backslash \bs t}$}, which 
 excludes the consensus function $\bs t$ from the model as well as the user
 features;
 and  \emph{crowdGPPL$\backslash$induc}, which uses all features but does 
 not use inducing points for a sparse approximation.
-Standard crowdGPPL is labelled '\emph{full}'.
-For these methods, the user covariance matrix, $\bs K_w$, in the crowdGPPL model is replaced by the identity matrix, and for crowdGPPL$\mathbf{\setminus \bs u \setminus \bs x}$, the item covariance matrices, $\bs K_v$ and $\bs K_t$ are also replaced by the identity matrix.
+For $\backslash\bs u$ methods, the user covariance matrix, $\bs K_w$, in the crowdGPPL model is replaced by the identity matrix, and for crowdGPPL$\mathbf{\backslash \bs u \backslash \bs x}$, the item covariance matrices, $\bs K_v$ and $\bs K_t$ are also replaced by the identity matrix.
 %We evaluate the quality of pairwise predictions using classification accuracy and cross entropy 
 %error (also known as log loss) to gauge the quality of the probabilities that each method outputs.
 %We also evaluate each method's inferred personal preference values
 %against the gold standard rankings by computing Kendall's $\tau$ rank correlation
 %coefficient between the negative rank and the inferred preference function values,
 %for all the items contained in each subsampled user's ranking.
-We set hyperparameters $C=20$ without optimization
-and $\alpha_0=1, \beta_0=100$ using a grid search over values 
-$10^{\{-1,...,3\}}$ on withheld user data from the Sushi-A dataset.
+We set hyperparameters $C=20$ without optimization,
+$\alpha_0=1, \beta_0=100$ using a grid search over values 
+$10^{\{-1,...,3\}}$ on withheld user data from the Sushi-A dataset,
+$\epsilon=5$, $|P_i|=200$ for Sushi-A and $|P_i|=2000$ for Sushi-B. All others are the same 
+as for Section \ref{sec:exp_synth}.
 The complete process of subsampling, training and testing, was repeated $25$ times
 for each dataset.
 
@@ -408,45 +427,47 @@ for each dataset.
 Method & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time \\
 \hline\hline
 %\multicolumn{13}{|l|}{\textit{crowdGPPL}} \\
-\multicolumn{1}{|b{1.1cm}|}{crowd-GPPL} & .67 & .87 & .39 & 77%76.91 %(27.23) %& .63 (.02) & .69 (.00) & .25 (.02)
-& .79 & .51 & .66 & 150%149.6 %(20.86)
-& .69 & 2.23 & .45 & 9163 
-\\
+\multicolumn{1}{|b{1.1cm}|}{crowd-GPPL} & .67 & .63 & .39 & 38%76.91 %(27.23) %& .63 (.02) & .69 (.00) & .25 (.02)
+& .79 & .51 & .66 & 60 %149.6 %(20.86)
+& \textbf{.79} & \textbf{.57} & .50 & 393 \\
+%old results: & .69 & 2.23 & .45 & 9163 \\
 %full, opt. & & & & & .80 & .48 & .68 & 3718 
 %& - & - & - & - \\%(2193.72) \\
-$\backslash $induc & .70 & \textbf{.57} & .46 & 166 %(14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
-& .84 & \textbf{.33} & .79 & 315 %(50.17) 
+$\backslash $induc & .70 & \textbf{.57} & .46 & 51 %(14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
+& .84 & \textbf{.33} & .79 & 646 %(50.17) 
 & - & - & - & -
 \\
 %$\backslash t$ & .67 & .80 & .39 & 7.45 (29.00) %& .61 (.02) & .69 (.00) & .19 (.03)
 %& .79 & .57 & .65 & 158.51 (25.06)
 %\\
-$\backslash u$ & .70 & .58 & .46 & 175 %(24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
-& .84 & \textbf{.33} & \textbf{.80} & 336 %(4.93)
-& \textbf{.76} & \textbf{.47} & \textbf{.60} & 21052
-\\
+$\backslash u$ & .70 & .58 & .46 & 9 %(24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
+& .84 & \textbf{.33} & \textbf{.80} & 95 %(4.93)
+& .78 &\textbf{.57} & .49 & 303 \\
+%old results & \textbf{.76} & \textbf{.47} & \textbf{.60} & 21052\\
 %$\backslash u$, opt. & & & & & \textbf{.85} & \textbf{.33} &  \textbf{.80} & 5016 %(1978.82) \\
 %& - & - & - & - \\
 $\backslash u \backslash x$ & \textbf{.71} & \textbf{.57} & \textbf{.49} & 5 %(3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
-& \textbf{.85} & \textbf{.33} & \textbf{.80} & 329 %(12.12)
-& \textbf{.76} & .48 & \textbf{.60} & 15478
+& \textbf{.85} & \textbf{.33} & \textbf{.80} & 89 %(12.12)
+& .77 & .58 & .48 & 269
+%old results & \textbf{.76} & .48 & \textbf{.60} & 15478
 \\
 %$\backslash u$, FITC & .70 & .58 & .46 & 333.68 (57.36) %& .65 (.01) & .64 (.02) & .29 (.02)
 %& \textbf{.85} & \textbf{.33} & \textbf{.80} & 551.56 (16.82)
 %\\
-$\backslash u$$\backslash t$ % this is also FITC to emulate Houlsby -- mention it in the text, not here
+$\backslash u,\backslash t$ % this is also FITC to emulate Houlsby -- mention it in the text, not here
 & .68 & .60 & .43 & 291 %(48.62) %& .50 (.00) & .69 (.00) & nan (nan)
-& .84 & \textbf{.33} & .79 & 540 %(12.15) 
-& .75 & .49 & .59 & 30484
+& .84 & \textbf{.33} & .79 & 204 %(12.15) 
+& .76 & .61 & .54 & 1001
+% old results & .75 & .49 & .59 & 30484
 \\ 
 %$\backslash u$$\backslash t$, FITC, opt. & & & &  & .84 & \textbf{.33} & \textbf{.80} & 7413.53 (2849.63) \\
 \hline 
 GPPL & .65 & .62 & .31 & \textbf{2} %(.26) %& .65 (.02) & .63 (.02) & .30 (.03)
-& .66 & .62 & .32 & \textbf{2} %(.38) & 
+& .66 & .62 & .32 & \textbf{6} %(.38) & 
 & .65 & .62 & .31 & \textbf{51}
 \\
-GPPL-per-user & .67 & .64 & .42 & 97 %(1.12) %& .50 (.00) & .69 (.00) & nan (nan)
-& .83 & .40 & .79 & 67 & .75 & .60 & \textbf{.60} & 18078 %(.44)
+GPPL-per-user & .67 & .64 & .42 & 183 %(1.12) %& .50 (.00) & .69 (.00) & nan (nan)
+& .83 & .40 & .79 & 1106 & .75 & .60 & \textbf{.60} & 3172 %(.44)
 \\
 \hline
 %\citet{houlsby2012collaborative} CP & & & & & .84 \\
@@ -467,25 +488,33 @@ The results in Table \ref{tab:sushi}
 %we re-state the previous performance metrics and did not re-implement these methods. 
 illustrate the benefit of crowd models over single-user GPPL.
 The runtimes 
-show that including feature data for items and users leads to faster convergence than crowdGPPL$\backslash \bs u$ and crowd$\backslash \bs u \backslash \bs x$.
+show the benefit of the sparse approximation over crowdGPPL$\backslash$induc.
+GPPL is substantially quicker to train than crowd-GPPL, and GPPL-per-user does not scale well to larger numbers
+of users.
+% including feature data for items and users leads to faster convergence than crowdGPPL$\backslash \bs u$ and crowd$\backslash \bs u \backslash \bs x$.
 %Likewise, the use of matrix factorization leads to only a small increase in
 % runtimes of these methods over joint-GPPL. 
- However, the runtimes for crowdGPPL are higher than those of GPPL.
- When using inducing points, the user features decrease the performance of crowdGPPL: the methods \emph{crowdGPPL$\backslash$induc}
- and \emph{crowdGPPL$\backslash\bs u$} both outperform the full crowdGPPL. 
- When using inducing points,
+ %However, the runtimes for crowdGPPL are higher than those of GPPL.
+ When using inducing points, the user features decrease the performance of crowdGPPL on Sushi-A and Sushi-A-small: crowdGPPL$\backslash$induc
+ and crowdGPPL$\backslash\bs u$ both outperform the full crowdGPPL. 
+ To use inducing points,
  there must be a strong relationship between neighbouring points, which
- is likely not to be the case given the features in this dataset.
- Again, we see small improvements in performance after length-scale optimization,
- but this takes approximately 22 times as long to train.
+ may not to be the case given the features in this dataset.
+ However, on Sushi-B, the user features provide a small improvement, so may be weakly informative
+ given enough users and in the case where we have only $10$ pairwise labels per users, rather than $15$ as for Sushi-A.
+ Comparing crowdGPPL$\backslash\bs u$ with crowdGPPL$\backslash\bs u\bs t$, including the consensus function appears to improve performance by a modest amount.
+ GPPL-per-user performs well on Sushi-A, but does not perform as well as other methods on Sushi-B, as
+there are only $10$ pairwise training labels per user and no collaborative learning.
+ %Again, we see small improvements in performance after length-scale optimization,
+ %but this takes approximately 22 times as long to train.
 % as are the performance metrics. 
 CrowdGPPL produces similar classification scores to the earlier method of 
  \citet{houlsby2012collaborative} (0.83 on Sushi-A with user features, and 0.84 without), 
  while using a more scalable inference method.
 Performance is also improved over \citet{khan2014scalable} , 
 whose model comprised a GP for each user and matrix factorization (CEE=0.69 on Sushi-B),
- as well as \citet{salimans2012collaborative}, using matrix factorization with no user or item features (Kendall's tau=0.39 on Sushi-B). 
-GPPL-per-user performs well on Sushi-A, but does not perform as well as other methods on Sushi-B.
+ as well as \citet{salimans2012collaborative}, using matrix factorization with no user or item features (Kendall's $\tau\approx0.39$ on Sushi-B). 
+
 %Figure \ref{fig:latent_factor_variance} again shows that the inferred crowdGPPL model relies
 %heavily on a subset of the latent factors.
 % We should bring the scalability experiments forward so that we don't need the runtimes here?
@@ -504,16 +533,16 @@ plots the posterior expectations of the inferred scales, $1/s_c$, for the latent
  components. 
  The plots show
 that many factors have a very small variance and therefore do not contribute strongly 
-to the model's predictions. This indicates that our Bayesian approach, in which the priors
-of the latent factors have mean zero, has inferred a simpler model even when
- a larger number of latent components was available.
+to the many of the model's predictions. This indicates that our Bayesian approach, in which the priors
+of the latent factors have mean zero, has inferred a simpler model than the
+number of latent components would permit.
 \begin{figure}
 \centering
 \subfloat[UKPConvArgCrowdSample]{
-\includegraphics[trim=10 0 3 0,clip=true,width=.4\textwidth]{../../results/conv_factors/UKPConvArgCrowdSample_factor_scales.pdf}
+\includegraphics[trim=10 10 0 0,clip=true,width=.42\textwidth]{../../results/conv_factors/conv_factor_scales.pdf}
 }
 \subfloat[Sushi-A]{
-\includegraphics[trim=20 0 0 0,clip=true,width=.4\textwidth]{../../results/sushi_factors/sushi_factor_scales}
+\includegraphics[trim=20 5 0 0,clip=true,width=.4\textwidth]{../../results/sushi_factors/sushi_factor_scales}
 }
 \caption{
 Distribution of latent factor variances, $1/s_c$, for crowdGPPL on UKPConvArgCrowdSample, Sushi-A and Sushi-B, averaged over all runs.

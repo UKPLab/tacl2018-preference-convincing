@@ -341,85 +341,85 @@ if __name__ == '__main__':
         plt.tight_layout()
         plt.savefig(figure_save_path + '/num_pairs.pdf')
 
-        # Fourth plot: training set size N versus runtime (with Glove features) ---------------------------------------------
-        if test_to_run == 3:
-            expt_settings['feature_type'] = 'embeddings'
-            methods = ['SinglePrefGP_noOpt_weaksprior_M100',  # 'SinglePrefGP_noOpt_weaksprior_M0',
-                       'PersPrefGP_noOpt_weaksprior_commonmean_M100_F5']  # 'PersPrefGP_commonmean_noOpt_weaksprior_M1052',
-            # 'SVM', 'BI-LSTM']
+    # Fourth plot: training set size N versus runtime (with Glove features) ---------------------------------------------
+    if test_to_run == 3:
+        expt_settings['feature_type'] = 'embeddings'
+        methods = ['SinglePrefGP_noOpt_weaksprior_M100',  # 'SinglePrefGP_noOpt_weaksprior_M0',
+                   'PersPrefGP_noOpt_weaksprior_commonmean_M100_F5']  # 'PersPrefGP_commonmean_noOpt_weaksprior_M1052',
+        # 'SVM', 'BI-LSTM']
 
-            Nvals = [50, 100, 200, 300, 400, 500]
-            runtimes_N = np.zeros((len(methods), len(Nvals)))
+        Nvals = [50, 100, 200, 300, 400, 500]
+        runtimes_N = np.zeros((len(methods), len(Nvals)))
 
-            for n, N in enumerate(Nvals):
-                foldername = 'p2_%i/' % N
+        for n, N in enumerate(Nvals):
+            foldername = 'p2_%i/' % N
 
-                for m, expt_settings['method'] in enumerate(methods):
-                    print("Processing method %s" % expt_settings['method'])
+            for m, expt_settings['method'] in enumerate(methods):
+                print("Processing method %s" % expt_settings['method'])
 
-                    data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir,
-                                                                              resultsfile_template, expt_settings,
-                                                                              max_no_folds=max_no_folds,
-                                                                              foldername=foldername)
+                data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir,
+                                                                          resultsfile_template, expt_settings,
+                                                                          max_no_folds=max_no_folds,
+                                                                          foldername=foldername)
 
-                    runtimes_m = np.zeros(nFolds)
+                runtimes_m = np.zeros(nFolds)
 
-                    for f in range(nFolds):
-                        print("Processing fold %i" % f)
-                        fold = expt_settings['fold_order'][f]
-                        if fold[-2] == "'" and fold[0] == "'":
-                            fold = fold[1:-2]
-                        elif fold[-1] == "'" and fold[0] == "'":
-                            fold = fold[1:-1]
-                        expt_settings['fold_order'][f] = fold
+                for f in range(nFolds):
+                    print("Processing fold %i" % f)
+                    fold = expt_settings['fold_order'][f]
+                    if fold[-2] == "'" and fold[0] == "'":
+                        fold = fold[1:-2]
+                    elif fold[-1] == "'" and fold[0] == "'":
+                        fold = fold[1:-1]
+                    expt_settings['fold_order'][f] = fold
 
-                        # look for new-style data in separate files for each fold. Prefer new-style if both are found.
-                        foldfile = resultsdir + '/fold%i.pkl' % f
-                        if os.path.isfile(foldfile):
-                            with open(foldfile, 'rb') as fh:
-                                data_f = pickle.load(fh, encoding='latin1')
-                        else:  # convert the old stuff to new stuff
-                            if data is None:
-                                min_folds = f + 1
-                                print('Skipping fold with no data %i' % f)
-                                print("Skipping results for %s, %s, %s, %s" % (expt_settings['method'],
-                                                                               expt_settings['dataset'],
-                                                                               expt_settings['feature_type'],
-                                                                               expt_settings['embeddings_type']))
-                                print("Skipped filename was: %s, old-style results file would be %s" % (foldfile,
-                                                                                                        resultsfile))
-                                continue
+                    # look for new-style data in separate files for each fold. Prefer new-style if both are found.
+                    foldfile = resultsdir + '/fold%i.pkl' % f
+                    if os.path.isfile(foldfile):
+                        with open(foldfile, 'rb') as fh:
+                            data_f = pickle.load(fh, encoding='latin1')
+                    else:  # convert the old stuff to new stuff
+                        if data is None:
+                            min_folds = f + 1
+                            print('Skipping fold with no data %i' % f)
+                            print("Skipping results for %s, %s, %s, %s" % (expt_settings['method'],
+                                                                           expt_settings['dataset'],
+                                                                           expt_settings['feature_type'],
+                                                                           expt_settings['embeddings_type']))
+                            print("Skipped filename was: %s, old-style results file would be %s" % (foldfile,
+                                                                                                    resultsfile))
+                            continue
 
-                            if not os.path.isdir(resultsdir):
-                                os.mkdir(resultsdir)
-                            data_f = []
-                            for thing in data:
-                                if f in thing:
-                                    data_f.append(thing[f])
-                                else:
-                                    data_f.append(thing)
-                            with open(foldfile, 'wb') as fh:
-                                pickle.dump(data_f, fh)
+                        if not os.path.isdir(resultsdir):
+                            os.mkdir(resultsdir)
+                        data_f = []
+                        for thing in data:
+                            if f in thing:
+                                data_f.append(thing[f])
+                            else:
+                                data_f.append(thing)
+                        with open(foldfile, 'wb') as fh:
+                            pickle.dump(data_f, fh)
 
-                        runtimes_m[f] = data_f[6]
+                    runtimes_m[f] = data_f[6]
 
-                    runtimes_N[m, n] = np.mean(runtimes_m)
+                runtimes_N[m, n] = np.mean(runtimes_m)
 
-            fig3, ax3 = plt.subplots(figsize=(4, 2.5))
+        fig3, ax3 = plt.subplots(figsize=(4, 2.5))
 
-            ax3.plot(Nvals, runtimes_N[0], label='GPPL M=100', marker='o', color='blue', linewidth=2, linestyle='-.',
-                     markersize=8)
-            ax3.plot(Nvals, runtimes_N[1], label='Crowd-GPPL M=100', marker='<', color='green', linestyle='-.',
-                     linewidth=2, markersize=8)
+        ax3.plot(Nvals, runtimes_N[0], label='GPPL M=100', marker='o', color='blue', linewidth=2, linestyle='-.',
+                 markersize=8)
+        ax3.plot(Nvals, runtimes_N[1], label='Crowd-GPPL M=100', marker='<', color='green', linestyle='-.',
+                 linewidth=2, markersize=8)
 
-            ax3.set_xlabel('No. arguments in training set')
-            ax3.set_ylabel('Runtime (s)')
-            ax3.yaxis.grid('on')
-            # ax3.set_ylim(-5, 205)
-            plt.legend(loc='best')
+        ax3.set_xlabel('No. arguments in training set')
+        ax3.set_ylabel('Runtime (s)')
+        ax3.yaxis.grid('on')
+        # ax3.set_ylim(-5, 205)
+        plt.legend(loc='best')
 
-            plt.tight_layout()
-            plt.savefig(figure_save_path + '/num_arguments.pdf')
+        plt.tight_layout()
+        plt.savefig(figure_save_path + '/num_arguments.pdf')
 
     # Fifth plot: no. features versus runtime -------------------------------------------------------------------------
     if test_to_run == 4:
