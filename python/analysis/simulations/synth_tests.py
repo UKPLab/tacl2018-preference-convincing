@@ -90,18 +90,19 @@ if __name__ == '__main__':
     nreps = 25
     P = 400
 
+    nx = 20
+    ny = 20
+    N = nx * ny
+    Nfactors = 5
+    Npeople = 20
+    ls = [5, 5]
+    lsy = [5, 5]
+
     # NOISE TEST, MULTI USER OBSERVATIONS, PREDICTING CONSENSUS, MODELS: GPPL, POOL, crowd-GPPL ----------------------------------
     if test_to_run == 0:
         # we want new plots
         plt.close('all')
 
-        nx = 20
-        ny = 20
-        N = nx * ny
-        Nfactors = 5
-        Npeople = 20
-        ls = [5, 5]
-        lsy = [5, 5]
         inverse_scales = [0.02, 0.1, 0.2, 0.6, 2]#[0.1, 0.2, 0.4, 0.6, 1.2, 2]
 
         # make sure the simulation is repeatable
