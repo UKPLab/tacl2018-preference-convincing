@@ -90,7 +90,7 @@ if __name__ == '__main__':
     # MULTI USER OBSERVATIONS, MEASURING CORRELATION BETWEEN DISCOVERED AND TRUE LATENT FACTORS, MODEL: MU
 
     s = 1
-    P_values = [40, 80, 160, 320, 640, 1280, 2560]
+    P_values = [160, 240, 640, 1280, 2560, 5120, 10240]
 
     # make sure the simulation is repeatable
     if fix_seeds:
