@@ -7,12 +7,12 @@
 #SBATCH -o ./conv_personalised.out.%j
 #SBATCH -n 1
 #SBATCH -c 24
-#SBATCH --mem-per-cpu=28672
+#SBATCH --mem-per-cpu=16384
 #SBATCH --exclusive
 
 # ----------------------------------
 
-module load python/3.6.2 
+module load python
 module load intel
 
 python3 python/analysis/habernal_comparison/personalised_tests.py 0 

@@ -7,12 +7,12 @@
 #SBATCH -o ./sushi_100.out.%j
 #SBATCH -n 1
 #SBATCH -c 24
-#SBATCH --mem-per-cpu=28672
+#SBATCH --mem-per-cpu=8182
 #SBATCH --exclusive
 
 # ----------------------------------
 
-module load python/3.6.2 
+module load python
 module load intel
 
-python3 python/analysis/sushi_10_tests.py
+python3 python/analysis/sushi_100_test6.py
