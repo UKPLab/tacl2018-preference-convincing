@@ -71,7 +71,7 @@ if __name__ == '__main__':
     nx = 20
     ny = 20
     N = nx * ny
-    P = 400
+    P = 1000
 
     # the independent variable that we adjust:
     inverse_scales = [0.001, 0.01, 0.05, 0.1, 0.2, 1, 10, 100]
