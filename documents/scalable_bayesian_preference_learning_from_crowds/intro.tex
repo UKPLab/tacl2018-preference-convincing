@@ -93,8 +93,9 @@ training set, typically requiring redundant labeling and increased annotation co
 %are either unable to model differences of opinion\citep{G?},
 %do not scale to realistic dataset sizes\citep{chu2005preference},
 %or cannot generalize to new instances or users\citep{BMF?best worst scaling?}.
-Therefore, we require solutions for modeling individual preferences given
-limited data per user and producing a gold standard from crowds of annotators with different opinions.
+Therefore, we require solutions for predicting individual preferences or 
+producing a gold standard from crowdsourced data
+that take into account the differences of opinion between annotators and users.
 
 % not sure I like this because previous paragraph starts of super general,
 % then here we seem to focus arbitrarily on ranking and rating?
@@ -112,11 +113,11 @@ and facilitates the total sorting of items, since it avoids cases where two item
 Besides explicit annotations, pairwise preference labels can be extracted from
 user behavior logs, such as when a user selects one item from a list in preference
 to others~\citep{joachims2002optimizing}. 
-However, such \emph{implicit annotations} can be noisy, as are crowdsourced pairwise labels~\citep{habernal2016argument}.
+However, thess implicit annotations can be noisy, as are crowdsourced pairwise labels~\citep{habernal2016argument}.
 Therefore, while pairwise labels provide a valuable
 form of training data, preference learning methods must be able to 
-aggregate noisy sources of pairwise data from crowds 
-or from different types of implicit annotation.
+aggregate noisy sources of pairwise data, such as that obtained from crowds.
+%or from different types of implicit annotation.
 We henceforth refer to the annotators, users or implicit data sources simply as \emph{users}
 whose preferences we wish to model.
 Likewise, the term \emph{items} refers to any type of instance that users may express preferences over,
@@ -157,7 +158,7 @@ pairwise labels as it is unclear how to parallelize them or constrain their memo
 %these methods also do not 
 
 In this paper, we propose a scalable Bayesian approach to pairwise preference learning with crowds,
-whose members may be annotators, users or sources of implicit annotations.
+whose members may be annotators or users. % or sources of implicit annotations.
 Our approach is designed for preference learning over items, rather than over labels (see discussion in \citet{furnkranz2010preference}),
 and jointly models %for aggregating pairwise  labels from multiple sources that
 personal preferences and the consensus of a crowd by combining 
@@ -192,7 +193,8 @@ we derive a stochastic variational inference scheme~\citep{hoffman2013stochastic
 By providing a scalable Bayesian approach we open preference learning up to novel applications
 for which annotations are sparse, noisy and biased, and where the number of users, items and pairwise labels is large.
 Our empirical evaluation demonstrates the scalability of our approach,
-and its ability to predict personal preferences as well as an objective gold-standard given crowdsourced data.
+and its ability to predict both personal preferences and an objective gold-standard given crowdsourced data.
+We also improve performance over the previous state-of-the-art \citet{simpson2018finding} on a crowdsoured argumentation dataset.
 % TODO how much do we really test data sparsity?
 
 The next section of the paper discusses related work.

@@ -365,7 +365,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             tr_turkers = np.array(tr_turkers)
 
                             turker_tr_counts = np.array([np.sum(tr_turkers == tid) for tid in test_turkers])[valididxs]
-                            turker_conf_filter = 40
+                            turker_conf_filter = 0
                             conflevel = 0
                             #confidxs = np.argsort(np.abs(pred_prob.flatten() - 0.5))[int(len(pred_prob)*conflevel):].flatten() #
                             confidxs = np.argwhere(turker_tr_counts > turker_conf_filter).flatten()

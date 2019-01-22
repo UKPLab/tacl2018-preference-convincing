@@ -48,21 +48,22 @@
 %TODO prefer the use of 'utility' to 'value' since there is some uncertainty (the evaluations by the users can flip at random)
 
 % this should be introduced in section 1. \citep{handleycomparative} -- compares BT with TM models
-For a pair of items, $a$ and $b$, we write $a \prec b$ to symbolize that $a$ is preferred to $b$.  
-A pairwise label has value $y(a \succ b) =1 $ if $a \prec b$ and $0$ otherwise.
+For a pair of items, $a$ and $b$, we write $a \succ b$ to symbolize that $a$ is preferred to $b$.  
+A pairwise label has value $y(a \succ b) =1 $ if $a \succ b$ and $0$ otherwise.
 % %\begin{equation}
 % $y(a \succ b) = \begin{cases}
-% 1 & a \prec b \\
-% 0 & b \prec a
+% 1 & a \succ b \\
+% 0 & b \succ a
 % \end{cases}$.
 % %\end{equation} 
 \citet{thurstone1927law} proposed that the likelihood of pairwise label $y(a,b)=1$ 
 increases as the difference between the utilities of $a$ and $b$ increases. 
 The uncertainty in the likelihood $p(y(a,b)=1)$ accommodates
- labeling errors or noise in implicit annotations, such as click streams, as well as variability in a user's judgments.
+ labeling errors %or noise in implicit annotations, such as click streams, 
+ as well as variability in a user's judgments.
 Here, we assume the utility to be a function of the items' features,
 $f(\bs x_a)$, where $\bs x_a$ is a vector representation of the features of item $a$.
-Pairwise labels are typically modeled using either a logistic likelihood %relationship between the utility function, $f$, and the pairwise labels
+Pairwise labels can be modeled using a logistic likelihood %relationship between the utility function, $f$, and the pairwise labels
 defined by the Bradley-Terry model~\citep{bradley1952rank,plackett1975analysis,luce1959possible},
 or a probit likelihood given by the Thurstone-Mosteller model, also known as \emph{Thurstone case V}~\citep{thurstone1927law,mosteller2006remarks}.
 %or the Thurstone-Mosteller model.
@@ -91,7 +92,8 @@ where $z = f(\bs x_a) - f(\bs x_b)$,
 and $\Phi$ is the cumulative distribution function of the standard normal distribution. 
 This likelihood is the basis of Gaussian process preference learning (GPPL)~\citep{chu2005preference}. 
 Our formulation differs in that instead of learning the variance of $\delta$, we fix it 
-to $0.5$ and scale $f$ to vary the uncertainty in the pairwise labels.
+to $0.5$ and scale $f$ to vary the uncertainty in the pairwise labels,
+which conveniently leads to $z$ having a denominator of 1.
 If we have distributions over $f(\bs x_a)$ and $f(\bs x_b)$, they can be marginalized in a simple manner %as Gaussian noise
 by modifying $z$:
 % we haven't mentioned that f is Gaussian yet. 
@@ -101,26 +103,25 @@ by modifying $z$:
 where $\mu_a$ and $\mu_b$ are the expected values of $f(\bs x_a)$ and $f(\bs x_b)$ respectively, 
 $\sigma_a$ and $\sigma_b$ are the corresponding variances,
 and $\sigma_{a,b}$ is the covariance between $f(\bs x_a)$ and $f(\bs x_b)$.
-We now require a model for the utility function $f$, which we introduce in the next section.
+The next section introduces a model for the utility function, $f$.
 
 \subsection{Single User Preference Learning}
 %TODO check use of 'user' versus 'annotator' terminology throughout, especially in the intro. Is it explicit that the term 'user' is abstract and refers to any of these things?
 
 %First consider modeling the preferences of a single user. In this case, we 
-We assume that the utility function, $f$, 
+We assume a Gaussian process prior over the utility function, 
 %is a function of item features and 
-has a Gaussian process prior: 
 $f \sim \mathcal{GP}(0, k_{\theta}/s)$, where $k_{\theta}$ is a kernel function with hyper-parameters $\theta$, 
 and $s$ is an inverse scale drawn from a gamma prior, 
 $s \sim \mathcal{G}(\alpha_0, \beta_0)$, with shape $\alpha_0$ and scale $\beta_0$.
 The value of $s$ determines the variance of $f$ and therefore its magnitude, which affects the level of certainty
 in the pairwise label likelihood (Equation \ref{eq:plphi}).
-The kernel function takes item features as inputs and determines the covariance between values of $f$ for different items. 
+The kernel function takes numerical item features as inputs and determines the covariance between values of $f$ for different items. 
 The choice of kernel function and its hyperparameters controls the shape and smoothness of the function 
 across the feature space and is often treated as a model selection problem.
 Typical choices of kernel function include the \emph{squared exponential} or \emph{Mat\'ern} functions~\citep{rasmussen_gaussian_2006},
 which produce higher covariance between items with similar feature values.
-These kernel functions make minimal assumptions and so are effective in a wide range of tasks. 
+These kernel functions make minimal assumptions and are effective in a wide range of tasks. 
 % Covariance of different items with same feature: worth mentioning here? We need to multiply the kernel by a small
 % amount < 1 to ensure covariance is not 1 and the values can differ.
 Given a set of $P$ pairwise labels, %for a single user, 
@@ -150,9 +151,8 @@ We henceforth refer to this single-user model as \emph{GPPL}.
 % 2. imagine that the latent features relate preference function values between items and users using the smallest number of features
 % 3. hence the observed features are not needed given the latent features, but we can create a hierarchical model where the latent features depend on the observed ones if available.
 
-When there are multiple users, we wish to exploit similarities between their utility functions 
-%of different users or label sources 
-to improve our predictions for each user when faced with sparse data.
+When there are multiple users, jointly modeling their different preferences may improve consensus predictions and
+improve our predictions for each user when faced with sparse data.
 % is there a better word than 'label sources' for the different sources of implicit feedback or other types of labeling?
 %In a scenario with multiple users or label sources, 
 We represent utilities in a matrix, $\bs{F}$,
@@ -174,45 +174,44 @@ in the case of book recommendation, interests in a particular genre of book.
 %There are two ways that observed features can be incorporated into the 
 %model: (1) as additional dimensions of V or W (each feature cannot be a member of %both); (2) as input features on which V and W depend. The advantage of the latter is that 
 %In the single user model, we assumed a single latent utility function, $f$, of the observed item features. 
-For the multi-user case, we assume that there are $C$ latent functions of item features, $v_c$, 
- and $C$ latent functions of user features, $w_c$.
+For the multi-user case, we assume that there are $C$ latent functions of item features, $v_c\sim \mathcal{GP}(\bs 0, k_{\theta} /s_c)$, 
+ and $C$ latent functions of user features, $w_c \sim \mathcal{GP}(\bs 0, k_{\theta})$,
+ where $k$ is kernel function and $s_c$ is an inverse scale.
 %and thereby model the relationship between each observed feature and each of the latent features. 
 The matrices $V$ and $W$ are evaluations of these functions at the points corresponding to 
 the users and items observed during training.
+Since our goal is to infer a consensus from a crowd as well as to model individual users' preferences, 
+we introduce a consensus utility function over item features, 
+$t\sim \mathcal{GP}(\bs 0, k_{\theta} /\sigma_t)$, that is shared across all users,
+with values $\bs t = \{t(\bs {x}_1),...,t(\bs {x}_N)\}$ for the training items.
 Therefore, the latent preference function, $f$, is 
 a weighted sum over latent functions:
 \begin{flalign}
-  f(\bs x_a, \bs u_j) = \sum_{c=1}^C w_c(\bs u_j) v_c(\bs x_a), & & v_c \sim \mathcal{GP}(\bs 0, k_{\theta} /s_c), & & w_c \sim \mathcal{GP}(\bs 0, k_{\theta}),
+  f(\bs x_a, \bs u_j) = \sum_{c=1}^C w_c(\bs u_j) v_c(\bs x_a) + t(\bs x_a),
 \end{flalign}
-where $\bs u_j$ are the features of user $j$,
-and we provide a Bayesian treatment to matrix factorization by placing Gaussian process priors over the latent functions.
+where $\bs u_j$ are the features of user $j$ and $\bs x_a$ are the features of item $a$.
+%We provide a Bayesian treatment to matrix factorization by placing Gaussian process priors over the latent functions.
 %differently for each user and item. For example, the observed user feature 'age' may correlate with some latent interests of users, but certain users will deviate from their peer group. 
 % what happens if two users have identical features (say, the feature representation
 % has only simple values, such as age in years)? They have 1-1 covariance, but there 
 % is variance in the GP at one location, so both can be drawn separately from the prior.
-It is not necessary to learn a separate scale for $w_c$, since $v_c$ and $w_c$ are multiplied with each other, making a single $s_c$ equivalent to the product of two separate scales. 
-The choice of $C$ can be treated as a hyperparameter, or modeled using a non-parametric prior, such as 
-the Indian Buffet Process, which assumes an infinite number of latent components ~\citep{ding2010nonparametric}.
-For simplicity, we assume fixed values of $C$ in this paper, and allow 
-the Bayesian approach to avoid overfitting by inferring $s_c \approx 0$ with high probability
+%It is not necessary to learn a separate scale for $w_c$, since $v_c$ and $w_c$ are multiplied with each other, making a single $s_c$ equivalent to the product of two separate scales. 
+%The choice of $C$ can be treated as a hyperparameter, or modeled using a non-parametric prior, such as 
+%the Indian Buffet Process, which assumes an infinite number of latent components ~\citep{ding2010nonparametric}.
+For simplicity, we assume fixed values of $C$ in this paper. 
+The Bayesian approach avoids overfitting by inferring $s_c \approx 0$ with high probability
 for any dimensions that are not required to model the data.
 %This section described a Bayesian matrix factorization model, 
 %which we will subsequently extend to a preference learning model for crowds of users and label sources. 
-
 % joint distribution
 % notes about problems with inference.
 
 We combine the matrix factorization method with the preference likelihood of Equation \ref{eq:plphi}
-to obtain a joint preference model for multiple users or label sources.
-Since our goal is to infer a consensus from a crowd as well as to model individual users' preferences, 
-we also introduce a consensus utility function over item features, 
-$t\sim \mathcal{GP}(\bs 0, k_{\theta} /\sigma_t)$, that is shared across all users,
-with values $\bs t = \{t(\bs {x}_1),...,t(\bs {x}_N)\}$ for the training items.
+to obtain a joint preference model for multiple users, \emph{crowdGPPL}:
 %represent a consensus between users,
 %if present, while allowing individual users' preferences to deviate from this value through $\bs V^T \bs W$. 
 %Hence, $\bs t$ can model the underlying ground truth or consensus in crowdsourcing scenarios, or when using
 %multiple label sources to learn preferences for one individual.
-The joint distribution of our crowd model, \emph{crowdGPPL}, is:
 \begin{flalign}
 p\left( \bs{y}, \bs V, \bs W, \bs t, s_1, ..., s_C, \sigma_t | k_{\theta}, \alpha_0, \beta_0 \right) 
 = \prod_{p=1}^P \Phi\left( z_p \right) 

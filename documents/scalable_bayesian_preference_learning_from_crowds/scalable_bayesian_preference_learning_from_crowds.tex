@@ -54,12 +54,14 @@ Scalable Bayesian Preference Learning with Crowds
 
 \author{Edwin Simpson 
 \and Iryna Gurevych \\
-}
-\institute{Ubiquitous Knowledge Processing Lab, Dept. of Computer Science, Technische Universit\"at Darmstadt, Germany\\
+Ubiquitous Knowledge Processing Lab, Dept. of Computer Science, Technische Universit\"at Darmstadt, Germany\\
               \email{\{simpson,gurevych\}@ukp.informatik.tu-darmstadt.de}
 }
 \date{Received: date}
 \begin{document}
+
+\titlerunning{Scalable Bayesian Preference Learning}
+\authorrunning{Simpson, E and Gurevych, I}
 
 % do not exceed 20 pages including references
 
@@ -67,11 +69,11 @@ Scalable Bayesian Preference Learning with Crowds
 
 \begin{abstract}
 We propose a scalable Bayesian preference learning method 
-for inferring a consensus from crowdsourced pairwise labels 
-as well as the preferences of individual annotators.
+for jointly inferring a consensus from crowdsourced pairwise labels 
+and predicting the preferences of individual annotators.
 %While pairwise comparisons are an effective form of training data for ranking or comparison tasks,
 Annotators in a crowd may have divergent opinions, making it difficult to identify consensus rankings or ratings from
-pairwise labels. Limited data for each user also present a challenge when predicting the preferences of individuals. 
+pairwise labels. Limited, noisy data for each user also presents a challenge when predicting the preferences of individuals. 
 %In applications such as recommendation it is also necessary to predict the preferences of individual annotators or users. 
 %and identify common preferences between users. % use of the latent factors 
 %We address these challenges by combining matrix factorization to model individual preferences with 
@@ -82,12 +84,12 @@ accounts for uncertainty arising from sparse data and annotation noise.
 Previous methods for Gaussian process preference learning (GPPL) do not scale to datasets with large numbers
  of users, items or pairwise labels, so we propose an inference method using stochastic variational inference (SVI)
 %that can scale to large numbers of items, users, and pairwise labels 
-that can handle constraints on computational and memory costs.
+that can handle constraints on memory and computational costs.
 Our experiments on a computational argumentation task
 demonstrate the method's scalability and
- show that modeling preferences of individual annotators in a crowd improves the quality of
-an inferred gold standard.
-On a recommendation task, accuracy is competitive with previous methods
+ show that modeling the preferences of individual annotators in a crowd improves the quality of
+the inferred consensus.
+On a benchmark recommendation task, our method is competitive with previous approaches, 
  while the model is able to scale to far larger datasets.
 %We also show how to  %that robustness to %able to learn the effective number of components required to model the data and
 %choosing more latent components than required,

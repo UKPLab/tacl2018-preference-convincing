@@ -1,24 +1,29 @@
 \section{Conclusions}
 
-We proposed a Bayesian preference learning approach 
-for modeling both the individual utilities of members of a crowd 
+We proposed a novel Bayesian preference learning approach 
+for jointly modeling the individual utilities of members of a crowd 
 and forming a consensus from 
-unreliable annotations, such as those provided by a crowd or through implicit user feedback.
-The model learns the latent utilities of items from pairwise comparisons using a combination of Gaussian processes and Bayesian matrix factorization.
+unreliable annotations, such as those provided by a crowd. % or through implicit user feedback.
+Unlike previous methods, 
+our model learns the latent utilities of items from pairwise comparisons using a combination of Gaussian processes and Bayesian matrix factorization to capture divergences in opinion while inferring a consensus.
 To enable inference at the scale of real-world datasets in fields such as NLP,
 we derived a stochastic variational inference scheme.
 Our empirical results confirm that our approach scales well with the amount of training data,
 and that jointly modeling the consensus and personal preferences of users can improve the predictions
 of both.
+When predicting a consensus from crowdsourced data, our model, CrowdGPPL, improves on the results of \citet{simpson2018finding},
+who used a GPPL method that did not account for personal preferences.
+On a benchmark recommendation dataset, our approach also produces competitive results and showed
+that modeling the consensus function can boost predictions of individual preferences.
 %far better than previous
 %Gaussian process preference learning methods 
 %without harming  
 %performance on individual utility prediction and significantly improving performance
 %on consensus learning.
-Future work will evaluate the benefit of learning inducing point locations from data,
-optimizing length-scale hyperparameters by maximizing $\mathcal L$,
-and investigate the possibility of integrating deep generative models 
-for learning feature representations from input data.
+Future work will evaluate the benefit of learning inducing point locations from data and
+optimizing length-scale hyperparameters by maximizing $\mathcal L$.
+%and investigate the possibility of integrating deep generative models 
+%for learning feature representations from input data.
 %the models can readily be adapted to regression or classification tasks by swapping out the preference likelihood, resulting in 
 %different values for $\bs G$ and $\bs H$.
 % Preference elicitation using information theoretic methods.

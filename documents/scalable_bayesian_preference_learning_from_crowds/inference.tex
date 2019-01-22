@@ -9,13 +9,13 @@ or a combination of expectation propagation (EP) with variational Bayes (VB) for
 multi-user model~\citep{houlsby2012collaborative}.
 The Laplace approximation is a maximum a-posteriori (MAP) solution that
 takes the most probable values of parameters rather than integrating over their distributions,
-and has been shown to perform poorly for tasks such as classification~\citep{nickisch2008approximations}. 
+and has been shown to perform poorly for classification~\citep{nickisch2008approximations}. 
 EP and VB approximate the true posterior with a simpler, factorized distribution
 that can be learned using an iterative algorithm.
 For crowdGPPL, the true posterior is multi-modal, since the latent factors can be re-ordered arbitrarily without
 affecting $\bs F$, causing a \emph{non-identifiability problem}.
 EP would average these modes and produce uninformative predictions over $\bs F$, so
-~\citet{houlsby2012collaborative} incorporate a VB step that approximates a single mode.
+\citet{houlsby2012collaborative} incorporate a VB step that approximates a single mode.
 A drawback of EP is that unlike VB, convergence is not guaranteed~\citep{minka2001expectation}.
 %do they also linearise in the same way? -- both linearise. But EP uses a joint over y and f as its approximation to p(y|f), then optimises the parameters iteratively. It's not guaranteed to converge. Variational EGP instead approximates
 % p(y|f) directly with the best fit Gaussian. It's not clear whether this could be updated iteratively but it doesn't
@@ -26,7 +26,7 @@ A drawback of EP is that unlike VB, convergence is not guaranteed~\citep{minka20
 
 %TODO: remove redundancy with the related work section. Consider whether this should actually be in a background section. NM^2 is limiting, not just the other costs. The other costs NP etc come into play in this pairwise model only.
 Exact inference for a Gaussian process has computational complexity $\mathcal{O}(N^3)$ 
-and memory complexity $\mathcal{O}(N^2)$.
+and memory complexity $\mathcal{O}(N^2)$, where $N$ is the number of data points.
 The cost of inference can be reduced using a \emph{sparse} approximation based on a set of 
 \emph{inducing points}, which act as substitutes for the set of points in the training dataset.
 By choosing a fixed number of inducing points, $M \ll N$, the computational cost is cut to $\mathcal{O}(NM^2)$,
@@ -37,15 +37,14 @@ marginal likelihood.
 The sparse approximation used by \citet{houlsby2012collaborative} for the collaborative GP 
 is the \emph{generalized fully independent training conditional} (GFITC)~\citep{snelson2006sparse}.
 In practice, GFITC is unsuitable for datasets with more than a few thousands points,
-as the $\mathcal{O}(NM^2)$ computational and $\mathcal{O}(NM)$ costs become prohibitively high
-when $N$ is large,
+as the computational and memory costs cannot be constrained
 and GFITC is not amenable to distributed computation~\citep{hensman2015scalable}.  
-In contrast to crowdGPPL, \citet{houlsby2012collaborative} place GPs over the space of pairs rather than items,
-which is typically much larger, meaning that $\mathcal{O}(PM^2 + UM^2)$ computational and $\mathcal{O}(PM + UM)$
-memory costs dominate. 
+%In contrast to crowdGPPL, \citet{houlsby2012collaborative} place GPs over the space of pairs rather than items,
+%which is typically much larger, meaning that $\mathcal{O}(PM^2 + UM^2)$ computational and $\mathcal{O}(PM + UM)$
+%memory costs dominate. 
 We derive a more scalable approach for GPPL and crowdGPPL using
-stochastic variational inference (SVI), an iterative scheme that allows the computational and memory costs at
-each iteration to be constrained~\citep{hoffman2013stochastic}.
+stochastic variational inference (SVI), an iterative scheme that limits the computational and memory costs at
+each iteration~\citep{hoffman2013stochastic}.
 % how does hensman 2015 optimize inducing points? This is one selling point of SVI. 
 % Advantages of VB:  Nickisch 2008 got poorer results for VB methods they tried than EP. But our method may be different?, Seeger 2000
 First, we define an approximate likelihood that enables the SVI method.
@@ -76,18 +75,18 @@ $p(\Phi(z_p) | \bs K_{\theta}, \alpha_0, \beta_0)$, and are estimated using nume
 
 Unfortunately, the nonlinear term, $\Phi(\bs z)$ means that the posterior is still intractable, 
 so we linearize $\Phi(\bs z)$ by taking its first-order Taylor series expansion
-about the expectation of $\bs f$ for single user GPPL (for crowdGPPL, replace $\bs f$ with $\bs F$ in the following):
+about the expectation of $\bs f$ for GPPL (for crowdGPPL, replace $\bs f$ with $\bs F$ in the following):
 \begin{flalign}
-\Phi(\bs z) &\approx \tilde{\Phi}(\bs z) = \bs G (\bs f-\mathbb{E}[\bs f]) + \Phi(\mathbb{E}[\bs z]), \\
-G_{p,i} &= \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p])) (2y_p - 1)( [i = a_p] - [i = b_p]) 
+\Phi(\bs z) &\approx \tilde{\Phi}(\bs z) = \bs G (\bs f-\mathbb{E}[\bs f]) + \Phi(\hat{\bs z}), \\
+G_{p,i} &= \Phi(\mathbb{E}[z_p])(1 - \Phi(\hat{z}_p)) (2y_p - 1)( [i = a_p] - [i = b_p]) 
 \end{flalign}
 where $\bs G$ is a matrix containing elements $G_{p,i}$, which are the
 partial derivatives of the pairwise likelihood with respect to each of 
 the latent function values, $\bs f$.
-This creates a dependency between the posterior mean of $\bs f$ and the linearization terms in the likelihood,
+This creates a circular dependency between the posterior mean of $\bs f$ and $\bs G$, %the linearization terms in the likelihood,
 which can be estimated iteratively using variational inference~\citep{steinberg2014extended},
 as we describe below.
-The linearization makes the approximate likelihood conjugate to the prior, $\mathcal{N}(\bs f; \bs 0, \bs K_{\theta}/s)$,
+Linearization makes the approximate likelihood conjugate to the prior, $\mathcal{N}(\bs f; \bs 0, \bs K_{\theta}/s)$,
 so that the approximate posterior over $\bs f$ is also Gaussian. 
 %We now use our likelihood approximation to define an approximate
 %posterior over all variables for GPPL:
@@ -113,9 +112,7 @@ and the extended Kalman filter~\citep{reece2011determining,steinberg2014extended
 %However, neither these methods nor our approximation in Equation \ref{eq:vb_approx}
 %make inference sufficiently scalable, as they all require
 %inversion of an $N \times N$ matrix and further computations involving $N \times P$ and $P \times P$ matrices.
-In the next section, we use the approximate likelihood to define an approximate posterior
-% modify Equation \ref{eq:vb_approx} to enable 
-for stochastic variational inference (SVI).
+We can now use the approximate likelihood to derive equations for SVI.% stochastic variational inference (SVI).
 
 \subsection{SVI for Single User GPPL}
 
@@ -133,8 +130,7 @@ and covariance between the observed and inducing items, $\bs K_{nm}$.
 % The inducing points act as proxies for the observed points during inference,
 % and thereby reduce the number of data points we have to perform costly operations % over.
 %We modify the variational approximation in Equation \ref{eq:vb_approx} to introduce the inducing points 
-For clarity, we omit $\theta$ from this point on, and provide further detailed equations in 
-Appendix \ref{sec:vb_eqns}.
+For clarity, we omit $\theta$ from this point on.
 The posterior over the inducing and training items is approximated as:
 \begin{flalign}
 p(\bs f, \bs f_m, s | \bs y, \bs x, \bs x_m, k_{\theta}, \alpha_0, \beta_0) &\approx q(\bs f, \bs f_m, s) = q(s)q(\bs f)q(\bs f_m). \label{eq:svi_approx} &&
@@ -161,8 +157,8 @@ The factor $q(s)$ is also modified to depend on the inducing points:
 \end{flalign}
 where $\alpha= \alpha_0 + \frac{M}{2}$ and $\beta = \beta_0 + \frac{
 \textrm{tr}(\bs K^{-1}_{mm}(S + \hat{\bs f}_m \hat{\bs f}_m^T))}{2}$.
-None of the other factors depend on $\log q(\bs f)$,
-so it need not be computed unless required for prediction.
+%None of the other factors depend on $\log q(\bs f)$,
+%so it need not be computed unless required for prediction.
 
 %once the other factors have already been estimated, as explained in the next subsection.
 
@@ -189,8 +185,8 @@ then taking the cluster centers as inducing points that represent the spread of 
 %Variational inference 
 We can apply variational inference to iteratively reduce the KL-divergence between our approximate posterior
 %$q(s)q(\bs f)q(\bs f_m)$
-and the true posterior (Equation \ref{eq:svi_approx}) %, $p(s, \bs f, \bs f_m | \bs K, \alpha_0, \beta_0, \bs y)$,
-by maximizing a lower bound, $\mathcal{L}$, on the log marginal likelihood:
+and the true posterior (both stated in Equation \ref{eq:svi_approx}) %, $p(s, \bs f, \bs f_m | \bs K, \alpha_0, \beta_0, \bs y)$,
+by maximizing a lower bound, $\mathcal{L}$, on the log marginal likelihood (see also the detailed equations in Appendix \ref{sec:vb_eqns}):
 %(see also Equation \ref{eq:full_L_singleuser} in the Appendix):%, $\log p(\bs y | \bs K, \alpha_0, \beta_0)$ :
 \begin{flalign}
 \log p(\bs y | \bs K, \alpha_0, \beta_0) = \textrm{KL}(q(\bs f, \bs f_m, s)  || p(\bs f, \bs f_m, s | \bs y, \bs K, \alpha_0, \beta_0)) 
@@ -206,7 +202,6 @@ by maximizing a lower bound, $\mathcal{L}$, on the log marginal likelihood:
 %         self.rate_s = self.rate_s0 + 0.5 * np.trace(invK_mm_expecFF)
 We optimize $\mathcal{L}$ by initializing the $q$ factors randomly, then
 updating each one in turn, taking expectations with respect to the other factors. 
-
 The only term in $\mathcal{L}$ that refers to the observations, $\bs y$, 
 is a sum of $P$ terms, each of which refers to one observation only.
 This means that $\mathcal{L}$ can be maximized iteratively by considering a random subset of 
@@ -215,9 +210,9 @@ observations at each iteration~\citep{hensman2013gaussian}.
 %$\hat{\bs f}_m$ and $\bs S$ over all observations with a sequence of stochastic updates.
 For the $i$th update of $q(\bs f_m)$, we randomly select observations $\bs y_i = \{ y_p \forall p \in \bs P_i \}$, where $\bs P_i$ is random subset of indexes of observations.
 %Rather than using the complete matrices, 
-We then perform updates using $\bs Q_i$, which contains rows and columns of $\bs Q$ for observations in $\bs P_i$,
-$\bs K_{im}$ and $\bs A_i$, which contain only rows referred to by $\{y_p \forall p \in \bs P_i\}$,
-$\bs G_i$, which contains rows in $\bs P_i$ and columns referred to by any items $\{a_p \forall p \in \bs P_i \} \cup \{ b_p \forall p \in \bs P_i\}$,
+We then perform updates using $\bs Q_i$ (rows and columns of $\bs Q$ for observations in $\bs P_i$),
+$\bs K_{im}$ and $\bs A_i$, (rows of $\bs K_{nm}$ and $\bs A$ referred to by $\{y_p \forall p \in \bs P_i\}$),
+$\bs G_i$ (rows of $\bs G$ in $\bs P_i$ and columns referred to by any items $\{a_p \forall p \in \bs P_i \} \cup \{ b_p \forall p \in \bs P_i\}$),
 and $\hat{\bs z}_i = \{ \mathbb{E}[\bs z_p] \forall p \in P_i \}$.
 %All matrices with subscript $_i$ contain only the subset of elements relating to 
 %observations in $\bs P_i$.
@@ -240,9 +235,8 @@ natural gradient~\citep{hensman2015scalable}:
 \end{flalign}
 where
 $\rho_i=(i + \epsilon)^{-r}$ is a mixing coefficient that controls the update rate,
-$w_i = \frac{P}{|P_i|}$ weights each update according so sample size,
+$w_i = \frac{P}{|P_i|}$ weights each update according to sample size,
  $\epsilon$ is a delay hyperparameter and $r$ is a forgetting rate~\citep{hoffman2013stochastic}.
-
 For the inverse scale, %, $s$, %can also be learned as part of the SVI procedure. Its variational factor,
 $q(s)$ is updated using Equation \ref{eq:qs}, then its expected value is computed as %has the following update equations:
 $\mathbb{E}[s] = \frac{\alpha}{\beta}$.
@@ -316,11 +310,7 @@ the SVI procedure optimizes the lower bound on the marginal likelihood
 \right]. &
 \end{flalign}
 The algorithm follows the same pattern as Algorithm \ref{al:singleuser}, computing means and covariances
-for  $\bs V_m$, $\bs W_m$ and $\bs T_m$ instead of $\bs f_m$ using the equations given below.
-
-The expectations for the inverse scales, $s_1,...,s_c$ and $\sigma$, can be 
-computed using Equation \ref{eq:qs} by
-substituting in the corresponding terms for each $\bs v_c$ or $\bs t$ instead of $\bs f$. 
+for  $\bs V_m$, $\bs W_m$ and $\bs T_m$ instead of $\bs f_m$.
 %This approximation factorizes the joint distribution between the latent item factors, $\bs V$, the latent user factors, $\bs W$, and the common means, $\bs t$. 
 %but does not requiring factorization across the latent dimensions $\bs w_1,...,\bs w_C$ and $\bs v_1,...,\bs v_C$.
 The variational factor for the inducing item factors is:
@@ -365,10 +355,12 @@ the variational distribution for the inducing users factors is:% then as follows
 + \textrm{const} & \nonumber \\
 = \;\;& \sum_{c=1}^C \log \mathcal{N}\left( \bs w_c; \hat{\bs w}_c, \bs \Sigma_c \right), & 
 \end{flalign}
-where $\hat{\bs w}_c$ and $\bs \Sigma_{c}$ also follow the pattern of Equation
+where $\hat{\bs w}_c$ and $\bs \Sigma_{c}$ also follow the pattern of
 Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}, and their full definitions
 are given in Appendix \ref{sec:post_params}, Equations \ref{eq:St} and \ref{eq:hatt}.
-
+The expectations for the inverse scales, $s_1,...,s_c$ and $\sigma$, can be 
+computed using Equation \ref{eq:qs} by
+substituting in the corresponding terms for each $\bs v_c$ or $\bs t$ instead of $\bs f$. 
 % The equations for the means and covariances 
 % can be adapted for stochastic updating by applying weighted sums over
 % the stochastic update and the previous values in the 
@@ -387,7 +379,7 @@ are given in Appendix \ref{sec:post_params}, Equations \ref{eq:St} and \ref{eq:h
 % \end{flalign}
 
 Predictions for crowdGPPL can be made by computing the posterior mean utilities, $\bs F^*$, 
-and the covariance $\bs \Lambda_u^*$ for each users $u$ in the test set:
+and the covariance $\bs \Lambda_u^*$ for each user, $u$, in the test set:
 \begin{flalign} \label{eq:predict_crowd}
 &\bs F^* = \hat{\bs t}^* + \sum_{c=1}^C \hat{\bs v}_{c}^{*T} \hat{\bs w}_{c}^*, \hspace{1cm} \bs \Lambda_u^* = \bs C_{t}^* + \sum_{c=1}^C \omega_{c,u}^* \bs C_{v,c}^* + \hat{w}_{c,u}^2  \bs C_{v,c}^*  +\omega_{c,u}^* \hat{\bs v}_{c}\hat{\bs v}_{c}^T, &
 \end{flalign}
