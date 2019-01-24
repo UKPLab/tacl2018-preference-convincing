@@ -223,13 +223,32 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 init_size = 300
                 if self.y_ninducing > init_size:
                     init_size = self.y_ninducing
-                kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.y_ninducing)
+                kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.y_ninducing, compute_labels=True)
                 kmeans.fit(self.person_features / self.lsy[None, :])
 
-                #self.y_inducing_coords = self.person_features[np.random.choice(self.Npeople,
+                # choose a random set of points, one from each cluster.
+                shuffled_idxs = np.random.permutation(self.person_features.shape[0])
+
+                self.y_inducing_coords = self.person_features[
+                    shuffled_idxs[
+                        np.unique(kmeans.labels_[shuffled_idxs], return_index=True)
+                    [1]]
+                ]
+
+                if self.y_inducing_coords.shape[0] < self.y_ninducing:
+                    self.y_ninducing = self.y_inducing_coords.shape[0]
+
+                #kmeans.cluster_centers_ * self.lsy[None, :]
+
+                # from sklearn.mixture import GaussianMixture as GMM
+                # gmm = GMM(self.y_ninducing, covariance_type='spherical')
+                # gmm.fit(self.person_features / self.lsy[None, :])
+                # self.y_inducing_coords = gmm.means_ * self.lsy[None, :]
+
+                # self.y_inducing_coords = self.person_features[np.random.choice(self.Npeople,
                 #                                                                self.y_ninducing,
                 #                                                                replace=False)]
-                self.y_inducing_coords = kmeans.cluster_centers_ * self.lsy[None, :]# self.person_features[:self.y_ninducing]
+                # self.person_features[:self.y_ninducing]
 
                 # def total_corr(p):
                 #     return np.sum(np.abs(self.y_kernel_func(self.y_inducing_coords,
@@ -614,9 +633,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         """
         Compute the expectation over the latent features of the items and the latent personality components
         """
-        # Put a GP prior on w with covariance K/gamma and mean 0
-        N = self.ninducing
-
         rho_i = (self.vb_iter + self.delay) ** (-self.forgetting_rate)
         w_i = self.nobs / float(self.update_size)
 
@@ -688,9 +704,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         for f in range(self.Nfactors):
             self.w_cov_i[f] = Kw_i / sw[f] + covpair.dot(self.wS[f] - self.K_mm/sw[f]).dot(covpair.T)
 
-            self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, N,
-                                                       self.invK_mm, self.w_u[:, f:f + 1], np.zeros((N, 1)),
-                                                       f_cov=self.wS[f])
+            self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, self.ninducing,
+               self.invK_mm, self.w_u[:, f:f + 1], np.zeros((self.ninducing, 1)), f_cov=self.wS[f])
 
 
     def _expec_y(self):
@@ -1116,7 +1131,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 matcher = np.zeros((self.Npeople, G.shape[1]))
                 matcher[self.y_idx_i, np.arange(matcher.shape[1])] = 1
 
-                GinvQ = G.T * self.Q[None, self.data_obs_idx_i]
+                GinvQ = G.T / self.Q[None, self.data_obs_idx_i]
                 obs_prec = np.diag(matcher.dot(scaling_f * GinvQ.dot(G)).dot(matcher.T))
 
                 prec_out[f] += obs_prec

@@ -666,13 +666,18 @@ if __name__ == '__main__':
         test_to_run = 0
 
     # Experiment name tag
-    tag = '_recheck_no_sy2'
+    tag = '_recheck_no_sy4'
 
     vscales = None  # don't record the v factor scale factors
     vscales_A = None
     vscales_B = None
 
     nreps = 25
+
+    debug_small = False # set to true to use a small subset of data
+
+    item_feat_file = './data/sushi3-2016/sushi3.idata'
+    user_feat_file = './data/sushi3-2016/sushi3.udata'
 
     if test_to_run == -1 or test_to_run == 0 or test_to_run == 1 or test_to_run == 2 or test_to_run == 3:
 
@@ -684,10 +689,6 @@ if __name__ == '__main__':
 
 
         # Load feature data ----------------------------------------------------------------------------------------------------
-
-        item_feat_file = './data/sushi3-2016/sushi3.idata'
-        user_feat_file = './data/sushi3-2016/sushi3.udata'
-
         item_data = pd.read_csv(item_feat_file, sep='\t', index_col=0, header=None)
         item_features = item_data.values[:, 1:].astype(float)
         item_features = convert_discrete_to_continuous(item_features, cols_to_convert=[2])
@@ -717,9 +718,6 @@ if __name__ == '__main__':
 
 
         # for debugging --------------------------------------------------------------------------------------------------------
-
-        debug_small = False
-
         if debug_small:
             ndebug = 200
             userids = userids[:ndebug]
@@ -752,8 +750,9 @@ if __name__ == '__main__':
 
 
     # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
-    np.random.seed(2309234)
-    u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, chosen_users, \
+    if test_to_run < 4: # gest the dev data from sushi A
+        np.random.seed(2309234)
+        u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, chosen_users, \
                 _, _, _, _, _, _ = subsample_data(-1)
 
     if test_to_run == -1:
@@ -766,10 +765,12 @@ if __name__ == '__main__':
         print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
         np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
 
-    # remove the dev set users so we don't see them in testing
-    not_chosen_users = np.ones(user_data.shape[0], dtype=bool)
-    not_chosen_users[chosen_users] = False
-    user_data = user_data[not_chosen_users]
+
+    if test_to_run < 4:
+        # remove the dev set users so we don't see them in testing
+        not_chosen_users = np.ones(user_data.shape[0], dtype=bool)
+        not_chosen_users[chosen_users] = False
+        user_data = user_data[not_chosen_users]
 
     if test_to_run == 0:
 
@@ -822,15 +823,15 @@ if __name__ == '__main__':
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
                    'crowd-GPPL',
-                   'crowd-GPPL-noInduc',
-                   'crowd-GPPL-noConsensus',
-                   'crowd-GPPL\\u',
-                   'crowd-BMF',
+                   # 'crowd-GPPL-noInduc',
+                   # 'crowd-GPPL-noConsensus',
+                   # 'crowd-GPPL\\u',
+                   # 'crowd-BMF',
                    # # 'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
-                   'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-                   'GPPL-pooled',
+                   # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+                   # 'GPPL-pooled',
                    # # # 'GPPL-joint',
-                   'GPPL-per-user',
+                   # 'GPPL-per-user',
                    ]
 
         optimize = False
@@ -914,9 +915,14 @@ if __name__ == '__main__':
             print('Debug: Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
             print('Debug: User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
 
-        # SUSHI B, global parameter changes ------------------------------------------------------------------------------------
+        # SUSHI B, global parameters ------------------------------------------------------------------------------------
 
-        max_update_size = 2000
+        max_facs = 20
+        shape_s0 = 1.0
+        rate_s0 = 100.0  #0.1
+        forgetting_rate = 0.9
+        max_Kw_size = 5000
+        max_update_size = 1000
         delay = 5
         ninducing = 500 # allow us to handle more users.
 
@@ -927,11 +933,11 @@ if __name__ == '__main__':
         methods = [
                    'crowd-GPPL',
                    'crowd-GPPL\\u',
-                   'crowd-BMF',
-                   'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-                   'GPPL-pooled',
-                   'GPPL-per-user',
-                   'crowd-GPPL-noConsensus',
+                   # 'crowd-BMF',
+                   # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+                   # 'GPPL-pooled',
+                   # 'GPPL-per-user',
+                   # 'crowd-GPPL-noConsensus',
                    # #  #'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
                    # #  # 'GPPL-joint',
         ]
