@@ -89,6 +89,9 @@ def pref_likelihood(fmean, fvar=None, subset_idxs=[], v=[], u=[], return_g_f=Fal
             fvar = fvar[:, np.newaxis]        
         fvar = fvar + 2.0
 
+    if np.any(fvar < 0):
+        logging.warning('There was a negative variance in the pref likelihood! %s' % fvar)
+
     if len(v) and len(u):
         g_f = (fmean[v, :] - fmean[u, :]) / np.sqrt(fvar)
     else: # provide the complete set of pairs

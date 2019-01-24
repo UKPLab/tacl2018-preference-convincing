@@ -204,8 +204,8 @@ class CollabPrefLearningVB(object):
         self.shape_sw0 = shape_s0
         self.rate_sw0 = rate_s0
 
-        self.shape_sy0 = 1#shape_s0
-        self.rate_sy0 = 1#rate_s0
+        self.shape_sy0 = 1  # shape_s0
+        self.rate_sy0 = 1  # rate_s0
 
         self.shape_st0 = shape_s0
         self.rate_st0 = rate_s0 #* self.Nfactors # this rebalances the prior expected variance of t against the latent components
@@ -667,13 +667,13 @@ class CollabPrefLearningVB(object):
         self.w, self.w_cov = update_gaussian(self.invKw, self.sw_matrix, w_prec, x)
         self.w = np.reshape(self.w, (self.Nfactors, self.N)).T  # w is N x Nfactors
 
-        for f in range(self.Nfactors):
-            fidxs = np.arange(self.N) + (self.N * f)
-            self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, self.N,
-                                                                   self.invK, self.w[:, f:f + 1], np.zeros((self.N, 1)),
-                                                                   f_cov=self.w_cov[fidxs, :][:, fidxs])
-
-            self.sw_matrix[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]
+        # for f in range(self.Nfactors):
+        #     fidxs = np.arange(self.N) + (self.N * f)
+        #     self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, self.N,
+        #                                                            self.invK, self.w[:, f:f + 1], np.zeros((self.N, 1)),
+        #                                                            f_cov=self.w_cov[fidxs, :][:, fidxs])
+        #
+        #     self.sw_matrix[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]
 
     def _expec_y(self):
         """
@@ -1142,7 +1142,7 @@ class CollabPrefLearningVB(object):
             t_out = K.dot(invKt)
 
             if return_cov:
-                cov_t = K_starstar * self.rate_st / self.shape_st + covpair.dot(self.t_cov + self.K * self.st).dot(covpair.T)
+                cov_t = K_starstar * self.rate_st / self.shape_st + covpair.dot(self.t_cov - self.K * self.st).dot(covpair.T)
             else:
                 cov_t = None
         else:

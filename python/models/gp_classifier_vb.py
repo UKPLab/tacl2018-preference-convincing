@@ -485,7 +485,7 @@ class GPClassifierVB(object):
         self.obs_mean = (self.obs_values + self.nu0[1]) / (self.obs_total_counts + nu0_total)
         var_obs_mean = self.obs_mean * (1 - self.obs_mean) / (
                 self.obs_total_counts + nu0_total + 1)  # uncertainty in obs_mean
-        self.Q = (self.obs_mean * (1 - self.obs_mean) + var_obs_mean) / self.obs_total_counts
+        self.Q = (self.obs_mean * (1 - self.obs_mean) - var_obs_mean) / self.obs_total_counts
         self.Q = self.Q.flatten()
 
     def _init_obs_prior(self):

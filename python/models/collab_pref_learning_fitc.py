@@ -67,7 +67,8 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
             if diff < self.conv_threshold_G:
                 break
 
-        self.t, _ = inducing_to_observation_moments(self.Kts_mm, self.invK_mm, self.K_nm, self.t_u, self.t_mu0)
+        self.t, _ = inducing_to_observation_moments(self.K_mm * self.rate_st / self.shape_st,
+                                                    self.invK_mm, self.K_nm, self.t_u, self.t_mu0)
 
         self.shape_st, self.rate_st = expec_output_scale(self.shape_st0, self.rate_st0, N,
                                                          self.invK_mm, self.t_u, np.zeros((N, 1)),
