@@ -262,7 +262,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                  len(expt_settings['folds']) + 1,
                                  1)
                 else:
-                    results_shape = (len(methods) * len(datasets), 
+                    results_shape = (len(methods) * len(datasets),
                                  len(feature_types) * len(embeddings_types), 
                                  len(expt_settings['folds']) + 1, 
                                  int(npairs / expt_settings['di']))
@@ -314,7 +314,11 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                         foldfile = resultsdir + '/fold%i.pkl' % f
                         if os.path.isfile(foldfile):
                             with open(foldfile, 'rb') as fh:
-                                data_f = pickle.load(fh, encoding='latin1')
+                                try:
+                                    data_f = pickle.load(fh, encoding='latin1')
+                                except:
+                                    print('The pickle file could not be loaded, skipping this fold: %s' % foldfile)
+                                    continue
 
                         else: # convert the old stuff to new stuff
                             if data is None:
