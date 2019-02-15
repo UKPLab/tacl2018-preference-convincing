@@ -286,7 +286,7 @@ if __name__ == '__main__':
         # ls = [5, 5]
         # lsy = [5, 5]
 
-        inverse_scales = [0.002, 0.02, 0.2, 1.0, 10.0, 100.0]#[0.0001, 0.001, 0.005, 0.01, 0.02]
+        inverse_scales = [0.0002, 0.002, 0.02, 0.1, 1.0, 10.0]#[0.0001, 0.001, 0.005, 0.01, 0.02]
 
         mean_results = []
         std_results = []
@@ -322,7 +322,7 @@ if __name__ == '__main__':
                     Npeople=Npeople,
                     P=P,
                     ls=ls,
-                    sigma=10,
+                    sigma=1,
                     s=s,
                     lsy=lsy,
                     Npeoplefeatures=2
