@@ -69,7 +69,7 @@ def svi_update_gaussian(invQi_y, mu0_n, mu_u, K_mm, invK_mm, K_nm, Lambda_factor
         C = K_nn + (covpair_uS - covpair.dot(K_mm)).dot(covpair.T)
     return fhat, C, invS, invSm, fhat_u, invK_mm_S, S
 
-def inducing_to_observation_moments(Ks_mm, invK_mm, K_nm, fhat_mm, mu0, S=None, K_nn=None, full_cov=True):
+def inducing_to_observation_moments(Ks_mm, invK_mm, K_nm, fhat_mm, mu0, S=None, Ks_nn=None, full_cov=True):
     covpair = K_nm.dot(invK_mm)
     fhat = covpair.dot(fhat_mm) + mu0
 
@@ -78,13 +78,13 @@ def inducing_to_observation_moments(Ks_mm, invK_mm, K_nm, fhat_mm, mu0, S=None, 
     elif full_cov:
         covpairS = covpair.dot(S)  # C_nm
 
-        if K_nn is None:
+        if Ks_nn is None:
             C = None
         else:
-            C = K_nn + (covpairS - covpair.dot(Ks_mm)).dot(covpair.T)
+            C = Ks_nn + (covpairS - covpair.dot(Ks_mm)).dot(covpair.T)
 
     else:
-        C = K_nn + np.sum(covpair.dot(S - Ks_mm) * covpair, axis=1)
+        C = Ks_nn + np.sum(covpair.dot(S - Ks_mm) * covpair, axis=1)
 
     return fhat, C
 
@@ -1079,8 +1079,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             return self.yS
 
         v = np.array([inducing_to_observation_moments(self.Ky_mm / self.shape_sy[f] * self.rate_sy[f],
-                self.invKy_mm, self.Ky_nm, self.y_u[f:f+1, :].T, 0, S=self.yS[f],
-                K_nn=self.rate_sy[f] / self.shape_sy[f], full_cov=False)[1]
+                                                      self.invKy_mm, self.Ky_nm, self.y_u[f:f+1, :].T, 0, S=self.yS[f],
+                                                      Ks_nn=self.rate_sy[f] / self.shape_sy[f], full_cov=False)[1]
                       for f in range(self.Nfactors)])
         return v
 
