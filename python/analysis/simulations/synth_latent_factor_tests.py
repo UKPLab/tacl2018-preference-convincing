@@ -67,7 +67,7 @@ if __name__ == '__main__':
         np.random.seed(1)
 
     # SETTINGS FOR ALL THE NOISE TESTS
-    nreps = 5#25
+    nreps = 25
     nx = 20
     ny = 20
     N = nx * ny
@@ -80,10 +80,6 @@ if __name__ == '__main__':
     figure_root_path = './results/synth'
     if not os.path.exists(figure_root_path):
         os.mkdir(figure_root_path)
-
-    figure_save_path = figure_root_path + '/multiuser_factor_correlations_s/'
-    if not os.path.exists(figure_save_path):
-        os.mkdir(figure_save_path)
 
     # DATATSET SIZE TEST -----------------------------------------------------------------------------------------------
     # MULTI USER OBSERVATIONS, MEASURING CORRELATION BETWEEN DISCOVERED AND TRUE LATENT FACTORS, MODEL: MU

@@ -666,7 +666,7 @@ if __name__ == '__main__':
         test_to_run = 0
 
     # Experiment name tag
-    tag = '_recheck_no_sy4'
+    tag = '_1'
 
     vscales = None  # don't record the v factor scale factors
     vscales_A = None
@@ -780,13 +780,10 @@ if __name__ == '__main__':
         methods = [
                    'crowd-GPPL',
                    'crowd-GPPL-noInduc',
-                   # 'crowd-GPPL-noConsensus',
                    'crowd-GPPL\\u',
                    'crowd-BMF',
-                   #'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
                    'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
                    'GPPL-pooled',
-                   # 'GPPL-joint',
                    'GPPL-per-user',
                    ]
 
@@ -815,7 +812,7 @@ if __name__ == '__main__':
         optimize = True
         sushiB = False
         sushiA_small = True
-        # run_sushi_expt(methods, 'sushi_10small' + tag)
+        run_sushi_expt(methods, 'sushi_10small' + tag)
 
     if test_to_run == 2:
         # Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
@@ -823,15 +820,12 @@ if __name__ == '__main__':
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
                    'crowd-GPPL',
-                   # 'crowd-GPPL-noInduc',
-                   # 'crowd-GPPL-noConsensus',
-                   # 'crowd-GPPL\\u',
-                   # 'crowd-BMF',
-                   # # 'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
-                   # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-                   # 'GPPL-pooled',
-                   # # # 'GPPL-joint',
-                   # 'GPPL-per-user',
+                   'crowd-GPPL-noInduc',
+                   'crowd-GPPL\\u',
+                   'crowd-BMF',
+                   'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+                   'GPPL-pooled',
+                   'GPPL-per-user',
                    ]
 
         optimize = False
@@ -933,13 +927,10 @@ if __name__ == '__main__':
         methods = [
                    'crowd-GPPL',
                    'crowd-GPPL\\u',
-                   # 'crowd-BMF',
-                   # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-                   # 'GPPL-pooled',
-                   # 'GPPL-per-user',
-                   # 'crowd-GPPL-noConsensus',
-                   # #  #'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
-                   # #  # 'GPPL-joint',
+                   'crowd-BMF',
+                   'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+                   'GPPL-pooled',
+                   'GPPL-per-user',
         ]
 
         # hyperparameters common to most models
@@ -957,7 +948,7 @@ if __name__ == '__main__':
         methods = [
                    'crowd-GPPL',
                    'crowd-GPPL\\u',
-                   #'crowd-GPPL-FITC\\u-noConsensus', # Houlsby
+                   'crowd-GPPL-FITC\\u-noConsensus', # Houlsby
                    ]
 
         # hyperparameters common to most models
