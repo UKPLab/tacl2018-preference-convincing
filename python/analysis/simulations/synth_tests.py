@@ -87,7 +87,7 @@ if __name__ == '__main__':
     if not os.path.exists(figure_root_path):
         os.mkdir(figure_root_path)
 
-    nreps = 3 #25
+    nreps = 25
     P = 400
 
     nx = 20
@@ -95,7 +95,6 @@ if __name__ == '__main__':
     N = nx * ny
     Nfactors = 5
     Npeople = 20
-    ls = [5, 5]
     lsy = [5, 5]
 
     shape_s0 = 0.1
@@ -106,6 +105,7 @@ if __name__ == '__main__':
         # we want new plots
         plt.close('all')
 
+        ls = [2, 2]
         inverse_scales = [0.02, 0.1, 0.2, 0.6, 2]
 
         # make sure the simulation is repeatable
@@ -144,7 +144,7 @@ if __name__ == '__main__':
                     P=P,
                     ls=ls,
                     sigma=s, # 10
-                    s=0.2, # 0.2
+                    s=1, #
                     lsy=lsy,
                     Npeoplefeatures=2
                 )
@@ -281,14 +281,7 @@ if __name__ == '__main__':
         if fix_seeds:
             np.random.seed(1)
 
-        # nx = 20
-        # ny = 20
-        # N = nx * ny
-        # Nfactors = 5
-        # Npeople = 25
-        # ls = [5, 5]
-        # lsy = [5, 5]
-
+        ls = [5, 5]
         inverse_scales = [0.002, 0.02, 0.2, 1, 10.0, 100.0]#[0.0001, 0.001, 0.005, 0.01, 0.02]
 
         mean_results = []

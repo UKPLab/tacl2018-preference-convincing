@@ -1,10 +1,10 @@
 '''
 Personalised argumentation paper: are user features are required or latent variables sufficient/correlated with observed features?
-Is prior stance a useful user feature for predicting belief change? It should be, since a user can only be convinced by 
+Is prior stance a useful user feature for predicting belief change? It should be, since a user can only be convinced by
 an argument if they did not previously believe in it.
-Topic-specific nature means predictions based on linguistic features are likely to be weak? 
+Topic-specific nature means predictions based on linguistic features are likely to be weak?
 
-TODO: 
+TODO:
 
 Created on 19 Jun 2017
 
@@ -178,7 +178,7 @@ class PersonalisedTestRunner(TestRunner):
 
         if self.a_rank_test is not None:
             predicted_f = self.model.predict_f_item_person(self.a_rank_test, self.person_rank_test)
-    
+
         return proba, predicted_f, None
 
     def run_persgppl_consensus(self):
@@ -219,8 +219,8 @@ class PersonalisedTestRunner(TestRunner):
         elif 'IndPrefGP' in self.method:
             method_runner_fun = self.run_persgppl # switches to correct class inside the method
         else:
-            method_runner_fun = super(PersonalisedTestRunner, self)._choose_method_fun(feature_type)  
-            
+            method_runner_fun = super(PersonalisedTestRunner, self)._choose_method_fun(feature_type)
+
         return method_runner_fun
 
 if __name__ == '__main__':
@@ -229,7 +229,7 @@ if __name__ == '__main__':
 
     test_dir = 'personalised_recheck'
 
-    dataset_increment = 0     
+    dataset_increment = 0
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
     feature_types = ['both'] # can be 'embeddings' or 'ling' or 'both' or 'debug'
@@ -248,8 +248,16 @@ if __name__ == '__main__':
 
     # CONSENSUS PREDICTION
     elif test_to_run == 1:
+        # runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+        # runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
+        # runner.run_test_set(min_no_folds=0, max_no_folds=32)
+
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-        runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
+        runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weakersprior']
+        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+
+        runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+        runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_lowsprior']
         runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
     # PERSONALISED WITH ARD
@@ -322,5 +330,15 @@ if __name__ == '__main__':
                'SinglePrefGP_noOpt_weaksprior' # 'SinglePrefGP_noOpt_weaksprior',
             ]
         runner.datasets = ['UKPConvArgCrowdSample']
+        runner.methods = methods
+        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+
+    elif test_to_run == 7:
+        methods = [
+               # 'SVM', 'GP+SVM', 'Bi-LSTM' # forget these methods as the other paper showed they were worse already, and the SVM
+               # does not scale either -- it's worse than the GP.
+               'SinglePrefGP_noOpt_weaksprior' # 'SinglePrefGP_noOpt_weaksprior',
+            ]
+        runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
         runner.methods = methods
         runner.run_test_set(min_no_folds=0, max_no_folds=32)

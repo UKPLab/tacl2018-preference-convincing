@@ -80,7 +80,7 @@ if __name__ == '__main__':
         # Personalised predictions -- multi-user methods
 
         datasets = ['UKPConvArgCrowdSample']
-        methods = ['SinglePrefGP_noOpt_weaksprior', 'PersPrefGP_commonmean_noOpt_weakersprior']
+        methods = ['PersPrefGP_commonmean_noOpt_weakersprior'] # 'SinglePrefGP_noOpt_weaksprior',
         feature_types = ['both'] # 'both'
         embeddings_types = ['word_mean']
 
@@ -95,7 +95,7 @@ if __name__ == '__main__':
         # Consensus predictions -- multi-user methods (single-user methods were already included in the TACL paper so
         # can be copied from there).
         datasets = ['UKPConvArgCrowdSample_evalMACE']
-        methods = ['SinglePrefGP_noOpt_weaksprior', 'PersConsensusPrefGP_commonmean_noOpt_weaksprior']
+        methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior'] # 'SinglePrefGP_noOpt_weaksprior',
         feature_types = ['both'] # 'both'
         embeddings_types = ['word_mean']
 
