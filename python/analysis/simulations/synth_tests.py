@@ -83,11 +83,11 @@ if __name__ == '__main__':
     if not os.path.exists('./results'):
         os.mkdir('./results')
 
-    figure_root_path = './results/synth_new'
+    figure_root_path = './results/synth'
     if not os.path.exists(figure_root_path):
         os.mkdir(figure_root_path)
 
-    nreps = 25
+    nreps = 3 #25
     P = 400
 
     nx = 20
@@ -103,7 +103,7 @@ if __name__ == '__main__':
         # we want new plots
         plt.close('all')
 
-        inverse_scales = [0.02, 0.1, 0.2, 0.6, 2]#[0.1, 0.2, 0.4, 0.6, 1.2, 2]
+        inverse_scales = [0.02, 0.1, 0.2, 0.6, 2]
 
         # make sure the simulation is repeatable
         if fix_seeds:
@@ -346,7 +346,7 @@ if __name__ == '__main__':
                 ))
 
                 # Create a GPPrefLearning model
-                model = GPPrefLearning(2, mu0=0, shape_s0=0.1, rate_s0=0.1, ls_initial=None, use_svi=True, ninducing=ninducing,
+                model = GPPrefLearning(2, mu0=0, shape_s0=1, rate_s0=100, ls_initial=None, use_svi=True, ninducing=ninducing,
                                        max_update_size=1000, forgetting_rate=0.9, verbose=True)
 
                 print(("--- Repeating pooled-GPPL test, rep %i ---" % rep))
@@ -359,7 +359,7 @@ if __name__ == '__main__':
                 ))
 
                 # Create a GPPrefLearning model per person
-                model = GPPrefPerUser(Npeople, max_update_size=1000, shape_s0=0.1, rate_s0=0.1)
+                model = GPPrefPerUser(Npeople, max_update_size=1000, shape_s0=1, rate_s0=100)
 
                 print(("--- Repeating separate user test, rep %i ---" % rep))
                 results_s.append(evaluate_multiuser_personal(
