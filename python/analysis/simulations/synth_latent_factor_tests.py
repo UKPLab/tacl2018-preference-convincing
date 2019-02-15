@@ -67,7 +67,7 @@ if __name__ == '__main__':
         np.random.seed(1)
 
     # SETTINGS FOR ALL THE NOISE TESTS
-    nreps = 25
+    nreps = 5#25
     nx = 20
     ny = 20
     N = nx * ny
@@ -77,7 +77,7 @@ if __name__ == '__main__':
 
     noise_plots = [None, None, None, None, None, None, None]
 
-    figure_root_path = './results/synth_recheck'
+    figure_root_path = './results/synth'
     if not os.path.exists(figure_root_path):
         os.mkdir(figure_root_path)
 
@@ -89,7 +89,7 @@ if __name__ == '__main__':
     # MULTI USER OBSERVATIONS, MEASURING CORRELATION BETWEEN DISCOVERED AND TRUE LATENT FACTORS, MODEL: MU
 
     s = 1
-    P_values = [160, 240, 640, 1280, 2560, 5120, 10240]
+    P_values = [40, 80, 160, 320, 640, 1280, 2560]
 
     # make sure the simulation is repeatable
     if fix_seeds:
@@ -120,7 +120,7 @@ if __name__ == '__main__':
 
             for rep in range(nreps):
 
-                ls = [np.random.rand() * 20, np.random.rand() * 20]
+                ls = [np.random.rand() * 40, np.random.rand() * 40]
                 lsy = [np.random.rand() * 20, np.random.rand() * 20]
 
                 # relative importance of the latent factors is determined by ratio of sigma to s. Larger s relative to
