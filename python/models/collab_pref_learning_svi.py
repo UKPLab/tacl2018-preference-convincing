@@ -382,27 +382,27 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
     def _estimate_obs_noise(self):
 
         # to make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
-        m_prior = 0.5
-        _, _, v_prior = self._post_sample(self.K_nm, self.invK_mm,
-                                  np.zeros((self.ninducing, self.Nfactors)), self.K_mm * self.rate_sw0 / self.shape_sw0,
-                                  self.t_mu0, self.K_mm * self.rate_st0 / self.shape_st0,
-                                  self.Ky_nm, self.invKy_mm,
-                                  np.zeros((self.Nfactors, self.y_ninducing)), 1,#self.rate_sy0 / self.shape_sy0,
-                                  self.pref_v, self.pref_u)
-
-
-        # find the beta parameters
-        a_plus_b = 1.0 / (v_prior / (m_prior*(1-m_prior))) - 1
-        a = a_plus_b * m_prior
-        b = a_plus_b * (1 - m_prior)
-
-        nu0 = np.array([b, a])
-        # Noise in observations
-        nu0_total = np.sum(nu0)
-        obs_mean = (self.z + nu0[1]) / (1 + nu0_total)
-        var_obs_mean = obs_mean * (1 - obs_mean) / (1 + nu0_total + 1)  # uncertainty in obs_mean
-        Q = (obs_mean * (1 - obs_mean) - var_obs_mean)
-        Q = Q.flatten()
+        # m_prior = 0.5
+        # _, _, v_prior = self._post_sample(self.K_nm, self.invK_mm,
+        #                           np.zeros((self.ninducing, self.Nfactors)), self.K_mm * self.rate_sw0 / self.shape_sw0,
+        #                           self.t_mu0, self.K_mm * self.rate_st0 / self.shape_st0,
+        #                           self.Ky_nm, self.invKy_mm,
+        #                           np.zeros((self.Nfactors, self.y_ninducing)), 1,#self.rate_sy0 / self.shape_sy0,
+        #                           self.pref_v, self.pref_u)
+        #
+        #
+        # # find the beta parameters
+        # a_plus_b = 1.0 / (v_prior / (m_prior*(1-m_prior))) - 1
+        # a = a_plus_b * m_prior
+        # b = a_plus_b * (1 - m_prior)
+        #
+        # nu0 = np.array([b, a])
+        # # Noise in observations
+        # nu0_total = np.sum(nu0)
+        # obs_mean = (self.z + nu0[1]) / (1 + nu0_total)
+        # var_obs_mean = obs_mean * (1 - obs_mean) / (1 + nu0_total + 1)  # uncertainty in obs_mean
+        # Q = (obs_mean * (1 - obs_mean) - var_obs_mean)
+        # Q = Q.flatten()
 
         # this setup produced the good consensus conv scores. The good Sushi-B and personalised conv scores
         # require switching the scale to 2.
@@ -428,31 +428,31 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         obs_mean = (self.z + nu0[1]) / (1 + nu0_total)
         var_obs_mean = obs_mean * (1 - obs_mean) / (1 + nu0_total + 1)  # uncertainty in obs_mean
         Q2 = (obs_mean * (1 - obs_mean) + var_obs_mean)
-        Q2 = Q2.flatten()
+        Q = Q2.flatten()
 
-        # this doesn't really make sense -- the 2 is added on inside pref_likelihood again
-        f_samples = np.random.normal(loc=0, scale=np.sqrt(2),
-                        size=(self.N, 1000))
-
-        phi = pref_likelihood(f_samples, v=self.tpref_v, u=self.tpref_u)
-        m_prior = np.mean(phi)
-        v_prior = np.var(phi)
-
-        # the below is a very rough approximation because it ignores the covariance between points,
-        # hence m_prior values will be more extreme and v_prior likely larger.
-        # In practice this seemed to work well in the single user model and is quick to compute.
-        # Assume that each data point has the same prior...
-        a_plus_b = 1.0 / (v_prior / (m_prior*(1-m_prior))) - 1
-        a = a_plus_b * m_prior
-        b = a_plus_b * (1 - m_prior)
-
-        nu0 = np.array([a, b])
-        # Noise in observations
-        nu0_total = np.sum(nu0, axis=0)
-        obs_mean = (self.z + nu0[1]) / (1 + nu0_total)
-        var_obs_mean = obs_mean * (1 - obs_mean) / (1 + nu0_total + 1)  # uncertainty in obs_mean
-        Q3 = (obs_mean * (1 - obs_mean) + var_obs_mean)
-        Q3 = Q3.flatten()
+        # # this doesn't really make sense -- the 2 is added on inside pref_likelihood again
+        # f_samples = np.random.normal(loc=0, scale=np.sqrt(2),
+        #                 size=(self.N, 1000))
+        #
+        # phi = pref_likelihood(f_samples, v=self.tpref_v, u=self.tpref_u)
+        # m_prior = np.mean(phi)
+        # v_prior = np.var(phi)
+        #
+        # # the below is a very rough approximation because it ignores the covariance between points,
+        # # hence m_prior values will be more extreme and v_prior likely larger.
+        # # In practice this seemed to work well in the single user model and is quick to compute.
+        # # Assume that each data point has the same prior...
+        # a_plus_b = 1.0 / (v_prior / (m_prior*(1-m_prior))) - 1
+        # a = a_plus_b * m_prior
+        # b = a_plus_b * (1 - m_prior)
+        #
+        # nu0 = np.array([a, b])
+        # # Noise in observations
+        # nu0_total = np.sum(nu0, axis=0)
+        # obs_mean = (self.z + nu0[1]) / (1 + nu0_total)
+        # var_obs_mean = obs_mean * (1 - obs_mean) / (1 + nu0_total + 1)  # uncertainty in obs_mean
+        # Q3 = (obs_mean * (1 - obs_mean) + var_obs_mean)
+        # Q3 = Q3.flatten()
 
 
         return Q
