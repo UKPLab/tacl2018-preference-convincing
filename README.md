@@ -1,3 +1,5 @@
+The master branch is intended to house the latest version of all the Gaussian process preference learning methods related to this project. To get the state of the repository used for our experiments in the TACL 2018 paper, please use the TACL 2018 branch.
+
 ## Dependencies
 
 Dependencies for running gp_pref_learning model:
