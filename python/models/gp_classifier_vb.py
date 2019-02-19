@@ -10,8 +10,7 @@ import logging
 from joblib import Parallel, delayed
 import multiprocessing
 
-max_no_jobs = 4
-
+max_no_jobs = 48
 
 def compute_distance(col, row):
     # create a grid where each element of the row is subtracted from each element of the column
@@ -78,7 +77,7 @@ def diagonal_from_raw_vals(vals, ls, vals2=None, operator='*'):
     K = np.zeros((vals.shape[0], vals2.shape[0]), dtype=float)
     for i in range(vals.shape[0]):
         # check for the same locations.
-        K[i, :] = np.sum(np.abs(vals[i:i + 1, :] - vals2), axis=1) == 0
+        K[i, :] = (np.sum(np.abs(vals[i:i + 1, :] - vals2), axis=1) == 0).astype(float)
     return K
 
 
@@ -169,7 +168,8 @@ def derivfactor_matern_3_2_from_raw_vals(vals, ls, d, vals2=None, operator='*'):
         ls_i = ls[0]
 
     if operator == '*':
-        K /= matern_3_2_onedimension_from_raw_vals(xvals, xvals2, ls_i)
+        Kfactor_i = matern_3_2_onedimension_from_raw_vals(xvals, xvals2, ls_i)
+        K[K != 0] = K[K!=0] / Kfactor_i[K!=0]
     elif operator == '+':
         K /= float(vals.shape[1])
 
@@ -239,7 +239,7 @@ def _dists_f(items_feat_sample, f):
     else:
         med = 1.0
 
-    if np.isnan(med):
+    if np.isnan(med) or med == 0:
         med = 1.0
     return med
 
@@ -257,15 +257,15 @@ def compute_median_lengthscales(items_feat, multiply_heuristic_power=1.0, N_max=
 
     ls_initial_guess = np.ones(ndims) * default_ls_value
 
-    logging.info(
-        'I am using a heuristic multiplier for the length-scale because median is too low to work in high-D spaces')
-    # ls_initial_guess *= 1000 # this worked reasonably well but was plucked out of thin air
-    ls_initial_guess *= items_feat.shape[
-                            1] ** multiply_heuristic_power  # this is a heuristic, see e.g. "On the High-dimensional
+    if items_feat.shape[1] > 200:
+        ls_initial_guess *= items_feat.shape[1] ** multiply_heuristic_power
+    # this is a heuristic, see e.g. "On the High-dimensional
     # Power of Linear-time Kernel Two-Sample Testing under Mean-difference Alternatives" by Ramdas et al. 2014. In that
     # paper they refer to root(no. dimensions) because they square the lengthscale in the kernel function.
     # It's possible that this value should be higher if a lot of feature values are actually missing values, as these
     # would lower the median.
+    # If multiply_heuristic_power is 0.5, we are normalising the total euclidean distance by number of dimensions (
+    # think Pythagoras' theorem).
 
     return ls_initial_guess
 
@@ -298,17 +298,19 @@ def check_convergence(newval, oldval, conv_threshold, positive_only, iter=-1, ve
 
     if verbose:
         if np.isscalar(newval):
-            logging.debug('%s: %.5f, diff = %.5f at iteration %i' % (label, newval, diff, iter))
+            logging.debug('%s: %.5f, diff = %f at iteration %i' % (label, newval, diff, iter))
         elif newval.size == 1:
-            logging.debug('%s: %.5f, diff = %.5f at iteration %i' % (label, newval.flatten()[0], diff, iter))
+            logging.debug('%s: %.5f, diff = %f at iteration %i' % (label, newval.flatten()[0], diff, iter))
         else:
-            logging.debug('%s: diff = %.5f at iteration %i' % (label, diff, iter))
+            logging.debug('%s: diff = %f at iteration %i' % (label, diff, iter))
             # logging.debug(np.max(np.abs(newval - oldval)))
 
-    if positive_only and diff < - 10000 * conv_threshold:  # ignore any small errors as we are using approximations
-        logging.warning('%s = %.5f, changed by %.5f in iteration %i' % (label, newval, diff, iter))
-
     converged = diff < conv_threshold
+
+    if positive_only and diff < - 10000 * conv_threshold:  # ignore any small errors as we are using approximations
+        logging.warning('%s = %.5f, changed by %.5f (converged = %i) in iteration %i' %
+                        (label, newval, diff, converged, iter))
+
     return converged
 
 class GPClassifierVB(object):
@@ -483,7 +485,7 @@ class GPClassifierVB(object):
         self.obs_mean = (self.obs_values + self.nu0[1]) / (self.obs_total_counts + nu0_total)
         var_obs_mean = self.obs_mean * (1 - self.obs_mean) / (
                 self.obs_total_counts + nu0_total + 1)  # uncertainty in obs_mean
-        self.Q = (self.obs_mean * (1 - self.obs_mean) + var_obs_mean) / self.obs_total_counts
+        self.Q = (self.obs_mean * (1 - self.obs_mean) - var_obs_mean) / self.obs_total_counts
         self.Q = self.Q.flatten()
 
     def _init_obs_prior(self):
@@ -595,7 +597,7 @@ class GPClassifierVB(object):
                 totals = np.ones(n_obs)
             else:  # obs_values given as two columns: first is positive counts, second is total counts.
                 totals = obs_values[:, 1]
-        elif (obs_values.shape[1] == 2):
+        elif (obs_values.ndim > 1) and (obs_values.shape[1] == 2):
             logging.warning(
                 'GPClassifierVB received two sets of totals; ignoring the second column of the obs_values argument')
 
@@ -910,7 +912,8 @@ class GPClassifierVB(object):
             self.features = features
 
         if optimize:
-            return self._optimize(obs_coords, obs_values, totals, process_obs, mu0, K, maxfun, use_MAP, nrestarts)
+            return self._optimize(obs_coords, obs_values, totals, process_obs, mu0, K, maxfun, use_MAP, nrestarts,
+                                  use_median_ls)
 
         # Initialise the objects that store the observation data
         if process_obs:
@@ -921,7 +924,7 @@ class GPClassifierVB(object):
             new_locations = (features is not None) or (self.n_locs != prev_n_locs)
 
             if use_median_ls and new_locations:
-                self.ls = compute_median_lengthscales(self.obs_coords)
+                self.ls = compute_median_lengthscales(self.obs_coords, multiply_heuristic_power=0.5)
 
             self._init_params(mu0, new_locations, K)
             self.vb_iter = 0 # reset if we have processed new observations
@@ -930,7 +933,7 @@ class GPClassifierVB(object):
             self._init_params(mu0, False, K)  # don't reset the parameters, but make sure mu0 is updated
 
         if not process_obs:
-            self.max_iter_VB += self.max_iter_VB_per_fit
+            self.max_iter_VB = self.vb_iter + self.max_iter_VB_per_fit
 
         if not len(self.obs_coords):
             return
@@ -960,11 +963,15 @@ class GPClassifierVB(object):
             logging.debug("GP fit complete. Inverse output scale=%.5f" % self.s)
 
     def _optimize(self, obs_coords, obs_values, totals=None, process_obs=True, mu0=None, K=None, maxfun=25,
-                  use_MAP=False, nrestarts=1):
+                  use_MAP=False, nrestarts=1, use_median_ls=True):
 
         if process_obs:
-            self._process_observations(obs_coords, obs_values,
-                                       totals)  # process the data here so we don't repeat each call
+            self._process_observations(obs_coords, obs_values, totals)  # process the data here so we don't repeat each call
+
+            if use_median_ls:
+                self.ls = compute_median_lengthscales(self.obs_coords, multiply_heuristic_power=0.5)
+
+            self.vb_iter = 0 # reset if we have processed new observations
             self._init_params(mu0, True, K)
             max_iter = self.max_iter_VB_per_fit
             self.max_iter_VB_per_fit = 1
@@ -1074,7 +1081,7 @@ class GPClassifierVB(object):
         elif not self.uselowerbound and np.mod(self.vb_iter, self.conv_check_freq) == self.conv_check_freq-1:
             diff = np.max(np.abs(self.obs_f - prev_val))
             if self.verbose:
-                logging.debug('GP Classifier VB obs_f diff = %.5f at iteration %.i' % (diff, self.vb_iter))
+                logging.debug('GP Classifier VB obs_f diff = %f at iteration %i' % (diff, self.vb_iter))
 
             sdiff = np.abs(self.old_s - self.s) / self.s
             if self.verbose:

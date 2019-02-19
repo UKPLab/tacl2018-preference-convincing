@@ -17,15 +17,14 @@ import multiprocessing
 from scipy.special import psi
 
 
-def _gradient_terms_for_subset(K_mm, kernel_derfactor, kernel_operator, invKs_fhat, invKs_mm_uS_sigmasq, ls_d, coords,
-                               s):
+def _gradient_terms_for_subset(K_mm, invK_mm, kernel_derfactor, kernel_operator, common_term, ls_d, coords, s):
+
     if kernel_operator == '*':
         dKdls = K_mm * kernel_derfactor(coords, coords, ls_d, operator=kernel_operator) / s
     elif kernel_operator == '+':
         dKdls = kernel_derfactor(coords, coords, ls_d, operator=kernel_operator) / s
-    firstterm = invKs_fhat.T.dot(dKdls).dot(invKs_fhat)[0][0]
-    secondterm = np.trace(invKs_mm_uS_sigmasq.dot(dKdls))
-    return 0.5 * (firstterm - secondterm)
+
+    return 0.5 * np.trace(common_term.dot(dKdls).dot(invK_mm * s) )
 
 
 class GPClassifierSVI(GPClassifierVB):
@@ -149,7 +148,6 @@ class GPClassifierSVI(GPClassifierVB):
 
         self.u_invSm = np.zeros((self.ninducing, 1), dtype=float)  # theta_1
         self.u_invS = np.zeros((self.ninducing, self.ninducing), dtype=float)  # theta_2
-        self.u_invK = np.zeros((self.ninducing, self.ninducing), dtype=float)  # prior covariance -- s changes
         self.u_Lambda = np.zeros((self.ninducing, self.ninducing), dtype=float) # observation precision at inducing points
         self.uS = self.K_mm * self.rate_s0 / self.shape_s0  # initialise properly to prior
         self.um_minus_mu0 = np.zeros((self.ninducing, 1))
@@ -242,12 +240,7 @@ class GPClassifierSVI(GPClassifierVB):
         if not self.use_svi:
             return super(GPClassifierSVI, self).lowerbound_gradient(dim)
 
-        fhat = self.um_minus_mu0
-        invKs_fhat = self.invKs_mm.dot(fhat)
-
-        sigmasq = self.get_obs_precision()
-
-        invKs_mm_uS_sigmasq = self.invKs_mm.dot(self.uS).dot(sigmasq)
+        common_term = (self.um_minus_mu0.dot(self.um_minus_mu0.T) + self.uS).dot(self.s * self.invK_mm) - np.eye(self.ninducing)
 
         if self.n_lengthscales == 1 or dim == -1:  # create an array with values for each dimension
             dims = range(self.obs_coords.shape[1])
@@ -259,13 +252,14 @@ class GPClassifierSVI(GPClassifierVB):
             num_jobs = max_no_jobs
         if len(self.ls) > 1:
             gradient = Parallel(n_jobs=num_jobs, backend='threading')(
-                delayed(_gradient_terms_for_subset)(self.K_mm, self.kernel_derfactor, self.kernel_combination,
-                    invKs_fhat, invKs_mm_uS_sigmasq, self.ls[dim], self.inducing_coords[:, dim:dim + 1], self.s)
+                delayed(_gradient_terms_for_subset)(self.K_mm, self.invK_mm, self.kernel_derfactor, self.kernel_combination,
+                    common_term, self.ls[dim], self.inducing_coords[:, dim:dim + 1], self.s)
                 for dim in dims)
+
         else:
             gradient = Parallel(n_jobs=num_jobs, backend='threading')(
-                delayed(_gradient_terms_for_subset)(self.K_mm, self.kernel_derfactor, self.kernel_combination,
-                    invKs_fhat, invKs_mm_uS_sigmasq, self.ls[0], self.inducing_coords[:, dim:dim + 1], self.s)
+                delayed(_gradient_terms_for_subset)(self.K_mm, self.invK_mm, self.kernel_derfactor, self.kernel_combination,
+                    common_term, self.ls[0], self.inducing_coords[:, dim:dim + 1], self.s)
                 for dim in dims)
 
         if self.n_lengthscales == 1:
@@ -323,7 +317,6 @@ class GPClassifierSVI(GPClassifierVB):
         # A = solve_triangular(L_u_invS, B, lower=True, trans=True, check_finite=False, overwrite_b=True)
 
         self.uS = scipy.linalg.inv(self.u_invS)
-        self.u_invK = (1 - rho_i) * self.prev_u_invK + rho_i * self.invKs_mm
 
         #         self.um_minus_mu0 = solve_triangular(L_u_invS, self.u_invSm, lower=True, check_finite=False)
         #         self.um_minus_mu0 = solve_triangular(L_u_invS, self.um_minus_mu0, lower=True, trans=True, check_finite=False,
@@ -340,7 +333,7 @@ class GPClassifierSVI(GPClassifierVB):
         # see Hensman, Scalable variational Gaussian process classification, equation 18
 
         #(self.K_nm / self.s).dot(self.s * self.invK_mm).dot(self.uS).dot(self.u_invSm)
-        fhat = covpair.dot(self.uS).dot(self.u_invSm) + mu0
+        fhat = covpair.dot(self.um_minus_mu0) + mu0
 
         if Ks_nn is not None:
             if full_cov:
@@ -388,7 +381,6 @@ class GPClassifierSVI(GPClassifierVB):
         self.prev_u_invSm = self.u_invSm
         self.prev_u_invS = self.u_invS
         self.prev_u_Lambda = self.u_Lambda
-        self.prev_u_invK = self.u_invK
 
         self._update_sample_idxs()
 
@@ -421,7 +413,6 @@ class GPClassifierSVI(GPClassifierVB):
 
         self.u_invSm = np.zeros((self.ninducing, 1), dtype=float)  # theta_1
         self.u_invS = np.zeros((self.ninducing, self.ninducing), dtype=float)  # theta_2
-        self.u_invK = np.zeros((self.ninducing, self.ninducing), dtype=float)
         self.u_Lambda = np.zeros((self.ninducing, self.ninducing), dtype=float) # observation precision at inducing points
         self.uS = self.K_mm * self.rate_s0 / self.shape_s0  # initialise properly to prior
         self.um_minus_mu0 = np.zeros((self.ninducing, 1))
@@ -460,7 +451,7 @@ class GPClassifierSVI(GPClassifierVB):
             return super(GPClassifierSVI, self)._expec_f_output(Ks_starstar, Ks_star, mu0, full_cov, reuse_output_kernel)
 
         if self.covpair_out is None or not reuse_output_kernel:
-            self.covpair_out = scipy.linalg.solve(self.Ks_mm, Ks_star.T).T
+            self.covpair_out = scipy.linalg.solve(self.K_mm/self.s, Ks_star.T).T
         f, C_out = self._f_given_u(self.covpair_out, mu0, Ks_starstar, full_cov=full_cov)
 
         return f, C_out

@@ -89,12 +89,13 @@ def pref_likelihood(fmean, fvar=None, subset_idxs=[], v=[], u=[], return_g_f=Fal
             fvar = fvar[:, np.newaxis]        
         fvar = fvar + 2.0
 
+    if np.any(fvar < 0):
+        logging.warning('There was a negative variance in the pref likelihood! %s' % fvar)
+
     if len(v) and len(u):
-        g_f = (fmean[v, :] - fmean[u, :]) / np.sqrt(fvar) # / np.sqrt(self.s)) # gives an NobsxNobs matrix
+        g_f = (fmean[v, :] - fmean[u, :]) / np.sqrt(fvar)
     else: # provide the complete set of pairs
-        g_f = (fmean - fmean.T) / np.sqrt(fvar) # / np.sqrt(self.s))  # the maths shows that s cancels out -- it's already
-        # included in our estimates of f, which are scaled by s. However, the prior mean mu0 should also be scaled
-        # to match, but this should happen automatically if we learn s, I think.
+        g_f = (fmean - fmean.T) / np.sqrt(fvar)
 
     phi = norm.cdf(g_f) # the probability of the actual observation, which takes g_f as a parameter. In the
     # With the standard GP density classifier, we can skip this step because
@@ -445,7 +446,6 @@ class GPPrefLearning(GPClassifierSVI):
         else:
             return m_post
 
-        return return_vals
 
     def predict_pairs_from_features(self, out_feats=None, out_1_feats=None, mu0_out=None, mu0_out_1=None,
                                     expectedlog=False, return_var=True):
@@ -466,16 +466,10 @@ class GPPrefLearning(GPClassifierSVI):
         return self.predict(out_feats, item_0_idxs, item_1_idxs, mu0_out)
 
     def _logpt(self):
-        if self.use_svi:
-            K_star = self.K_nm
-            f_mean = 0
-        else:
-            K_star = self.obs_C
-            f_mean = self.obs_f
+        rho = pref_likelihood(self.obs_f, v=self.pref_v, u=self.pref_u)
+        rho = temper_extreme_probs(rho)
 
-        logrho, lognotrho, _ = self._post_sample(f_mean, None, expectedlog=True, K_star=K_star)
-
-        return logrho, lognotrho
+        return np.log(rho), np.log(1 - rho)
 
     def _post_sample(self, f_mean, f_var=None, expectedlog=False, K_star=None, v=None, u=None):
 
