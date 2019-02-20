@@ -360,6 +360,12 @@ class GPClassifierVB(object):
 
         self.verbose = verbose
 
+        self.Q_from_obs_only = False # which heuristic approximation do we use to set observation noise, Q?
+        # If false, we look at the posterior to estimate noise, since the value of f affects observation noise.
+        # If true, we look only at the observations, and match the likelihood alone to a normal distribution with
+        # corresponding variance, since we combine this with f later...
+        self.variational_Q = False
+
         self.n_locs = 0 # at this point we have no training locations
         self.max_iter_VB = self.max_iter_VB_per_fit
 
@@ -483,12 +489,22 @@ class GPClassifierVB(object):
         # Noise in observations
         nu0_total = np.sum(self.nu0, axis=0)
         self.obs_mean = (self.obs_values + self.nu0[1]) / (self.obs_total_counts + nu0_total)
-        var_obs_mean = self.obs_mean * (1 - self.obs_mean) / (
-                self.obs_total_counts + nu0_total + 1)  # uncertainty in obs_mean
-        self.Q = (self.obs_mean * (1 - self.obs_mean) - var_obs_mean) / self.obs_total_counts
+
+        if self.variational_Q:
+            # if we factorize the likelihood then  take expectation of the log likelihood with respect to f
+            obs_var = (self.obs_mean * (1 - self.obs_mean)) / (self.obs_total_counts + nu0_total + 1)
+        else:
+            # if we fully marginalize f, the variance drops out because we
+            obs_var = 0
+
+        self.Q = (self.obs_mean * (1 - self.obs_mean) - obs_var) / self.obs_total_counts
         self.Q = self.Q.flatten()
 
     def _init_obs_prior(self):
+
+        if self.Q_from_obs_only:
+            self.nu0 = np.array([1.0, 1.0])
+            return
 
         mu0 = self.mu0_input
         if np.isscalar(mu0):
@@ -505,8 +521,6 @@ class GPClassifierVB(object):
         a_plus_b = 1.0 / (rho_var / (rho_mean * (1 - rho_mean))) - 1
         a = a_plus_b * rho_mean
         b = a_plus_b * (1 - rho_mean)
-        #         b = 1.0
-        #         a = 1.0
         self.nu0 = np.array([b, a])
         # if self.verbose:
         #    logging.debug("Prior parameters for the observation noise variance are: %s" % str(self.nu0))
@@ -563,8 +577,8 @@ class GPClassifierVB(object):
         ravelled_coords = coord_arr_to_1d(obs_coords)
         uravelled_coords, origidxs, idxs = np.unique(ravelled_coords, return_index=True, return_inverse=True)
 
-        grid_obs_counts = coo_matrix((totals, (idxs, np.ones(n_obs)))).toarray()
-        grid_obs_pos_counts = coo_matrix((poscounts, (idxs, np.ones(n_obs)))).toarray()
+        grid_obs_counts = coo_matrix((totals, (idxs, np.ones(n_obs, dtype=int)))).toarray()
+        grid_obs_pos_counts = coo_matrix((poscounts, (idxs, np.ones(n_obs, dtype=int)))).toarray()
         nonzero_idxs = grid_obs_counts.nonzero()[0]  # ravelled coordinates with duplicates removed
         uravelled_coords_nonzero = uravelled_coords[nonzero_idxs]
         origidxs_nonzero = origidxs[nonzero_idxs]
@@ -594,7 +608,7 @@ class GPClassifierVB(object):
         if totals is None or not np.any(totals >= 0):
             if (obs_values.ndim == 1 or obs_values.shape[
                 1] == 1):  # obs_value is one column with values of either 0 or 1
-                totals = np.ones(n_obs)
+                totals = np.ones(n_obs, dtype=int)
             else:  # obs_values given as two columns: first is positive counts, second is total counts.
                 totals = obs_values[:, 1]
         elif (obs_values.ndim > 1) and (obs_values.shape[1] == 2):
