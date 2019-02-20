@@ -248,17 +248,17 @@ if __name__ == '__main__':
 
     # CONSENSUS PREDICTION
     elif test_to_run == 1:
+        runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+        runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
+        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+
         # runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-        # runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
+        # runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weakersprior']
         # runner.run_test_set(min_no_folds=0, max_no_folds=32)
-
-        runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-        runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weakersprior']
-        runner.run_test_set(min_no_folds=0, max_no_folds=32)
-
-        runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-        runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_lowsprior']
-        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+        #
+        # runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+        # runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_lowsprior']
+        # runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
     # PERSONALISED WITH ARD
     elif test_to_run == 2:

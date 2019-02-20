@@ -381,6 +381,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
     def _estimate_obs_noise(self):
 
+        # think about the generative model: value of f determines Q.
+
         # to make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
         # m_prior = 0.5
         # _, _, v_prior = self._post_sample(self.K_nm, self.invK_mm,
@@ -426,11 +428,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         # Noise in observations
         nu0_total = np.sum(nu0, axis=0)
         obs_mean = (self.z + nu0[1]) / (1 + nu0_total)
-        var_obs_mean = obs_mean * (1 - obs_mean) / (1 + nu0_total + 1)  # uncertainty in obs_mean
-        Q2 = (obs_mean * (1 - obs_mean) + var_obs_mean)
+        Q2 = obs_mean * (1 - obs_mean) # don't think variance is needed because the equations show it is E[p]^2 not E[p^2] since we have already taken expectations before we get to this point
         Q = Q2.flatten()
 
-        # # this doesn't really make sense -- the 2 is added on inside pref_likelihood again
+        # # # this doesn't really make sense -- the 2 is added on inside pref_likelihood again
         # f_samples = np.random.normal(loc=0, scale=np.sqrt(2),
         #                 size=(self.N, 1000))
         #
@@ -451,9 +452,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         # nu0_total = np.sum(nu0, axis=0)
         # obs_mean = (self.z + nu0[1]) / (1 + nu0_total)
         # var_obs_mean = obs_mean * (1 - obs_mean) / (1 + nu0_total + 1)  # uncertainty in obs_mean
-        # Q3 = (obs_mean * (1 - obs_mean) + var_obs_mean)
+        # Q3 = (obs_mean * (1 - obs_mean) - var_obs_mean)
         # Q3 = Q3.flatten()
-
 
         return Q
 
