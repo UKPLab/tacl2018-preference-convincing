@@ -227,7 +227,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'personalised_recheck'
+    test_dir = 'personalised_Qfix1'
 
     dataset_increment = 0
     # UKPConvArgCrowdSample tests prediction of personal data.
