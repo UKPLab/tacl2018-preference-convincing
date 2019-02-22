@@ -1,43 +1,25 @@
-## Dependencies
+# CrowdGPPL
 
-Dependencies for running gp_pref_learning model:
+This branch contains an implementation of crowdGPPL, a Bayesian pairwise preference learning
+method for ranking, scoring items and predicting pairwise labels, 
+given preference data from a crowd of individuals. CrowdGPPL can make 
+predictions of individual preferences as well as infer the consensus of a crowd.
+The model combines Gaussian process preference learning and Bayesian matrix
+factorisation and our implementation uses stochastic variational inference.
 
-   * scikit-learn==0.18.1
-   * scipy==0.19.0
-   * numpy==1.12.1
-
-For running the experiments, please see the requirements.txt for further dependencies. 
-
-## How to run
-
-We introduce a scalable Bayesian preference
-learning method for identifying convincing ar-
-guments in the absence of gold-standard rat-
-ings or rankings. In contrast to previous work,
-we avoid the need for separate methods to
-perform quality control on training data, pre-
-dict rankings and perform pairwise classifica-
-tion. Bayesian approaches are an effective so-
-lution when faced with sparse or noisy train-
-ing data, but have not previously been used
-to identify convincing arguments. One issue
-is scalability, which we address by develop-
-ing a stochastic variational inference method
-for Gaussian process (GP) preference learn-
-ing. We show how our method can be ap-
-plied to predict argument convincingness from
-crowdsourced data, outperforming the previ-
-ous state-of-the-art, particularly when trained
-with small amounts of unreliable data. We
-demonstrate how the Bayesian approach en-
-ables more effective active learning, thereby
-reducing the amount of data required to iden-
-tify convincing arguments for new users and
-domains. While word embeddings are princi-
-pally used with neural networks, our results
-show that word embeddings in combination
-with linguistic features also benefit GPs when
-predicting argument convincingness.
+The crowdGPPL paper has not yet been published.  
+For single-user GPPL, please cite:
+```
+@article{simpson2018finding,
+  title={Finding convincing arguments using scalable bayesian preference learning},
+  author={Simpson, Edwin and Gurevych, Iryna},
+  journal={Transactions of the Association of Computational Linguistics},
+  volume={6},
+  pages={357--371},
+  year={2018},
+  publisher={MIT Press}
+}
+```
 
 **Contact person:** Edwin Simpson, simpson@ukp.informatik.tu-darmstadt.de
 
@@ -65,6 +47,14 @@ https://github.com/UKPLab/acl2016-convincing-arguments
 
 ## Requirements
 
+Dependencies for just using the gp_pref_learning model:
+
+   * scikit-learn==0.18.1
+   * scipy==0.19.0
+   * numpy==1.12.1
+
+For running the experiments, please see the requirements.txt for further dependencies. 
+
 * Python 3
 * virtualenv
 * The required packages are listed in requirements.txt. You can install them using pip install -r requirements.txt
@@ -72,6 +62,10 @@ https://github.com/UKPLab/acl2016-convincing-arguments
 this if you are not re-running our experiments or training a model on UKPConvArg*** datasets.
 
 ## How to run the experiments
+
+### Synthetic data
+
+### Argument convincingness
 
 1. Extract the linguistic features from the data by running:
 
@@ -159,26 +153,11 @@ python ./python/analysis/cycles_demo.py
    ```
    python ./python/analysis/habernal_comparison/error_analysis.py
    ```
-
-## Template for running on a new dataset with Ling+Glove feature sets
-
-You can use the following script as a template for running GPPL on new datasets 
-using the same feature sets as in our paper. If you have another method for
-extracting features from your datasets, you may with to skip this example
-and look at 'how to use the GPPL implementation'.
+   
+### Sushi preferences
 
 
-```
-python ./python/example_use.py
-```
-
-The script will train a convincingness model on the UKPConvArgStrict data, then
-run it to score arguments in a new dataset. 
-
-Pre-requisite: this script assumes you have carried out step 0 above and 
-run "python/analysis/habernal_comparison/run_preprocessing.py" to extract the linguistic features.
-
-## How to use the GPPL implementation
+## How to use the crowdGPPL implementation
 
 The preference learning method is implemented by the gp_pref_learning class in
 python/models/gp_pref_learning.py. 
