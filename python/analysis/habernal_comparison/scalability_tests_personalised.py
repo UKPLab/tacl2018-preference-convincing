@@ -19,13 +19,13 @@ if __name__ == '__main__':
     if test_to_run == 0:
         datasets = ['UKPConvArgCrowdSample_evalMACE']
         methods = [
-                   # 'SinglePrefGP_noOpt_weaksprior_M2',
-                   # 'SinglePrefGP_noOpt_weaksprior_M10',
-                   # 'SinglePrefGP_noOpt_weaksprior_M100',
-                   # 'SinglePrefGP_noOpt_weaksprior_M200',
-                   # 'SinglePrefGP_noOpt_weaksprior_M300',
-                   # 'SinglePrefGP_noOpt_weaksprior_M400',
-                   # 'SinglePrefGP_noOpt_weaksprior_M500',
+                   'SinglePrefGP_noOpt_weaksprior_M2',
+                   'SinglePrefGP_noOpt_weaksprior_M10',
+                   'SinglePrefGP_noOpt_weaksprior_M100',
+                   'SinglePrefGP_noOpt_weaksprior_M200',
+                   'SinglePrefGP_noOpt_weaksprior_M300',
+                   'SinglePrefGP_noOpt_weaksprior_M400',
+                   'SinglePrefGP_noOpt_weaksprior_M500',
                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M2',
                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M10',
                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100',
@@ -77,7 +77,6 @@ if __name__ == '__main__':
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=10000)
 
-    # The tests below are less important and may not make it to the new paper.
     # For Plot 3: Scaling with N_tr ------------------------------------------------------------------------------------
     if test_to_run == 3:
         datasets = ['UKPConvArgCrowdSample_evalMACE']
