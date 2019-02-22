@@ -1,16 +1,24 @@
 The master branch is intended to house the latest version of all the Gaussian process preference learning methods related to this project. To get the state of the repository used for our experiments in the TACL 2018 paper, please use the TACL 2018 branch.
 
-## Dependencies
+# Finding Convincing Arguments using Scalable Bayesian Preference Learning
 
-Dependencies for running gp_pref_learning model:
+The repository provides an implementation of a Bayesian pairwise preference learning
+method for ranking, scoring items and predicting pairwise labels, 
+namely, Gaussian process preference learning
+using stochastic variational inference.
 
-   * scikit-learn==0.18.1
-   * scipy==0.19.0
-   * numpy==1.12.1
-
-For running the experiments, please see the requirements.txt for further dependencies. 
-
-## How to run
+Please cite:
+```
+@article{simpson2018finding,
+  title={Finding convincing arguments using scalable bayesian preference learning},
+  author={Simpson, Edwin and Gurevych, Iryna},
+  journal={Transactions of the Association of Computational Linguistics},
+  volume={6},
+  pages={357--371},
+  year={2018},
+  publisher={MIT Press}
+}
+```
 
 We introduce a scalable Bayesian preference
 learning method for identifying convincing ar-
@@ -66,6 +74,14 @@ https://github.com/UKPLab/acl2016-convincing-arguments
 * results -- an output directory for storing results
 
 ## Requirements
+
+Dependencies for just using the gp_pref_learning model:
+
+   * scikit-learn==0.18.1
+   * scipy==0.19.0
+   * numpy==1.12.1
+
+For running the experiments, please see the requirements.txt for further dependencies. 
 
 * Python 3
 * virtualenv
