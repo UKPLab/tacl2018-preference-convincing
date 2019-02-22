@@ -4,6 +4,9 @@ Created on 3 Mar 2017
 
 @author: simpson
 '''
+import os
+import pickle
+
 from scipy.stats import multivariate_normal as mvn, kendalltau, norm, bernoulli
 import numpy as np
 from gp_classifier_vb import matern_3_2_from_raw_vals
@@ -12,29 +15,31 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 from sklearn.metrics import f1_score, roc_auc_score
 
-def gen_synthetic_prefs(nx=10, ny=10, N=100, P=5000, ls=[1, 40], s=100):
+def gen_synthetic_prefs(nx=10, ny=10, N=100, P=5000, ls=[1, 40], s=100, cov_type='matern'):
     # f_prior_mean should contain the means for all the grid squares
     # P is number of pairs for training
     # s is inverse precision scale for the latent function.
-
     logging.info('Generating synthetic data with lengthscales: %s' % str(ls))
 
-    if N > nx * ny:
-        N = nx * ny # can't have more locations than there are grid squares (only using discrete values here)
-    
-    # Some random feature values
-    xvals = np.random.choice(nx, N, replace=True)[:, np.newaxis]
-    yvals = np.random.choice(ny, N, replace=True)[:, np.newaxis]
+    if cov_type == 'matern':
 
-    # remove repeated coordinates
-    for coord in range(N):
-        
-        while np.sum((xvals==xvals[coord]) & (yvals==yvals[coord])) > 1:
-            xvals[coord] = np.random.choice(nx, 1)
-            yvals[coord] = np.random.choice(ny, 1)           
-        
-    K = matern_3_2_from_raw_vals(np.concatenate((xvals.astype(float), yvals.astype(float)), axis=1), ls)
-    f = mvn.rvs(cov=K/s) # zero mean. # generate the function values for the pairs
+        if N > nx * ny:
+            N = nx * ny # can't have more locations than there are grid squares (only using discrete values here)
+
+        # Some random feature values
+        xvals = np.random.choice(nx, N, replace=True)[:, np.newaxis]
+        yvals = np.random.choice(ny, N, replace=True)[:, np.newaxis]
+
+        # remove repeated coordinates
+        for coord in range(N):
+            while np.sum((xvals==xvals[coord]) & (yvals==yvals[coord])) > 1:
+                xvals[coord] = np.random.choice(nx, 1)
+                yvals[coord] = np.random.choice(ny, 1)
+
+        K = matern_3_2_from_raw_vals(np.concatenate((xvals.astype(float), yvals.astype(float)), axis=1), ls)
+        f = mvn.rvs(cov=K/s) # zero mean. # generate the function values for the pairs
+    else:
+        f = np.random.normal(scale=1/s**0.5, size=(N))
 
     # generate pairs indices
     pair1idxs = np.random.choice(N, P, replace=True)
@@ -57,13 +62,16 @@ def gen_synthetic_prefs(nx=10, ny=10, N=100, P=5000, ls=[1, 40], s=100):
         pair2idxs[idxs_to_flip] = tmp
         prefs[idxs_to_flip] = 1 - prefs[idxs_to_flip]
 
-    item_features = np.concatenate((xvals, yvals), axis=1)
+    if cov_type == 'matern':
+        item_features = np.concatenate((xvals, yvals), axis=1)
+    else:
+        item_features = None
 
     return prefs, item_features, pair1idxs, pair2idxs, f
 
 def split_dataset(N, f, pair1idxs, pair2idxs, prefs):
     # test set size
-    test_size = 0.5
+    test_size = 0.2
 
     P = len(prefs)
 
@@ -113,21 +121,25 @@ def evaluate_models(model, item_features, f,
     # Predict at all locations
     fpred, vpred = model.predict_f(item_features)
 
+    fpred_train = fpred[train_points] if item_features is not None else fpred
+
     if ftrain.ndim == 2:
         # Ftrain contains values for multiple functions (columns), but the predictions are only one column
-        tau_obs = kendalltau(ftrain, np.tile(fpred[train_points], (1, ftrain.shape[1]) ))[0]
+        tau_obs = kendalltau(ftrain, np.tile(fpred_train, (1, ftrain.shape[1]) ))[0]
     else:
-        tau_obs = kendalltau(ftrain, fpred[train_points])[0]
+        tau_obs = kendalltau(ftrain, fpred_train)[0]
     print("Kendall's tau (observations): %.3f" % tau_obs)
 
-    # Evaluate the accuracy of the predictions
-    # print("RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
-    # print("NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
-    if ftest.ndim == 2:
-        tau_test = kendalltau(ftest, np.tile(fpred[test_points], (1,ftest.shape[1]) ))[0]
-    else:
-        tau_test = kendalltau(ftest, fpred[test_points])[0]
-    print("Kendall's tau (test): %.3f" % tau_test)
+    if item_features is not None:
+
+        # Evaluate the accuracy of the predictions
+        # print("RMSE of %f" % np.sqrt(np.mean((f-fpred)**2))
+        # print("NLPD of %f" % -np.sum(norm.logpdf(f, loc=fpred, scale=vpred**0.5))
+        if ftest.ndim == 2:
+            tau_test = kendalltau(ftest, np.tile(fpred[test_points], (1,ftest.shape[1]) ))[0]
+        else:
+            tau_test = kendalltau(ftest, fpred[test_points])[0]
+        print("Kendall's tau (test): %.3f" % tau_test)
 
     # noise rate in the pairwise data -- how many of the training pairs conflict with the ordering suggested by f?
     if personidxs_tr is None:
@@ -138,33 +150,42 @@ def evaluate_models(model, item_features, f,
     noise_rate = 1.0 - np.mean(prefs_tr == prefs_tr_noisefree)
     print('Noise rate in the pairwise training labels: %f' % noise_rate)
 
-    if personidxs_test is None:
-        t = (f[pair1idxs_test] > f[pair2idxs_test]).astype(int)
+    if item_features is not None:
+
+        if personidxs_test is None:
+            t = (f[pair1idxs_test] > f[pair2idxs_test]).astype(int)
+        else:
+            t = (f[pair1idxs_test, personidxs_test] > f[pair2idxs_test, personidxs_test]).astype(int)
+
+        if np.unique(t).shape[0] == 1:
+            idxs_to_flip = np.random.choice(len(pair1idxs_test), int(0.5 * len(pair1idxs_test)), replace=False)
+            tmp = pair1idxs_test[idxs_to_flip]
+            pair1idxs_test[idxs_to_flip] = pair2idxs_test[idxs_to_flip]
+            pair2idxs_test[idxs_to_flip] = tmp
+            t[idxs_to_flip] = 1 - t[idxs_to_flip]
+
+        rho_pred, var_rho_pred = model.predict(item_features, pair1idxs_test, pair2idxs_test)
+        rho_pred = rho_pred.flatten()
+        t_pred = np.round(rho_pred)
+
+        brier = np.sqrt(np.mean((t - rho_pred) ** 2))
+        print("Brier score of %.3f" % brier)
+        cee = -np.sum(t * np.log(rho_pred) + (1 - t) * np.log(1 - rho_pred))
+        print("Cross entropy error of %.3f" % cee)
+
+        f1 = f1_score(t, t_pred)
+        print("F1 score of %.3f" % f1)
+        acc = np.mean(t == t_pred)
+        print("Accuracy of %.3f" % acc)
+        roc = roc_auc_score(t, rho_pred)
+        print("ROC of %.3f" % roc)
     else:
-        t = (f[pair1idxs_test, personidxs_test] > f[pair2idxs_test, personidxs_test]).astype(int)
-
-    if np.unique(t).shape[0] == 1:
-        idxs_to_flip = np.random.choice(len(pair1idxs_test), int(0.5 * len(pair1idxs_test)), replace=False)
-        tmp = pair1idxs_test[idxs_to_flip]
-        pair1idxs_test[idxs_to_flip] = pair2idxs_test[idxs_to_flip]
-        pair2idxs_test[idxs_to_flip] = tmp
-        t[idxs_to_flip] = 1 - t[idxs_to_flip]
-
-    rho_pred, var_rho_pred = model.predict(item_features, pair1idxs_test, pair2idxs_test)
-    rho_pred = rho_pred.flatten()
-    t_pred = np.round(rho_pred)
-
-    brier = np.sqrt(np.mean((t - rho_pred) ** 2))
-    print("Brier score of %.3f" % brier)
-    cee = -np.sum(t * np.log(rho_pred) + (1 - t) * np.log(1 - rho_pred))
-    print("Cross entropy error of %.3f" % cee)
-
-    f1 = f1_score(t, t_pred)
-    print("F1 score of %.3f" % f1)
-    acc = np.mean(t == t_pred)
-    print("Accuracy of %.3f" % acc)
-    roc = roc_auc_score(t, rho_pred)
-    print("ROC of %.3f" % roc)
+        tau_test = 0.5
+        brier = 1.0
+        cee = 1.0
+        f1 = 0
+        acc = 0.5
+        roc = 0.5
 
     return noise_rate, tau_obs, tau_test, brier, cee, f1, acc, roc
 
@@ -179,16 +200,26 @@ if __name__ == '__main__':
 
     ls = [np.random.rand() * 20, np.random.rand() * 20]
 
-    N = 100
+    N = 200
 
-    prefs, item_features, pair1idxs, pair2idxs, f = gen_synthetic_prefs(
-        nx=10,
-        ny=10,
-        N=N,
-        P=5000,
-        ls=ls,
-        s=0.1
-    )
+    pklfile = './tmp/synthdata.pkl'
+    if os.path.exists(pklfile):
+        with open(pklfile, 'rb') as fh:
+            prefs, item_features, pair1idxs, pair2idxs, f = pickle.load(fh)
+    else:
+
+        prefs, item_features, pair1idxs, pair2idxs, f = gen_synthetic_prefs(
+            nx=100,
+            ny=100,
+            N=N,
+            P=5000,
+            ls=ls,
+            s=0.1,
+            cov_type='matern'
+        )
+
+        with open(pklfile, 'wb') as fh:
+            pickle.dump((prefs, item_features, pair1idxs, pair2idxs, f), fh)
 
     ftrain, pair1idxs_tr, pair2idxs_tr, prefs_tr, train_points, \
     ftest, pair1idxs_test, pair2idxs_test, prefs_test, test_points = \
@@ -209,6 +240,11 @@ if __name__ == '__main__':
     model.verbose = True
 
     #models['VB'] = model
+
+    model = GPPrefLearning(2, mu0=0, shape_s0=100, rate_s0=100, ls_initial=None, use_svi=True, kernel_func='diagonal')
+    model.verbose = True
+
+    #models['diag'] = model
 
     for modelkey in models:
         model = models[modelkey]

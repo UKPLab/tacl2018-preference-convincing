@@ -34,7 +34,7 @@ class GPClassifierSVI(GPClassifierVB):
     covpair_out = None
 
     def __init__(self, ninput_features, z0=0.5, shape_s0=2, rate_s0=2, shape_ls=10, rate_ls=0.1, ls_initial=None,
-                 kernel_func='matern_3_2', kernel_combination='*', max_update_size=10000, ninducing=500, use_svi=True,
+                 kernel_func='matern_3_2', kernel_combination='*', max_update_size=1000, ninducing=500, use_svi=True,
                  delay=1.0, forgetting_rate=0.9, verbose=False, fixed_s=False):
 
         self.max_update_size = max_update_size  # maximum number of data points to update in each SVI iteration
@@ -56,14 +56,21 @@ class GPClassifierSVI(GPClassifierVB):
         self.V_nn = None
 
         # if use_svi is switched off, we revert to the standard (parent class) VB implementation
-        if use_svi and kernel_func == 'diagonal':
-            logging.info('Cannot use SVI with diagonal covariance matrix.')
-            use_svi = False
         self.use_svi = use_svi
 
         self.fixed_sample_idxs = False
 
         self.reset_inducing_coords = True  # creates new inducing coords each time fit is called, if this flag is set
+
+        self.exhaustive_train = 1
+        # number of iterations that all training data must be used in when doing stochastic
+        # sampling. You will need this setting on if you have any diagonal kernels/no person features.
+        # Switching it off means that the algorithm will decide when to stop the stochastic updates.
+        # It may think it has converged before seeing all the data.
+
+        self.data_splits = None
+        self.nsplits = 0 # we set this when data is passed in
+        self.current_data_split = -1
 
         super(GPClassifierSVI, self).__init__(ninput_features, z0, shape_s0, rate_s0, shape_ls, rate_ls, ls_initial,
                                       kernel_func, kernel_combination, verbose=verbose, fixed_s=fixed_s)
@@ -113,7 +120,7 @@ class GPClassifierSVI(GPClassifierVB):
         if self.inducing_coords is None and (self.ninducing > self.n_locs or self.cov_type == 'diagonal'):
             if self.inducing_coords is not None:
                 logging.warning(
-                    'replacing intial inducing points with observation coordinates because they are smaller.')
+                    'replacing initial inducing points with observation coordinates because they are smaller.')
             self.ninducing = self.n_locs
             self.inducing_coords = self.obs_coords
             # invalidate matrices passed in to init_inducing_points() as we need to recompute for new inducing points
@@ -141,14 +148,26 @@ class GPClassifierSVI(GPClassifierVB):
             self.K_mm = self.kernel_func(self.inducing_coords, self.ls, operator=self.kernel_combination)
             self.K_mm += 1e-6 * np.eye(len(self.K_mm))  # jitter
         if self.invK_mm is None:
-            self.invK_mm = scipy.linalg.inv(self.K_mm)
+            if self.cov_type == 'diagonal':
+                self.invK_mm = self.K_mm
+            else:
+                self.invK_mm = scipy.linalg.inv(self.K_mm)
         if self.K_nm is None:
-            self.K_nm = self.kernel_func(self.obs_coords, self.ls, self.inducing_coords,
+            if self.cov_type == 'diagonal':
+                self.K_nm = self.K_mm # there are no inducing points
+            else:
+                self.K_nm = self.kernel_func(self.obs_coords, self.ls, self.inducing_coords,
                                          operator=self.kernel_combination)
 
         self.u_invSm = np.zeros((self.ninducing, 1), dtype=float)  # theta_1
-        self.u_invS = np.zeros((self.ninducing, self.ninducing), dtype=float)  # theta_2
-        self.u_Lambda = np.zeros((self.ninducing, self.ninducing), dtype=float) # observation precision at inducing points
+        if self.cov_type == 'diagonal':
+            self.u_invS = np.zeros((self.ninducing), dtype=float)  # theta_2
+            self.u_Lambda = np.zeros((self.ninducing), dtype=float) # observation precision at inducing points
+        else:
+            self.u_invS = np.zeros((self.ninducing, self.ninducing), dtype=float)  # theta_2
+            self.u_Lambda = np.zeros((self.ninducing, self.ninducing),
+                                     dtype=float)  # observation precision at inducing points
+
         self.uS = self.K_mm * self.rate_s0 / self.shape_s0  # initialise properly to prior
         self.um_minus_mu0 = np.zeros((self.ninducing, 1))
 
@@ -231,6 +250,8 @@ class GPClassifierSVI(GPClassifierVB):
         # this is different from the above because it is a weighted sum of previous values
         # return self.u_invS - (self.invKs_mm)
 
+        if self.cov_type == 'diagonal':
+            return np.diag(self.u_Lambda)
         return self.u_Lambda
 
     def lowerbound_gradient(self, dim):
@@ -290,6 +311,9 @@ class GPClassifierSVI(GPClassifierVB):
         Lambda_factor1 = self.G.dot(K_nm_i).dot(self.invK_mm).T
         Lambda_i = (Lambda_factor1 / Q).dot(Lambda_factor1.T)
 
+        if self.cov_type == 'diagonal':
+            Lambda_i = np.diag(Lambda_i)
+
         # calculate the learning rate for SVI
         rho_i = (self.vb_iter + self.delay) ** (-self.forgetting_rate)
         # print("\rho_i = %f " % rho_i
@@ -301,8 +325,12 @@ class GPClassifierSVI(GPClassifierVB):
         # S is the variational covariance parameter for the inducing points, u. Canonical parameter theta_2 = -0.5 * S^-1.
         # The variational update to theta_2 is (1-rho)*S^-1 + rho*Lambda. Since Lambda includes a sum of Lambda_i over
         # all data points i, the stochastic update weights a sample sum of Lambda_i over a mini-batch.
-        self.u_invS = (1 - rho_i) * self.prev_u_invS + rho_i * (w_i * Lambda_i + self.invKs_mm)
-        self.u_Lambda = (1 - rho_i) * self.prev_u_Lambda + rho_i * w_i * Lambda_i
+        Lambda_i = Lambda_i * w_i * rho_i
+        if self.cov_type == 'diagonal':
+            self.u_invS = (1 - rho_i) * self.prev_u_invS + Lambda_i + rho_i * np.diag(self.invKs_mm)
+        else:
+            self.u_invS = (1 - rho_i) * self.prev_u_invS + Lambda_i + rho_i * self.invKs_mm
+        self.u_Lambda = (1 - rho_i) * self.prev_u_Lambda + Lambda_i
 
         # use the estimate given by the Taylor series expansion
         z0 = self.forward_model(self.obs_f, subset_idxs=self.data_idx_i) + self.G.dot(self.mu0_i - self.obs_f_i)
@@ -316,7 +344,10 @@ class GPClassifierSVI(GPClassifierVB):
         # B = solve_triangular(L_u_invS, self.invKs_mm.T, lower=True, check_finite=False)
         # A = solve_triangular(L_u_invS, B, lower=True, trans=True, check_finite=False, overwrite_b=True)
 
-        self.uS = scipy.linalg.inv(self.u_invS)
+        if self.cov_type == 'diagonal':
+            self.uS = np.diag(1.0 / self.u_invS)
+        else:
+            self.uS = scipy.linalg.inv(self.u_invS)
 
         #         self.um_minus_mu0 = solve_triangular(L_u_invS, self.u_invSm, lower=True, check_finite=False)
         #         self.um_minus_mu0 = solve_triangular(L_u_invS, self.um_minus_mu0, lower=True, trans=True, check_finite=False,
@@ -324,7 +355,10 @@ class GPClassifierSVI(GPClassifierVB):
         self.um_minus_mu0 = self.uS.dot(self.u_invSm)
 
         if self.covpair is None:
-            self.covpair = scipy.linalg.solve(self.Ks_mm, self.Ks_nm.T).T
+            if self.cov_type == 'diagonal':
+                self.covpair = 1.0
+            else:
+                self.covpair = scipy.linalg.solve(self.Ks_mm, self.Ks_nm.T).T
 
         self.obs_f, self.obs_v = self._f_given_u(self.covpair, self.mu0, 1.0 / self.s, full_cov=False)
 
@@ -333,6 +367,18 @@ class GPClassifierSVI(GPClassifierVB):
         # see Hensman, Scalable variational Gaussian process classification, equation 18
 
         #(self.K_nm / self.s).dot(self.s * self.invK_mm).dot(self.uS).dot(self.u_invSm)
+        if self.cov_type == 'diagonal':
+            fhat = self.um_minus_mu0 + mu0
+            if Ks_nn is not None and full_cov:
+                C = self.uS
+                return fhat, C
+            elif Ks_nn is not None:
+                C = np.diag(self.uS)[:, None]
+                return fhat, C
+            else:
+                return fhat
+
+        # for non-diagonal covariance matrices
         fhat = covpair.dot(self.um_minus_mu0) + mu0
 
         if Ks_nn is not None:
@@ -363,7 +409,10 @@ class GPClassifierSVI(GPClassifierVB):
             return super(GPClassifierSVI, self)._expec_s()
 
         self.old_s = self.s
-        invK_mm_expecFF = self.invK_mm.dot(self.uS + self.um_minus_mu0.dot(self.um_minus_mu0.T))
+        if self.cov_type == 'diagonal':
+            invK_mm_expecFF = self.uS + self.um_minus_mu0.dot(self.um_minus_mu0.T)
+        else:
+            invK_mm_expecFF = self.invK_mm.dot(self.uS + self.um_minus_mu0.dot(self.um_minus_mu0.T))
         self.rate_s = self.rate_s0 + 0.5 * np.trace(invK_mm_expecFF)
         # Update expectation of s. See approximations for Binary Gaussian Process Classification, Hannes Nickisch
         self.s = self.shape_s / self.rate_s
@@ -412,14 +461,42 @@ class GPClassifierSVI(GPClassifierVB):
             self.V_nn = V_nn # the prior variance at the observation data points
 
         self.u_invSm = np.zeros((self.ninducing, 1), dtype=float)  # theta_1
-        self.u_invS = np.zeros((self.ninducing, self.ninducing), dtype=float)  # theta_2
-        self.u_Lambda = np.zeros((self.ninducing, self.ninducing), dtype=float) # observation precision at inducing points
+        if self.cov_type == 'diagonal':
+            self.u_invS = np.zeros((self.ninducing), dtype=float)  # theta_2
+            self.u_Lambda = np.zeros((self.ninducing), dtype=float)  # observation precision at inducing points
+        else:
+            self.u_invS = np.zeros((self.ninducing, self.ninducing), dtype=float)  # theta_2
+            self.u_Lambda = np.zeros((self.ninducing, self.ninducing), dtype=float) # observation precision at inducing points
         self.uS = self.K_mm * self.rate_s0 / self.shape_s0  # initialise properly to prior
         self.um_minus_mu0 = np.zeros((self.ninducing, 1))
 
     def _update_sample_idxs(self):
         if not self.fixed_sample_idxs:
-            self.data_idx_i = np.sort(np.random.choice(self.n_locs, self.update_size, replace=False))
+
+            if self.data_splits is None or np.mod(self.vb_iter, self.nsplits) == 0:
+                if self.nsplits == 0:
+                    self.nsplits = int(np.ceil(self.n_locs / float(self.update_size)))
+
+                    if self.exhaustive_train:
+                        self.min_iter = self.nsplits
+                        if self.max_iter_VB < self.min_iter_VB * self.exhaustive_train:
+                            self.max_iter_VB = self.min_iter_VB * self.exhaustive_train
+
+                # create nsplits random splits -- shuffle data and split
+                rand_order = np.random.permutation(self.n_locs)
+                self.data_splits = []
+
+                for n in range(self.nsplits):
+                    ending = self.update_size * (n + 1)
+                    if ending > self.n_locs:
+                        ending = self.n_locs
+                    self.data_splits.append(rand_order[self.update_size * n:ending])
+
+                self.current_data_split = -1
+
+            self.current_data_split += 1
+            self.data_idx_i = self.data_splits[self.current_data_split]
+            #self.data_idx_i = np.sort(np.random.choice(self.n_locs, self.update_size, replace=False))
         self.data_obs_idx_i = self.data_idx_i
 
     # Prediction methods ---------------------------------------------------------------------------------------------

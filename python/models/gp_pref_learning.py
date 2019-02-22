@@ -124,7 +124,7 @@ class GPPrefLearning(GPClassifierSVI):
 
     def __init__(self, ninput_features, mu0=0, shape_s0=2, rate_s0=2, shape_ls=10, rate_ls=0.1, ls_initial=None,
         kernel_func='matern_3_2', kernel_combination='*',
-        max_update_size=10000, ninducing=500, use_svi=True, delay=10, forgetting_rate=0.7, verbose=False, fixed_s=False):
+        max_update_size=1000, ninducing=500, use_svi=True, delay=10, forgetting_rate=0.7, verbose=False, fixed_s=False):
 
         # We set the function scale and noise scale to the same value so that we assume apriori that the differences
         # in preferences can be explained by noise in the preference pairs or the latent function. Ordering patterns
@@ -159,13 +159,18 @@ class GPPrefLearning(GPClassifierSVI):
         else:
             mu0 = self.mu0
 
+        # OLD VERSION:
         # I think that we should really sample using the full covariance here, since some values are bound to be close
         # together given the prior covariance. However, in practice this is much slower to sample, so we use a diagonal
         # as an approximation, which may  under-estimate variance, since the resulting Q is a combination of
         # a term with too low observation variance + too high model variance. Hence we exaggerated the amount learned
         # from similar points, reducing the effect of the prior covariance.
-        f_prior_var = self.rate_s0/self.shape_s0
-        m_prior, not_m_prior, v_prior = self._post_sample(mu0, f_prior_var, False, None, self.pref_v, self.pref_u)
+        # f_prior_var = self.rate_s0/self.shape_s0
+        # m_prior, not_m_prior, v_prior = self._post_sample(mu0, f_prior_var, False, None, self.pref_v, self.pref_u)
+        # When we used this version we were coincidentally compensating by adding the variance on mistakenly...
+
+        # NEW VERSION:
+        m_prior, not_m_prior, v_prior = self._post_sample(mu0, None, False, self.K_nm, self.pref_v, self.pref_u)
 
         # find the beta parameters
         a_plus_b = 1.0 / (v_prior / (m_prior*not_m_prior)) - 1
@@ -398,7 +403,30 @@ class GPPrefLearning(GPClassifierSVI):
 
             while not np.sum(self.data_obs_idx_i): # make sure we don't choose indices that have not been compared
                 if nobs > self.update_size:
-                    self.data_idx_i = np.sort(np.random.choice(nobs, self.update_size, replace=False))
+                    if self.data_splits is None or np.mod(self.vb_iter, self.nsplits) == 0:
+                        if self.nsplits == 0:
+                            self.nsplits = int(np.ceil(nobs / float(self.update_size)))
+
+                            if self.exhaustive_train:
+                                self.min_iter = self.nsplits
+                                if self.max_iter_VB < self.min_iter_VB * self.exhaustive_train:
+                                    self.max_iter_VB = self.min_iter_VB * self.exhaustive_train
+
+                        # create nsplits random splits -- shuffle data and split
+                        rand_order = np.random.permutation(nobs)
+                        self.data_splits = []
+
+                        for n in range(self.nsplits):
+                            ending = self.update_size * (n + 1)
+                            if ending > nobs:
+                                ending = nobs
+                            self.data_splits.append(rand_order[self.update_size * n:ending])
+
+                        self.current_data_split = -1
+
+                    self.current_data_split += 1
+                    self.data_idx_i = self.data_splits[self.current_data_split]
+                    #self.data_idx_i = np.sort(np.random.choice(nobs, self.update_size, replace=False))
                 else:
                     self.data_idx_i = np.arange(nobs)
 

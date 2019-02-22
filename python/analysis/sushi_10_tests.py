@@ -819,13 +819,13 @@ if __name__ == '__main__':
 
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
-                   'crowd-GPPL',
-                   'crowd-GPPL-noInduc',
-                   'crowd-GPPL\\u',
-                   'crowd-BMF',
-                   'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+                   # 'crowd-GPPL',
+                   # 'crowd-GPPL-noInduc',
+                   # 'crowd-GPPL\\u',
+                   # 'crowd-BMF',
+                   # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
                    'GPPL-pooled',
-                   'GPPL-per-user',
+                   # 'GPPL-per-user',
                    ]
 
         optimize = False
@@ -926,11 +926,11 @@ if __name__ == '__main__':
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
                    'crowd-GPPL',
-                   'crowd-GPPL\\u',
-                   'crowd-BMF',
-                   'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+                   # 'crowd-GPPL\\u',
+                   # 'crowd-BMF',
+                   # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
                    'GPPL-pooled',
-                   'GPPL-per-user',
+                   # 'GPPL-per-user',
         ]
 
         # hyperparameters common to most models
