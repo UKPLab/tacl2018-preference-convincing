@@ -63,6 +63,10 @@ this if you are not re-running our experiments or training a model on UKPConvArg
 
 ## How to run the experiments
 
+### Synthetic data
+
+### Argument convincingness
+
 1. Extract the linguistic features from the data by running:
 
 ```
@@ -149,26 +153,11 @@ python ./python/analysis/cycles_demo.py
    ```
    python ./python/analysis/habernal_comparison/error_analysis.py
    ```
-
-## Template for running on a new dataset with Ling+Glove feature sets
-
-You can use the following script as a template for running GPPL on new datasets 
-using the same feature sets as in our paper. If you have another method for
-extracting features from your datasets, you may with to skip this example
-and look at 'how to use the GPPL implementation'.
+   
+### Sushi preferences
 
 
-```
-python ./python/example_use.py
-```
-
-The script will train a convincingness model on the UKPConvArgStrict data, then
-run it to score arguments in a new dataset. 
-
-Pre-requisite: this script assumes you have carried out step 0 above and 
-run "python/analysis/habernal_comparison/run_preprocessing.py" to extract the linguistic features.
-
-## How to use the GPPL implementation
+## How to use the crowdGPPL implementation
 
 The preference learning method is implemented by the gp_pref_learning class in
 python/models/gp_pref_learning.py. 
