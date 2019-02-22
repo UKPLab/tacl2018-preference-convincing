@@ -1,11 +1,14 @@
-# Finding Convincing Arguments using Scalable Bayesian Preference Learning
+# CrowdGPPL
 
-The repository provides an implementation of a Bayesian pairwise preference learning
+This branch contains an implementation of crowdGPPL, a Bayesian pairwise preference learning
 method for ranking, scoring items and predicting pairwise labels, 
-namely, Gaussian process preference learning
-using stochastic variational inference.
+given preference data from a crowd of individuals. CrowdGPPL can make 
+predictions of individual preferences as well as infer the consensus of a crowd.
+The model combines Gaussian process preference learning and Bayesian matrix
+factorisation and our implementation uses stochastic variational inference.
 
-Please cite:
+The crowdGPPL paper has not yet been published.  
+For single-user GPPL, please cite:
 ```
 @article{simpson2018finding,
   title={Finding convincing arguments using scalable bayesian preference learning},
@@ -17,35 +20,6 @@ Please cite:
   publisher={MIT Press}
 }
 ```
-
-We introduce a scalable Bayesian preference
-learning method for identifying convincing ar-
-guments in the absence of gold-standard rat-
-ings or rankings. In contrast to previous work,
-we avoid the need for separate methods to
-perform quality control on training data, pre-
-dict rankings and perform pairwise classifica-
-tion. Bayesian approaches are an effective so-
-lution when faced with sparse or noisy train-
-ing data, but have not previously been used
-to identify convincing arguments. One issue
-is scalability, which we address by develop-
-ing a stochastic variational inference method
-for Gaussian process (GP) preference learn-
-ing. We show how our method can be ap-
-plied to predict argument convincingness from
-crowdsourced data, outperforming the previ-
-ous state-of-the-art, particularly when trained
-with small amounts of unreliable data. We
-demonstrate how the Bayesian approach en-
-ables more effective active learning, thereby
-reducing the amount of data required to iden-
-tify convincing arguments for new users and
-domains. While word embeddings are princi-
-pally used with neural networks, our results
-show that word embeddings in combination
-with linguistic features also benefit GPs when
-predicting argument convincingness.
 
 **Contact person:** Edwin Simpson, simpson@ukp.informatik.tu-darmstadt.de
 
