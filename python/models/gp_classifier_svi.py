@@ -368,6 +368,14 @@ class GPClassifierSVI(GPClassifierVB):
 
         #(self.K_nm / self.s).dot(self.s * self.invK_mm).dot(self.uS).dot(self.u_invSm)
         if self.cov_type == 'diagonal':
+            if self.um_minus_mu0.size != mu0.size
+                logging.error('We cannot make predictions for new test items when using a diagonal covariance -- we '
+                              'need to be able to use the features to make predictions.')
+                if Ks_nn is not None:
+                    return np.zeros(mu0.size), np.diag(np.ones(mu0.size)/self.s)
+                else:
+                    return np.zeros(mu0.size)
+
             fhat = self.um_minus_mu0 + mu0
             if Ks_nn is not None and full_cov:
                 C = self.uS
@@ -473,7 +481,7 @@ class GPClassifierSVI(GPClassifierVB):
     def _update_sample_idxs(self):
         if not self.fixed_sample_idxs:
 
-            if self.data_splits is None or np.mod(self.vb_iter, self.nsplits) == 0:
+            if self.data_splits is None or np.mod(self.current_data_split+1, self.nsplits) == 0:
                 if self.nsplits == 0:
                     self.nsplits = int(np.ceil(self.n_locs / float(self.update_size)))
 

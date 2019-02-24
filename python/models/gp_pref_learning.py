@@ -403,7 +403,7 @@ class GPPrefLearning(GPClassifierSVI):
 
             while not np.sum(self.data_obs_idx_i): # make sure we don't choose indices that have not been compared
                 if nobs > self.update_size:
-                    if self.data_splits is None or np.mod(self.vb_iter, self.nsplits) == 0:
+                    if self.data_splits is None or np.mod(self.current_data_split+1, self.nsplits) == 0:
                         if self.nsplits == 0:
                             self.nsplits = int(np.ceil(nobs / float(self.update_size)))
 
