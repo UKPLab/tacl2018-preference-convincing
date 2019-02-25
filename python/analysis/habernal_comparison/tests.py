@@ -897,7 +897,7 @@ class TestRunner:
                                 person_rank_test = get_fold_regression_data(self.folds_r, self.fold, self.docids)
 
             # convert the ranking person IDs to the idxs
-            if len(person_rank_train):
+            if person_rank_train is not None and len(person_rank_train):
                 person_rank_train = np.array([np.argwhere(upersonIDs == p.strip())[0][0] if p.strip() in upersonIDs else -1
                                           for p in person_rank_train])
 
@@ -905,7 +905,7 @@ class TestRunner:
                 scores_rank_train = scores_rank_train[person_rank_train != -1]
                 person_rank_train = person_rank_train[person_rank_train != -1]
 
-            if len(person_rank_test):
+            if person_rank_test is not None and len(person_rank_test):
                 # If running personalized predictions, ensure we only test on workers that were seen in training because
                 # we have no worker features to predict preferences of new workers.
                 person_rank_test = np.array([np.argwhere(upersonIDs == p.strip())[0][0] if p.strip() in upersonIDs else -1

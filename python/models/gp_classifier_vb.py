@@ -1246,6 +1246,7 @@ class GPClassifierVB(object):
         """
         f = Ks_star.dot(self.G.T).dot(self.A) + mu0
         V = solve_triangular(self.L, self.G.dot(Ks_star.T), lower=True, overwrite_b=True, check_finite=False)
+
         if full_cov:
             C = Ks_starstar - V.T.dot(V)
         else:

@@ -815,7 +815,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
     def _update_sample_idxs(self, data_obs_idx_i=None, compute_y_var=True):
 
         if data_obs_idx_i is None:
-            if self.data_splits is None or np.mod(self.vb_iter, self.nsplits) == 0:
+            if self.data_splits is None or np.mod(self.current_data_split+1, self.nsplits) == 0:
                 if self.nsplits == 0:
                     self.nsplits = int(np.ceil(self.nobs / float(self.update_size)))
 
@@ -1146,10 +1146,19 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
             data_obs_idx_i = np.arange(b * self.update_size, b_end)
             self._update_sample_idxs(data_obs_idx_i, False)
+
+            self.w_cov_i = np.zeros((self.Nfactors, self.uw_i.shape[0], self.uw_i.shape[0]))
+            Kw_i = self.Kw[self.uw_i, :][:, self.uw_i]
+            sw = self.shape_sw / self.rate_sw
+
             obs_f = (self.w.dot(y_out) + self.t).T.reshape(self.N * self.Npeople, 1)
             G = self._compute_jacobian(obs_f)
 
             for f in range(self.Nfactors):
+                # print('indexes for factor %i' % f)
+                # print(self.w_cov_i[f].shape)
+                # print(np.max(self.uw_idx_i))
+                self.w_cov_i[f] = Kw_i / sw[f] + covpair.dot(self.wS[f] - self.K_mm / sw[f]).dot(covpair.T)
 
                 scaling_f = self.w[self.w_idx_i, f:f+1].dot(self.w[self.w_idx_i, f:f+1].T) \
                             + self.w_cov_i[f][self.uw_idx_i, :][:, self.uw_idx_i]

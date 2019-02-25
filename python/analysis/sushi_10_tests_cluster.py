@@ -101,7 +101,7 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=True, use_lb=True,
                                   use_common_mean_t=use_common_mean, delay=delay)
-    #model.use_local_obs_posterior_y = False
+    # model.use_local_obs_posterior_y = False
     model.max_Kw_size = max_Kw_size
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
 
@@ -134,11 +134,7 @@ def run_GPPL_pooled(_, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, __, i1_test, i2_t
 
     fpred, _ = np.tile(model.predict_f(), (1, ufeats.shape[0]))
     rho_pred, _ = model.predict(None, i1_test, i2_test)
-
-    if len(i1_un):
-        rho_pred_un, _ = model.predict(ifeats, i1_un, i2_un)
-    else:
-        rho_pred_un = []
+    rho_pred_un, _ = model.predict(ifeats, i1_un, i2_un)
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred, np.tile(fpred[:, 0:1], (1, ufeats_un.shape[0])), rho_pred_un
@@ -250,6 +246,7 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
                                   forgetting_rate=forgetting_rate, verbose=True, use_lb=True,
                                   use_common_mean_t=True, delay=delay)
 
+    model.use_local_obs_posterior_y = False
     model.max_Kw_size = max_Kw_size
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
@@ -271,6 +268,7 @@ def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test,
     model = CollabPrefLearningSVI(1, 1, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Nfactors,
                                   ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
                                   verbose=True, use_lb=True, kernel_func='diagonal', delay=delay)
+    model.use_local_obs_posterior_y = False
     model.max_Kw_size = max_Kw_size
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
@@ -295,6 +293,7 @@ def run_collab_FITC_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_te
                                    forgetting_rate=forgetting_rate, verbose=True, use_lb=True,
                                    use_common_mean_t=use_common_mean, delay=delay)
 
+    model.use_local_obs_posterior_y = False
     model.max_Kw_size = max_Kw_size
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
@@ -347,8 +346,8 @@ def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, 
     # shape_s0 = np.exp(opt_hyperparams[0])
     # rate_s0 = np.exp(opt_hyperparams[1])
 
-    sh_vals = [1]#[0.1, 1, 10, 100]
-    r_vals = [0.1, 1, 10, 100, 1000, 10000]
+    sh_vals = [0.1, 1, 10, 100, 1000]
+    r_vals = [0.1, 1, 10, 100, 1000]
 
     minval = np.inf
     min_sh_idx = -1
@@ -365,7 +364,7 @@ def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, 
                 minval = lb
                 min_sh_idx = sh
                 min_r_idx = r
-                print('New best value: %f, with hypers %f and %f' % (-lb, shape_s0, rate_s0))
+                print('New best value: %f, with hypers %f and %f' % (-lb, shape_s0, rate_s0y))
 
     shape_s0 = sh_vals[min_sh_idx]
     rate_s0 = r_vals[min_r_idx]
@@ -409,37 +408,28 @@ def train_test(method_name, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test
         return run_collab_FITC_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test,
                                          u_un, i1_un, i2_un, ufeats_un, use_common_mean=True)
 
-def subsample_data(test_number):
+def subsample_data():
 
     if debug_small:
         nusers_tr = 5
         npairs_tr = 4
         npairs_test = 1
         nusers_unseen = 2
-    elif test_number == -1: # optimization on dev set
-        nusers_tr = 100
-        npairs_tr = 15
-        npairs_test = 5
-        nusers_unseen = 0
-    elif test_number == 0 or test_number == 1: # sushi-A-small
+    elif sushiA_small:
         nusers_tr = 100
         npairs_tr = 5
         npairs_test = 25
         nusers_unseen = 100
-    elif test_number == 2 or test_number == 3: # sushi-A
-        nusers_tr = 100
-        npairs_tr = 20
-        npairs_test = 25
-        nusers_unseen = 100
-    elif test_number == 4 or test_number == 5: # sushiB
+    elif sushiB:
         nusers_tr = 5000
         npairs_tr = 10
         npairs_test = 1
         nusers_unseen = 0
-
-    # make sure we don't try to select more users than there really are
-    if nusers_tr + nusers_unseen > nusers:
-        nusers_tr = nusers - nusers_unseen
+    else:
+        nusers_tr = 100#1000
+        npairs_tr = 20#15
+        npairs_test = 25#5
+        nusers_unseen = 100
 
     # select 1000 random users # select the first N users
     chosen_users = np.random.choice(nusers, nusers_tr + nusers_unseen, replace=False)  #np.arange(nusers_tr + nusers_unseen)
@@ -519,7 +509,7 @@ def subsample_data(test_number):
            i1_unseen, i2_unseen, prefs_unseen, scores_unseen, chosen_users_unseen
 
 
-def run_sushi_expt(methods, expt_name, test_to_run):
+def run_sushi_expt(methods, expt_name):
     # predictions from all reps and methods
     fpred_all = []
     rho_pred_all = []
@@ -544,8 +534,7 @@ def run_sushi_expt(methods, expt_name, test_to_run):
     for rep in range(nreps):
         # Get training and test data
         u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, scores, chosen_users, \
-            u_unseen, i1_unseen, i2_unseen, prefs_unseen, scores_unseen, chosen_users_unseen \
-            = subsample_data(test_to_run)
+                u_unseen, i1_unseen, i2_unseen, prefs_unseen, scores_unseen, chosen_users_unseen = subsample_data()
         u_tr = np.array([np.argwhere(chosen_users == u).flatten()[0] for u in u_tr])
         u_test = np.array([np.argwhere(chosen_users == u).flatten()[0] for u in u_test])
         u_unseen = np.array([np.argwhere(chosen_users_unseen == u).flatten()[0] for u in u_unseen])
@@ -658,333 +647,307 @@ def run_sushi_expt(methods, expt_name, test_to_run):
         with open(results_path + '/results.tex', 'w') as fh:
             fh.writelines(lines)
 
-if __name__ == '__main__':
+# Scalability: the no. items is small so no benefit from sparse GP there. The no. users is large but the
+# features are not very informative, so user features not useful for inducing points.
+# Hence we can only show that (a) our SVI method does not degrade performance when inducing points are
+# not used and (b) whether the common mean helps improve performance and (c) if the length-scale tuning
+# improves performance.
 
-    if len(sys.argv) > 1:
-        test_to_run = int(sys.argv[1])
-    else:
-        test_to_run = 0
+# Joint model: user features are not informative enough here to use inducing points, so the
+# joint model becomes quickly unscalable.
 
-    # Experiment name tag
-    tag = '_1'
 
-    vscales = None  # don't record the v factor scale factors
-    vscales_A = None
-    vscales_B = None
 
-    nreps = 25
+# Initialise output paths ----------------------------------------------------------------------------------------------
 
-    debug_small = False # set to true to use a small subset of data
+figure_root_path = './results/sushi_factors'
+if not os.path.exists(figure_root_path):
+    os.mkdir(figure_root_path)
 
-    item_feat_file = './data/sushi3-2016/sushi3.idata'
-    user_feat_file = './data/sushi3-2016/sushi3.udata'
 
-    if test_to_run == -1 or test_to_run == 0 or test_to_run == 1 or test_to_run == 2 or test_to_run == 3:
+# Load feature data ----------------------------------------------------------------------------------------------------
 
-        # Initialise output paths ----------------------------------------------------------------------------------------------
+item_feat_file = './data/sushi3-2016/sushi3.idata'
+user_feat_file = './data/sushi3-2016/sushi3.udata'
 
-        figure_root_path = './results/sushi_factors'
-        if not os.path.exists(figure_root_path):
-            os.mkdir(figure_root_path)
+item_data = pd.read_csv(item_feat_file, sep='\t', index_col=0, header=None)
+item_features = item_data.values[:, 1:].astype(float)
+item_features = convert_discrete_to_continuous(item_features, cols_to_convert=[2])
 
+user_data = pd.read_csv(user_feat_file, sep='\t', index_col=0, header=None)
+user_features = user_data.values.astype(float)
+user_features = convert_discrete_to_continuous(user_features, cols_to_convert=[0, 3, 4, 6, 7])
 
-        # Load feature data ----------------------------------------------------------------------------------------------------
-        item_data = pd.read_csv(item_feat_file, sep='\t', index_col=0, header=None)
-        item_features = item_data.values[:, 1:].astype(float)
-        item_features = convert_discrete_to_continuous(item_features, cols_to_convert=[2])
 
-        user_data = pd.read_csv(user_feat_file, sep='\t', index_col=0, header=None)
-        user_features = user_data.values.astype(float)
-        user_features = convert_discrete_to_continuous(user_features, cols_to_convert=[0, 3, 4, 6, 7])
+# Load SUSHI-A dataset -------------------------------------------------------------------------------------------------
 
+sushi_prefs_file = './data/sushi3-2016/sushi3a.5000.10.order'
+ranking_data = pd.read_csv(sushi_prefs_file, sep=' ', skiprows=1, header=None)
 
-        # Load SUSHI-A dataset -------------------------------------------------------------------------------------------------
-
-        sushi_prefs_file = './data/sushi3-2016/sushi3a.5000.10.order'
-        ranking_data = pd.read_csv(sushi_prefs_file, sep=' ', skiprows=1, header=None)
-
-        userids, items1, items2, prefs = extract_pairs_from_ranking(ranking_data.values[:, 2:].astype(int))
-
-        nusers = len(np.unique(userids))
-        active_items, items_contiguous = np.unique(np.array([items1, items2]), return_inverse=True)
-        item_features = item_features[active_items]
-        items_contiguous = items_contiguous.reshape(2, len(items1))
-        items1 = items_contiguous[0]
-        items2 = items_contiguous[1]
-        nitems = len(active_items)
-        print('Found %i users, %i items, and %i pairs per user.' % (nusers, nitems, prefs.shape[0]/nusers))
-        print('Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
-        print('User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
-
-
-        # for debugging --------------------------------------------------------------------------------------------------------
-        if debug_small:
-            ndebug = 200
-            userids = userids[:ndebug]
-            items1 = items1[:ndebug]
-            items2 = items2[:ndebug]
-            prefs = prefs[:ndebug]
-
-            nusers = len(np.unique(userids))
-            nitems = len(np.unique(np.array([items1, items2])))
-            item_features = item_features[:20, :] # np.unique(np.array([items1, items2]))]
-            user_features = user_features[np.unique(userids)]
-
-            print('Debug: Found %i users, %i items, and %i pairs per user.' % (nusers, nitems, prefs.shape[0]/nusers))
-            print('Debug: Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
-            print('Debug: User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
-
-
-        # Hyperparameters common to most models --------------------------------------------------------------------------------
-        max_facs = 20
-        shape_s0 = 1.0
-        rate_s0 = 100.0  #0.1
-        max_update_size = 200
-        delay = 1
-        ninducing = 25#5000
-        forgetting_rate = 0.9
-        max_Kw_size = 5000
-
-        sushiB = False
-        vscales = None
-
-
-    # OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
-    if test_to_run < 4: # gest the dev data from sushi A
-        np.random.seed(2309234)
-        u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, chosen_users, \
-                _, _, _, _, _, _ = subsample_data(-1)
-
-    if test_to_run == -1:
-        print('Optimizing function scales ...')
-        sushiA_small = False
-        shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
-                                                 item_features, user_features, prefs_tr,
-                                                 u_test, i1_test, i2_test, prefs_test, chosen_users)
-
-        print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
-        np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
-
-
-    if test_to_run < 4:
-        # remove the dev set users so we don't see them in testing
-        not_chosen_users = np.ones(user_data.shape[0], dtype=bool)
-        not_chosen_users[chosen_users] = False
-        user_data = user_data[not_chosen_users]
-
-    if test_to_run == 0:
-
-        # SMALL data test to show benefits of user features --------------------------------------------------------------------
-
-        # Repeat 25 times... Run each method and compute its metrics.
-        methods = [
-                   'crowd-GPPL',
-                   'crowd-GPPL-noInduc',
-                   'crowd-GPPL\\u',
-                   'crowd-BMF',
-                   'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-                   'GPPL-pooled',
-                   'GPPL-per-user',
-                   ]
-
-        optimize = False
-        sushiB = False
-        sushiA_small = True
-        run_sushi_expt(methods, 'sushi_10small' + tag, test_to_run)
-
-    if test_to_run == 1:
-
-        # SMALL-A with OPTIMIZATION --------------------------------------------------------------------------------------------
-
-        methods = [
-                   'crowd-GPPL',
-                  ]
-
-        optimize = True
-        sushiB = False
-        sushiA_small = True
-        run_sushi_expt(methods, 'sushi_10small' + tag, test_to_run)
-
-        methods = [
-                   'crowd-GPPL\\u',
-                   ]
-
-        optimize = True
-        sushiB = False
-        sushiA_small = True
-        run_sushi_expt(methods, 'sushi_10small' + tag)
-
-    if test_to_run == 2:
-        # Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
-
-        # Repeat 25 times... Run each method and compute its metrics.
-        methods = [
-                   # 'crowd-GPPL',
-                   # 'crowd-GPPL-noInduc',
-                   # 'crowd-GPPL\\u',
-                   # 'crowd-BMF',
-                   # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-                   'GPPL-pooled',
-                   # 'GPPL-per-user',
-                   ]
-
-        optimize = False
-        sushiB = False
-        sushiA_small = False
-        run_sushi_expt(methods, 'sushi_10' + tag, test_to_run)
-
-    if test_to_run == 3:
-
-        # OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
-
-        vscales = []
-
-        # Repeat 25 times... Run each method and compute its metrics.
-        methods = [
-                   'crowd-GPPL',
-                   'crowd-GPPL\\u',
-                   'crowd-GPPL-FITC\\u-noConsensus', # Houlsby -- included to show that the LB found using crowd method is more useful for optimisation
-                   ]
-
-        # hyperparameters common to most models
-        optimize = True
-        sushiB = False
-        sushiA_small = False
-        run_sushi_expt(methods, 'sushi_10_opt' + tag, test_to_run)
-
-        vscales_A = vscales
-        vscales_A = np.mean(vscales_A, axis=0)
-        if vscales_A.ndim > 0:
-            np.savetxt(figure_root_path + '/sushi_A_factor_scales.csv', vscales_A, delimiter=',', fmt='%f')
-
-        vscales = None
-
-
-    if test_to_run == 4 or test_to_run == 5:
-        # Reload the full sets of features (previously, we subsampled on the relevant items for Sushi-A ------------------------
-
-        item_data = pd.read_csv(item_feat_file, sep='\t', index_col=0, header=None)
-        item_features = item_data.values[:, 1:].astype(float)
-        item_features = convert_discrete_to_continuous(item_features, cols_to_convert=[2])
-
-        user_data = pd.read_csv(user_feat_file, sep='\t', index_col=0, header=None)
-        user_features = user_data.values.astype(float)
-        user_features = convert_discrete_to_continuous(user_features, cols_to_convert=[0, 3, 4, 6, 7])
-
-        # Load SUSHI-B dataset -------------------------------------------------------------------------------------------------
-
-        sushi_prefs_file = './data/sushi3-2016/sushi3b.5000.10.order'
-        ranking_data = pd.read_csv(sushi_prefs_file, sep=' ', skiprows=1, header=None)
-
-        userids, items1, items2, prefs = extract_pairs_from_ranking(ranking_data.values[:, 2:].astype(int))
-
-        nusers = len(np.unique(userids))
-        active_items, items_contiguous = np.unique(np.array([items1, items2]), return_inverse=True)
-        item_features = item_features[active_items]
-        items_contiguous = items_contiguous.reshape(2, len(items1))
-        items1 = items_contiguous[0]
-        items2 = items_contiguous[1]
-        nitems = len(active_items)
-        print('Found %i users, %i items, and %i pairs per user.' % (nusers, nitems, prefs.shape[0]/nusers))
-        print('Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
-        print('User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
-
-        # for debugging --------------------------------------------------------------------------------------------------------
-
-        debug_small = False
-
-        if debug_small:
-            ndebug = 50
-            userids = userids[:ndebug]
-            items1 = items1[:ndebug]
-            items2 = items2[:ndebug]
-            prefs = prefs[:ndebug]
-
-            nusers = len(np.unique(userids))
-            nitems_debug = len(np.unique(np.array([items1, items2])))
-            #item_features = item_features[:20, :] # np.unique(np.array([items1, items2]))]
-            user_features = user_features[np.unique(userids)]
-
-            print('Debug: Found %i users, %i items, and %i pairs per user.' % (nusers, nitems_debug, prefs.shape[0]/nusers))
-            print('Debug: Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
-            print('Debug: User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
-
-        # SUSHI B, global parameters ------------------------------------------------------------------------------------
-
-        max_facs = 20
-        shape_s0 = 1.0
-        rate_s0 = 100.0  #0.1
-        forgetting_rate = 0.9
-        max_Kw_size = 5000
-        max_update_size = 2000
-        delay = 5
-        ninducing = 500 # allow us to handle more users.
-
-    if test_to_run == 4:
-        # SUSHI B dataset, no opt. ---------------------------------------------------------------------------------------------
-
-        # Repeat 25 times... Run each method and compute its metrics.
-        methods = [
-                   'crowd-GPPL',
-                   # 'crowd-GPPL\\u',
-                   # 'crowd-BMF',
-                   # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-                   'GPPL-pooled',
-                   # 'GPPL-per-user',
-        ]
-
-        # hyperparameters common to most models
-        optimize = False
-        sushiB = True
-        sushiA_small = False
-        run_sushi_expt(methods, 'sushi_100' + tag, test_to_run)
-
-    if test_to_run == 5:
-        # SUSHI B dataset, ARD -------------------------------------------------------------------------------------------------
-
-        vscales = []
-
-        # Repeat 25 times... Run each method and compute its metrics.
-        methods = [
-                   'crowd-GPPL',
-                   'crowd-GPPL\\u',
-                   'crowd-GPPL-FITC\\u-noConsensus', # Houlsby
-                   ]
-
-        # hyperparameters common to most models
-        optimize = True
-        sushiB = True
-        sushiA_small = False
-        run_sushi_expt(methods, 'sushi_100_opt' + tag, test_to_run)
-
-        vscales_B = vscales
+userids, items1, items2, prefs = extract_pairs_from_ranking(ranking_data.values[:, 2:].astype(int))
+
+nusers = len(np.unique(userids))
+active_items, items_contiguous = np.unique(np.array([items1, items2]), return_inverse=True)
+item_features = item_features[active_items]
+items_contiguous = items_contiguous.reshape(2, len(items1))
+items1 = items_contiguous[0]
+items2 = items_contiguous[1]
+nitems = len(active_items)
+print('Found %i users, %i items, and %i pairs per user.' % (nusers, nitems, prefs.shape[0]/nusers))
+print('Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
+print('User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
+
+
+# for debugging --------------------------------------------------------------------------------------------------------
+
+debug_small = False
+
+if debug_small:
+    ndebug = 200
+    userids = userids[:ndebug]
+    items1 = items1[:ndebug]
+    items2 = items2[:ndebug]
+    prefs = prefs[:ndebug]
+
+    nusers = len(np.unique(userids))
+    nitems = len(np.unique(np.array([items1, items2])))
+    item_features = item_features[:20, :] # np.unique(np.array([items1, items2]))]
+    user_features = user_features[np.unique(userids)]
+
+    print('Debug: Found %i users, %i items, and %i pairs per user.' % (nusers, nitems, prefs.shape[0]/nusers))
+    print('Debug: Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
+    print('Debug: User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
+
+# Hyperparameters common to most models --------------------------------------------------------------------------------
+max_facs = 20
+shape_s0 = 1.0
+rate_s0 = 100.0  #0.1
+max_update_size = 200
+delay = 10
+ninducing = 25#5000
+forgetting_rate = 0.9
+max_Kw_size = 5000
+
+nreps = 25
+
+sushiB = False
+vscales = None
+
+# Experiment name tag
+tag = '_16'
+
+# OPTIMISE THE FUNcTION SCALE FIRST ON ONE FOLD of Sushi A, NO DEV DATA NEEDED -----------------------------------------
+
+# print('Optimizing function scales ...')
+# np.random.seed(2309234)
+# sushiA_small = False
+# u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, _, chosen_users, _, _, _, _, _, _ = subsample_data()
+# shape_s0, rate_s0 = opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr,
+#                                          item_features, user_features, prefs_tr,
+#                                          u_test, i1_test, i2_test, prefs_test, chosen_users)
+# print('Found scale hyperparameters: %f, %f' % (shape_s0, rate_s0))
+# np.savetxt('./results/' + 'scale_hypers' + tag + '.csv', [shape_s0, rate_s0], fmt='%f', delimiter=',')
+
+# SMALL data test to show benefits of user features --------------------------------------------------------------------
+
+vscales = None # don't record the v scale factors
+
+# Repeat 25 times... Run each method and compute its metrics.
+methods = [
+           'crowd-GPPL',
+           'crowd-GPPL-noInduc',
+           'crowd-GPPL-noConsensus',
+           'crowd-GPPL\\u',
+           'crowd-BMF',
+           'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
+           'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+           'GPPL-pooled',
+           # 'GPPL-joint',
+           'GPPL-per-user',
+           ]
+
+optimize = False
+sushiB = False
+sushiA_small = True
+# run_sushi_expt(methods, 'sushi_10small' + tag)
+
+# Run Test NO LENGTHSCALE OPTIMIZATION ---------------------------------------------------------------------------------
+
+vscales = None # don't record the v scale factors
+
+# Repeat 25 times... Run each method and compute its metrics.
+methods = [
+           'crowd-GPPL',
+           'crowd-GPPL-noInduc',
+           'crowd-GPPL-noConsensus',
+           'crowd-GPPL\\u',
+           'crowd-BMF',
+           'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
+           'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+           'GPPL-pooled',
+           # # 'GPPL-joint',
+           'GPPL-per-user',
+           ]
+
+optimize = False
+sushiB = False
+sushiA_small = False
+# run_sushi_expt(methods, 'sushi_10' + tag)
+
+# OPTIMIZE ARD ---------------------------------------------------------------------------------------------------------
+
+# TODO: test with a single user comparing crowd-GPPL and GPPL-per-user. Can we get to 80% with crowd GPPL?
+# Then, try with 2 users.
+#
+# the difference in performance between the per-user method (working well) and joint models (working
+# poorly) is apparently due to bad lengthscales that can be optimised with ARD.
+#
+# Is there any chance of the IDs being mixed
+# up or something? It's notable, however, that the CEE values for Khan are comparable to ours.
+# Note that in the synth tests, "multi-user-consensus", we get the opposite, i.e. f1score and acc for per-user is very
+# poor.
+#
+
+vscales = []
+
+# Repeat 25 times... Run each method and compute its metrics.
+methods = [
+           'crowd-GPPL',
+           'crowd-GPPL\\u',
+           'crowd-GPPL-FITC\\u-noConsensus', # Houlsby -- included to show that the LB found using crowd method is more useful for optimisation
+           ]
+
+# hyperparameters common to most models
+optimize = True
+sushiB = False
+sushiA_small = False
+# run_sushi_expt(methods, 'sushi_10_opt' + tag)
+
+vscales_A = vscales
+vscales_A = np.mean(vscales_A, axis=0)
+if vscales_A.ndim > 0:
+    np.savetxt(figure_root_path + '/sushi_A_factor_scales.csv', vscales_A, delimiter=',', fmt='%f')
+
+vscales = None
+
+# Reload the full sets of features (previously, we subsampled on the relevant items for Sushi-A ------------------------
+
+item_data = pd.read_csv(item_feat_file, sep='\t', index_col=0, header=None)
+item_features = item_data.values[:, 1:].astype(float)
+item_features = convert_discrete_to_continuous(item_features, cols_to_convert=[2])
+
+user_data = pd.read_csv(user_feat_file, sep='\t', index_col=0, header=None)
+user_features = user_data.values.astype(float)
+user_features = convert_discrete_to_continuous(user_features, cols_to_convert=[0, 3, 4, 6, 7])
+
+# Load SUSHI-B dataset -------------------------------------------------------------------------------------------------
+
+sushi_prefs_file = './data/sushi3-2016/sushi3b.5000.10.order'
+ranking_data = pd.read_csv(sushi_prefs_file, sep=' ', skiprows=1, header=None)
+
+userids, items1, items2, prefs = extract_pairs_from_ranking(ranking_data.values[:, 2:].astype(int))
+
+nusers = len(np.unique(userids))
+active_items, items_contiguous = np.unique(np.array([items1, items2]), return_inverse=True)
+item_features = item_features[active_items]
+items_contiguous = items_contiguous.reshape(2, len(items1))
+items1 = items_contiguous[0]
+items2 = items_contiguous[1]
+nitems = len(active_items)
+print('Found %i users, %i items, and %i pairs per user.' % (nusers, nitems, prefs.shape[0]/nusers))
+print('Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
+print('User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
+
+# for debugging --------------------------------------------------------------------------------------------------------
+
+debug_small = False
+
+if debug_small:
+    ndebug = 50
+    userids = userids[:ndebug]
+    items1 = items1[:ndebug]
+    items2 = items2[:ndebug]
+    prefs = prefs[:ndebug]
+
+    nusers = len(np.unique(userids))
+    nitems_debug = len(np.unique(np.array([items1, items2])))
+    #item_features = item_features[:20, :] # np.unique(np.array([items1, items2]))]
+    user_features = user_features[np.unique(userids)]
+
+    print('Debug: Found %i users, %i items, and %i pairs per user.' % (nusers, nitems_debug, prefs.shape[0]/nusers))
+    print('Debug: Item features: %i items, %i features.' % (item_features.shape[0], item_features.shape[1]))
+    print('Debug: User features: %i users, %i features.'% (user_features.shape[0], user_features.shape[1]))
+
+# SUSHI B, global parameter changes ------------------------------------------------------------------------------------
+
+max_update_size = 2000
+delay = 25
+ninducing = 500 # allow us to handle more users.
+
+# SUSHI B dataset, no opt. ---------------------------------------------------------------------------------------------
+
+vscales = None # don't record the v factor scale factors
+
+# Repeat 25 times... Run each method and compute its metrics.
+methods = [
+           #'crowd-GPPL',
+           ##'crowd-GPPL-noConsensus',
+           #'crowd-GPPL\\u',
+           'crowd-BMF',
+           ##'crowd-GPPL-FITC\\u', # with consensus mean. Without user features
+           #'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+           #'GPPL-pooled',
+           # 'GPPL-joint',
+           #'GPPL-per-user',
+           ]
+
+# hyperparameters common to most models
+optimize = False
+sushiB = True
+sushiA_small = False
+run_sushi_expt(methods, 'sushi_100' + tag)
+
+# SUSHI B dataset, ARD -------------------------------------------------------------------------------------------------
+
+vscales = []
+
+# Repeat 25 times... Run each method and compute its metrics.
+methods = [
+           'crowd-GPPL',
+           'crowd-GPPL\\u',
+           #'crowd-GPPL-FITC\\u-noConsensus', # Houlsby
+           ]
+
+# hyperparameters common to most models
+optimize = True
+sushiB = True
+sushiA_small = False
+run_sushi_expt(methods, 'sushi_100_opt' + tag)
+
+vscales_B = vscales
 
 # Plot the latent factor scales ----------------------------------------------------------------------------------------
 
-if vscales_A is not None or vscales_B is not None:
+vscales_B = np.mean(vscales_B, axis=0)
 
-    logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
+logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
 
-    fig = plt.figure(figsize=(5, 4))
+fig = plt.figure(figsize=(5, 4))
 
-    markers = ['x', 'o', '+', '>', '<', '*']
+markers = ['x', 'o', '+', '>', '<', '*']
 
-    if vscales_A is not None:
-        plt.plot(np.arange(vscales_A.shape[0]), vscales_A, marker=markers[0], label='Sushi A', linewidth=2, markersize=8)
+plt.plot(np.arange(vscales_A.shape[0]), vscales_A, marker=markers[0], label='Sushi A', linewidth=2, markersize=8)
+plt.plot(np.arange(vscales_B.shape[0]), vscales_B, marker=markers[1], label='Sushi B', linewidth=2, markersize=8)
 
-    if vscales_B is not None:
-        vscales_B = np.mean(vscales_B, axis=0)
-        plt.plot(np.arange(vscales_B.shape[0]), vscales_B, marker=markers[1], label='Sushi B', linewidth=2, markersize=8)
+plt.ylabel('Inverse scale 1/s')
+plt.xlabel('Factor ID')
 
-    plt.ylabel('Inverse scale 1/s')
-    plt.xlabel('Factor ID')
+plt.grid('on', axis='y')
+plt.legend(loc='best')
+plt.tight_layout()
 
-    plt.grid('on', axis='y')
-    plt.legend(loc='best')
-    plt.tight_layout()
+plt.savefig(figure_root_path + '/sushi_factor_scales.pdf')
 
-    plt.savefig(figure_root_path + '/sushi_factor_scales.pdf')
+np.savetxt(figure_root_path + '/sushi_B_factor_scales.csv', vscales_B, delimiter=',', fmt='%f')
 
-    np.savetxt(figure_root_path + '/sushi_B_factor_scales.csv', vscales_B, delimiter=',', fmt='%f')
-
-    logging.basicConfig(level=logging.DEBUG)  # switch back to the debug output
+logging.basicConfig(level=logging.DEBUG)  # switch back to the debug output
