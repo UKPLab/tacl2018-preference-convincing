@@ -819,12 +819,12 @@ if __name__ == '__main__':
 
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
-                   # 'crowd-GPPL',
+                   'crowd-GPPL',
                    # 'crowd-GPPL-noInduc',
                    # 'crowd-GPPL\\u',
                    # 'crowd-BMF',
                    # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-                   'GPPL-pooled',
+                   #'GPPL-pooled',
                    # 'GPPL-per-user',
                    ]
 
