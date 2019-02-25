@@ -368,7 +368,7 @@ class GPClassifierSVI(GPClassifierVB):
 
         #(self.K_nm / self.s).dot(self.s * self.invK_mm).dot(self.uS).dot(self.u_invSm)
         if self.cov_type == 'diagonal':
-            if self.um_minus_mu0.size != mu0.size
+            if self.um_minus_mu0.size != mu0.size:
                 logging.error('We cannot make predictions for new test items when using a diagonal covariance -- we '
                               'need to be able to use the features to make predictions.')
                 if Ks_nn is not None:

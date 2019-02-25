@@ -165,12 +165,12 @@ class GPPrefLearning(GPClassifierSVI):
         # as an approximation, which may  under-estimate variance, since the resulting Q is a combination of
         # a term with too low observation variance + too high model variance. Hence we exaggerated the amount learned
         # from similar points, reducing the effect of the prior covariance.
-        # f_prior_var = self.rate_s0/self.shape_s0
-        # m_prior, not_m_prior, v_prior = self._post_sample(mu0, f_prior_var, False, None, self.pref_v, self.pref_u)
+        f_prior_var = self.rate_s0/self.shape_s0
+        m_prior, not_m_prior, v_prior = self._post_sample(mu0, f_prior_var, False, None, self.pref_v, self.pref_u)
         # When we used this version we were coincidentally compensating by adding the variance on mistakenly...
 
         # NEW VERSION:
-        m_prior, not_m_prior, v_prior = self._post_sample(mu0, None, False, self.K_nm, self.pref_v, self.pref_u)
+        # m_prior, not_m_prior, v_prior = self._post_sample(mu0, None, False, self.K_nm, self.pref_v, self.pref_u)
 
         # find the beta parameters
         a_plus_b = 1.0 / (v_prior / (m_prior*not_m_prior)) - 1
