@@ -1150,6 +1150,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.w_cov_i = np.zeros((self.Nfactors, self.uw_i.shape[0], self.uw_i.shape[0]))
             Kw_i = self.Kw[self.uw_i, :][:, self.uw_i]
             sw = self.shape_sw / self.rate_sw
+            K_nm_i = self.K_nm[self.uw_i]
+            covpair = K_nm_i.dot(self.invK_mm)
 
             obs_f = (self.w.dot(y_out) + self.t).T.reshape(self.N * self.Npeople, 1)
             G = self._compute_jacobian(obs_f)
