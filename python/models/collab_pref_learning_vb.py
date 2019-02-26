@@ -202,7 +202,7 @@ class CollabPrefLearningVB(object):
 
         # too much variance leads to extreme values of E[s], which then leads to bad covariance matrices, then crashes
         self.shape_sw0 = shape_s0
-        self.rate_sw0 = rate_s0
+        self.rate_sw0 = rate_s0 * self.Nfactors
 
         self.shape_sy0 = 1  # shape_s0
         self.rate_sy0 = 1  # rate_s0
