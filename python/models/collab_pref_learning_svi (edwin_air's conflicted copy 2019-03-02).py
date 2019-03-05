@@ -101,7 +101,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         self.forgetting_rate = forgetting_rate
         self.delay = delay
 
-        self.conv_threshold_G = 1e-4
+        self.conv_threshold_G = 1e-5
 
         self.t_mu0 = mu0
 
@@ -202,7 +202,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.y_u += np.random.rand(*self.y_u.shape) * 1e-6
             else:
                 # positive values
-                self.y_u = norm.rvs(0, 0.001, (self.Nfactors, self.y_ninducing))**2
+                self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))**2
 
             self.yinvSm = np.concatenate([(self.yinvS[f] * (self.y_u[f]))[:, None] for f in range(self.Nfactors)], axis=1)
 
@@ -228,17 +228,17 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
                 # choose a random set of points, one from each cluster.
                 shuffled_idxs = np.random.permutation(self.person_features.shape[0])
-                
+
                 self.y_inducing_coords = self.person_features[
                     shuffled_idxs[
                         np.unique(kmeans.labels_[shuffled_idxs], return_index=True)
                     [1]]
                 ]
-                
-                if self.y_inducing_coords.shape[0] < self.y_ninducing:
-                     self.y_ninducing = self.y_inducing_coords.shape[0]
 
-                #self.y_inducing_coords = kmeans.cluster_centers_ * self.lsy[None, :]
+                if self.y_inducing_coords.shape[0] < self.y_ninducing:
+                    self.y_ninducing = self.y_inducing_coords.shape[0]
+
+                #kmeans.cluster_centers_ * self.lsy[None, :]
 
                 # from sklearn.mixture import GaussianMixture as GMM
                 # gmm = GMM(self.y_ninducing, covariance_type='spherical')
@@ -285,7 +285,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.y_u[:self.y_ninducing, :] = np.eye(self.y_ninducing)
                 self.y_u += np.random.rand(*self.y_u.shape) * 1e-6
             else:
-                self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))**2
+                self.y_u = norm.rvs(0, 10, (self.Nfactors, self.y_ninducing))**2
 
             self.yinvSm = np.concatenate([self.yinvS[f].dot(self.y_u[f:f+1].T) for f in range(self.Nfactors)], axis=1)
 
@@ -378,12 +378,19 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         # To make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
         m_prior = 0.5
-        m_prior, _, v_prior = self._post_sample(self.K_nm, self.invK_mm,
-                                  np.zeros((self.ninducing, self.Nfactors)), self.K_mm * self.rate_sw0 / self.shape_sw0,
-                                  self.t_mu0, self.K_mm * self.rate_st0 / self.shape_st0,
-                                  self.Ky_nm, self.invKy_mm,
-                                  np.zeros((self.Nfactors, self.y_ninducing)), 1,#self.rate_sy0 / self.shape_sy0,
-                                  self.pref_v, self.pref_u)
+        # m_prior, _, v_prior = self._post_sample(self.K_nm, self.invK_mm,
+        #                           np.zeros((self.ninducing, self.Nfactors)), self.K_mm * self.rate_sw0 / self.shape_sw0,
+        #                           self.t_mu0, self.K_mm * self.rate_st0 / self.shape_st0,
+        #                           self.Ky_nm, self.invKy_mm,
+        #                           np.zeros((self.Nfactors, self.y_ninducing)), 1,#self.rate_sy0 / self.shape_sy0,
+        #                           self.pref_v, self.pref_u)
+
+        # # # this doesn't really make sense -- the 2 is added on inside pref_likelihood again
+        f_samples = np.random.normal(loc=0, scale=np.sqrt(2),
+                        size=(self.N, 1000))
+
+        phi = pref_likelihood(f_samples, v=self.tpref_v, u=self.tpref_u)
+        v_prior = np.var(phi)
 
         # find the beta parameters
         a_plus_b = 1.0 / (v_prior / (m_prior*(1-m_prior))) - 1
@@ -421,11 +428,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         # obs_mean = (self.z + nu0[1]) / (1 + nu0_total)
         # Q2 = obs_mean * (1 - obs_mean) # don't think variance is needed because the equations show it is E[p]^2 not E[p^2] since we have already taken expectations before we get to this point
         # Q = Q2.flatten()
-
-        # TODO: note that the sqrt(2) version below was used to get the best SushiB and Conv-Personal results,
-        # but does not achieve this any more for Sushi B when used alone. Therefore, we need to check the other changes
-        # to find out what has lowered performance.
-        # Issues are now: conv-consensus CEE; lower accuray of GPPL and crowdGPPL for all conv tests; lower accuracy on sushi B.
 
         # # # this doesn't really make sense -- the 2 is added on inside pref_likelihood again
         # f_samples = np.random.normal(loc=0, scale=np.sqrt(2),
@@ -584,7 +586,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         return J_df
 
 
-    def _expec_t(self, update_s=True):
+    def _expec_t(self):
 
         self._update_sample()
 
@@ -641,14 +643,13 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         self.t, _ = inducing_to_observation_moments(self.K_mm * self.rate_st / self.shape_st,
                                                     self.invK_mm, self.K_nm, self.t_u, self.t_mu0)
 
-        if update_s:
-            self.shape_st, self.rate_st = expec_output_scale(self.shape_st0, self.rate_st0, N,
+        self.shape_st, self.rate_st = expec_output_scale(self.shape_st0, self.rate_st0, N,
                                                          self.invK_mm, self.t_u, np.zeros((N, 1)),
                                                          f_cov=self.tS)
-            self.st = self.shape_st / self.rate_st
+        self.st = self.shape_st / self.rate_st
 
 
-    def _expec_w(self, update_s=True):
+    def _expec_w(self):
         """
         Compute the expectation over the latent features of the items and the latent personality components
         """
@@ -722,9 +723,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         for f in range(self.Nfactors):
             self.w_cov_i[f] = Kw_i / sw[f] + covpair.dot(self.wS[f] - self.K_mm/sw[f]).dot(covpair.T)
-
-            if not update_s:
-                continue
 
             self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, self.ninducing,
                self.invK_mm, self.w_u[:, f:f + 1], np.zeros((self.ninducing, 1)), f_cov=self.wS[f])

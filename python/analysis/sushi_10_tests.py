@@ -128,7 +128,8 @@ def run_GPPL_pooled(_, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, __, i1_test, i2_t
     pool_ninducing = int(ninducing * 2**(1/3.0))
 
     model = GPPrefLearning(ifeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None, use_svi=True,
-                   ninducing=pool_ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate, verbose=True)
+                   ninducing=pool_ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
+                   verbose=True)
 
     model.fit(i1_tr, i2_tr, ifeats, prefs_tr, optimize=optimize, use_median_ls=True)
 
@@ -666,13 +667,13 @@ if __name__ == '__main__':
         test_to_run = 0
 
     # Experiment name tag
-    tag = '_1'
+    tag = '_7'
 
     vscales = None  # don't record the v factor scale factors
     vscales_A = None
     vscales_B = None
 
-    nreps = 25
+    nreps = 1#25
 
     debug_small = False # set to true to use a small subset of data
 
@@ -819,12 +820,12 @@ if __name__ == '__main__':
 
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
-                   'crowd-GPPL',
+                   #'crowd-GPPL',
                    # 'crowd-GPPL-noInduc',
                    # 'crowd-GPPL\\u',
                    # 'crowd-BMF',
                    # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-                   #'GPPL-pooled',
+                   'GPPL-pooled',
                    # 'GPPL-per-user',
                    ]
 

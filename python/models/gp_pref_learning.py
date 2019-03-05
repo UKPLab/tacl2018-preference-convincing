@@ -73,9 +73,9 @@ def pref_likelihood(fmean, fvar=None, subset_idxs=[], v=[], u=[], return_g_f=Fal
     if len(subset_idxs):
         if len(v) and len(u):
             # keep only the pairs that reference two items in the subet
-            pair_subset = np.in1d(v, subset_idxs) & np.in1d(u, subset_idxs)
-            v = v[pair_subset]
-            u = u[pair_subset]
+            # pair_subset = np.in1d(v, subset_idxs) & np.in1d(u, subset_idxs)
+            v = v[subset_idxs]  #pair_subset]
+            u = u[subset_idxs]  #pair_subset]
         else:
             fmean = fmean[subset_idxs]
 
@@ -166,11 +166,13 @@ class GPPrefLearning(GPClassifierSVI):
         # a term with too low observation variance + too high model variance. Hence we exaggerated the amount learned
         # from similar points, reducing the effect of the prior covariance.
         # f_prior_var = self.rate_s0/self.shape_s0
-        # m_prior, not_m_prior, v_prior = self._post_sample(mu0, f_prior_var, False, None, self.pref_v, self.pref_u)
+        #m_prior, not_m_prior, v_prior = self._post_sample(mu0, f_prior_var, False, None, self.pref_v, self.pref_u)
         # When we used this version we were coincidentally compensating by adding the variance on mistakenly...
 
         # NEW VERSION:
         m_prior, not_m_prior, v_prior = self._post_sample(mu0, None, False, self.K_nm, self.pref_v, self.pref_u)
+        if not np.any(np.nonzero(self.mu0)):
+            m_prior = 0.5
 
         # find the beta parameters
         a_plus_b = 1.0 / (v_prior / (m_prior*not_m_prior)) - 1
@@ -223,6 +225,7 @@ class GPPrefLearning(GPClassifierSVI):
             self.obs_uidxs = np.arange(self.features.shape[0])
             self.pref_v = obs_coords_0.flatten()
             self.pref_u = obs_coords_1.flatten()
+            self.n_obs = len(self.pref_v)
             self.obs_coords = self.features
             return poscounts, totals
         else:
@@ -262,6 +265,7 @@ class GPPrefLearning(GPClassifierSVI):
             # Record the indexes into the list of coordinates for the pairs that were compared
             self.pref_v = pref_vu[:len(nonzero_v)]
             self.pref_u = pref_vu[len(nonzero_v):]
+            self.n_obs = len(self.pref_v)
 
             # Return the counts for each of the observed pairs
             pos_counts = grid_obs_pos_counts[nonzero_v, nonzero_u]
@@ -395,45 +399,8 @@ class GPPrefLearning(GPClassifierSVI):
                                         mu0=mu0, K=K, init_Q_only=init_Q_only, features=item_features)
 
     def _update_sample_idxs(self):
-        obs_idxs = np.unique([self.pref_v, self.pref_u]) #only consider the points that are really observed
-        nobs = obs_idxs.shape[0]
-        
-        if not self.fixed_sample_idxs:
-            self.data_obs_idx_i = 0
-
-            while not np.sum(self.data_obs_idx_i): # make sure we don't choose indices that have not been compared
-                if nobs > self.update_size:
-                    if self.data_splits is None or np.mod(self.current_data_split+1, self.nsplits) == 0:
-                        if self.nsplits == 0:
-                            self.nsplits = int(np.ceil(nobs / float(self.update_size)))
-
-                            if self.exhaustive_train:
-                                self.min_iter = self.nsplits
-                                if self.max_iter_VB < self.min_iter_VB * self.exhaustive_train:
-                                    self.max_iter_VB = self.min_iter_VB * self.exhaustive_train
-
-                        # create nsplits random splits -- shuffle data and split
-                        rand_order = np.random.permutation(nobs)
-                        self.data_splits = []
-
-                        for n in range(self.nsplits):
-                            ending = self.update_size * (n + 1)
-                            if ending > nobs:
-                                ending = nobs
-                            self.data_splits.append(rand_order[self.update_size * n:ending])
-
-                        self.current_data_split = -1
-
-                    self.current_data_split += 1
-                    self.data_idx_i = self.data_splits[self.current_data_split]
-                    #self.data_idx_i = np.sort(np.random.choice(nobs, self.update_size, replace=False))
-                else:
-                    self.data_idx_i = np.arange(nobs)
-
-                self.data_idx_i = obs_idxs[self.data_idx_i]
-                self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)
-        else:
-            self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)
+        super(GPPrefLearning, self)._update_sample_idxs()
+        self.data_idx_i = np.unique([self.pref_v[self.data_obs_idx_i], self.pref_u[self.data_obs_idx_i]])
 
     # Prediction methods ---------------------------------------------------------------------------------------------
     def predict(self, out_feats=None, item_0_idxs=None, item_1_idxs=None, K_star=None, K_starstar=None,

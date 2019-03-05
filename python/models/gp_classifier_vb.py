@@ -360,12 +360,6 @@ class GPClassifierVB(object):
 
         self.verbose = verbose
 
-        self.Q_from_obs_only = False # which heuristic approximation do we use to set observation noise, Q?
-        # If false, we look at the posterior to estimate noise, since the value of f affects observation noise.
-        # If true, we look only at the observations, and match the likelihood alone to a normal distribution with
-        # corresponding variance, since we combine this with f later...
-        self.variational_Q = False
-
         self.n_locs = 0 # at this point we have no training locations
         self.max_iter_VB = self.max_iter_VB_per_fit
 
@@ -490,21 +484,12 @@ class GPClassifierVB(object):
         nu0_total = np.sum(self.nu0, axis=0)
         self.obs_mean = (self.obs_values + self.nu0[1]) / (self.obs_total_counts + nu0_total)
 
-        if self.variational_Q:
-            # if we factorize the likelihood then  take expectation of the log likelihood with respect to f
-            obs_var = (self.obs_mean * (1 - self.obs_mean)) / (self.obs_total_counts + nu0_total + 1)
-        else:
-            # if we fully marginalize f, the variance drops out because we
-            obs_var = 0
-
-        self.Q = (self.obs_mean * (1 - self.obs_mean) - obs_var) / self.obs_total_counts
+        # if we factorize the likelihood then  take expectation of the log likelihood with respect to f
+        #obs_var = (self.obs_mean * (1 - self.obs_mean)) / (self.obs_total_counts + nu0_total + 1)
+        self.Q = (self.obs_mean * (1 - self.obs_mean) ) / self.obs_total_counts
         self.Q = self.Q.flatten()
 
     def _init_obs_prior(self):
-
-        if self.Q_from_obs_only:
-            self.nu0 = np.array([1.0, 1.0])
-            return
 
         mu0 = self.mu0_input
         if np.isscalar(mu0):
@@ -571,6 +556,7 @@ class GPClassifierVB(object):
             # poscounts = poscounts.astype(int)
             totals = totals.astype(int)
             self.obs_coords = self.features
+            self.n_obs = self.obs_coords.shape[0]
             return poscounts, totals
 
         # duplicate locations should be merged and the number of duplicates counted
@@ -589,6 +575,7 @@ class GPClassifierVB(object):
                                             [nonzero_idxs.size, self.ninput_features])
         self.obs_uidxs = origidxs_nonzero[
             sortedidxs]  # records the mapping from the input data to the obs_coords object
+        self.n_obs = self.obs_coords.shape[0]
 
         pos_counts = grid_obs_pos_counts[nonzero_idxs, 1][sortedidxs]
         totals = grid_obs_counts[nonzero_idxs, 1][sortedidxs]

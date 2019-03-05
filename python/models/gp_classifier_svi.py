@@ -58,8 +58,6 @@ class GPClassifierSVI(GPClassifierVB):
         # if use_svi is switched off, we revert to the standard (parent class) VB implementation
         self.use_svi = use_svi
 
-        self.fixed_sample_idxs = False
-
         self.reset_inducing_coords = True  # creates new inducing coords each time fit is called, if this flag is set
 
         self.exhaustive_train = 1
@@ -113,8 +111,8 @@ class GPClassifierSVI(GPClassifierVB):
     def _choose_inducing_points(self):
         # choose a set of inducing points -- for testing we can set these to the same as the observation points.
         self.update_size = self.max_update_size  # number of inducing points in each stochastic update
-        if self.update_size > self.n_locs:
-            self.update_size = self.n_locs
+        if self.update_size > self.n_obs:
+            self.update_size = self.n_obs
 
         # diagonal can't use inducing points but can use the subsampling of observations
         if self.inducing_coords is None and (self.ninducing > self.n_locs or self.cov_type == 'diagonal'):
@@ -158,6 +156,8 @@ class GPClassifierSVI(GPClassifierVB):
             else:
                 self.K_nm = self.kernel_func(self.obs_coords, self.ls, self.inducing_coords,
                                          operator=self.kernel_combination)
+
+        self.shape_s = self.shape_s0 + 0.5 * self.ninducing  # update this because we are not using n_locs data points
 
         self.u_invSm = np.zeros((self.ninducing, 1), dtype=float)  # theta_1
         if self.cov_type == 'diagonal':
@@ -333,7 +333,7 @@ class GPClassifierSVI(GPClassifierVB):
         self.u_Lambda = (1 - rho_i) * self.prev_u_Lambda + Lambda_i
 
         # use the estimate given by the Taylor series expansion
-        z0 = self.forward_model(self.obs_f, subset_idxs=self.data_idx_i) + self.G.dot(self.mu0_i - self.obs_f_i)
+        z0 = self.forward_model(self.obs_f, subset_idxs=self.data_obs_idx_i) + self.G.dot(self.mu0_i - self.obs_f_i)
         y = self.z_i - z0
 
         # Variational update to theta_1 is (1-rho)*S^-1m + rho*beta*K_mm^-1.K_mn.y
@@ -449,13 +449,6 @@ class GPClassifierSVI(GPClassifierVB):
         self.z_i = self.z[self.data_obs_idx_i]
         self.mu0_i = self.mu0[self.data_idx_i]
 
-    def fix_sample_idxs(self, data_idx_i):
-        '''
-        Pass in a set of pre-determined sample idxs rather than changing them stochastically inside this implementation.
-        '''
-        self.data_idx_i = data_idx_i
-        self.fixed_sample_idxs = True
-
     def init_inducing_points(self, inducing_coords, K_mm=None, invK_mm=None, K_nm=None, V_nn=None):
         self.ninducing = inducing_coords.shape[0]
         self.inducing_coords = inducing_coords
@@ -479,32 +472,38 @@ class GPClassifierSVI(GPClassifierVB):
         self.um_minus_mu0 = np.zeros((self.ninducing, 1))
 
     def _update_sample_idxs(self):
-        if not self.fixed_sample_idxs:
+        if self.n_obs <= self.update_size:
+            # we don't need stochastic updates if the update size is larger than number of observations
+            self.data_idx_i = np.arange(self.obs_f.size)
+            self.data_obs_idx_i = np.arange(self.n_obs)
+            return
 
-            if self.data_splits is None or np.mod(self.current_data_split+1, self.nsplits) == 0:
-                if self.nsplits == 0:
-                    self.nsplits = int(np.ceil(self.n_locs / float(self.update_size)))
+        # do this in the first iteration
+        if self.nsplits == 0:
+            self.nsplits = int(np.ceil(self.n_obs / float(self.update_size)))
 
-                    if self.exhaustive_train:
-                        self.min_iter = self.nsplits
-                        if self.max_iter_VB < self.min_iter_VB * self.exhaustive_train:
-                            self.max_iter_VB = self.min_iter_VB * self.exhaustive_train
+            if self.exhaustive_train:
+                self.min_iter_VB = self.nsplits
+                if self.max_iter_VB < self.min_iter_VB * self.exhaustive_train:
+                    self.max_iter_VB = self.min_iter_VB * self.exhaustive_train
 
-                # create nsplits random splits -- shuffle data and split
-                rand_order = np.random.permutation(self.n_locs)
-                self.data_splits = []
+        # do this each time we reach the end of updating for all splits in the current set
+        if self.data_splits is None or np.mod(self.current_data_split+1, self.nsplits) == 0:
+            # create nsplits random splits -- shuffle data and split
+            rand_order = np.random.permutation(self.n_obs)
+            self.data_splits = []
 
-                for n in range(self.nsplits):
-                    ending = self.update_size * (n + 1)
-                    if ending > self.n_locs:
-                        ending = self.n_locs
-                    self.data_splits.append(rand_order[self.update_size * n:ending])
+            for n in range(self.nsplits):
+                ending = self.update_size * (n + 1)
+                if ending > self.n_obs:
+                    ending = self.n_obs
+                self.data_splits.append(rand_order[self.update_size * n:ending])
 
-                self.current_data_split = -1
-
+            self.current_data_split = 0
+        else:
             self.current_data_split += 1
-            self.data_idx_i = self.data_splits[self.current_data_split]
-            #self.data_idx_i = np.sort(np.random.choice(self.n_locs, self.update_size, replace=False))
+
+        self.data_idx_i = self.data_splits[self.current_data_split]
         self.data_obs_idx_i = self.data_idx_i
 
     # Prediction methods ---------------------------------------------------------------------------------------------

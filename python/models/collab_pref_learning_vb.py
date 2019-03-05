@@ -202,7 +202,7 @@ class CollabPrefLearningVB(object):
 
         # too much variance leads to extreme values of E[s], which then leads to bad covariance matrices, then crashes
         self.shape_sw0 = shape_s0
-        self.rate_sw0 = rate_s0 * self.Nfactors
+        self.rate_sw0 = rate_s0 #/ self.Nfactors
 
         self.shape_sy0 = 1  # shape_s0
         self.rate_sy0 = 1  # rate_s0
@@ -586,9 +586,18 @@ class CollabPrefLearningVB(object):
             elif converged_count > 0:  # reset the convergence count as the difference has increased again
                 converged_count -= 1
 
-        logging.debug("Preference personality model converged in %i iterations." % self.vb_iter)
+        logging.debug("Preference personality model converged in %i iterations. Running one final update to harmonise"
+                      "kernels..." % self.vb_iter)
 
-    def _expec_t(self):
+        # Do a final iteration with the latest values of s so that predictions and inducing point distributions all used
+        # matching values of s for their kernels.
+        self._expec_t(update_s=False)
+        self._expec_w(update_s=False)
+        self._expec_y()
+
+        logging.debug('Completed final update.')
+
+    def _expec_t(self, update_s=True):
         if not self.use_t:
             return
 
@@ -613,12 +622,13 @@ class CollabPrefLearningVB(object):
         self.t, self.t_cov = update_gaussian(self.invK, self.st, t_prec, x)
 
 
-        self.shape_st, self.rate_st = expec_output_scale(self.shape_st0, self.rate_st0, self.N,
+        if update_s:
+            self.shape_st, self.rate_st = expec_output_scale(self.shape_st0, self.rate_st0, self.N,
                                                          self.invK, self.t, np.zeros((self.N, 1)),
                                                          f_cov=self.t_cov)
-        self.st = self.shape_st / self.rate_st
+            self.st = self.shape_st / self.rate_st
 
-    def _expec_w(self):
+    def _expec_w(self, update_s=True):
         """
         Compute the expectation over the latent features of the items and the latent personality components
         :return:
@@ -667,13 +677,16 @@ class CollabPrefLearningVB(object):
         self.w, self.w_cov = update_gaussian(self.invKw, self.sw_matrix, w_prec, x)
         self.w = np.reshape(self.w, (self.Nfactors, self.N)).T  # w is N x Nfactors
 
-        # for f in range(self.Nfactors):
-        #     fidxs = np.arange(self.N) + (self.N * f)
-        #     self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, self.N,
-        #                                                            self.invK, self.w[:, f:f + 1], np.zeros((self.N, 1)),
-        #                                                            f_cov=self.w_cov[fidxs, :][:, fidxs])
-        #
-        #     self.sw_matrix[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]
+        if not update_s:
+            return
+
+        for f in range(self.Nfactors):
+            fidxs = np.arange(self.N) + (self.N * f)
+            self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, self.N,
+                                                                   self.invK, self.w[:, f:f + 1], np.zeros((self.N, 1)),
+                                                                   f_cov=self.w_cov[fidxs, :][:, fidxs])
+
+            self.sw_matrix[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]
 
     def _expec_y(self):
         """
