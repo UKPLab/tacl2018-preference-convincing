@@ -101,7 +101,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         self.forgetting_rate = forgetting_rate
         self.delay = delay
 
-        self.conv_threshold_G = 1e-4
+        self.conv_threshold_G = 1e-3
 
         self.t_mu0 = mu0
 
@@ -378,7 +378,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         # To make a and b smaller and put more weight onto the observations, increase v_prior by increasing rate_s0/shape_s0
         m_prior = 0.5
-        m_prior, _, v_prior = self._post_sample(self.K_nm, self.invK_mm,
+        _, _, v_prior = self._post_sample(self.K_nm, self.invK_mm,
                                   np.zeros((self.ninducing, self.Nfactors)), self.K_mm * self.rate_sw0 / self.shape_sw0,
                                   self.t_mu0, self.K_mm * self.rate_st0 / self.shape_st0,
                                   self.Ky_nm, self.invKy_mm,
