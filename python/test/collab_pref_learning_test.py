@@ -9,6 +9,8 @@ import logging
 import os
 import sys
 
+from gp_pref_learning import GPPrefLearning
+
 logging.basicConfig(level=logging.DEBUG)
 
 sys.path.append("./python")
@@ -311,7 +313,7 @@ if __name__ == '__main__':
     else:
         use_svi = True
     use_t = True
-    use_person_features = False
+    use_person_features = True
     optimize = False
 
     ls_initial = np.array(ls)# + np.random.rand(len(ls)) * 10)
@@ -335,6 +337,7 @@ if __name__ == '__main__':
     model.max_iter = 200
     model.fit(personids[trainidxs], pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], 
               person_features if use_person_features else None, optimize=optimize)
+
 #               None, optimize=True)    
     print(("Difference between true item length scale and inferred item length scale = %s" % (ls - model.ls)))
     print(("Difference between true person length scale and inferred person length scale = %s" % (lsy - model.lsy)))
@@ -372,7 +375,19 @@ if __name__ == '__main__':
         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
         ps.print_stats()
         print((s.getvalue()))
-    
+
+    # Single User model for comparison
+
+    singleusermodel = GPPrefLearning(2, shape_s0=1, rate_s0=1, ls_initial=ls_initial, forgetting_rate=0.7, ninducing=16,
+                                     max_update_size=10000, verbose=True)
+    singleusermodel.max_iter_VB = 200
+    singleusermodel.fit(pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs])
+
+    p_pred_su = singleusermodel.predict(item_features, pair1idxs[testidxs], pair2idxs[testidxs], return_var=False)
+    p_pred_round_su = np.round(p_pred_su).astype(int)
+    p_pred_su[p_pred_su > (1-1e-6)] = 1 - 1e-6
+    p_pred_su[p_pred_su < 1e-6] = 1e-6
+
     # To make sure the simulation is repeatable, re-seed the RNG after all the stochastic inference has been completed
     if fix_seeds:
         np.random.seed(2)    
@@ -384,15 +399,21 @@ if __name__ == '__main__':
     p = prefs[testidxs]
        
     print(" --- Preference prediction metrics --- " )
-    print(("Brier score of %.3f" % np.sqrt(np.mean((p-p_pred)**2))))
     p_pred[p_pred > (1-1e-6)] = 1 - 1e-6
     p_pred[p_pred < 1e-6] = 1e-6
-    print(("Cross entropy error of %.3f" % -np.mean(p * np.log(p_pred) + (1-p) * np.log(1 - p_pred))))
-            
+    print(("Cross entropy error of %.3f" % -np.mean(p * np.log(p_pred.flatten()) + (1-p) * np.log(1 - p_pred.flatten()))))
+
     from sklearn.metrics import f1_score, roc_auc_score
     print(("F1 score of %.3f" % f1_score(p, p_pred_round)))
     print(('Accuracy: %f' % accuracy_score(p, p_pred_round)))
     print(("ROC of %.3f" % roc_auc_score(p, p_pred)))
+
+    print('Single user model for comparison:')
+
+    print(("Cross entropy error of %.3f" % -np.mean(p * np.log(p_pred_su.flatten()) + (1-p) * np.log(1 - p_pred_su.flatten()))))
+    print(("F1 score of %.3f" % f1_score(p, p_pred_round_su)))
+    print(('Accuracy: %f' % accuracy_score(p, p_pred_round_su)))
+    print(("ROC of %.3f" % roc_auc_score(p, p_pred_su)))
 
     print(" --- Latent item feature prediction metrics --- " )
     
