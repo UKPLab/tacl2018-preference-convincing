@@ -207,8 +207,8 @@ class CollabPrefLearningVB(object):
         self.shape_sy0 = 1  # shape_s0
         self.rate_sy0 = 1  # rate_s0
 
-        self.shape_st0 = 2 # shape_s0
-        self.rate_st0 = 2 # rate_s0 #* self.Nfactors # this rebalances the prior expected variance of t against the latent components
+        self.shape_st0 = shape_s0
+        self.rate_st0 = rate_s0 #* self.Nfactors # this rebalances the prior expected variance of t against the latent components
 
         # posterior moments
         self.shape_st = self.shape_st0
@@ -1021,6 +1021,7 @@ class CollabPrefLearningVB(object):
                                               - f_cov[personids, item_0_idxs, item_1_idxs]
                                               - f_cov[personids, item_1_idxs, item_0_idxs],
                                               subset_idxs=[], v=pref_v, u=pref_u)
+        predicted_prefs = temper_extreme_probs(predicted_prefs)
 
         return predicted_prefs
 

@@ -18,6 +18,7 @@ import numpy as np
 from scipy.stats import multivariate_normal as mvn, norm
 import logging
 from gp_pref_learning import pref_likelihood
+from gp_classifier_vb import temper_extreme_probs
 from scipy.special import psi, binom
 from sklearn.cluster import MiniBatchKMeans
 
@@ -603,6 +604,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         self.prev_tinvS = self.tinvS
         self.prev_tinvSm = self.tinvSm
 
+        # Does w_idx_i contain duplicates? If so, these might be double counting?
         covpair = self.invK_mm.dot(self.K_nm[self.w_idx_i].T)
 
         for G_iter in range(self.max_iter_G):
@@ -1094,6 +1096,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                                           - cov_t[item_0_idxs, item_1_idxs]
                                           - cov_t[item_1_idxs, item_0_idxs],
                                           subset_idxs=[], v=item_0_idxs, u=item_1_idxs)
+        predicted_prefs = temper_extreme_probs(predicted_prefs)
 
         return predicted_prefs
 
