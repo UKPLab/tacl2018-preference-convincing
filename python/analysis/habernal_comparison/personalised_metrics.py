@@ -12,11 +12,11 @@ if __name__ == '__main__':
 
     expt_settings['foldorderfile'] = None
 
-    expt_root_dir = 'personalised_Qfix4_temper'  #13_bigger_t'#10_from_cluster'
+    expt_root_dir = 'personalised_Qfix1'  #13_bigger_t'#10_from_cluster'
 
     resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
     min_fold_no = 0
-    max_fold_no = 32
+    max_fold_no = 9
 
     npairs = 0
     acc = 1.0
