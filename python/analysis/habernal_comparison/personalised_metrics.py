@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
     resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
     min_fold_no = 0
-    max_fold_no = 9
+    max_fold_no = 32
 
     npairs = 0
     acc = 1.0

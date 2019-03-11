@@ -667,7 +667,7 @@ if __name__ == '__main__':
         test_to_run = 0
 
     # Experiment name tag
-    tag = '_9'
+    tag = '_10'
 
     vscales = None  # don't record the v factor scale factors
     vscales_A = None
@@ -917,7 +917,7 @@ if __name__ == '__main__':
         rate_s0 = 100.0  #0.1
         forgetting_rate = 0.9
         max_Kw_size = 5000
-        max_update_size = 200
+        max_update_size = 2000
         delay = 5
         ninducing = 500 # allow us to handle more users.
 
