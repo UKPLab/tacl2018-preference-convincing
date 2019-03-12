@@ -551,9 +551,6 @@ class CollabPrefLearningVB(object):
         while ((self.vb_iter < self.min_iter) or (converged_count < self.n_converged)) and (
                 self.vb_iter < self.max_iter):
 
-            logging.debug(self.shape_st)
-            logging.debug(self.rate_st)
-
             # set the value of t
             self._expec_t()
 

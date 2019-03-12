@@ -59,10 +59,17 @@ class PersonalisedTestRunner(TestRunner):
         else:
             F = nfactors
 
+        if '_SS' in self.method:
+            validx = self.method.find('_SS') + 3
+            SS = int(self.method[validx:])
+        else:
+            SS = 200 
+
         self.model = CollabPrefLearningSVI(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose,
                                            nfactors=F, rate_ls=1.0 / np.mean(self.ls_initial),
-                                           use_common_mean_t=common_mean, max_update_size=1000, use_lb=True,
-                                           shape_s0=shape_s0, rate_s0=rate_s0, ninducing=M, delay=2)
+                                           use_common_mean_t=common_mean, max_update_size=SS, use_lb=True,
+                                           shape_s0=shape_s0, rate_s0=rate_s0, ninducing=M, forgetting_rate=0.7, 
+                                           delay=1.0)
 
         self.model.max_iter = 200 # same as for single user GPPL
         self.model.max_Kw_size = max_Kw_size
@@ -227,7 +234,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'personalised_Qfix4'
+    test_dir = 'per_initfix1'
 
     dataset_increment = 0
     # UKPConvArgCrowdSample tests prediction of personal data.
@@ -236,7 +243,7 @@ if __name__ == '__main__':
     embeddings_types = ['word_mean']
 
     datasets = ['UKPConvArgCrowdSample']
-    methods = ['PersPrefGP_commonmean_noOpt_weakersprior']
+    methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
 
     if 'runner' not in globals():
         runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,

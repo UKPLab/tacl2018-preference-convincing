@@ -196,9 +196,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.use_local_obs_posterior_y = False
 
             # posterior covariance
-            self.yS = np.zeros((self.Nfactors, self.y_ninducing, self.y_ninducing))
+            self.yS = np.zeros((self.Nfactors, self.y_ninducing))
             # array([self.Ky_mm for _ in range(self.Nfactors)])
-            self.yinvS = np.zeros((self.Nfactors, self.y_ninducing, self.y_ninducing))
+            self.yinvS = np.zeros((self.Nfactors, self.y_ninducing))
 
             if self.y_ninducing <= self.Nfactors:
                 # give each person a factor of their own, with a little random noise so that identical users will
@@ -208,7 +208,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.y_u += np.random.rand(*self.y_u.shape) * 1e-6
             else:
                 # positive values
-                self.y_u = norm.rvs(0, 0.001, (self.Nfactors, self.y_ninducing))**2
+                self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))**2
 
             self.yinvSm = np.zeros((self.y_ninducing, self.Nfactors))
             #np.concatenate([(self.yinvS[f] * (self.y_u[f]))[:, None] for f in range(self.Nfactors)], axis=1)
@@ -401,7 +401,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         a = a_plus_b * m_prior
         b = a_plus_b * (1 - m_prior)
 
-        nu0 = np.array([5,4])#[b, a])
+        nu0 = np.array([b, a])
         # Noise in observations
         nu0_total = np.sum(nu0, axis=0)
         obs_mean = (self.z + nu0[1]) / (1 + nu0_total)
@@ -1011,7 +1011,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         y_terms = logpy - logqy + logps_y - logqs_y
         t_terms = logpt - logqt + logps_t - logqs_t
 
-        lb = data_ll + t_terms #+ w_terms + y_terms
+        lb = data_ll + t_terms + w_terms + y_terms
 
         if self.verbose:
             logging.debug('s_w=%s' % (sw))

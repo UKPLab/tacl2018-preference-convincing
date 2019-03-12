@@ -179,7 +179,7 @@ class GPPrefLearning(GPClassifierSVI):
         a = (a_plus_b * m_prior)
         b = (a_plus_b * not_m_prior)
 
-        self.nu0 = np.array([5,4])#[b, a])
+        self.nu0 = np.array([b, a])
         #if self.verbose:
         #    logging.debug("Prior parameters for the observed pairwise preference variance are: %s" % str(self.nu0))
 
