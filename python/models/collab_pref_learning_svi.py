@@ -102,7 +102,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         self.forgetting_rate = forgetting_rate
         self.delay = delay
 
-        self.conv_threshold_G = 1e-3
+        self.conv_threshold_G = 1e-5
 
         self.t_mu0 = mu0
 
@@ -174,9 +174,14 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         # moments of distributions over inducing points for convenience
         # posterior covariance
-        self.wS = np.array([self.invK_mm * self.shape_sw0 / self.rate_sw0 for _ in range(self.Nfactors)])
-        self.winvS = np.array([self.invK_mm * self.shape_sw0 / self.rate_sw0 for _ in range(self.Nfactors)])
-        self.winvSm = np.concatenate([self.winvS[f].dot(self.w_u[:, f:f+1]) for f in range(self.Nfactors)], axis=1)
+        self.wS = np.zeros((self.Nfactors, self.ninducing, self.ninducing))
+        # [self.invK_mm * self.shape_sw0 / self.rate_sw0 for _ in range(self.Nfactors)])
+
+        self.winvS = np.zeros((self.Nfactors, self.ninducing, self.ninducing))
+        #np.array([self.invK_mm * self.shape_sw0 / self.rate_sw0 for _ in range(self.Nfactors)])
+
+        self.winvSm = np.zeros((self.ninducing, self.Nfactors))
+        #np.concatenate([self.winvS[f].dot(self.w_u[:, f:f+1]) for f in range(self.Nfactors)], axis=1)
 
         # Inducing points for people -------------------------------------------------------------------
         if self.person_features is None:
@@ -191,9 +196,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.use_local_obs_posterior_y = False
 
             # posterior covariance
-            self.yS = np.array([self.Ky_mm for _ in range(self.Nfactors)])
-            self.yinvS = np.array([self.invKy_mm for _ in range(self.Nfactors)])
-            self.yinvSm = np.zeros((self.y_ninducing, self.Nfactors))
+            self.yS = np.zeros((self.Nfactors, self.y_ninducing, self.y_ninducing))
+            # array([self.Ky_mm for _ in range(self.Nfactors)])
+            self.yinvS = np.zeros((self.Nfactors, self.y_ninducing, self.y_ninducing))
 
             if self.y_ninducing <= self.Nfactors:
                 # give each person a factor of their own, with a little random noise so that identical users will
@@ -205,7 +210,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 # positive values
                 self.y_u = norm.rvs(0, 0.001, (self.Nfactors, self.y_ninducing))**2
 
-            self.yinvSm = np.concatenate([(self.yinvS[f] * (self.y_u[f]))[:, None] for f in range(self.Nfactors)], axis=1)
+            self.yinvSm = np.zeros((self.y_ninducing, self.Nfactors))
+            #np.concatenate([(self.yinvS[f] * (self.y_u[f]))[:, None] for f in range(self.Nfactors)], axis=1)
 
         else:
             self.y_ninducing = self.ninducing_preset
@@ -275,8 +281,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.Ky_nm = self.y_kernel_func(self.person_features, self.lsy, self.y_inducing_coords)
 
             # posterior covariance
-            self.yS = np.array([self.Ky_mm for _ in range(self.Nfactors)])
-            self.yinvS = np.array([self.invKy_mm for _ in range(self.Nfactors)])
+            self.yS = np.zeros((self.Nfactors, self.y_ninducing, self.y_ninducing))
+            # np.array([self.Ky_mm for _ in range(self.Nfactors)])
+            self.yinvS = np.zeros((self.Nfactors, self.y_ninducing, self.y_ninducing))
+            #np.array([self.invKy_mm for _ in range(self.Nfactors)])
 
             # posterior means
             if self.y_ninducing <= self.Nfactors:
@@ -288,7 +296,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             else:
                 self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))**2
 
-            self.yinvSm = np.concatenate([self.yinvS[f].dot(self.y_u[f:f+1].T) for f in range(self.Nfactors)], axis=1)
+            self.yinvSm = np.zeros((self.y_ninducing, self.Nfactors))
+            #np.concatenate([self.yinvS[f].dot(self.y_u[f:f+1].T) for f in range(self.Nfactors)], axis=1)
 
         if self.Nfactors == 1 and self.y_u.ndim == 1:
             self.y_u = self.y_u[None, :]
@@ -298,8 +307,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         self.tS = None
 
         if self.use_t:
-            self.tinvS = self.invK_mm * self.shape_st0 / self.rate_st0 # theta_2/posterior covariance
-            self.tinvSm = self.tinvS.dot(self.t_u)
+            self.tinvS = np.zeros((self.ninducing, self.ninducing))
+            #self.invK_mm * self.shape_st0 / self.rate_st0 # theta_2/posterior covariance
+            self.tinvSm = np.zeros((self.ninducing, 1))  #self.tinvS.dot(self.t_u)
 
 
     def _post_sample(self, K_nm, invK_mm, w_u, wS, t_u, tS,
@@ -391,7 +401,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         a = a_plus_b * m_prior
         b = a_plus_b * (1 - m_prior)
 
-        nu0 = np.array([b, a])
+        nu0 = np.array([5,4])#[b, a])
         # Noise in observations
         nu0_total = np.sum(nu0, axis=0)
         obs_mean = (self.z + nu0[1]) / (1 + nu0_total)
@@ -561,7 +571,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         self.ls = np.zeros(self.nitem_features) + self.ls
 
-        self.G = -np.inf
+        self.G = 0
 
         self._init_w()
         self._init_y()
@@ -585,9 +595,13 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         return J_df
 
 
-    def _expec_t(self, update_s=True):
+    def _expec_t(self, update_s=True, update_G=True):
 
-        self._update_sample()
+        if not update_G:
+            max_iter_G = 1
+        else:
+            max_iter_G = self.max_iter_G
+            self._update_sample() # only update the sample during normal iterations, not when G has been fixed
 
         if not self.use_t:
             return
@@ -606,11 +620,15 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         # Does w_idx_i contain duplicates? If so, these might be double counting?
         covpair = self.invK_mm.dot(self.K_nm[self.w_idx_i].T)
+    
+        G_update_rate = 1.0
+        diff = 0
 
-        for G_iter in range(self.max_iter_G):
+        for G_iter in range(max_iter_G):
 
             oldG = self.G
-            self.G = self._compute_jacobian() # P_i x (N_i*Npeople_i)
+            if update_G:
+                self.G = self.G * (1-G_update_rate) + self._compute_jacobian() * G_update_rate
 
             # we need to map from the real Npeople points to the inducing points.
             GinvQG = (self.G.T/self.Q[None, self.data_obs_idx_i]).dot(self.G)
@@ -632,7 +650,11 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.tS = np.linalg.inv(self.tinvS)
             self.t_u = self.tS.dot(self.tinvSm)
 
+            prev_diff_G = diff  # save last iteration's difference
             diff = np.max(np.abs(oldG - self.G))
+
+            if np.abs(np.abs(diff) - np.abs(prev_diff_G)) < 1e-3 and G_update_rate > 0.1:
+                G_update_rate *= 0.9
 
             if self.verbose:
                 logging.debug("expec_t: iter %i, G-diff=%f" % (G_iter, diff))
@@ -640,7 +662,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             if diff < self.conv_threshold_G:
                 break
 
-        self.t, _ = inducing_to_observation_moments(self.K_mm * self.rate_st / self.shape_st,
+            self.t, _ = inducing_to_observation_moments(self.K_mm * self.rate_st / self.shape_st,
                                                     self.invK_mm, self.K_nm, self.t_u, self.t_mu0)
 
         if update_s:
@@ -650,10 +672,16 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.st = self.shape_st / self.rate_st
 
 
-    def _expec_w(self, update_s=True):
+    def _expec_w(self, update_s=True, update_G=True):
         """
         Compute the expectation over the latent features of the items and the latent personality components
         """
+
+        if not update_G:
+            max_iter_G = 1
+        else:
+            max_iter_G = self.max_iter_G
+
         rho_i = (self.vb_iter + self.delay) ** (-self.forgetting_rate)
         w_i = self.nobs / float(self.update_size)
 
@@ -662,13 +690,14 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         covpair = self.invK_mm.dot(self.K_nm[self.w_idx_i].T)
 
-        for G_iter in range(self.max_iter_G):
+        G_update_rate = 1.0
+        diff = 0
+
+        for G_iter in range(max_iter_G):
 
             oldG = self.G
-            if G_iter > 0:
-                self.G = self.G * 0.1  + self._compute_jacobian() * 0.9
-            else:
-                self.G = self._compute_jacobian()
+            if update_G:
+                self.G = self.G * (1-G_update_rate)  + self._compute_jacobian() * G_update_rate
 
             # we need to map from the real Npeople points to the inducing points.
             invQGT = self.G.T/self.Q[None, self.data_obs_idx_i]
@@ -704,7 +733,11 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
                 self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
 
+            prev_diff_G = diff  # save last iteration's difference
             diff = np.max(np.abs(oldG - self.G))
+
+            if np.abs(np.abs(diff) - np.abs(prev_diff_G)) < 1e-3 and G_update_rate > 0.1:
+                G_update_rate *= 0.9
 
             if self.verbose:
                 logging.debug("expec_w: iter %i, G-diff=%f" % (G_iter, diff))
@@ -732,7 +765,13 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                self.invK_mm, self.w_u[:, f:f + 1], np.zeros((self.ninducing, 1)), f_cov=self.wS[f])
 
 
-    def _expec_y(self):
+    def _expec_y(self, update_G=True):
+
+        if not update_G:
+            max_iter_G = 1
+        else:
+            max_iter_G = self.max_iter_G
+
         rho_i = (self.vb_iter + self.delay) ** (-self.forgetting_rate)
         w_i = np.sum(self.nobs) / float(self.update_size)
 
@@ -747,10 +786,14 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         if self.verbose:
             logging.debug('_expec_y: starting update.')
 
-        for G_iter in range(self.max_iter_G):
+        G_update_rate = 1.0
+        diff = 0
+
+        for G_iter in range(max_iter_G):
             oldG = self.G
 
-            self.G = self.G * 0.1 + self._compute_jacobian() * 0.9
+            if update_G:
+                self.G = self.G * (1-G_update_rate) + self._compute_jacobian() * G_update_rate
 
             invQG =  self.G.T / self.Q[None, self.data_obs_idx_i]
 
@@ -795,7 +838,12 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
                 self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
 
+            prev_diff_G = diff  # save last iteration's difference
+
             diff = np.max(np.abs(oldG - self.G))
+
+            if np.abs(np.abs(diff) - np.abs(prev_diff_G)) < 1e-3 and G_update_rate > 0.1:
+                G_update_rate *= 0.9
 
             if self.verbose:
                 logging.debug("expec_y: iter %i, G-diff=%f" % (G_iter, diff))
@@ -815,7 +863,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.nsplits = int(np.ceil(self.nobs / float(self.update_size)))
 
             if self.exhaustive_train:
-                self.min_iter = self.nsplits
+                if self.min_iter < self.nsplits:
+                    self.min_iter = self.nsplits
                 if self.max_iter < self.min_iter * self.exhaustive_train:
                     self.max_iter = self.min_iter * self.exhaustive_train
 
@@ -882,7 +931,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
     def _update_sample(self):
         self._update_sample_idxs()
-        self.G = -np.inf # need to reset G because we have a new sample to compute it for
+        self.G = 0 # need to reset G because we have a new sample to compute it for
 
     def data_ll(self, logrho, lognotrho):
         bc = binom(np.ones(self.z.shape), self.z)
@@ -962,7 +1011,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         y_terms = logpy - logqy + logps_y - logqs_y
         t_terms = logpt - logqt + logps_t - logqs_t
 
-        lb = data_ll + t_terms + w_terms + y_terms
+        lb = data_ll + t_terms #+ w_terms + y_terms
 
         if self.verbose:
             logging.debug('s_w=%s' % (sw))

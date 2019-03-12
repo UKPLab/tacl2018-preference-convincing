@@ -323,7 +323,7 @@ if __name__ == '__main__':
     if use_svi:
         model = CollabPrefLearningSVI(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial,
                                       lsy=lsy_initial, use_common_mean_t=use_t,
-                                      nfactors=7, forgetting_rate=0.7, ninducing=16, max_update_size=10000,
+                                      nfactors=7, ninducing=16, max_update_size=10000,
                                       shape_s0=1, rate_s0=1, use_lb=True)
     else:
         model = CollabPrefLearningVB(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial, lsy=lsy_initial,
@@ -333,12 +333,10 @@ if __name__ == '__main__':
         np.random.seed(22)
 
     model.verbose = True
-    model.min_iter = 1
-    model.max_iter = 200
-    model.fit(personids[trainidxs], pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs], 
+    model.fit(personids[trainidxs], pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs],
               person_features if use_person_features else None, optimize=optimize)
 
-#               None, optimize=True)    
+
     print(("Difference between true item length scale and inferred item length scale = %s" % (ls - model.ls)))
     print(("Difference between true person length scale and inferred person length scale = %s" % (lsy - model.lsy)))
     
@@ -364,8 +362,8 @@ if __name__ == '__main__':
         np.concatenate((person_features, person_features[personids[0:1], :]), axis=0) if use_person_features
         else None)
     print("Test using new person while predicting old people: %.3f" % result_new_old_person[-1])
-    #print("Result is correct = " + str(np.abs(results[0] - result_new_person) < 1e-6) 
-    
+    #print("Result is correct = " + str(np.abs(results[0] - result_new_person) < 1e-6)
+
     if do_profiling:
         pr.disable()
         import datetime
@@ -380,7 +378,7 @@ if __name__ == '__main__':
 
     singleusermodel = GPPrefLearning(2, shape_s0=1, rate_s0=1, ls_initial=ls_initial, forgetting_rate=0.7, ninducing=16,
                                      max_update_size=10000, verbose=True)
-    singleusermodel.max_iter_VB = 200
+
     singleusermodel.fit(pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs])
 
     p_pred_su = singleusermodel.predict(item_features, pair1idxs[testidxs], pair2idxs[testidxs], return_var=False)
@@ -416,12 +414,12 @@ if __name__ == '__main__':
     print(("ROC of %.3f" % roc_auc_score(p, p_pred_su)))
 
     print(" --- Latent item feature prediction metrics --- " )
-    
+
     # get the w values that correspond to the coords seen by the model
     widxs = np.ravel_multi_index((
            model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)), dims=(nx, ny))
     w = w[widxs, :]
-    
+
     # how can we handle the permutations of the features?
     #scipy.factorial(model.Nfactors) / scipy.factorial(model.Nfactors - w.shape[1])
     # remove the features from the model with least variation -- these are the dead features
@@ -452,21 +450,21 @@ if __name__ == '__main__':
     #
     # print("y: RMSE of %.3f" % np.sqrt(np.mean((y.reshape(Npeople * w.shape[1])-y_pred)**2)))
     # print("y: NLPD error of %.3f" % -mvn.logpdf(y.reshape(Npeople * w.shape[1]), mean=y_pred, cov=y_pred_cov))
-            
+
 #     from scipy.stats import kendalltau
-#      
+#
 #     for p in range(Npeople):
 #         logging.debug( "Personality features of %i: %s" % (p, str(model.w[p])) )
 #         for q in range(Npeople):
 #             logging.debug( "Distance between personalities: %f" % np.sqrt(np.sum(model.w[p] - model.w[q])**2)**0.5 )
 #             logging.debug( "Rank correlation between preferences: %f" %  kendalltau(model.f[p], model.f[q])[0] )
-    
+
     # visualise the results
     import matplotlib.pyplot as plt
 
-    cmap = plt.get_cmap('jet')                
-    cmap._init()    
-    
+    cmap = plt.get_cmap('jet')
+    cmap._init()
+
     # t
     fig = plt.figure()
     tmap = np.zeros((nx, ny))
@@ -523,7 +521,7 @@ if __name__ == '__main__':
                aspect=Nfactors / float(ymap.shape[0]), vmin=np.min(ymap), vmax=np.max(ymap), interpolation='none', filterrad=0.01)
     plt.title('ground truth at training points: y (latent features for people')
     fig.colorbar(ax)
-       
+
     # w
     scale = np.std(model.w)
     if scale == 0:
@@ -543,8 +541,8 @@ if __name__ == '__main__':
 
 #         fig = plt.figure()
 #         wmap = np.zeros((nx, ny))
-#         wmap[model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)] = np.sqrt(model.w_cov[np.arange(model.N*f, model.N*(f+1)), 
-#                                                                                    np.arange(model.N*f, model.N*(f+1))])        
+#         wmap[model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)] = np.sqrt(model.w_cov[np.arange(model.N*f, model.N*(f+1)),
+#                                                                                    np.arange(model.N*f, model.N*(f+1))])
 #         scale = np.std(wmap[model.obs_coords[:, 0].astype(int), model.obs_coords[:, 1].astype(int)])
 #         wmap /= scale
 #         ax = plt.imshow(wmap, cmap=cmap, origin='lower', extent=[0, wmap.shape[1], 0, wmap.shape[0]], aspect=None, vmin=-2,

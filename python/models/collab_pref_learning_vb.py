@@ -551,6 +551,9 @@ class CollabPrefLearningVB(object):
         while ((self.vb_iter < self.min_iter) or (converged_count < self.n_converged)) and (
                 self.vb_iter < self.max_iter):
 
+            logging.debug(self.shape_st)
+            logging.debug(self.rate_st)
+
             # set the value of t
             self._expec_t()
 
@@ -583,21 +586,22 @@ class CollabPrefLearningVB(object):
 
             if converged:
                 converged_count += 1
-            elif converged_count > 0:  # reset the convergence count as the difference has increased again
-                converged_count -= 1
+            #elif converged_count > 0:  # reset the convergence count as the difference has increased again
+            #    converged_count -= 1
 
         logging.debug("Preference personality model converged in %i iterations. Running one final update to harmonise"
                       "kernels..." % self.vb_iter)
 
         # Do a final iteration with the latest values of s so that predictions and inducing point distributions all used
         # matching values of s for their kernels.
-        self._expec_t(update_s=False)
-        self._expec_w(update_s=False)
-        self._expec_y()
+        self._expec_t(update_s=False, update_G=False)
+        self._expec_w(update_s=False, update_G=False)
+        self._expec_y(update_G=False)
 
         logging.debug('Completed final update.')
 
-    def _expec_t(self, update_s=True):
+    def _expec_t(self, update_s=True, update_G=True):
+
         if not self.use_t:
             return
 
@@ -628,7 +632,7 @@ class CollabPrefLearningVB(object):
                                                          f_cov=self.t_cov)
             self.st = self.shape_st / self.rate_st
 
-    def _expec_w(self, update_s=True):
+    def _expec_w(self, update_s=True, update_G=-1):
         """
         Compute the expectation over the latent features of the items and the latent personality components
         :return:
@@ -688,7 +692,7 @@ class CollabPrefLearningVB(object):
 
             self.sw_matrix[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]
 
-    def _expec_y(self):
+    def _expec_y(self, update_G=-1):
         """
         Compute expectation over the personality components using VB
 
@@ -1005,7 +1009,9 @@ class CollabPrefLearningVB(object):
         # set personids and itemids to None to compute all pairs
         mu, f_cov, personids = self.predict_f(item_features, person_features, personids,
                                               return_cov=True, return_personids=True)
+
         mu = mu.T.reshape(N * Npeople, 1)
+
         pref_v = item_0_idxs + (N * personids)
         pref_u = item_1_idxs + (N * personids)
 

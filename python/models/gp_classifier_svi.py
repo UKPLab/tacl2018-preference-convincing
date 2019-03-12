@@ -115,7 +115,7 @@ class GPClassifierSVI(GPClassifierVB):
             self.update_size = self.n_obs
 
         # diagonal can't use inducing points but can use the subsampling of observations
-        if self.inducing_coords is None and (self.ninducing > self.n_locs or self.cov_type == 'diagonal'):
+        if self.inducing_coords is None and (self.ninducing >= self.n_locs or self.cov_type == 'diagonal'):
             if self.inducing_coords is not None:
                 logging.warning(
                     'replacing initial inducing points with observation coordinates because they are smaller.')
@@ -421,6 +421,7 @@ class GPClassifierSVI(GPClassifierVB):
             invK_mm_expecFF = self.uS + self.um_minus_mu0.dot(self.um_minus_mu0.T)
         else:
             invK_mm_expecFF = self.invK_mm.dot(self.uS + self.um_minus_mu0.dot(self.um_minus_mu0.T))
+
         self.rate_s = self.rate_s0 + 0.5 * np.trace(invK_mm_expecFF)
         # Update expectation of s. See approximations for Binary Gaussian Process Classification, Hannes Nickisch
         self.s = self.shape_s / self.rate_s
