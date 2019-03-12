@@ -2,6 +2,7 @@
 Test on the smaller Sushi dataset with 10 items. This is for comparison with Houlsby et al in terms of classification
 error.
 '''
+import datetime
 import os
 import sys
 
@@ -667,7 +668,7 @@ if __name__ == '__main__':
         test_to_run = 0
 
     # Experiment name tag
-    tag = '_10'
+    tag = datetime.datetime.now().strftime('_%Y-%m-%d-%H-%M-%S')
 
     vscales = None  # don't record the v factor scale factors
     vscales_A = None
@@ -927,7 +928,7 @@ if __name__ == '__main__':
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
                    'crowd-GPPL',
-                   # 'crowd-GPPL\\u',
+                   'crowd-GPPL\\u',
                    # 'crowd-BMF',
                    # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
                    'GPPL-pooled',
