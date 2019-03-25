@@ -204,8 +204,8 @@ class CollabPrefLearningVB(object):
         self.shape_sw0 = shape_s0
         self.rate_sw0 = rate_s0 #/ self.Nfactors
 
-        self.shape_sy0 = 1  # shape_s0
-        self.rate_sy0 = 1  # rate_s0
+        self.shape_sy0 = shape_s0
+        self.rate_sy0 = rate_s0
 
         self.shape_st0 = shape_s0
         self.rate_st0 = rate_s0 #* self.Nfactors # this rebalances the prior expected variance of t against the latent components
@@ -245,7 +245,7 @@ class CollabPrefLearningVB(object):
         self.max_iter_G = 10
         self.max_iter = 200
         self.min_iter = 1
-        self.n_converged = 3  # number of iterations while apparently converged (avoids numerical errors)
+        self.n_converged = 10  # number of iterations while apparently converged (avoids numerical errors)
         self.vb_iter = 0
 
         self.verbose = verbose
@@ -536,9 +536,9 @@ class CollabPrefLearningVB(object):
                                    person_features, input_type)
 
         if use_median_ls and personIDs is not None:
-            self.ls = compute_median_lengthscales(self.obs_coords)
+            self.ls = compute_median_lengthscales(self.obs_coords, multiply_heuristic_power=0.5)
             if self.person_features is not None:
-                self.lsy = compute_median_lengthscales(self.person_features)
+                self.lsy = compute_median_lengthscales(self.person_features, multiply_heuristic_power=0.5)
 
         self._init_params()
 
@@ -583,8 +583,10 @@ class CollabPrefLearningVB(object):
 
             if converged:
                 converged_count += 1
-            #elif converged_count > 0:  # reset the convergence count as the difference has increased again
-            #    converged_count -= 1
+            elif converged_count > 0:  # reset the convergence count as the difference has increased again
+              converged_count = 0
+
+            logging.debug('Converged count = %i' % converged_count)
 
         logging.debug("Preference personality model converged in %i iterations. Running one final update to harmonise"
                       "kernels..." % self.vb_iter)
@@ -593,7 +595,7 @@ class CollabPrefLearningVB(object):
         # matching values of s for their kernels.
         self._expec_t(update_s=False, update_G=False)
         self._expec_w(update_s=False, update_G=False)
-        self._expec_y(update_G=False)
+        self._expec_y(update_s=False, update_G=False)
 
         logging.debug('Completed final update.')
 
@@ -689,7 +691,7 @@ class CollabPrefLearningVB(object):
 
             self.sw_matrix[fidxs, :] = self.shape_sw[f] / self.rate_sw[f]
 
-    def _expec_y(self, update_G=-1):
+    def _expec_y(self, update_s=True, update_G=-1):
         """
         Compute expectation over the personality components using VB
 

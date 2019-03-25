@@ -323,11 +323,11 @@ if __name__ == '__main__':
     if use_svi:
         model = CollabPrefLearningSVI(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial,
                                       lsy=lsy_initial, use_common_mean_t=use_t,
-                                      nfactors=7, ninducing=16, max_update_size=10000,
+                                      nfactors=5, ninducing=7, max_update_size=200, delay=25,
                                       shape_s0=1, rate_s0=1, use_lb=True)
     else:
         model = CollabPrefLearningVB(2, Npeoplefeatures if use_person_features else 0, ls=ls_initial, lsy=lsy_initial,
-                                     use_common_mean_t=use_t, nfactors=7, use_lb=True)
+                                     use_common_mean_t=use_t, nfactors=5, use_lb=True)
 
     if fix_seeds:
         np.random.seed(22)
@@ -376,8 +376,8 @@ if __name__ == '__main__':
 
     # Single User model for comparison
 
-    singleusermodel = GPPrefLearning(2, shape_s0=1, rate_s0=1, ls_initial=ls_initial, forgetting_rate=0.7, ninducing=16,
-                                     max_update_size=10000, verbose=True)
+    singleusermodel = GPPrefLearning(2, shape_s0=1, rate_s0=1, ls_initial=ls_initial, forgetting_rate=0.7, ninducing=7,
+                                     max_update_size=200, delay=25, verbose=True)
 
     singleusermodel.fit(pair1idxs[trainidxs], pair2idxs[trainidxs], item_features, prefs[trainidxs])
 

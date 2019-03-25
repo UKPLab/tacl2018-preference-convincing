@@ -91,6 +91,7 @@ def pref_likelihood(fmean, fvar=None, subset_idxs=[], v=[], u=[], return_g_f=Fal
 
     if np.any(fvar < 0):
         logging.warning('There was a negative variance in the pref likelihood! %s' % fvar)
+        fvar[fvar < 0] = 0
 
     if len(v) and len(u):
         g_f = (fmean[v, :] - fmean[u, :]) / np.sqrt(fvar)
@@ -170,14 +171,14 @@ class GPPrefLearning(GPClassifierSVI):
         # When we used this version we were coincidentally compensating by adding the variance on mistakenly...
 
         # NEW VERSION:
-        m_prior, not_m_prior, v_prior = self._post_sample(mu0, None, False, self.K_nm, self.pref_v, self.pref_u)
+        m_prior, _, v_prior = self._post_sample(mu0, self.K_mm/self.s, False, self.K_nm, self.pref_v, self.pref_u)
         if not np.any(np.nonzero(self.mu0)):
             m_prior = 0.5
 
         # find the beta parameters
-        a_plus_b = 1.0 / (v_prior / (m_prior*not_m_prior)) - 1
+        a_plus_b = 1.0 / (v_prior / (m_prior*(1-m_prior))) - 1
         a = (a_plus_b * m_prior)
-        b = (a_plus_b * not_m_prior)
+        b = (a_plus_b * (1-m_prior))
 
         self.nu0 = np.array([b, a])
         #if self.verbose:
@@ -426,9 +427,9 @@ class GPPrefLearning(GPClassifierSVI):
 
         if return_var:
             if self.use_svi:
-                _, _, v_post = self._post_sample(self.mu0_output, K_star=self.K_star, v=item_0_idxs, u=item_1_idxs)
+                _, _, v_post = self._post_sample(self.mu0_output, self.uS, K_star=self.K_star, v=item_0_idxs, u=item_1_idxs)
             else:
-                _, _, v_post = self._post_sample(f, K_star=C, v=item_0_idxs, u=item_1_idxs)
+                _, _, v_post = self._post_sample(f, self.uS, K_star=C, v=item_0_idxs, u=item_1_idxs)
 
         if expectedlog:
             m_post = np.log(m_post)
@@ -482,7 +483,7 @@ class GPPrefLearning(GPClassifierSVI):
         # since we don't have f_cov
         if K_star is not None and self.use_svi:
             #sample the inducing points because we don't have full covariance matrix. In this case, f_cov should be Ks_nm
-            f_samples = mvn.rvs(mean=self.um_minus_mu0.flatten(), cov=self.uS, size=1000).T
+            f_samples = mvn.rvs(mean=self.um_minus_mu0.flatten(), cov=f_var, size=1000).T
             f_samples = K_star.dot(self.invK_mm).dot(f_samples) + f_mean
         elif K_star is not None:
             f_samples = mvn.rvs(mean=f_mean.flatten(), cov=K_star, size=1000).T

@@ -1,6 +1,19 @@
 '''
 Test on the smaller Sushi dataset with 10 items. This is for comparison with Houlsby et al in terms of classification
 error.
+
+Current status:
+- learning sy seems to help a lot on Sushi and possibly on some convincingness consensus results.
+- however, the corrected Q computations have not been computed with sy learning turned on
+- so we need to test all to ensure that the current setup works
+- since Q has changed, it may mean that shape_s and rate_s values also need to change
+- it may be better to tune hypers for sw, sy, st separately to improve performance on convincingness dataset
+
+TODO Run Sushi A, 25 reps, crowdGPPL with ***no SVI*** and same subsamples as in the paper. Can we reproduce the results with current code?
+TODO Run Sushi A crowdGPPL with SVI, with/without user features, same settings as the paper. Does stochastic sampling cause a problem?
+TODO Run Sushi B as described in the paper.
+TODO Run convincingness consensus. shape/rate may need tuning separately for sw, sy, st.
+TODO Run convincingness personalised. shape/rate may need tuning separately for sw, sy, st.
 '''
 import datetime
 import os
@@ -104,6 +117,7 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
                                   use_common_mean_t=use_common_mean, delay=delay)
     #model.use_local_obs_posterior_y = False
     model.max_Kw_size = max_Kw_size
+    model.max_iter = 500
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
 
     if vscales is not None:
@@ -132,6 +146,7 @@ def run_GPPL_pooled(_, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, __, i1_test, i2_t
                    ninducing=pool_ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
                    verbose=True)
 
+    model.max_iter_VB = 500
     model.fit(i1_tr, i2_tr, ifeats, prefs_tr, optimize=optimize, use_median_ls=True)
 
     fpred, _ = np.tile(model.predict_f(), (1, ufeats.shape[0]))
@@ -155,6 +170,8 @@ def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test
 
     model = GPPrefLearning(ifeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None, use_svi=True,
                    ninducing=joint_ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate, verbose=True)
+
+    model.max_iter_VB = 500
 
     # we need to use only the features for the subset of users in the training set!
     # if user features are not very informative, then the inducing points may be fairly useless.
@@ -253,6 +270,7 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
                                   use_common_mean_t=True, delay=delay)
 
     model.max_Kw_size = max_Kw_size
+    model.max_iter = 500
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
     fpred = model.predict_f(None, None)
@@ -274,6 +292,7 @@ def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test,
                                   ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
                                   verbose=True, use_lb=True, kernel_func='diagonal', delay=delay)
     model.max_Kw_size = max_Kw_size
+    model.max_iter = 500
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
     fpred = model.predict_f(None, None)
@@ -295,9 +314,11 @@ def run_collab_FITC_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_te
     model = CollabPrefLearningFITC(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None,
                                    nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                    forgetting_rate=forgetting_rate, verbose=True, use_lb=True,
-                                   use_common_mean_t=use_common_mean, delay=delay)
+                                   use_common_mean_t=use_common_mean, delay=delay,
+                                   exhaustive_train_count=0)
 
     model.max_Kw_size = max_Kw_size
+    model.max_iter = 500
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
 
     fpred = model.predict_f(None, None)
@@ -330,7 +351,7 @@ def opt_scale_crowd_GPPL(shape_s0, rate_s0, u_tr, i1_tr, i2_tr, ifeats, ufeats, 
         # hyperparameters but takes much longer to run
 
         print('Running with shape_s0 = %f and rate_s0 = %f' % (shape_s0, rate_s0))
-        model = run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr)
+        model = run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, ninducing=25)
         #lb = model.lowerbound()
         #print('Obtained lower bound %f with shape_s0 = %f and rate_s0 = %f' % (lb, shape_s0, rate_s0))
         #return -lb
@@ -418,21 +439,21 @@ def subsample_data(test_number):
         npairs_tr = 4
         npairs_test = 1
         nusers_unseen = 2
-    elif test_number == -1: # optimization on dev set
+    elif test_number == -1: # optimization on dev set. Use lots of data for evaluation and training.
         nusers_tr = 100
-        npairs_tr = 15
-        npairs_test = 5
+        npairs_tr = 25
+        npairs_test = 20
         nusers_unseen = 0
     elif test_number == 0 or test_number == 1: # sushi-A-small
         nusers_tr = 100
         npairs_tr = 5
         npairs_test = 25
-        nusers_unseen = 100
+        nusers_unseen = 0
     elif test_number == 2 or test_number == 3: # sushi-A
         nusers_tr = 100
         npairs_tr = 20
         npairs_test = 25
-        nusers_unseen = 100
+        nusers_unseen = 0
     elif test_number == 4 or test_number == 5: # sushiB
         nusers_tr = 5000
         npairs_tr = 10
@@ -539,11 +560,16 @@ def run_sushi_expt(methods, expt_name, test_to_run):
     # for repeatability
     np.random.seed(30)
 
+    seeds = np.random.randint(1, 1e6, nreps)
+
     results_path = './results/' + expt_name
     if not os.path.exists(results_path):
         os.mkdir(results_path)
 
     for rep in range(nreps):
+
+        np.random.seed(seeds[rep])
+
         # Get training and test data
         u_tr, i1_tr, i2_tr, prefs_tr, u_test, i1_test, i2_test, prefs_test, scores, chosen_users, \
             u_unseen, i1_unseen, i2_unseen, prefs_unseen, scores_unseen, chosen_users_unseen \
@@ -674,7 +700,7 @@ if __name__ == '__main__':
     vscales_A = None
     vscales_B = None
 
-    nreps = 1#25
+    nreps = 25
 
     debug_small = False # set to true to use a small subset of data
 
@@ -740,10 +766,10 @@ if __name__ == '__main__':
         # Hyperparameters common to most models --------------------------------------------------------------------------------
         max_facs = 20
         shape_s0 = 1.0
-        rate_s0 = 100.0  #0.1
-        max_update_size = 200
-        delay = 1
-        ninducing = 25#5000
+        rate_s0 = 10.0
+        max_update_size = 200 # there are 20 x 100 = 2000 pairs in total. After 10 iterations, all pairs are seen.
+        delay = 5
+        ninducing = 25
         forgetting_rate = 0.9
         max_Kw_size = 5000
 
@@ -821,13 +847,13 @@ if __name__ == '__main__':
 
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
-                   #'crowd-GPPL',
-                   # 'crowd-GPPL-noInduc',
-                   # 'crowd-GPPL\\u',
-                   # 'crowd-BMF',
-                   # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+                   'crowd-GPPL',
+                   'crowd-GPPL-noInduc',
+                   'crowd-GPPL\\u',
+                   'crowd-BMF',
+                   'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
                    'GPPL-pooled',
-                   # 'GPPL-per-user',
+                   'GPPL-per-user',
                    ]
 
         optimize = False

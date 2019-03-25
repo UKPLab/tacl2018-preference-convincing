@@ -9,9 +9,10 @@ from collab_pref_learning_vb import expec_output_scale
 
 class CollabPrefLearningFITC(CollabPrefLearningSVI):
 
-    def _expec_t(self):
+    def _expec_t(self, update_s=True, update_G=True):
 
-        self._update_sample()
+        if update_G:
+            self._update_sample()  # only update the sample during normal iterations, not when G has been fixed
 
         if not self.use_t:
             return
@@ -25,15 +26,23 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
         rho_i = (self.vb_iter + self.delay) ** (-self.forgetting_rate)
         w_i = self.nobs / float(self.update_size)
 
-        self.prev_tinvS = self.tinvS
-        self.prev_tinvSm = self.tinvSm
+        if not update_G:
+            max_iter_G = 1
+        else:
+            max_iter_G = self.max_iter_G
+            self.prev_tinvS = self.tinvS
+            self.prev_tinvSm = self.tinvSm
 
         covpair = self.invK_mm.dot(self.K_nm[self.w_idx_i].T)
 
-        for G_iter in range(self.max_iter_G):
+        G_update_rate = 1.0
+        diff = 0
+
+        for G_iter in range(max_iter_G):
 
             oldG = self.G
-            self.G = self._compute_jacobian() # P_i x (N_i*Npeople_i)
+            if update_G:
+                self.G = self.G * (1-G_update_rate) + self._compute_jacobian() * G_update_rate
 
             # we need to map from the real Npeople points to the inducing points.
             Qfitc = np.diag(self.Q[self.data_obs_idx_i]) + (self.G*(
@@ -59,7 +68,11 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
             self.tS = np.linalg.inv(self.tinvS)
             self.t_u = self.tS.dot(self.tinvSm)
 
+            prev_diff_G = diff  # save last iteration's difference
             diff = np.max(np.abs(oldG - self.G))
+
+            if np.abs(np.abs(diff) - np.abs(prev_diff_G)) < 1e-3 and G_update_rate > 0.1:
+                G_update_rate *= 0.9
 
             if self.verbose:
                 logging.debug("expec_t: iter %i, G-diff=%f" % (G_iter, diff))
@@ -67,8 +80,14 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
             if diff < self.conv_threshold_G:
                 break
 
+            if diff < self.conv_threshold_G:
+                break
+
         self.t, _ = inducing_to_observation_moments(self.K_mm * self.rate_st / self.shape_st,
                                                     self.invK_mm, self.K_nm, self.t_u, self.t_mu0)
+
+        if not update_s:
+            return
 
         self.shape_st, self.rate_st = expec_output_scale(self.shape_st0, self.rate_st0, N,
                                                          self.invK_mm, self.t_u, np.zeros((N, 1)),
@@ -76,7 +95,7 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
         self.st = self.shape_st / self.rate_st
 
 
-    def _expec_w(self):
+    def _expec_w(self, update_s=True, update_G=True):
         """
         Compute the expectation over the latent features of the items and the latent personality components
         """
@@ -86,18 +105,24 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
         rho_i = (self.vb_iter + self.delay) ** (-self.forgetting_rate)
         w_i = self.nobs / float(self.update_size)
 
-        self.prev_winvS = self.winvS
-        self.prev_winvSm = self.winvSm
+        if not update_G:
+            max_iter_G = 1
+        else:
+            max_iter_G = self.max_iter_G
+            self.prev_winvS = self.winvS
+            self.prev_winvSm = self.winvSm
 
         covpair = self.invK_mm.dot(self.K_nm[self.w_idx_i].T)
 
-        for G_iter in range(self.max_iter_G):
+
+        G_update_rate = 1.0
+        diff = 0
+
+        for G_iter in range(max_iter_G):
 
             oldG = self.G
-            if G_iter > 0:
-                self.G = self.G * 0.1  + self._compute_jacobian() * 0.9
-            else:
-                self.G = self._compute_jacobian()
+            if update_G:
+                self.G = self.G * (1-G_update_rate)  + self._compute_jacobian() * G_update_rate
 
             for f in range(self.Nfactors):
                 # scale the precision by y
@@ -134,8 +159,12 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
 
                 self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
 
+            prev_diff_G = diff  # save last iteration's difference
+
             diff = np.max(np.abs(oldG - self.G))
 
+            if np.abs(np.abs(diff) - np.abs(prev_diff_G)) < 1e-3 and G_update_rate > 0.1:
+                G_update_rate *= 0.9
             if self.verbose:
                 logging.debug("expec_w: iter %i, G-diff=%f" % (G_iter, diff))
 
@@ -155,17 +184,22 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
         for f in range(self.Nfactors):
             self.w_cov_i[f] = Kw_i / sw[f] + covpair.dot(self.wS[f] - self.K_mm/sw[f]).dot(covpair.T)
 
-            self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, N,
+            if update_s:
+                self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, N,
                                                        self.invK_mm, self.w_u[:, f:f + 1], np.zeros((N, 1)),
                                                        f_cov=self.wS[f])
 
 
-    def _expec_y(self):
+    def _expec_y(self, update_s=True, update_G=True):
         rho_i = (self.vb_iter + self.delay) ** (-self.forgetting_rate)
         w_i = np.sum(self.nobs) / float(self.update_size)
 
-        self.prev_yinvSm = self.yinvSm
-        self.prev_yinvS = self.yinvS
+        if not update_G:
+            max_iter_G = 1
+        else:
+            max_iter_G = self.max_iter_G
+            self.prev_yinvSm = self.yinvSm
+            self.prev_yinvS = self.yinvS
 
         if self.person_features is not None:
             covpair = self.invKy_mm.dot(self.Ky_nm[self.y_idx_i].T)
@@ -175,10 +209,14 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
         if self.verbose:
             logging.debug('_expec_y: starting update.')
 
-        for G_iter in range(self.max_iter_G):
+        G_update_rate = 1.0
+        diff = 0
+
+        for G_iter in range(max_iter_G):
             oldG = self.G
 
-            self.G = self.G * 0.1 + self._compute_jacobian() * 0.9
+            if update_G:
+                self.G = self.G * (1-G_update_rate) + self._compute_jacobian() * G_update_rate
 
             for f in range(self.Nfactors):
 
@@ -227,13 +265,22 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
 
                 self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
 
+
+            prev_diff_G = diff  # save last iteration's difference
+
             diff = np.max(np.abs(oldG - self.G))
+
+            if np.abs(np.abs(diff) - np.abs(prev_diff_G)) < 1e-3 and G_update_rate > 0.1:
+                G_update_rate *= 0.9
 
             if self.verbose:
                 logging.debug("expec_y: iter %i, G-diff=%f" % (G_iter, diff))
 
             if diff < self.conv_threshold_G:
                 break
+
+        if not update_s:
+            return
 
         for f in range(self.Nfactors):
             self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.y_ninducing,

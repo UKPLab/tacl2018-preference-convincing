@@ -53,6 +53,7 @@ class GPClassifierSVI(GPClassifierVB):
         self.K_mm = None
         self.invK_mm = None
         self.K_nm = None
+        self.K_star_m_star = None
         self.V_nn = None
 
         # if use_svi is switched off, we revert to the standard (parent class) VB implementation
@@ -76,8 +77,18 @@ class GPClassifierSVI(GPClassifierVB):
     # Initialisation --------------------------------------------------------------------------------------------------
 
     def _init_params(self, mu0=None, reinit_params=True, K=None):
-        if self.use_svi and (self.K_mm is None or self.vb_iter == 0):
-            self._choose_inducing_points()
+        if self.use_svi:
+            self.update_size = self.max_update_size  # number of inducing points in each stochastic update
+            if self.update_size > self.n_obs:
+                self.update_size = self.n_obs
+                # TODO consider setting the forgetting rate to 0 here because we don't actually do stochastic updates
+                self.current_forgetting_rate = 0
+            else:
+                self.current_forgetting_rate = self.forgetting_rate
+
+            # in the first iteration with this dataset...
+            if reinit_params or self.K_mm is None or self.vb_iter == 0:
+                self._choose_inducing_points()
 
         super(GPClassifierSVI, self)._init_params(mu0, reinit_params, K)
 
@@ -106,14 +117,11 @@ class GPClassifierSVI(GPClassifierVB):
         if self.use_svi:
             self.K_mm = None
             self.K_nm = None
+            self.K_star_m_star = None
             self.invK_mm = None
 
     def _choose_inducing_points(self):
         # choose a set of inducing points -- for testing we can set these to the same as the observation points.
-        self.update_size = self.max_update_size  # number of inducing points in each stochastic update
-        if self.update_size > self.n_obs:
-            self.update_size = self.n_obs
-
         # diagonal can't use inducing points but can use the subsampling of observations
         if self.inducing_coords is None and (self.ninducing >= self.n_locs or self.cov_type == 'diagonal'):
             if self.inducing_coords is not None:
@@ -135,10 +143,10 @@ class GPClassifierSVI(GPClassifierVB):
             else:
                 coords = self.obs_coords
 
-            kmeans.fit(coords)
+            kmeans.fit(coords / self.ls[None, :])
 
             # self.inducing_coords = self.obs_coords[np.random.randint(0, self.n_locs, size=(ninducing)), :]
-            self.inducing_coords = kmeans.cluster_centers_
+            self.inducing_coords = kmeans.cluster_centers_ * self.ls[None, :]
             # self.inducing_coords = self.obs_coords
             self.reset_kernel()
 
@@ -157,19 +165,25 @@ class GPClassifierSVI(GPClassifierVB):
                 self.K_nm = self.kernel_func(self.obs_coords, self.ls, self.inducing_coords,
                                          operator=self.kernel_combination)
 
-        self.shape_s = self.shape_s0 + 0.5 * self.ninducing  # update this because we are not using n_locs data points
+        if not self.fixed_s:
+            self.shape_s = self.shape_s0 + 0.5 * self.ninducing  # update this because we are not using n_locs data points
 
-        self.u_invSm = np.zeros((self.ninducing, 1), dtype=float)  # theta_1
+        # self.u_invSm = np.zeros((self.ninducing, 1), dtype=float)  # theta_1
+
         if self.cov_type == 'diagonal':
-            self.u_invS = np.zeros((self.ninducing), dtype=float)  # theta_2
+            self.u_invS = self.invK_mm * self.shape_s0 / self.rate_s0
+            # self.u_invS = np.zeros((self.ninducing), dtype=float)  # theta_2
             self.u_Lambda = np.zeros((self.ninducing), dtype=float) # observation precision at inducing points
         else:
-            self.u_invS = np.zeros((self.ninducing, self.ninducing), dtype=float)  # theta_2
+            self.u_invS = self.invK_mm * self.shape_s0 / self.rate_s0
+            # self.u_invS = np.zeros((self.ninducing, self.ninducing), dtype=float)  # theta_2
             self.u_Lambda = np.zeros((self.ninducing, self.ninducing),
                                      dtype=float)  # observation precision at inducing points
 
         self.uS = self.K_mm * self.rate_s0 / self.shape_s0  # initialise properly to prior
         self.um_minus_mu0 = np.zeros((self.ninducing, 1))
+
+        self.u_invSm = self.u_invS.dot(self.um_minus_mu0)
 
     # Mapping between latent and observation spaces -------------------------------------------------------------------
 
@@ -315,7 +329,7 @@ class GPClassifierSVI(GPClassifierVB):
             Lambda_i = np.diag(Lambda_i)
 
         # calculate the learning rate for SVI
-        rho_i = (self.vb_iter + self.delay) ** (-self.forgetting_rate)
+        rho_i = (self.vb_iter + self.delay) ** (-self.current_forgetting_rate)
         # print("\rho_i = %f " % rho_i
 
         # weighting. Lambda and
@@ -400,7 +414,8 @@ class GPClassifierSVI(GPClassifierVB):
 
             if np.any(v < 0):
                 logging.error("Negative variance in _f_given_u(), %f" % np.min(v))
-                # caused by the accumulation of small errors. Possibly only occurs when s is very small?
+                # caused by the accumulation of small errors due to stochastic updates. Can occur if s decreases in
+                # later iterations - perhaps s needs stochastic updates to match?
 
                 if full_cov:
                     fixidxs = np.argwhere(v < 0).flatten()
@@ -459,18 +474,23 @@ class GPClassifierSVI(GPClassifierVB):
             self.invK_mm = invK_mm
         if K_nm is not None:
             self.K_nm = K_nm
+            self.K_star_m_star = None
         if V_nn is not None:
             self.V_nn = V_nn # the prior variance at the observation data points
 
-        self.u_invSm = np.zeros((self.ninducing, 1), dtype=float)  # theta_1
         if self.cov_type == 'diagonal':
-            self.u_invS = np.zeros((self.ninducing), dtype=float)  # theta_2
+            self.u_invS = self.K_mm * self.rate_s / self.shape_s
+            # np.zeros((self.ninducing), dtype=float)  # theta_2
             self.u_Lambda = np.zeros((self.ninducing), dtype=float)  # observation precision at inducing points
         else:
-            self.u_invS = np.zeros((self.ninducing, self.ninducing), dtype=float)  # theta_2
+            # self.u_invS = np.zeros((self.ninducing, self.ninducing), dtype=float)  # theta_2
+            self.u_invS = self.K_mm * self.rate_s / self.shape_s
             self.u_Lambda = np.zeros((self.ninducing, self.ninducing), dtype=float) # observation precision at inducing points
         self.uS = self.K_mm * self.rate_s0 / self.shape_s0  # initialise properly to prior
         self.um_minus_mu0 = np.zeros((self.ninducing, 1))
+
+        # self.u_invSm = np.zeros((self.ninducing, 1), dtype=float)  # theta_1
+        self.u_invSm = self.uS.dot(self.um_minus_mu0)#np.zeros((self.ninducing, 1), dtype=float)  # theta_1
 
     def _update_sample_idxs(self):
         if self.n_obs <= self.update_size:
@@ -516,7 +536,9 @@ class GPClassifierSVI(GPClassifierVB):
         if self.K is not None:
             return self.K_nm, self.K
         else:
-            return self.K_nm, self.K_nm.dot(self.invK_mm).dot(self.K_nm.T)
+            if self.K_star_m_star is None:
+                self.K_star_m_star = self.K_nm.dot(self.invK_mm).dot(self.K_nm.T)
+            return self.K_nm, self.K_star_m_star
 
     def _get_training_feats(self):
         if not self.use_svi:

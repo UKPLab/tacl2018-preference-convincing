@@ -231,7 +231,7 @@ def compute_K_subset(subset, subset_size, vals, vals2, ls, fun, operator):
 
 def _dists_f(items_feat_sample, f):
     if np.mod(f, 1000) == 0:
-        logging.info('computed lengthscale for feature %i' % f)
+        logging.debug('computed lengthscale for feature %i' % f)
     dists = np.abs(items_feat_sample[:, np.newaxis] - items_feat_sample[np.newaxis, :])
     # we exclude the zero distances. With sparse features, these would likely downplay the lengthscale.
     if np.any(dists > 0):
@@ -953,6 +953,11 @@ class GPClassifierVB(object):
 
             converged, prev_val = self._check_convergence(prev_val)
             converged_count += converged
+            if not converged and np.mod(self.vb_iter, self.conv_check_freq) == 0 and converged_count > 0:  # reset the convergence count as the difference has increased again
+                converged_count = 0
+
+            if self.verbose:
+                logging.debug('Converged iteration count = %i' % converged_count)
 
             self.vb_iter += 1
 
@@ -992,8 +997,13 @@ class GPClassifierVB(object):
             logging.debug("Initial length-scale guess in restart %i: %s" % (r, self.ls))
 
             res = minimize(self.neg_marginal_likelihood, self.initialguess,
-                           args=(-1, use_MAP,), jac=self.nml_jacobian, method='L-BFGS-B',
-                           options={'maxfun': maxfun, 'maxiter' : maxfun, 'ftol' : 1e-3, 'gtol': 10 ** (- self.ninput_features - 1)})
+                           args=(-1, use_MAP,), method='Nelder-Mead',
+                           options={'maxiter': maxfun, 'fatol': 1e-3,
+                                    'xatol': 1e6})
+
+            # res = minimize(self.neg_marginal_likelihood, self.initialguess,
+            #                args=(-1, use_MAP,), jac=self.nml_jacobian, method='L-BFGS-B',
+            #                options={'maxfun': maxfun, 'maxiter' : maxfun, 'ftol' : 1e-3, 'gtol': 10 ** (- self.ninput_features - 1)})
 
             opt_hyperparams = res['x']
             nlml = res['fun']
@@ -1079,7 +1089,7 @@ class GPClassifierVB(object):
             converged = check_convergence(L, oldL, self.conv_threshold, True, self.vb_iter,
                                           self.verbose, 'GP Classifier VB lower bound')
             current_value = L
-        elif not self.uselowerbound and np.mod(self.vb_iter, self.conv_check_freq) == self.conv_check_freq-1:
+        elif not self.uselowerbound and np.mod(self.vb_iter, self.conv_check_freq) == 0:
             diff = np.max(np.abs(self.obs_f - prev_val))
             if self.verbose:
                 logging.debug('GP Classifier VB obs_f diff = %f at iteration %i' % (diff, self.vb_iter))
