@@ -255,7 +255,7 @@ def compute_median_lengthscales(items_feat, multiply_heuristic_power=1.0, N_max=
 
     print('Creating %i jobs for the lengthscales' % num_jobs)
 
-    default_ls_value = Parallel(n_jobs=num_jobs, backend="multiprocessing")(delayed(_dists_f)(
+    default_ls_value = Parallel(n_jobs=num_jobs, backend="threading")(delayed(_dists_f)(
         items_feat[:, f], f) for f in range(ndims))
 
     ls_initial_guess = np.ones(ndims) * default_ls_value

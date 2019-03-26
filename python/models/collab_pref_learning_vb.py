@@ -68,8 +68,8 @@ from scipy.linalg import block_diag
 from scipy.special import gammaln, psi
 from scipy.stats import gamma
 from scipy.optimize import minimize
-from joblib import Parallel, delayed
-import multiprocessing
+# from joblib import Parallel, delayed
+# import multiprocessing
 
 
 def expec_output_scale(shape_s0, rate_s0, N, invK, f_mean, m, invK_f_cov=None, f_cov=None):
