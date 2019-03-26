@@ -253,7 +253,7 @@ def compute_median_lengthscales(items_feat, multiply_heuristic_power=1.0, N_max=
     if num_jobs > max_no_jobs:
         num_jobs = max_no_jobs
 
-    print('Creating %i jobs for the lengthscales' % num_jobs)
+    logging.debug('Creating %i jobs for the lengthscales' % num_jobs)
 
     default_ls_value = Parallel(n_jobs=num_jobs, backend="threading")(delayed(_dists_f)(
         items_feat[:, f], f) for f in range(ndims))
