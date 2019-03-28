@@ -81,7 +81,7 @@ class GPClassifierSVI(GPClassifierVB):
             self.update_size = self.max_update_size  # number of inducing points in each stochastic update
             if self.update_size > self.n_obs:
                 self.update_size = self.n_obs
-                # TODO consider setting the forgetting rate to 0 here because we don't actually do stochastic updates
+                # setting the forgetting rate to 0 here because we don't need to do stochastic updates
                 self.current_forgetting_rate = 0
             else:
                 self.current_forgetting_rate = self.forgetting_rate

@@ -37,6 +37,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score, log_loss
 from collab_pref_learning_svi import CollabPrefLearningSVI
+# from collab_pref_learning_svi_old import CollabPrefLearningSVI
 from gp_pref_learning import GPPrefLearning
 from per_user_pref_learning import GPPrefPerUser
 
@@ -111,14 +112,16 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
     if ninducing is None:
         ninducing = np.max([ifeats.shape[0], ufeats.shape[0]])
 
-    model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None,
+    model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
+                                  shape_sy0=shape_s0 if sushiB else 1e6, rate_sy0=rate_s0 if sushiB else 1e6, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=True, use_lb=True,
                                   use_common_mean_t=use_common_mean, delay=delay)
-    #model.use_local_obs_posterior_y = False
+    
     model.max_Kw_size = max_Kw_size
-    model.max_iter = 500
+    model.max_iter = 200
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
+    # model.use_local_obs_posterior_y = False
 
     if vscales is not None:
         vscales.append(np.sort((model.rate_sw / model.shape_sw) * (model.rate_sy / model.shape_sy))[::-1])
@@ -126,11 +129,17 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
     if u_test is None:
         return model
 
+    # fpred = model.predict_f(ifeats[active_items], ufeats)
+    # rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, ufeats)
     fpred = model.predict_f()
     rho_pred = model.predict(u_test, i1_test, i2_test)
 
-    fpred_un = model.predict_f(None, ufeats_un)
-    rho_pred_un = model.predict(u_un, i1_un, i2_un, None, ufeats_un)
+    # fpred_un = model.predict_f(None, ufeats_un)
+    # rho_pred_un = model.predict(u_un, i1_un, i2_un, None, ufeats_un)
+    # fpred_un = model.predict_f(ifeats[active_items], ufeats_un)
+    # rho_pred_un = model.predict(u_un, i1_un, i2_un, ifeats, ufeats)
+    fpred_un = None
+    rho_pred_un = None
 
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred, fpred_un, rho_pred_un
@@ -766,7 +775,7 @@ if __name__ == '__main__':
         # Hyperparameters common to most models --------------------------------------------------------------------------------
         max_facs = 20
         shape_s0 = 1.0
-        rate_s0 = 10.0
+        rate_s0 = 100.0
         max_update_size = 200 # there are 20 x 100 = 2000 pairs in total. After 10 iterations, all pairs are seen.
         delay = 5
         ninducing = 25
@@ -954,10 +963,10 @@ if __name__ == '__main__':
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
                    'crowd-GPPL',
-                   'crowd-GPPL\\u',
+                   # 'crowd-GPPL\\u',
                    # 'crowd-BMF',
                    # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-                   'GPPL-pooled',
+                   # 'GPPL-pooled',
                    # 'GPPL-per-user',
         ]
 

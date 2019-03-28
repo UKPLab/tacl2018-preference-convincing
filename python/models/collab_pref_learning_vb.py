@@ -173,8 +173,8 @@ class CollabPrefLearningVB(object):
     variational Bayes.
     """
 
-    def __init__(self, nitem_features, nperson_features=0, shape_s0=1, rate_s0=1, shape_ls=1, rate_ls=100, ls=100,
-                 shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=20,
+    def __init__(self, nitem_features, nperson_features=0, shape_s0=1, rate_s0=1, shape_sy0=1, rate_sy0=1,
+                 shape_ls=1, rate_ls=100, ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=20,
                  use_common_mean_t=True, kernel_func='matern_3_2', use_lb=True):
         """
 
@@ -204,8 +204,8 @@ class CollabPrefLearningVB(object):
         self.shape_sw0 = shape_s0
         self.rate_sw0 = rate_s0 #/ self.Nfactors
 
-        self.shape_sy0 = shape_s0
-        self.rate_sy0 = rate_s0
+        self.shape_sy0 = shape_sy0
+        self.rate_sy0 = rate_sy0 #/ self.Nfactors
 
         self.shape_st0 = shape_s0
         self.rate_st0 = rate_s0 #* self.Nfactors # this rebalances the prior expected variance of t against the latent components
@@ -555,8 +555,8 @@ class CollabPrefLearningVB(object):
             self._expec_t()
 
             # find the latent components
-            self._expec_w()
-            self._expec_y()
+            self._expec_w(update_G=False)
+            self._expec_y(update_G=False)
 
             self.new_obs = False # observations have now been processed once, only updates are required
 

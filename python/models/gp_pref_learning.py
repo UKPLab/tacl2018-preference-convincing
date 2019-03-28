@@ -198,7 +198,9 @@ class GPPrefLearning(GPClassifierSVI):
         if mu0 is None or not len(mu0):
             self.mu0 = np.zeros((self.n_locs, 1)) + self.mu0_default
         else:
-            self.mu0 = mu0
+            self.mu0 = np.array(mu0)
+            if self.mu0.ndim == 1:
+                self.mu0 = self.mu0[:, None]
             self.mu0_1 = self.mu0[self.pref_v, :]
             self.mu0_2 = self.mu0[self.pref_u, :]
 
