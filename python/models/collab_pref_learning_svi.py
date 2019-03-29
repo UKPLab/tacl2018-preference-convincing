@@ -1006,10 +1006,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         if self.verbose:
             logging.debug('likelihood=%.3f, wterms=%.3f, yterms=%.3f, tterms=%.3f' % (data_ll, w_terms, y_terms, t_terms))
-
-        logging.debug("Iteration %i: Lower bound = %.3f, " % (self.vb_iter, lb))
-
-        if self.verbose:
+            logging.debug("Iteration %i: Lower bound = %.3f, " % (self.vb_iter, lb))
             logging.debug("t: %.2f, %.2f" % (np.min(self.t), np.max(self.t)))
             logging.debug("w: %.2f, %.2f" % (np.min(self.w), np.max(self.w)))
             logging.debug("y: %f, %f" % (np.min(self.y), np.max(self.y)))
