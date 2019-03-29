@@ -555,7 +555,7 @@ class CollabPrefLearningVB(object):
             self._expec_t()
 
             # find the latent components
-            self._expec_w(update_G=False)
+            self._expec_w(update_G=False if self.use_t else True)
             self._expec_y(update_G=False)
 
             self.new_obs = False # observations have now been processed once, only updates are required

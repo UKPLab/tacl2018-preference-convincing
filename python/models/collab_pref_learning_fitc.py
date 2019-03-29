@@ -114,7 +114,6 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
 
         covpair = self.invK_mm.dot(self.K_nm[self.w_idx_i].T)
 
-
         G_update_rate = 1.0
         diff = 0
 
