@@ -586,7 +586,8 @@ class CollabPrefLearningVB(object):
             elif converged_count > 0:  # reset the convergence count as the difference has increased again
               converged_count = 0
 
-            logging.debug('Converged count = %i' % converged_count)
+            if self.verbose:
+                logging.debug('Converged count = %i' % converged_count)
 
         logging.debug("Preference personality model converged in %i iterations. Running one final update to harmonise"
                       "kernels..." % self.vb_iter)
