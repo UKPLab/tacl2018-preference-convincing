@@ -299,13 +299,13 @@ def check_convergence(newval, oldval, conv_threshold, positive_only, iter=-1, ve
     # if we are testing a vector of multiple variables, consider the biggest difference
     diff = np.max(diff)
 
-    if verbose:
-        if np.isscalar(newval):
-            logging.debug('%s: %.5f, diff = %f at iteration %i' % (label, newval, diff, iter))
-        elif newval.size == 1:
-            logging.debug('%s: %.5f, diff = %f at iteration %i' % (label, newval.flatten()[0], diff, iter))
-        else:
-            logging.debug('%s: diff = %f at iteration %i' % (label, diff, iter))
+    #if verbose:
+    if np.isscalar(newval):
+        logging.debug('%s: %.5f, diff = %f at iteration %i' % (label, newval, diff, iter))
+    elif newval.size == 1:
+        logging.debug('%s: %.5f, diff = %f at iteration %i' % (label, newval.flatten()[0], diff, iter))
+    else:
+        logging.debug('%s: diff = %f at iteration %i' % (label, diff, iter))
             # logging.debug(np.max(np.abs(newval - oldval)))
 
     converged = diff < conv_threshold

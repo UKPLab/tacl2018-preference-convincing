@@ -42,6 +42,8 @@ from gp_pref_learning import GPPrefLearning
 from per_user_pref_learning import GPPrefPerUser
 
 
+verbose = False
+
 def extract_pairs_from_ranking(ranked_items):
 
     item1 = ranked_items[:, 0:1]
@@ -118,7 +120,7 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
     model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
                                   shape_sy0=shape_s0 if sushiB else 1e6, rate_sy0=rate_s0 if sushiB else 1e6, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
-                                  forgetting_rate=forgetting_rate, verbose=True, use_lb=True,
+                                  forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                   use_common_mean_t=use_common_mean, delay=delay)
 
     model.max_Kw_size = max_Kw_size
@@ -156,7 +158,7 @@ def run_GPPL_pooled(_, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, __, i1_test, i2_t
 
     model = GPPrefLearning(ifeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None, use_svi=True,
                    ninducing=pool_ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
-                   verbose=True)
+                   verbose=verbose)
 
     model.max_iter_VB = 500
     model.fit(i1_tr, i2_tr, ifeats, prefs_tr, optimize=optimize, use_median_ls=True)
@@ -181,7 +183,7 @@ def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test
     joint_ninducing = int(ninducing * 2**(1/3.0))
 
     model = GPPrefLearning(ifeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None, use_svi=True,
-                   ninducing=joint_ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate, verbose=True)
+                   ninducing=joint_ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate, verbose=verbose)
 
     model.max_iter_VB = 500
 
@@ -278,7 +280,7 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
 
     model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
-                                  forgetting_rate=forgetting_rate, verbose=True, use_lb=True,
+                                  forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                   use_common_mean_t=True, delay=delay)
 
     model.max_Kw_size = max_Kw_size
@@ -302,7 +304,7 @@ def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test,
 
     model = CollabPrefLearningSVI(1, 1, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Nfactors,
                                   ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
-                                  verbose=True, use_lb=True, kernel_func='diagonal', delay=delay)
+                                  verbose=verbose, use_lb=True, kernel_func='diagonal', delay=delay)
     model.max_Kw_size = max_Kw_size
     model.max_iter = 500
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
@@ -325,7 +327,7 @@ def run_collab_FITC_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_te
 
     model = CollabPrefLearningFITC(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None,
                                    nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
-                                   forgetting_rate=forgetting_rate, verbose=True, use_lb=True,
+                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                    use_common_mean_t=use_common_mean, delay=delay,
                                    exhaustive_train_count=0)
 
