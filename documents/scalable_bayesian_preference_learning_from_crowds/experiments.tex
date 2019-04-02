@@ -446,26 +446,34 @@ Method & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time & Acc &
 \hline\hline
 %\multicolumn{13}{|l|}{\textit{crowdGPPL}} \\
 \multicolumn{1}{|b{1.1cm}|}{crowd-GPPL} & .67 & .63 & .39 & 38%76.91 %(27.23) %& .63 (.02) & .69 (.00) & .25 (.02)
-& .79 & .51 & .66 & 60 %149.6 %(20.86)
+%old results from submission: & .79 & .51 & .66 & 60 %149.6 %(20.86)
+%new results 02.04: 
+& .81 & .39 & .66 & 21
 & \textbf{.79} & \textbf{.57} & .50 & 393 \\
 %old results: & .69 & 2.23 & .45 & 9163 \\
 %full, opt. & & & & & .80 & .48 & .68 & 3718 
 %& - & - & - & - \\%(2193.72) \\
 $\backslash $induc & .70 & \textbf{.57} & .46 & 51 %(14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
-& .84 & \textbf{.33} & .79 & 646 %(50.17) 
+% new results 02.04
+& .84 & .33 & .79 & 39 & 39
+% old results from submission: & .84 & \textbf{.33} & .79 & 646 %(50.17) 
 & - & - & - & -
 \\
 %$\backslash t$ & .67 & .80 & .39 & 7.45 (29.00) %& .61 (.02) & .69 (.00) & .19 (.03)
 %& .79 & .57 & .65 & 158.51 (25.06)
 %\\
 $\backslash u$ & .70 & .58 & .46 & 9 %(24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
-& .84 & \textbf{.33} & \textbf{.80} & 95 %(4.93)
+% new results 02.04:
+\textbf{.85} & \textbf{.31} & \textbf{.81} & 21
+%old results from submission & .84 & \textbf{.33} & \textbf{.80} & 95 %(4.93)
 & .78 &\textbf{.57} & .49 & 303 \\
 %old results & \textbf{.76} & \textbf{.47} & \textbf{.60} & 21052\\
 %$\backslash u$, opt. & & & & & \textbf{.85} & \textbf{.33} &  \textbf{.80} & 5016 %(1978.82) \\
 %& - & - & - & - \\
 $\backslash u \backslash x$ & \textbf{.71} & \textbf{.57} & \textbf{.49} & 5 %(3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
-& \textbf{.85} & \textbf{.33} & \textbf{.80} & 89 %(12.12)
+%old results from submission: & \textbf{.85} & \textbf{.33} & \textbf{.80} & 89 %(12.12)
+%new results 02.04: 
+\textbf{.85} & .33 & .80 & 14
 & .77 & .58 & .48 & 269
 %old results & \textbf{.76} & .48 & \textbf{.60} & 15478
 \\
@@ -474,18 +482,25 @@ $\backslash u \backslash x$ & \textbf{.71} & \textbf{.57} & \textbf{.49} & 5 %(3
 %\\
 $\backslash u,\backslash t$ % this is also FITC to emulate Houlsby -- mention it in the text, not here
 & .68 & .60 & .43 & 291 %(48.62) %& .50 (.00) & .69 (.00) & nan (nan)
-& .84 & \textbf{.33} & .79 & 204 %(12.15) 
+%old results from submission & .84 & \textbf{.33} & .79 & 204 %(12.15) 
+%new results 02.04:
+& .84 & .33 & .80 & 230
 & .76 & .61 & .54 & 1001
 % old results & .75 & .49 & .59 & 30484
 \\ 
 %$\backslash u$$\backslash t$, FITC, opt. & & & &  & .84 & \textbf{.33} & \textbf{.80} & 7413.53 (2849.63) \\
 \hline 
 GPPL & .65 & .62 & .31 & \textbf{2} %(.26) %& .65 (.02) & .63 (.02) & .30 (.03)
-& .66 & .62 & .32 & \textbf{6} %(.38) & 
+% old results from submission: & .66 & .62 & .32 & \textbf{6} %(.38) & 
+% new results 02.04:
+& .65 & .62 & .31 & \textbf{2}
 & .65 & .62 & .31 & \textbf{51}
 \\
 GPPL-per-user & .67 & .64 & .42 & 183 %(1.12) %& .50 (.00) & .69 (.00) & nan (nan)
-& .83 & .40 & .79 & 1106 & .75 & .60 & \textbf{.60} & 3172 %(.44)
+%old results from submission & .83 & .40 & .79 & 1106 
+% new results 02.04:
+& .83 & .40 & .79 & 44
+& .75 & .60 & \textbf{.60} & 3172 %(.44)
 \\
 \hline
 %\citet{houlsby2012collaborative} CP & & & & & .84 \\

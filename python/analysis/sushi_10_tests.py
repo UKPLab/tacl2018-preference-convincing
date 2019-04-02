@@ -278,7 +278,8 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
     if Nfactors > max_facs:
         Nfactors = max_facs # this is the maximum
 
-    model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None,
+    model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
+                                  shape_sy0=shape_s0 if sushiB else 1e6, rate_sy0=rate_s0 if sushiB else 1e6, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                   use_common_mean_t=True, delay=delay)
@@ -302,9 +303,11 @@ def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test,
     if Nfactors > max_facs:
         Nfactors = max_facs # this is the maximum
 
-    model = CollabPrefLearningSVI(1, 1, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Nfactors,
-                                  ninducing=ninducing, max_update_size=max_update_size, forgetting_rate=forgetting_rate,
-                                  verbose=verbose, use_lb=True, kernel_func='diagonal', delay=delay)
+    model = CollabPrefLearningSVI(1, 1, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
+                                  shape_sy0=shape_s0 if sushiB else 1e6, rate_sy0=rate_s0 if sushiB else 1e6, ls=None,
+                                  nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
+                                  forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True, kernel_func='diagonal',
+                                  delay=delay)
     model.max_Kw_size = max_Kw_size
     model.max_iter = 500
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
@@ -325,7 +328,8 @@ def run_collab_FITC_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_te
     if Nfactors > max_facs:
         Nfactors = max_facs # this is the maximum
 
-    model = CollabPrefLearningFITC(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None,
+    model = CollabPrefLearningFITC(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
+                                   shape_sy0=shape_s0 if sushiB else 1e6, rate_sy0=rate_s0 if sushiB else 1e6, ls=None,
                                    nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                    forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                    use_common_mean_t=use_common_mean, delay=delay,
@@ -968,11 +972,11 @@ if __name__ == '__main__':
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
                    'crowd-GPPL',
-                   'crowd-GPPL\\u',
-                   # 'crowd-BMF',
-                   # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-                   'GPPL-pooled',
-                   # 'GPPL-per-user',
+                   #'crowd-GPPL\\u',
+                   #'crowd-BMF',
+                   #'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+                   #'GPPL-pooled',
+                   #'GPPL-per-user',
         ]
 
         # hyperparameters common to most models
