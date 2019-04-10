@@ -118,7 +118,7 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
     # TODO test with the original selection of user inducing points again.
 
     model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                  shape_sy0=shape_s0 if sushiB else 1e6, rate_sy0=rate_s0 if sushiB else 1e6, ls=None,
+                                  shape_sy0=1e6 if sushiB else 1e6, rate_sy0=1e6 if sushiB else 1e6, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                   use_common_mean_t=use_common_mean, delay=delay)
@@ -279,7 +279,7 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
         Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                  shape_sy0=shape_s0 if sushiB else 1e6, rate_sy0=rate_s0 if sushiB else 1e6, ls=None,
+                                  shape_sy0=1e6 if sushiB else 1e6, rate_sy0=1e6 if sushiB else 1e6, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                   use_common_mean_t=True, delay=delay)
@@ -304,7 +304,7 @@ def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test,
         Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningSVI(1, 1, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                  shape_sy0=shape_s0 if sushiB else 1e6, rate_sy0=rate_s0 if sushiB else 1e6, ls=None,
+                                  shape_sy0=1e6 if sushiB else 1e6, rate_sy0=1e6 if sushiB else 1e6, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True, kernel_func='diagonal',
                                   delay=delay)
@@ -329,7 +329,7 @@ def run_collab_FITC_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_te
         Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningFITC(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                   shape_sy0=shape_s0 if sushiB else 1e6, rate_sy0=rate_s0 if sushiB else 1e6, ls=None,
+                                   shape_sy0=1e6 if sushiB else 1e6, rate_sy0=1e6 if sushiB else 1e6, ls=None,
                                    nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                    forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                    use_common_mean_t=use_common_mean, delay=delay,
