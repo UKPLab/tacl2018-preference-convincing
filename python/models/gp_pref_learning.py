@@ -170,6 +170,10 @@ class GPPrefLearning(GPClassifierSVI):
         #m_prior, not_m_prior, v_prior = self._post_sample(mu0, f_prior_var, False, None, self.pref_v, self.pref_u)
         # When we used this version we were coincidentally compensating by adding the variance on mistakenly...
 
+        if not len(self.pref_v):
+            self.nu0 = []
+            return
+
         # NEW VERSION:
         m_prior, _, v_prior = self._post_sample(mu0, self.K_mm/self.s, False, self.K_nm, self.pref_v, self.pref_u)
         if not np.any(np.nonzero(self.mu0)):
@@ -201,8 +205,10 @@ class GPPrefLearning(GPClassifierSVI):
             self.mu0 = np.array(mu0)
             if self.mu0.ndim == 1:
                 self.mu0 = self.mu0[:, None]
-            self.mu0_1 = self.mu0[self.pref_v, :]
-            self.mu0_2 = self.mu0[self.pref_u, :]
+
+            if len(self.pref_v):
+                self.mu0_1 = self.mu0[self.pref_v, :]
+                self.mu0_2 = self.mu0[self.pref_u, :]
 
         self.Ntrain = self.pref_u.size
 
@@ -476,6 +482,10 @@ class GPPrefLearning(GPClassifierSVI):
             v = self.pref_v
         if u is None:
             u = self.pref_u
+
+        if not len(v):
+            # no prefereces passed in for training!
+            return [], [], []
 
         if np.isscalar(f_mean):
             N = 1

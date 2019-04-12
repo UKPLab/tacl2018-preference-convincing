@@ -153,18 +153,22 @@ class GPClassifierSVI(GPClassifierVB):
         if self.K_mm is None:
             self.K_mm = self.kernel_func(self.inducing_coords, self.ls, operator=self.kernel_combination)
             self.K_mm += 1e-6 * np.eye(len(self.K_mm))  # jitter
+
+            self.Ks_mm = self.K_mm / self.s
         if self.invK_mm is None:
             if self.cov_type == 'diagonal':
                 self.invK_mm = self.K_mm
             else:
                 self.invK_mm = scipy.linalg.inv(self.K_mm)
+
+            self.invKs_mm = self.invK_mm * self.s
         if self.K_nm is None:
             if self.cov_type == 'diagonal':
                 self.K_nm = self.K_mm # there are no inducing points
             else:
                 self.K_nm = self.kernel_func(self.obs_coords, self.ls, self.inducing_coords,
                                          operator=self.kernel_combination)
-
+            self.Ks_nm = self.K_nm / self.s
         if not self.fixed_s:
             self.shape_s = self.shape_s0 + 0.5 * self.ninducing  # update this because we are not using n_locs data points
 

@@ -483,6 +483,10 @@ class GPClassifierVB(object):
         """
         self._init_obs_prior()
 
+        if not len(self.nu0):
+            self.Q = []
+            return
+
         # Noise in observations
         nu0_total = np.sum(self.nu0, axis=0)
         self.obs_mean = (self.obs_values + self.nu0[1]) / (self.obs_total_counts + nu0_total)
@@ -942,6 +946,9 @@ class GPClassifierVB(object):
         if not len(self.obs_coords):
             return
 
+        if self.n_obs == 0:
+            return
+
         if self.verbose:
             logging.debug("GP Classifier VB: training with max length-scale %.3f and smallest %.3f" % (np.max(self.ls),
                                                                                                        np.min(self.ls)))
@@ -1216,7 +1223,7 @@ class GPClassifierVB(object):
         if mu0_output is None:
             self.mu0_output = np.zeros((noutputs, 1)) + self.mu0_default
         else:
-            self.mu0_output = mu0_output
+            self.mu0_output = np.reshape(mu0_output, (mu0_output.shape[0], 1))
 
         # predict f for the given kernels and mean
         if self.verbose:
