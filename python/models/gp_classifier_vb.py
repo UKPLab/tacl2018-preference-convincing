@@ -670,8 +670,12 @@ class GPClassifierVB(object):
         logp_Df = self._logp_Df()
         logq_f = self._logqf()
 
-        logp_s = self._logps()
-        logq_s = self._logqs()
+        if self.fixed_s:
+            logp_s = 0
+            logq_s = 0
+        else:
+            logp_s = self._logps()
+            logq_s = self._logqs()
 
         if self.verbose:
             logging.debug("DLL + logp_f: %.5f, logq_f: %.5f, logp_s-logq_s: %.5f" % (logp_Df, logq_f, logp_s - logq_s))
