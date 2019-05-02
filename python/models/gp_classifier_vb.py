@@ -176,10 +176,15 @@ def derivfactor_matern_3_2_from_raw_vals(vals, ls, d, vals2=None, operator='*'):
     return K
 
 
-def matern_3_2_from_raw_vals(vals, ls, vals2=None, operator='*'):
-    num_jobs = multiprocessing.cpu_count()
-    if num_jobs > max_no_jobs:
-        num_jobs = max_no_jobs
+def matern_3_2_from_raw_vals(vals, ls, vals2=None, operator='*', n_threads=0):
+
+    if n_threads == 0:
+        num_jobs = multiprocessing.cpu_count()
+        if num_jobs > max_no_jobs:
+            num_jobs = max_no_jobs
+    else:
+        num_jobs = n_threads
+
     subset_size = int(np.ceil(vals.shape[1] / float(num_jobs)))
     K = Parallel(n_jobs=num_jobs, backend='threading')(delayed(compute_K_subset)(i, subset_size, vals, vals2, ls,
                                                                                  matern_3_2_onedimension_from_raw_vals,
@@ -244,14 +249,18 @@ def _dists_f(items_feat_sample, f):
     return med
 
 
-def compute_median_lengthscales(items_feat, multiply_heuristic_power=1.0, N_max=3000):
+def compute_median_lengthscales(items_feat, multiply_heuristic_power=1.0, N_max=3000, n_threads=0):
     if items_feat.shape[0] > N_max:
         items_feat = items_feat[np.random.choice(items_feat.shape[0], N_max, replace=False)]
 
     ndims = items_feat.shape[1]
-    num_jobs = multiprocessing.cpu_count()
-    if num_jobs > max_no_jobs:
-        num_jobs = max_no_jobs
+
+    if n_threads == 0:
+        num_jobs = multiprocessing.cpu_count()
+        if num_jobs > max_no_jobs:
+            num_jobs = max_no_jobs
+    else:
+        num_jobs = n_threads
 
     logging.debug('Creating %i jobs for the lengthscales' % num_jobs)
 
@@ -408,6 +417,11 @@ class GPClassifierVB(object):
 
         self.features = None # an optional matrix of object feature vectors. Is not needed if coordinates are passed in
 
+        self.n_threads = 0 # maximum number of threads, or zero if you want to use as many as possible
+
+    def set_max_threads(self, n_threads):
+        self.n_threads = n_threads
+
     # Initialisation --------------------------------------------------------------------------------------------------
 
     def _init_params(self, mu0, reinit_params, K=None):
@@ -433,7 +447,7 @@ class GPClassifierVB(object):
     def _init_covariance(self):
         # Get the correct covariance matrix
         if self.kernel_func is not None and self.cov_type != 'pre':
-            self.K = self.kernel_func(self.obs_coords, self.ls, operator=self.kernel_combination)
+            self.K = self.kernel_func(self.obs_coords, self.ls, operator=self.kernel_combination, n_threads=self.n_threads)
             self.K += 1e-6 * np.eye(len(self.K))  # jitter
         elif self.K is None:
             logging.error('With covariance type "pre", the kernel must be passed in when calling fit()')
@@ -1188,10 +1202,10 @@ class GPClassifierVB(object):
                 # compute kernels given the feature vectors supplied
                 out_feats_arr = np.array(out_feats).astype(float)
                 self.K_star = self.kernel_func(out_feats_arr, self.ls, self._get_training_feats(),
-                                               operator=self.kernel_combination)
+                                               operator=self.kernel_combination, n_threads=self.n_threads)
                 if full_cov:
                     self.K_starstar = self.kernel_func(out_feats_arr, self.ls, out_feats_arr,
-                                                       operator=self.kernel_combination)
+                                                       operator=self.kernel_combination, n_threads=self.n_threads)
                 else:
                     self.K_starstar = 1.0  # assuming that the kernel function places ones along diagonals
             else:
