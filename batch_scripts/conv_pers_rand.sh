@@ -17,17 +17,17 @@
 #module load intel python/3.6.8
 
 # crowdGPPL
-python3 python/analysis/habernal_comparison/random_selection_tests.py 0
-python3 python/analysis/habernal_comparison/random_selection_tests.py 1
+OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 0
+OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 1
 
 # GPPL
-python3 python/analysis/habernal_comparison/random_selection_tests.py 6
-python3 python/analysis/habernal_comparison/random_selection_tests.py 7
+OMP_NUM_THREADS=24 python3 python/analysis/habernal_comparison/random_selection_tests.py 6
+OMP_NUM_THREADS=24 python3 python/analysis/habernal_comparison/random_selection_tests.py 7
 
 # crowdBT
-python3 python/analysis/habernal_comparison/random_selection_tests.py 8
-python3 python/analysis/habernal_comparison/random_selection_tests.py 9
+OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 8
+OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 9
 
 # crowdBT -> GP
-python3 python/analysis/habernal_comparison/random_selection_tests.py 10
-python3 python/analysis/habernal_comparison/random_selection_tests.py 11
+OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 10
+OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 11
