@@ -14,6 +14,10 @@ import os
 import pickle
 import sys
 import logging
+
+from sklearn.gaussian_process.gpr import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import Matern
+
 logging.basicConfig(level=logging.DEBUG)
 from tests import TestRunner
 sys.path.append("./python/analysis/habernal_comparison")
@@ -24,6 +28,98 @@ nfactors = 50
 max_Kw_size = 2000
 
 class PersonalisedTestRunner(TestRunner):
+
+    def run_crowd_bt(self):
+
+        nitems = self.items_feat.shape[0]
+        workers = np.unique(self.person_train)
+        nworkers = np.max(workers) + 1
+
+        # initialise variational parameters
+        Es = np.zeros(nitems)
+        Eeta = np.ones(nworkers) * 0.9
+        sigma = 0.01 * np.ones(nitems)
+        alpha = np.ones(nworkers) * 9
+        beta = np.ones(nworkers)
+
+        for pair_idx in range(len(self.a1_train)):
+
+            # get the indices
+            a1 = self.a1_train[pair_idx]
+            a2 = self.a2_train[pair_idx]
+
+            if self.prefs_train[pair_idx] == 2:  # swap so a1 is the preferred one
+                tmp = a1
+                a1 = a2
+                a2 = tmp
+
+            k = self.person_train[pair_idx]
+
+            # update the means
+            prob_incr = (alpha[k] * np.exp(Es[a1]) / (alpha[k] * np.exp(Es[a1]) \
+                                                      + beta[k] * np.exp(Es[a2])) - np.exp(Es[a1]) / (
+                                     np.exp(Es[a1]) + np.exp(Es[a2])))
+            Es[a1] = Es[a1] + sigma[a1] ** 2 * prob_incr
+            Es[a2] = Es[a2] - sigma[a2] ** 2 * prob_incr
+
+            var_diff = alpha[k] * np.exp(Es[a1]) * beta[k] * np.exp(Es[a2]) / (alpha[k] * np.exp(Es[a1]) +
+                                                                               beta[k] * np.exp(Es[a2])) - np.exp(
+                Es[a1]) * np.exp(Es[a2]) / (np.exp(Es[a1]) + np.exp(Es[a2]))
+            sigma[a1] = np.sqrt(sigma[a1] ** 2 * np.max([1 + sigma[a1] ** 2 * (var_diff), 10e-4]))
+            sigma[a2] = np.sqrt(sigma[a2] ** 2 * np.max([1 + sigma[a2] ** 2 * (var_diff), 10e-4]))
+
+            C1 = np.exp(Es[a1]) / (np.exp(Es[a1] + np.exp(Es[a2]))) + 0.5 * (sigma[a1] ** 2 + sigma[a2] ** 2) \
+                 * np.exp(Es[a1]) * np.exp(Es[a2]) * (np.exp(Es[a2]) - np.exp(Es[a1])) / (
+                             np.exp(Es[a1]) + np.exp(Es[a2])) ** 3
+            C2 = 1 - C1
+
+            C = (C1 * alpha[k] + C2 * beta[k]) / (alpha[k] + beta[k])  # normalisation constant for p( 1 > 2 | worker k)
+
+            Eeta[k] = (C1 * (alpha[k] + 1) * alpha[k] + C2 * alpha[k] * beta[k]) / (
+                        C * (alpha[k] + beta[k] + 1) * (alpha[k] + beta[k]))
+            Eeta_sq_k = (C1 * (alpha[k] + 2) * (alpha[k] + 1) * alpha[k] + C2 * (alpha[k] + 1) * alpha[k] * beta[k]) / \
+                        (C * (alpha[k] + beta[k] + 2) * (alpha[k] + beta[k] + 1) * (alpha[k] + beta[k]))
+
+            alpha[k] = (Eeta[k] - Eeta_sq_k) * Eeta[k] / (Eeta_sq_k - Eeta[k] ** 2)
+            beta[k] = (Eeta[k] - Eeta_sq_k) * (1 - Eeta[k]) / (Eeta_sq_k - Eeta[k] ** 2)
+
+            # if np.mod(pair_idx, 100) == 0:
+            print('Learning crowdBT, iteration %i' % pair_idx)
+
+        print('Completed online learning of crowd BT')
+
+        balance = 0.000001
+        proba = np.exp(Es[self.a1_test]) / (np.exp(Es[self.a1_test]) + np.exp(Es[self.a2_test]) + balance)
+
+        self.crowdBT_sigma = sigma
+        self.crowdBT_s = Es
+
+        scores = Es[self.a_rank_test]
+
+        return proba, scores, None
+
+
+    def run_crowd_bt_gppl(self):
+
+        # we first train crowd_bt as above. Then, we use the scores for items that were compared in training
+        # to train a GP regression model. The GP then predicts the scores of all items. This means we can generalise
+        # from the training items to all items, plus the GP will do some smoothing over the training items in case they
+        # had sparse noisy data.
+
+        self.run_crowd_bt()
+        gpr = GaussianProcessRegressor(kernel=Matern(), alpha=self.crowdBT_sigma ** 2)
+        gpr.fit(self.items_feat, self.crowdBT_s)
+
+        predicted_f = gpr.predict(self.items_feat)
+
+        balance = 0.000001
+        proba = np.exp(predicted_f[self.a1_test]) / (
+                    np.exp(predicted_f[self.a1_test]) + np.exp(predicted_f[self.a2_test]) + balance)
+
+        predicted_f = predicted_f[self.a_rank_test]
+
+        return proba, predicted_f, None
+
 
     def _train_persgppl(self):
         common_mean = False
@@ -154,6 +250,10 @@ class PersonalisedTestRunner(TestRunner):
             method_runner_fun = self.run_persgppl_consensus
         elif 'IndPrefGP' in self.method:
             method_runner_fun = self.run_persgppl # switches to correct class inside the method
+        elif 'crowdBT' in self.method:
+            method_runner_fun = self.run_crowd_bt
+        elif 'cBT_GP' in self.method:
+            method_runner_fun = self.run_crowd_bt_gppl
         else:
             method_runner_fun = super(PersonalisedTestRunner, self)._choose_method_fun(feature_type)
 
@@ -163,7 +263,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'per_initfix1'
+    test_dir = 'cbt_1'
 
     dataset_increment = 0
     # UKPConvArgCrowdSample tests prediction of personal data.
@@ -275,6 +375,24 @@ if __name__ == '__main__':
                # does not scale either -- it's worse than the GP.
                'SinglePrefGP_noOpt_weaksprior' # 'SinglePrefGP_noOpt_weaksprior',
             ]
+        runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+        runner.methods = methods
+        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+
+    elif test_to_run == 8:
+        methods = [
+               'crowdBT',
+               'cBT_GP',
+            ]
+        runner.datasets = ['UKPConvArgCrowdSample']
+        runner.methods = methods
+        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+
+    elif test_to_run == 9:
+        methods = [
+               'crowdBT',
+               'cBT_GP',
+        ]
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
         runner.methods = methods
         runner.run_test_set(min_no_folds=0, max_no_folds=32)
