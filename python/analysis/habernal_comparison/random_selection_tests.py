@@ -202,7 +202,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
         logging.info("**** Running method %s on dataset %s ****" % (method, dataset) )
 
-        feature_type = 'debug'#'both'  # can be 'embeddings' or 'ling' or 'both' or 'debug'
+        feature_type = 'both'  # can be 'embeddings' or 'ling' or 'both' or 'debug'
         embeddings_type = 'word_mean'
         self._set_embeddings(embeddings_type) 
         self._init_ls(feature_type, embeddings_type)
@@ -322,7 +322,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
         kfolder = KFold(n_splits=no_folds)
 
-        for foldidx, (tr_pair_idxs, test_pair_idxs) in enumerate(kfolder.split(pair_gold)):
+        for foldidx, (test_pair_idxs, tr_pair_idxs) in enumerate(kfolder.split(pair_gold)):
 
             self.model = None # initial value
 
@@ -428,9 +428,8 @@ if __name__ == '__main__':
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
 
-    nfolds = 32
+    nfolds = 10
     subset = 0
-    ndebug_features = 0
     verbose = False
 
     data_root_dir = os.path.abspath("./data/")
