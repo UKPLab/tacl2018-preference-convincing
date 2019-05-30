@@ -17,17 +17,18 @@
 #module load intel python/3.6.8
 
 # crowd consensus
-# GPPL
-OMP_NUM_THREADS=24 python3 python/analysis/habernal_comparison/random_selection_tests.py 7
-
-# crowdGPPL
-OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 1
 
 # crowdBT
 OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 9
 
 # crowdBT -> GP
 OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 11
+
+# GPPL
+OMP_NUM_THREADS=24 python3 python/analysis/habernal_comparison/random_selection_tests.py 7
+
+# crowdGPPL
+OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 1
 
 
 # personalised

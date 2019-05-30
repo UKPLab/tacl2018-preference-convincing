@@ -148,13 +148,13 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
             Eeta[k] = (C1 * (alpha[k] + 1) * alpha[k] + C2 * alpha[k] * beta[k]) / (C * (alpha[k] + beta[k] + 1) * (alpha[k] + beta[k]))
             Eeta_sq_k = (C1 * (alpha[k] + 2) * (alpha[k] + 1) * alpha[k] + C2 * (alpha[k] + 1) * alpha[k] * beta[k]) / \
-               C * (alpha[k] + beta[k] + 2) * (alpha[k] + beta[k] + 1) * (alpha[k] + beta[k])
+                        (C * (alpha[k] + beta[k] + 2) * (alpha[k] + beta[k] + 1) * (alpha[k] + beta[k]))
 
             alpha[k] = (Eeta[k] - Eeta_sq_k) * Eeta[k] / (Eeta_sq_k - Eeta[k]**2)
             beta[k] = (Eeta[k] - Eeta_sq_k) * (1 - Eeta[k]) / (Eeta_sq_k - Eeta[k]**2)
 
-            if np.mod(pair_idx, 100) == 0:
-                print('Learning crowdBT, iteration %i' % pair_idx)
+            # if np.mod(pair_idx, 100) == 0:
+            print('Learning crowdBT, iteration %i' % pair_idx)
 
         print('Completed online learning of crowd BT')
 
