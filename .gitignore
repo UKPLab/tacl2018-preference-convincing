@@ -1,3 +1,7 @@
+python/zhang*
+python/abbasnejad*
+data/zhang*
+data/abbasnejad*
 **/*.cluster
 tmp/*
 core.*

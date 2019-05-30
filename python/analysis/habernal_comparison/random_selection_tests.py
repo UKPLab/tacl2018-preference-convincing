@@ -107,7 +107,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
         nitems = self.items_feat.shape[0]
         workers = np.unique(self.person_train)
-        nworkers = len(workers)
+        nworkers = np.max(workers) + 1
 
         # initialise variational parameters
         Es = np.zeros(nitems)
@@ -328,6 +328,9 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
         # we switch the training and test sets because we actually want to train on a small subset
         for foldidx, (test_pair_idxs, tr_pair_idxs) in enumerate(kfolder.split(pair_gold)):
 
+            if foldidx >= max_no_folds:
+                break
+
             self.model = None # initial value
 
             if len(pair_pred) > foldidx:
@@ -422,7 +425,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
         logging.info("**** Completed: method %s ****" % (method) )
 
-        metrics.append(np.mean(metrics, axis=0))
+        metrics.append(np.mean(metrics, axis=0).tolist())
         pd.DataFrame(metrics).to_csv(results_file)
 
         print('Wrote output files to %s' % results_stem)
@@ -431,12 +434,13 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'randsel1'
+    test_dir = 'randsel2'
 
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
 
-    nfolds = 10
+    nfolds = 32
+    max_no_folds = 1 # subset for debugging
     subset = 0
     verbose = False
 
@@ -533,6 +537,9 @@ if __name__ == '__main__':
         plt.grid('on', axis='y')
         plt.legend(loc='best')
         plt.tight_layout()
+
+        if not os.path.exists('./results'):
+            os.mkdir('./results')
 
         figure_root_path = './results/conv_factors'
         if not os.path.exists(figure_root_path):
