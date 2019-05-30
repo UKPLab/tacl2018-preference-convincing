@@ -386,7 +386,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
                 proba = proba[:, 1:2]
             elif proba.ndim == 1:
                 proba = proba[:, None]
-            predictions = np.round(proba)
+            predictions = np.round(proba).astype(int)
 
             if predicted_f is not None:
                 predicted_f = np.array(predicted_f)
