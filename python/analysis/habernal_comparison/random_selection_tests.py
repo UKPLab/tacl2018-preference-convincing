@@ -210,9 +210,6 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
         np.random.seed(121) # allows us to get the same initialisation for all methods/feature types/embeddings
 
-        topic_keys = list(self.folds.keys())
-        topic_keys = np.sort(topic_keys)
-
         # performance metrics are saved in a CSV file, with rows for each fold, and columns for each data type
         # predictions are saved in a CSV file, columns correspond to data points.
         # For ratings, the first column is gold, but for pairs the gold is in a separate file (because the pairs are different in each fold)
@@ -325,7 +322,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
         kfolder = KFold(n_splits=no_folds)
 
-        for foldidx, (test_pair_idxs, tr_pair_idxs) in enumerate(kfolder.split(pair_gold)): # we've flipped the splits because we want small training data
+        for foldidx, (tr_pair_idxs, test_pair_idxs) in enumerate(kfolder.split(pair_gold)):
 
             self.model = None # initial value
 
