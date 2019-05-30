@@ -428,7 +428,7 @@ if __name__ == '__main__':
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
 
-    nfolds = 10
+    nfolds = 32
     subset = 0
     ndebug_features = 0
     verbose = False

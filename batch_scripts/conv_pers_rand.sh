@@ -16,18 +16,29 @@
 # enable this if running on lichtenberg
 #module load intel python/3.6.8
 
+# crowd consensus
 # GPPL
-OMP_NUM_THREADS=24 python3 python/analysis/habernal_comparison/random_selection_tests.py 6
 OMP_NUM_THREADS=24 python3 python/analysis/habernal_comparison/random_selection_tests.py 7
 
 # crowdGPPL
-OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 0
 OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 1
 
 # crowdBT
-OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 8
 OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 9
 
 # crowdBT -> GP
-OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 10
 OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 11
+
+
+# personalised
+# GPPL
+OMP_NUM_THREADS=24 python3 python/analysis/habernal_comparison/random_selection_tests.py 6
+
+# crowdGPPL
+OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 0
+
+# crowdBT
+OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 8
+
+# crowdBT -> GP
+OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 10
