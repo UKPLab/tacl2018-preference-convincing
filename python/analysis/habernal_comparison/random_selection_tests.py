@@ -122,7 +122,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
             a1 = self.a1_train[pair_idx]
             a2 = self.a2_train[pair_idx]
 
-            if self.prefs_train[pair_idx] == 0: # swap so a1 is the preferred one
+            if self.prefs_train[pair_idx] == 2: # swap so a1 is the preferred one
                 tmp = a1
                 a1 = a2
                 a2 = tmp
@@ -152,6 +152,9 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
             alpha[k] = (Eeta[k] - Eeta_sq_k) * Eeta[k] / (Eeta_sq_k - Eeta[k]**2)
             beta[k] = (Eeta[k] - Eeta_sq_k) * (1 - Eeta[k]) / (Eeta_sq_k - Eeta[k]**2)
+
+            if np.mod(pair_idx, 100) == 0:
+                print('Learning crowdBT, iteration %i' % pair_idx)
 
         print('Completed online learning of crowd BT')
 
@@ -418,6 +421,10 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
 
         logging.info("**** Completed: method %s ****" % (method) )
+
+        metrics.append(np.mean(metrics, axis=0))
+        pd.DataFrame(metrics).to_csv(results_file)
+
         print('Wrote output files to %s' % results_stem)
 
 if __name__ == '__main__':
