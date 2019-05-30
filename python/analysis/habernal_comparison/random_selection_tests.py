@@ -326,7 +326,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
         kfolder = KFold(n_splits=no_folds)
 
         # we switch the training and test sets because we actually want to train on a small subset
-        for foldidx, (test_pair_idxs, tr_pair_idxs) in enumerate(kfolder.split(pair_gold)):
+        for foldidx, (tr_pair_idxs, test_pair_idxs) in enumerate(kfolder.split(pair_gold)):
 
             if foldidx >= max_no_folds:
                 break
