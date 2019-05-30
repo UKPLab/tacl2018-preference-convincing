@@ -64,12 +64,12 @@ def convert_discrete_to_continuous(features, cols_to_convert):
         else:
             new_features = np.concatenate((new_features, disc_vecs), axis=1)
 
-    return new_features
+    return new_features.astype(int)
 
 
 def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
                    u_test=None, i1_test=None, i2_test=None,
-                   ninducing=None, use_common_mean=True):
+                   ninducing=None, use_common_mean=True, no_local_y=False):
 
     Nfactors = ufeats.shape[0]
     if Nfactors > max_facs:
@@ -78,22 +78,18 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
     if ninducing is None:
         ninducing = np.max([ifeats.shape[0], ufeats.shape[0]])
 
-    # TODO check whether this setup still works for Sushi-B tests. Then run on conv tests -- probably need to tune sy hyperparameters
-    # TODO test with the original selection of user inducing points again.
-
     model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                  shape_sy0=1e6 if sushiB else 1e6, rate_sy0=1e6 if sushiB else 1e6, ls=None,
+                                  shape_sy0=1e6, rate_sy0=1e6, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                   use_common_mean_t=use_common_mean, delay=delay)
 
     model.max_Kw_size = max_Kw_size
     model.max_iter = 200
-    model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
-    # model.use_local_obs_posterior_y = False
+    model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, use_median_ls=True)
 
-    if vscales is not None:
-        vscales.append(np.sort((model.rate_sw / model.shape_sw) * (model.rate_sy / model.shape_sy))[::-1])
+    if no_local_y:
+        model.use_local_obs_posterior_y = False
 
     if u_test is None:
         return model
@@ -117,7 +113,7 @@ def run_GPPL_pooled(_, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, __, i1_test, i2_t
                    verbose=verbose)
 
     model.max_iter_VB = 500
-    model.fit(i1_tr, i2_tr, ifeats, prefs_tr, optimize=optimize, use_median_ls=True)
+    model.fit(i1_tr, i2_tr, ifeats, prefs_tr, use_median_ls=True)
 
     fpred, _ = np.tile(model.predict_f(), (1, ufeats.shape[0]))
     rho_pred, _ = model.predict(None, i1_test, i2_test)
@@ -149,7 +145,7 @@ def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test
     i1_tr = i1_tr + (ifeats.shape[0] * u_tr)
     i2_tr = i2_tr + (ifeats.shape[0] * u_tr)
 
-    model.fit(i1_tr, i2_tr, joint_feats, prefs_tr, optimize=optimize, use_median_ls=True)
+    model.fit(i1_tr, i2_tr, joint_feats, prefs_tr, use_median_ls=True)
 
 
     # need to split this up to compute because predict needs pairwise covariance terms and ends up computing full covariance
@@ -185,7 +181,7 @@ def run_GPPL_joint(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test
 
 def run_GPPL_per_user(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test):
     model = GPPrefPerUser(ufeats.shape[0], max_update_size, shape_s0, rate_s0, ifeats.shape[1], ninducing)
-    model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
+    model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, False, use_median_ls=True)
 
     fpred = model.predict_f(None, personids=None)
     rho_pred = model.predict(u_test, i1_test, i2_test, None, None)
@@ -201,14 +197,14 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
         Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                  shape_sy0=1e6 if sushiB else 1e6, rate_sy0=1e6 if sushiB else 1e6, ls=None,
+                                  shape_sy0=1e6, rate_sy0=1e6, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                   use_common_mean_t=True, delay=delay)
 
     model.max_Kw_size = max_Kw_size
     model.max_iter = 500
-    model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
+    model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, use_median_ls=True)
 
     fpred = model.predict_f(None, None)
     rho_pred = model.predict(u_test, i1_test, i2_test, None, None)
@@ -223,13 +219,13 @@ def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test,
         Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningSVI(1, 1, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                  shape_sy0=1e6 if sushiB else 1e6, rate_sy0=1e6 if sushiB else 1e6, ls=None,
+                                  shape_sy0=1e6, rate_sy0=1e6, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True, kernel_func='diagonal',
                                   delay=delay)
     model.max_Kw_size = max_Kw_size
     model.max_iter = 500
-    model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
+    model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, use_median_ls=True)
 
     fpred = model.predict_f(None, None)
     rho_pred = model.predict(u_test, i1_test, i2_test, ifeats, None)
@@ -244,7 +240,7 @@ def run_collab_FITC_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_te
         Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningFITC(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                   shape_sy0=1e6 if sushiB else 1e6, rate_sy0=1e6 if sushiB else 1e6, ls=None,
+                                   shape_sy0=1e6, rate_sy0=1e6, ls=None,
                                    nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                    forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                    use_common_mean_t=use_common_mean, delay=delay,
@@ -252,7 +248,7 @@ def run_collab_FITC_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_te
 
     model.max_Kw_size = max_Kw_size
     model.max_iter = 500
-    model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
+    model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, use_median_ls=True)
 
     fpred = model.predict_f(None, None)
     rho_pred = model.predict(u_test, i1_test, i2_test, None, None)
@@ -265,6 +261,8 @@ def train_test(method_name, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test
 
     if method_name == 'crowd-GPPL':
         return run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ninducing=ninducing)
+    elif method_name == 'crowd-GPPL-ny':
+        return run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ninducing=ninducing, no_local_y=True)
     elif method_name == 'crowd-GPPL-noConsensus':
         return run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, ninducing=ninducing, use_common_mean=False)
     elif method_name == 'crowd-GPPL-noInduc':
@@ -285,7 +283,7 @@ def train_test(method_name, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test
         return run_collab_FITC_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, use_common_mean=True)
 
 
-def run_sushi_expt(methods, expt_name):
+def run_expt(methods, expt_name):
     # predictions from all reps and methods
     fpred_all = []
     rho_pred_all = []
@@ -306,6 +304,9 @@ def run_sushi_expt(methods, expt_name):
 
     # we switch the training and test sets because we actually want to train on a small subset
     for foldidx, (tr_pair_idxs, test_pair_idxs) in enumerate(kfolder.split(prefs)):
+
+        if foldidx >= max_no_folds:
+            break
 
         # Get training and test data
         u_tr = userids[tr_pair_idxs]
@@ -335,7 +336,7 @@ def run_sushi_expt(methods, expt_name):
             logging.info("Starting test with method %s..." % (m))
             starttime = time.time()
 
-            fpred, rho_pred, fpred_unseen, rho_pred_unseen = train_test(m, u_tr, i1_tr, i2_tr, item_features,
+            fpred, rho_pred = train_test(m, u_tr, i1_tr, i2_tr, item_features,
                                         user_features, prefs_tr, u_test, i1_test, i2_test)
 
             endtime = time.time()
@@ -347,7 +348,7 @@ def run_sushi_expt(methods, expt_name):
 
             # Compute metrics
             acc_m = accuracy_score(prefs_test, np.round(rho_pred))
-            logloss_m = log_loss(prefs_test.flatten(), rho_pred.flatten())
+            logloss_m = log_loss(prefs_test.flatten(), rho_pred.flatten(), labels=[0,1])
 
 
             # Save metrics
@@ -406,6 +407,8 @@ if __name__ == '__main__':
 
     no_folds = 10
 
+    max_no_folds = 10
+
     item_feat_file = './data/abbasnejad_cars/items1.csv'
     user_feat_file = './data/abbasnejad_cars/users1.csv'
 
@@ -424,9 +427,9 @@ if __name__ == '__main__':
     # remove control questions
     pref_data = pref_data[pref_data[:, 3]==0]
 
-    userids = pref_data[:, 0]
-    items1 = pref_data[:, 1]
-    items2 = pref_data[:, 2]
+    userids = pref_data[:, 0] - 1 # indexes start from one, should start from zero
+    items1 = pref_data[:, 1] - 1
+    items2 = pref_data[:, 2] - 1
     prefs = np.ones(len(items1)) # first item always preferred
 
     nusers = user_features.shape[0]
@@ -447,13 +450,16 @@ if __name__ == '__main__':
     max_Kw_size = 5000
 
     methods = [
-       'crowd-GPPL',
+       # 'crowd-GPPL',
+       #'crowd-GPPL-ny',
        'crowd-GPPL-noInduc',
-       'crowd-GPPL\\u',
-       'crowd-BMF',
-       'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
-       'GPPL-pooled',
-       'GPPL-per-user',
+       # 'crowd-GPPL\\u',
+       #'crowd-BMF',
+       #'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
+       # 'GPPL-pooled',
+       #'GPPL-per-user',
     ]
 
-    run_sushi_expt(methods, 'sushi_10small' + tag)
+    run_expt(methods, 'cars' + tag)
+
+    #user_features

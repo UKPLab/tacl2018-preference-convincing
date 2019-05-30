@@ -25,7 +25,7 @@
 #OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 11
 
 # GPPL
-OMP_NUM_THREADS=24 python3 python/analysis/habernal_comparison/random_selection_tests.py 7
+#OMP_NUM_THREADS=24 python3 python/analysis/habernal_comparison/random_selection_tests.py 7
 
 # crowdGPPL
 OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/random_selection_tests.py 1
