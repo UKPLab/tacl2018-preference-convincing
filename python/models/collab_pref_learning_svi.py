@@ -141,7 +141,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             if init_size < self.ninducing:
                 init_size = self.ninducing
             kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.ninducing)
-            # TODO check whether this should be normalized.
             kmeans.fit(self.obs_coords / self.ls[None, :])
 
             self.inducing_coords = kmeans.cluster_centers_ * self.ls[None, :]
