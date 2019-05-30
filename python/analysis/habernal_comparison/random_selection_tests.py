@@ -122,7 +122,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
             a1 = self.a1_train[pair_idx]
             a2 = self.a2_train[pair_idx]
 
-            if self.prefs_train == 0: # swap so a1 is the preferred one
+            if self.prefs_train[pair_idx] == 0: # swap so a1 is the preferred one
                 tmp = a1
                 a1 = a2
                 a2 = tmp
@@ -322,6 +322,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
         kfolder = KFold(n_splits=no_folds)
 
+        # we switch the training and test sets because we actually want to train on a small subset
         for foldidx, (test_pair_idxs, tr_pair_idxs) in enumerate(kfolder.split(pair_gold)):
 
             self.model = None # initial value
