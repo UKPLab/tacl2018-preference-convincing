@@ -63,6 +63,7 @@ from sklearn.svm import SVR
 from embeddings import load_embeddings, load_siamese_cbow_embeddings, load_skipthoughts_embeddings, get_mean_embeddings
 from data_loader import data_root_dir, load_train_test_data, load_ling_features
 import numpy as np
+import pandas as pd
     
 ndebug_features = 10
 verbose = True
@@ -1127,6 +1128,9 @@ class TestRunner:
                    all_tr_proba[foldidx], len(self.a1_train))
                 with open(foldresultsfile, 'wb') as fh:
                     pickle.dump(results, fh)
+
+                pair_prob_file = results_stem + '/pair_probs_%i.csv' % foldidx
+                pd.DataFrame(proba).to_csv(pair_prob_file)
     
                 if not os.path.isfile(results_stem + "/foldorder.txt"):
                     np.savetxt(results_stem + "/foldorder.txt", fold_keys[:, None], fmt="%s")
