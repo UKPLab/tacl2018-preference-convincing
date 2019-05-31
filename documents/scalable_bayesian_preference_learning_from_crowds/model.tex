@@ -1,3 +1,5 @@
+\todo{ add in table of notations (maybe in the appendix)}
+
 \section{Bayesian Preference Learning for Crowds}\label{sec:model}
 
 %%%% Notes
@@ -49,9 +51,9 @@
 
 % this should be introduced in section 1. \citep{handleycomparative} -- compares BT with TM models
 For a pair of items, $a$ and $b$, we write $a \succ b$ to symbolize that $a$ is preferred to $b$.  
-A pairwise label has value $y(a \succ b) =1 $ if $a \succ b$ and $0$ otherwise.
+A pairwise label has value $y(a, b) =1 $ if $a \succ b$ and $0$ otherwise.
 % %\begin{equation}
-% $y(a \succ b) = \begin{cases}
+% $y(a, b) = \begin{cases}
 % 1 & a \succ b \\
 % 0 & b \succ a
 % \end{cases}$.
@@ -62,19 +64,20 @@ The uncertainty in the likelihood $p(y(a,b)=1)$ accommodates
  labeling errors %or noise in implicit annotations, such as click streams, 
  as well as variability in a user's judgments.
 Here, we assume the utility to be a function of the items' features,
-$f(\bs x_a)$, where $\bs x_a$ is a vector representation of the features of item $a$.
+$f(\bs x_a) : \mathbb{R}^D \mapsto \mathbb{R}$, where $\bs x_a$ is a vector representation of the features of item $a$
+of length $D$.
 Pairwise labels can be modeled using a logistic likelihood %relationship between the utility function, $f$, and the pairwise labels
 defined by the Bradley-Terry model~\citep{bradley1952rank,plackett1975analysis,luce1959possible},
 or a probit likelihood given by the Thurstone-Mosteller model, also known as \emph{Thurstone case V}~\citep{thurstone1927law,mosteller2006remarks}.
 %or the Thurstone-Mosteller model.
 %\begin{align}
-%p(y(a \succ b) | f) & = \frac{1}{1 + \exp( f(\bs x_a) - f(\bs x_b) ) }
+%p(y(a, b) | f) & = \frac{1}{1 + \exp( f(\bs x_a) - f(\bs x_b) ) }
 %\end{align}
 We use the latter for our model as it enables $f$ to be marginalized analytically to compute a posterior $p(y(a,b)=1 | \bs y)$,
 where $\bs y$ is a set of pairwise training labels.
 Noise in the observations is explained by a Gaussian-distributed noise term, $\delta \sim \mathcal{N}(0, 0.5)$:
 \begin{align}
- p(y(a \succ b) | f(\bs x_a), f(\bs x_b), \delta_{a}, \delta_{b} )  
+ p(y(a, b) | f(\bs x_a) + \delta_{a}, f(\bs x_b) + \delta_{b} )  
  \hspace{0.9cm} & = \begin{cases}
  1 & \text{if }f(\bs x_a) + \delta_{a} \geq f(b) + \delta_{b} \\
  0 & \text{otherwise,}
@@ -83,9 +86,9 @@ Noise in the observations is explained by a Gaussian-distributed noise term, $\d
 \end{align}
 Integrating out the unknown values of $\delta_a$ and $\delta_b$ gives:
 \begin{align}
-p( y(a \succ b) | f(\bs x_a), f(\bs x_b),  ) 
-= \Phi\left( z \right) = & \int\int p( y(a \succ b) | f(\bs x_a), f(\bs x_b), , \delta_{a}, \delta_{b} ) \nonumber\\
-& \mathcal{N}(\delta_{a}; 0, 0.5)\mathcal{N}(\delta_{b}; 0, 0.5) d\delta_{a} d\delta_{b}, 
+& p( y(a, b) | f(\bs x_a), f(\bs x_b),  )  \nonumber\\
+& = \int\!\!\!\! \int p( y(a, b) | f(\bs x_a) + \delta_{a}, f(\bs x_b) + \delta_{b} ) \mathcal{N}(\delta_{a}; 0, 0.5)\mathcal{N}(\delta_{b}; 0, 0.5) d\delta_{a} d\delta_{b} \nonumber\\
+& = \Phi\left(f(\bs x_a) - f(\bs x_b)\right) = \Phi\left( z \right), 
 \label{eq:plphi}
 \end{align}
 where $z = f(\bs x_a) - f(\bs x_b)$,
@@ -124,6 +127,9 @@ which produce higher covariance between items with similar feature values.
 These kernel functions make minimal assumptions and are effective in a wide range of tasks. 
 % Covariance of different items with same feature: worth mentioning here? We need to multiply the kernel by a small
 % amount < 1 to ensure covariance is not 1 and the values can differ.
+We use the kernel function $k_{\theta}$ to compute the covariance matrix $K_{\theta}$,
+between a set of $N$ observed items with features $\{ \bs x_1, ..., \bs x_N \}$.
+
 Given a set of $P$ pairwise labels, %for a single user, 
 $\bs y=\{y_1,...,y_P\}$,
 where %the $p$th label, 
@@ -155,15 +161,17 @@ When there are multiple users, jointly modeling their different preferences may 
 improve our predictions for each user when faced with sparse data.
 % is there a better word than 'label sources' for the different sources of implicit feedback or other types of labeling?
 %In a scenario with multiple users or label sources, 
-We represent utilities in a matrix, $\bs{F}$,
+We represent utilities in a matrix, $\bs{F} \in \mathbb{R}^{N \times U}$,
 where $N$ rows correspond to items and $U$ columns correspond to users. %, and entries are preference values.
 If we factorize this matrix, we obtain two low-dimensional matrices,
-one for users, $\bs{W} \in \mathcal{R}^{C \times U}$, 
-and one for the items, $\bs{V} \in \mathcal{R}^{N \times C}$,
+one for users, $\bs{W} \in \mathbb{R}^{C \times U}$, 
+and one for the items, $\bs{V} \in \mathbb{R}^{C \times N}$,
 where $C$ is the number of latent components:
 %$U$ is the number of users, and $N$ is the number of items
 $\bs{F} = \bs{V}^T \bs{W}$.
-The rows $V_a$ and $W_j$ are latent vector representations of items and users, respectively.
+The column $\bs v_{.,a}$ of $\bs V$, and the column $\bs w_{.,j}$ of $\bs W$,
+ are latent vector representations of item $a$ and a user $j$,
+ respectively.
 %Users with similar values for a certain feature will have similar preferences for 
 %the subset of items with corresponding feature values. 
 Latent components correspond to utility functions for certain items shared by multiple users.
@@ -187,7 +195,7 @@ with values $\bs t = \{t(\bs {x}_1),...,t(\bs {x}_N)\}$ for the training items.
 Therefore, the latent preference function, $f$, is 
 a weighted sum over latent functions:
 \begin{flalign}
-  f(\bs x_a, \bs u_j) = \sum_{c=1}^C w_c(\bs u_j) v_c(\bs x_a) + t(\bs x_a),
+  f(\bs x_a, \bs u_j) = \sum_{c=1}^C  v_c(\bs x_a) w_c(\bs u_j) + t(\bs x_a),
 \end{flalign}
 where $\bs u_j$ are the features of user $j$ and $\bs x_a$ are the features of item $a$.
 %We provide a Bayesian treatment to matrix factorization by placing Gaussian process priors over the latent functions.

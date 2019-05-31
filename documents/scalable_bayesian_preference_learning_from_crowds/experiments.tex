@@ -70,6 +70,7 @@ and use Mat\'ern 3/2 kernels with length-scales chosen by a median heuristic:
 \begin{flalign}
  l_{d,MH} = D \mathrm{median}( \{ |x_{i,d} - x_{j,d}| \forall i=1,..,N, \forall j=1,...,N\} ).
 \end{flalign}
+\todo{is D actually defined?}
 %The motivation is that the median will normalize the feature, so that features
 %are equally weighted regardless of their scaling. By using a median to perform this 
 %normalization, 
@@ -450,6 +451,8 @@ Method & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time & Acc &
 %new results 02.04: 
 & .81 & .39 & .66 & 21
 & \textbf{.79} & \textbf{.57} & .50 & 393 \\
+% april rerun:
+% .72 & .60 & .45 & 4706 % --> too many iterations? or do i need to divide by 25?
 %old results: & .69 & 2.23 & .45 & 9163 \\
 %full, opt. & & & & & .80 & .48 & .68 & 3718 
 %& - & - & - & - \\%(2193.72) \\
@@ -462,15 +465,16 @@ $\backslash $induc & .70 & \textbf{.57} & .46 & 51 %(14.81) %& .63 (.02) & .68 (
 %$\backslash t$ & .67 & .80 & .39 & 7.45 (29.00) %& .61 (.02) & .69 (.00) & .19 (.03)
 %& .79 & .57 & .65 & 158.51 (25.06)
 %\\
-$\backslash u$ & .70 & .58 & .46 & 9 %(24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
+$\backslash u$ & .70 & .58 & .46 & 9  &%(24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
 % new results 02.04:
+
 \textbf{.85} & \textbf{.31} & \textbf{.81} & 21
 %old results from submission & .84 & \textbf{.33} & \textbf{.80} & 95 %(4.93)
 & .78 &\textbf{.57} & .49 & 303 \\
 %old results & \textbf{.76} & \textbf{.47} & \textbf{.60} & 21052\\
 %$\backslash u$, opt. & & & & & \textbf{.85} & \textbf{.33} &  \textbf{.80} & 5016 %(1978.82) \\
 %& - & - & - & - \\
-$\backslash u \backslash x$ & \textbf{.71} & \textbf{.57} & \textbf{.49} & 5 %(3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
+$\backslash u \backslash x$ & \textbf{.71} & \textbf{.57} & \textbf{.49} & 5 & %(3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
 %old results from submission: & \textbf{.85} & \textbf{.33} & \textbf{.80} & 89 %(12.12)
 %new results 02.04: 
 \textbf{.85} & .33 & .80 & 14

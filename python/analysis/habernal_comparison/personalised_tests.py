@@ -38,9 +38,11 @@ class PersonalisedTestRunner(TestRunner):
         # initialise variational parameters
         Es = np.zeros(nitems)
         Eeta = np.ones(nworkers) * 0.9
-        sigma = 10.0 * np.ones(nitems)
+        sigma = 0.1 * np.ones(nitems)
         alpha = np.ones(nworkers) * 9
         beta = np.ones(nworkers)
+
+        balance = 0.000001 # tiny amount to ensure numerical stability
 
         for pair_idx in range(len(self.a1_train)):
 
@@ -48,7 +50,7 @@ class PersonalisedTestRunner(TestRunner):
             a1 = self.a1_train[pair_idx]
             a2 = self.a2_train[pair_idx]
 
-            if self.prefs_train[pair_idx] == 2:  # swap so a1 is the preferred one
+            if self.prefs_train[pair_idx] != 2:  # swap so a1 is the preferred one
                 tmp = a1
                 a1 = a2
                 a2 = tmp
@@ -56,39 +58,39 @@ class PersonalisedTestRunner(TestRunner):
             k = self.person_train[pair_idx]
 
             # update the means
-            prob_incr = (alpha[k] * np.exp(Es[a1]) / (alpha[k] * np.exp(Es[a1]) \
-                                                      + beta[k] * np.exp(Es[a2])) - np.exp(Es[a1]) / (
-                                     np.exp(Es[a1]) + np.exp(Es[a2])))
+            prob_incr = alpha[k] * np.exp(Es[a1]) / (alpha[k] * np.exp(Es[a1]) + beta[k] * np.exp(Es[a2]) + balance) \
+                         - np.exp(Es[a1]) / (np.exp(Es[a1]) + np.exp(Es[a2]) + balance)
             Es[a1] = Es[a1] + sigma[a1] ** 2 * prob_incr
             Es[a2] = Es[a2] - sigma[a2] ** 2 * prob_incr
 
-            var_diff = alpha[k] * np.exp(Es[a1]) * beta[k] * np.exp(Es[a2]) / (alpha[k] * np.exp(Es[a1]) +
-                                                                               beta[k] * np.exp(Es[a2])) - np.exp(
-                Es[a1]) * np.exp(Es[a2]) / (np.exp(Es[a1]) + np.exp(Es[a2]))
+            var_diff = alpha[k]  *np.exp(Es[a1]) * beta[k] * np.exp(Es[a2]) / \
+                       (alpha[k] * np.exp(Es[a1]) + beta[k] * np.exp(Es[a2]) + balance) \
+                       - np.exp(Es[a1]) * np.exp(Es[a2]) / (np.exp(Es[a1]) + np.exp(Es[a2]) + balance)
             sigma[a1] = np.sqrt(sigma[a1] ** 2 * np.max([1 + sigma[a1] ** 2 * (var_diff), 10e-4]))
             sigma[a2] = np.sqrt(sigma[a2] ** 2 * np.max([1 + sigma[a2] ** 2 * (var_diff), 10e-4]))
 
-            C1 = np.exp(Es[a1]) / (np.exp(Es[a1] + np.exp(Es[a2]))) + 0.5 * (sigma[a1] ** 2 + sigma[a2] ** 2) \
-                 * np.exp(Es[a1]) * np.exp(Es[a2]) * (np.exp(Es[a2]) - np.exp(Es[a1])) / (
-                             np.exp(Es[a1]) + np.exp(Es[a2])) ** 3
+            C1 = np.exp(Es[a1]) / (np.exp(Es[a1] + np.exp(Es[a2])) + balance) \
+                 + 0.5 * (sigma[a1] ** 2 + sigma[a2] ** 2) \
+                 * np.exp(Es[a1]) * np.exp(Es[a2]) * (np.exp(Es[a2]) - np.exp(Es[a1])) \
+                 / (np.exp(Es[a1]) + np.exp(Es[a2]) + balance) ** 3
+
             C2 = 1 - C1
 
-            C = (C1 * alpha[k] + C2 * beta[k]) / (alpha[k] + beta[k])  # normalisation constant for p( 1 > 2 | worker k)
+            C = (C1 * alpha[k] + C2 * beta[k]) / (alpha[k] + beta[k] + balance)  # normalisation constant for p( 1 > 2 | worker k)
 
             Eeta[k] = (C1 * (alpha[k] + 1) * alpha[k] + C2 * alpha[k] * beta[k]) / (
-                        C * (alpha[k] + beta[k] + 1) * (alpha[k] + beta[k]))
+                        C * (alpha[k] + beta[k] + 1) * (alpha[k] + beta[k]) + balance)
             Eeta_sq_k = (C1 * (alpha[k] + 2) * (alpha[k] + 1) * alpha[k] + C2 * (alpha[k] + 1) * alpha[k] * beta[k]) / \
-                        (C * (alpha[k] + beta[k] + 2) * (alpha[k] + beta[k] + 1) * (alpha[k] + beta[k]))
+                        (C * (alpha[k] + beta[k] + 2) * (alpha[k] + beta[k] + 1) * (alpha[k] + beta[k]) + balance)
 
-            alpha[k] = (Eeta[k] - Eeta_sq_k) * Eeta[k] / (Eeta_sq_k - Eeta[k] ** 2)
-            beta[k] = (Eeta[k] - Eeta_sq_k) * (1 - Eeta[k]) / (Eeta_sq_k - Eeta[k] ** 2)
+            alpha[k] = (Eeta[k] - Eeta_sq_k) * Eeta[k] / (Eeta_sq_k - Eeta[k] ** 2 + balance)
+            beta[k] = (Eeta[k] - Eeta_sq_k) * (1 - Eeta[k]) / (Eeta_sq_k - Eeta[k] ** 2 + balance)
 
-            # if np.mod(pair_idx, 100) == 0:
-            print('Learning crowdBT, iteration %i' % pair_idx)
+            if np.mod(pair_idx, 100) == 0:
+                print('Learning crowdBT, iteration %i' % pair_idx)
 
         print('Completed online learning of crowd BT')
 
-        balance = 0.000001
         proba = np.exp(Es[self.a1_test]) / (np.exp(Es[self.a1_test]) + np.exp(Es[self.a2_test]) + balance)
 
         self.crowdBT_sigma = sigma
@@ -381,7 +383,7 @@ if __name__ == '__main__':
 
     elif test_to_run == 8:
         methods = [
-               'crowdBT',
+               #'crowdBT', # no point running this because it cannot predict on the test instances, for aggregation only
                'cBT_GP',
             ]
         runner.datasets = ['UKPConvArgCrowdSample']
@@ -390,7 +392,7 @@ if __name__ == '__main__':
 
     elif test_to_run == 9:
         methods = [
-               'crowdBT',
+               #'crowdBT', # no point running this because it cannot predict on the test instances, for aggregation only
                'cBT_GP',
         ]
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
