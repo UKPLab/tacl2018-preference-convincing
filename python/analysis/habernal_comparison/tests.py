@@ -30,7 +30,8 @@ Created on 20 Mar 2017
 '''
 
 import logging
-from scipy.stats.stats import pearsonr
+from scipy.stats.stats import pearsonr, kendalltau
+from sklearn.metrics import log_loss
 from sklearn.svm.classes import NuSVR, SVC
 logging.basicConfig(level=logging.DEBUG)
 
@@ -69,7 +70,7 @@ verbose = True
 # Lengthscale initialisation -------------------------------------------------------------------------------------------
 # use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.
 # First, grab a sample of points because N^2 could be too large.    
-def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, ling_feat_spmatrix, docids, folds, 
+def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, ling_feat_spmatrix, docids, folds,
                                   index_to_word_map, multiply_heuristic_power=1.0):
     # get the embedding values for the test data -- need to find embeddings of the whole piece of text
     if feature_type == 'both' or feature_type == 'embeddings' or feature_type == 'debug':
@@ -1084,6 +1085,13 @@ class TestRunner:
 
                 if proba.size == prefs_test.size:
                     logging.info("AUC = %f" % roc_auc_score(prefs_test[prefs_test!=1] / 2.0, proba[prefs_test!=1]) )
+
+                CEE = log_loss(prefs_test[prefs_test != 1] == 2, proba[prefs_test != 1])
+                print('CEE = %f' % CEE)
+
+                tau, _ = kendalltau(scores_rank_test, predicted_f)
+                print('tau = %f' % tau)
+
                 # Save the data for later analysis ----------------------------------------------------------------------------
                 if hasattr(self.model, 'ls'):
                     final_ls[foldidx] = self.model.ls
