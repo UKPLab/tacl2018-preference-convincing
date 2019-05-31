@@ -393,7 +393,7 @@ if __name__ == '__main__':
         runner.methods = methods
         runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
-    elif test_to_run == 9:
+    #elif test_to_run == 9: # commented so we run both tests with cBT
         methods = [
                #'crowdBT', # no point running this because it cannot predict on the test instances, for aggregation only
                'cBT_GP',
