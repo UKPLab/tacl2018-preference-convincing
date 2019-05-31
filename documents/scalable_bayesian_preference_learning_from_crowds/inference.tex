@@ -59,8 +59,9 @@ the expected preference likelihood (Equation \ref{eq:plphi}) with a Gaussian:
 p(\bs y | \bs f) = \mathbb{E}\left[\prod_{p=1}^P \Phi(z_p)\right] = \prod_{p=1}^P \Phi(\hat{z}_p) \approx \mathcal{N}(\bs y; \Phi(\hat{\bs z}), \bs Q),
 \label{eq:likelihood_approx}
 \end{flalign}
-where $\hat{\bs z}=\{\hat{z}_1, ..., \hat{z}_P\}$
-and $\bs Q$ is a diagonal noise covariance matrix.
+where $\bs Q$ is a diagonal noise covariance matrix
+and $\hat{\bs z}=\{\hat{z}_1, ..., \hat{z}_P\}$, and $\hat{z}_p$ is defined by 
+Equation \ref{eq:predict_z}.
 Since $\Phi(\hat{z}_p)$ defines a bernoulli distribution, for which the conjugate prior is a beta distribution,
 we moment match the diagonal entries of $\bs Q$ to the expected variance of a bernoulli distribution as follows:
 \begin{flalign}
@@ -131,10 +132,16 @@ and covariance between the observed and inducing items, $\bs K_{nm}$.
 % and thereby reduce the number of data points we have to perform costly operations % over.
 %We modify the variational approximation in Equation \ref{eq:vb_approx} to introduce the inducing points 
 For clarity, we omit $\theta$ from this point on.
-The posterior over the inducing and training items is approximated as:
+We assume an approximation to the posterior over the inducing and training items
+that factorises between different sets of latent variables:
 \begin{flalign}
-p(\bs f, \bs f_m, s | \bs y, \bs x, \bs x_m, k_{\theta}, \alpha_0, \beta_0) &\approx q(\bs f, \bs f_m, s) = q(s)q(\bs f)q(\bs f_m). \label{eq:svi_approx} &&
+p(\bs f, \bs f_m, s | \bs y, \bs x, \bs x_m, k_{\theta}, \alpha_0, \beta_0) &\approx q(\bs f, \bs f_m, s) = q(s)q(\bs f)q(\bs f_m), \label{eq:svi_approx} &&
 \end{flalign}
+where are $q(.)$ are \emph{variational factors}, which we define below. 
+Each factor for a subset of latent variables, $\bs z$, takes the form $\ln q(\bs z) = \mathbb{E}_{\not \bs z}[\ln p(\bs z, \bs x, \bs y)]$, that is, the expectation with respect
+to all other latent variables, $\not \bs z$, of the log joint distribution
+of the observations and the current subset of latent variables, $\bs z$.
+
 We marginalize $\bs f$ to obtain the factor for $\bs f_m$:
 \begin{flalign}
 \log q(\bs f_m) &= \log \mathcal{N}\left(\bs y; \tilde{\Phi}(\bs z), \bs Q\right)]
@@ -303,7 +310,7 @@ the SVI procedure optimizes the lower bound on the marginal likelihood
 \left[ 
 \log p(\bs y | \bs F) +
 \sum_{c=1}^C \big\{ \log p(\bs v_{m,c}, s_c | \bs K_{mm}, \alpha_0, \beta_0) - \log q(\bs v_{m,c}) \right. & \\
-& \left. + \log p(\bs w_{m,c} | \bs K_{w,mm} )
+& \left. + \log p(\bs w_{m,c} | \bs L_{,mm} )
   - \log q(\bs w_{m,c} ) \big\}
 + \log p(\bs t_m, \sigma | \bs K_{mm}, \alpha_0, \beta_0)
 - \log q(\bs t_m)\nonumber
@@ -351,7 +358,7 @@ Finally, %require a different linearization matrix, $\bs J \in P \times U$, cont
 the variational distribution for the inducing users factors is:% then as follows:
 \begin{flalign}
 \log q(\bs W_m) = \;\;& \mathbb{E}\left[\log \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right)\right] 
-+ \sum_{c=1}^C \mathbb{E}[\log\mathcal{N}(\bs w_c; \bs 0, \bs K_{w,mm})]
++ \sum_{c=1}^C \mathbb{E}[\log\mathcal{N}(\bs w_c; \bs 0, \bs L_{,mm})]
 + \textrm{const} & \nonumber \\
 = \;\;& \sum_{c=1}^C \log \mathcal{N}\left( \bs w_c; \hat{\bs w}_c, \bs \Sigma_c \right), & 
 \end{flalign}
@@ -374,7 +381,7 @@ substituting in the corresponding terms for each $\bs v_c$ or $\bs t$ instead of
 % \frac{\bs K_{v}}{\mathbb{E}[s_c]} + \bs A_v (\bs S_{m,c} - \frac{\bs K_{v,mm}}{\mathbb{E}[s_c]})\bs A_v \right) & \label{eq:qv} \\
 % \log q(\bs t) & = \log \mathcal{N}\left( \bs t; \bs A_t \hat{\bs t}_m, 
 % \frac{\bs K_{t}}{\mathbb{E}[\sigma]} + \bs A_t (\bs S_t - \frac{\bs K_{t,mm}}{\mathbb{E}[\sigma]})\bs A_t \right)  & \label{eq:qt}\\
-% \log q(\bs W) & = \sum_{c=1}^C \log \mathcal{N}\left( \bs w_c; \bs A_w \hat{\bs w}_{m,c}, \bs K_{w} + \bs A_w (\bs\Sigma - \bs K_{w,mm}) \bs A_w \right). &
+% \log q(\bs W) & = \sum_{c=1}^C \log \mathcal{N}\left( \bs w_c; \bs A_w \hat{\bs w}_{m,c}, \bs L_{} + \bs A_w (\bs\Sigma - \bs L_{,mm}) \bs A_w \right). &
 % \label{eq:qw}
 % \end{flalign}
 

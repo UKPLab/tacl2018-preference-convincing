@@ -229,10 +229,12 @@ p\left( \bs{y}, \bs V, \bs W, \bs t, s_1, ..., s_C, \sigma_t | k_{\theta}, k_{\e
  && \nonumber \\ 
 \mathcal{G}({\sigma_t}; \alpha_0, \beta_0)\prod_{c=1}^C \left\{
 \mathcal{N}(\bs v_c; \bs 0, \bs K_{\theta} /s_c) 
-\mathcal{N}(\bs w_c; \bs 0, \bs K_{w,\eta}) \mathcal{G}(s_c; \alpha_0, \beta_0) \right\}, 
+\mathcal{N}(\bs w_c; \bs 0, \bs L_{\eta}) \mathcal{G}(s_c; \alpha_0, \beta_0) \right\}, 
 \label{eq:joint_crowd}
 \end{flalign}
 where 
 $z_p = \bs v_{.,a_p}^T \bs{w}_{.,u_p} + t_{a_p} - \bs v_{.,b_p}^T \bs{w}_{.,u_p} - t_{b_p}$,
  $\sigma_t$ is the inverse scale of $t$,
-and index $p$ refers to a tuple, $\{u_p, a_p, b_p \}$, which identifies the user and a pair of items.
+index $p$ refers to a tuple, $\{u_p, a_p, b_p \}$, which identifies the user and a pair of items,
+and $L_{\eta}$ is the prior covariance between user feature vectors computed
+using the kernel function $k_{\eta}$.

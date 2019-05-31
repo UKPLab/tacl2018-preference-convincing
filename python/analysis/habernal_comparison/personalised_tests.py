@@ -161,7 +161,7 @@ class PersonalisedTestRunner(TestRunner):
             validx = self.method.find('_SS') + 3
             SS = int(self.method[validx:])
         else:
-            SS = 400
+            SS = 200
 
         self.model = CollabPrefLearningSVI(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose,
                                            nfactors=F, rate_ls=1.0 / np.mean(self.ls_initial),
@@ -169,8 +169,7 @@ class PersonalisedTestRunner(TestRunner):
                                            shape_s0=shape_s0, rate_s0=rate_s0,
                                            shape_sy0=1e6, rate_sy0=1e6,
                                            ninducing=M, forgetting_rate=0.9,#0.7,
-                                           delay=10.0,
-                                           exhaustive_train_count=2)#1.0)
+                                           delay=10.0)#1.0)
 
         self.model.max_iter = 200 # same as for single user GPPL
         self.model.max_Kw_size = max_Kw_size
@@ -292,7 +291,7 @@ if __name__ == '__main__':
     elif test_to_run == 1:
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
         runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
-        runner.run_test_set(min_no_folds=0, max_no_folds=1)#32)
+        runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
         # runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
         # runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weakersprior']
