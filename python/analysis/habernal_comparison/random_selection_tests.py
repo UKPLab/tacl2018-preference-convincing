@@ -69,7 +69,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
         if 'crowdBT' in self.method:
             method_runner_fun = self.run_crowd_bt
         elif 'cBT_GP' in self.method:
-            method_runner_fun = self.run_crowd_bt_gppl
+            method_runner_fun = self.run_crowd_bt_gpr
         else:
             method_runner_fun = super(RandomSelectionTestRunner, self)._choose_method_fun(feature_type)
 
@@ -120,8 +120,11 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
         feature_type = 'both'  # can be 'embeddings' or 'ling' or 'both' or 'debug'
         embeddings_type = 'word_mean'
-        self._set_embeddings(embeddings_type) 
-        self._init_ls(feature_type, embeddings_type)
+        self._set_embeddings(embeddings_type)
+
+        if 'GP' in method:
+            self._init_ls(feature_type, embeddings_type)
+
         results_stem, pair_pred_file, pair_prob_file, pair_gold_file, ratings_file, results_file = self._set_resultsfile(dataset, method)
 
         np.random.seed(121) # allows us to get the same initialisation for all methods/feature types/embeddings

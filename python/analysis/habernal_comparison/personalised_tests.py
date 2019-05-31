@@ -101,7 +101,7 @@ class PersonalisedTestRunner(TestRunner):
         return proba, scores, None
 
 
-    def run_crowd_bt_gppl(self):
+    def run_crowd_bt_gpr(self):
 
         # we first train crowd_bt as above. Then, we use the scores for items that were compared in training
         # to train a GP regression model. The GP then predicts the scores of all items. This means we can generalise
@@ -109,7 +109,7 @@ class PersonalisedTestRunner(TestRunner):
         # had sparse noisy data.
 
         self.run_crowd_bt()
-        gpr = GaussianProcessRegressor(kernel=Matern(), alpha=self.crowdBT_sigma ** 2)
+        gpr = GaussianProcessRegressor(kernel=Matern(self.ls_initial), alpha=self.crowdBT_sigma ** 2)
         gpr.fit(self.items_feat, self.crowdBT_s)
 
         predicted_f = gpr.predict(self.items_feat)
@@ -169,7 +169,7 @@ class PersonalisedTestRunner(TestRunner):
                                            shape_s0=shape_s0, rate_s0=rate_s0,
                                            shape_sy0=1e6, rate_sy0=1e6,
                                            ninducing=M, forgetting_rate=0.9,#0.7,
-                                           delay=5.0)#1.0)
+                                           delay=10.0)#1.0)
 
         self.model.max_iter = 200 # same as for single user GPPL
         self.model.max_Kw_size = max_Kw_size
@@ -186,6 +186,7 @@ class PersonalisedTestRunner(TestRunner):
         self.model.fit(self.person_train, self.a1_train, self.a2_train, self.items_feat, zero_centered_prefs,
                        optimize=self.optimize_hyper, nrestarts=1, input_type='zero-centered')
 
+
     def run_persgppl(self):
         '''
         Make personalised predictions
@@ -199,6 +200,8 @@ class PersonalisedTestRunner(TestRunner):
                                         (self.model.rate_sw / self.model.shape_sw))[::-1])
 
         proba = self.model.predict(self.person_test, self.a1_test, self.a2_test)
+
+        print('Max probability = %f, min = %f' % (np.max(proba), np.min(proba)))
 
         # what did we change?
         # - more iterations ( 200 --> 500 )
@@ -255,7 +258,7 @@ class PersonalisedTestRunner(TestRunner):
         elif 'crowdBT' in self.method:
             method_runner_fun = self.run_crowd_bt
         elif 'cBT_GP' in self.method:
-            method_runner_fun = self.run_crowd_bt_gppl
+            method_runner_fun = self.run_crowd_bt_gpr
         else:
             method_runner_fun = super(PersonalisedTestRunner, self)._choose_method_fun(feature_type)
 
@@ -265,7 +268,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'cbt_1'
+    test_dir = 'update_1'
 
     dataset_increment = 0
     # UKPConvArgCrowdSample tests prediction of personal data.
