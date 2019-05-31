@@ -236,104 +236,109 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
         print('Testing with %i items' % len(rating_a))
 
-        kfolder = KFold(n_splits=no_folds)
+        foldidx = 0
+        for rep in range(nreps): # we can repeat the whole process multiple times if we are using few folds
 
-        # we switch the training and test sets because we actually want to train on a small subset
-        for foldidx, (tr_pair_idxs, test_pair_idxs) in enumerate(kfolder.split(pair_gold)):
+            kfolder = KFold(n_splits=no_folds)
 
-            if foldidx >= max_no_folds:
-                break
+            # we switch the training and test sets because we actually want to train on a small subset
+            for tr_pair_idxs, test_pair_idxs in kfolder.split(pair_gold):
 
-            self.model = None # initial value
+                if foldidx >= max_no_folds:
+                    break
 
-            if len(pair_pred) > foldidx:
-                print("Skipping fold %i" % (foldidx))
-                continue
+                self.model = None # initial value
 
-            # Get data for this fold --------------------------------------------------------------------------------------
-            print(("Fold %i", foldidx))
+                if len(pair_pred) > foldidx:
+                    print("Skipping fold %i" % (foldidx))
+                    continue
 
-            # split the pairwise data
-            self.a1_train = a1[tr_pair_idxs]
-            self.a2_train = a2[tr_pair_idxs]
-            self.prefs_train = pair_gold[tr_pair_idxs]
-            self.person_train = pair_person[tr_pair_idxs]
+                # Get data for this fold --------------------------------------------------------------------------------------
+                print(("Fold %i", foldidx))
 
-            self.a1_test = a1[test_pair_idxs]
-            self.a2_test = a2[test_pair_idxs]
-            prefs_test = pair_gold[test_pair_idxs] # gold for evaluation
-            self.person_test = pair_person[test_pair_idxs]
+                # split the pairwise data
+                self.a1_train = a1[tr_pair_idxs]
+                self.a2_train = a2[tr_pair_idxs]
+                self.prefs_train = pair_gold[tr_pair_idxs]
+                self.person_train = pair_person[tr_pair_idxs]
 
-            self.a_rank_test = rating_a
-            self.person_rank_test = rating_person
+                self.a1_test = a1[test_pair_idxs]
+                self.a2_test = a2[test_pair_idxs]
+                prefs_test = pair_gold[test_pair_idxs] # gold for evaluation
+                self.person_test = pair_person[test_pair_idxs]
 
-            self.a1_unseen = None # don't try to predict on this
+                self.a_rank_test = rating_a
+                self.person_rank_test = rating_person
 
-            self.load_features(feature_type, embeddings_type, self.a1_train, self.a2_train, uids, utexts)
-            #items_feat = items_feat[:, :ndebug_features]     
-    
-            self.verbose = verbose
-            self.optimize_hyper = ('noOpt' not in method)
-                        
-            if len(self.default_ls) > 1:
-                self.ls_initial = self.default_ls[self.valid_feats]
-            else:
-                self.ls_initial = self.default_ls
+                self.a1_unseen = None # don't try to predict on this
 
-            if '_oneLS' in method:
-                self.ls_initial = np.median(self.ls_initial)
-                logging.info("Selecting a single LS for all features: %f" % self.ls_initial)
+                self.load_features(feature_type, embeddings_type, self.a1_train, self.a2_train, uids, utexts)
+                #items_feat = items_feat[:, :ndebug_features]
 
-            logging.info("Starting test with method %s..." % (method))
-            starttime = time.time()        
-            
-            logging.info('****** Fitting model with %i pairs in fold %i ******' % (len(self.prefs_train), foldidx))
+                self.verbose = verbose
+                self.optimize_hyper = ('noOpt' not in method)
+
+                if len(self.default_ls) > 1:
+                    self.ls_initial = self.default_ls[self.valid_feats]
+                else:
+                    self.ls_initial = self.default_ls
+
+                if '_oneLS' in method:
+                    self.ls_initial = np.median(self.ls_initial)
+                    logging.info("Selecting a single LS for all features: %f" % self.ls_initial)
+
+                logging.info("Starting test with method %s..." % (method))
+                starttime = time.time()
+
+                logging.info('****** Fitting model with %i pairs in fold %i ******' % (len(self.prefs_train), foldidx))
 
 
-            # run the method with the current data subset
-            method_runner_fun = self._choose_method_fun(feature_type)
-            proba, predicted_f, _ = method_runner_fun()
+                # run the method with the current data subset
+                method_runner_fun = self._choose_method_fun(feature_type)
+                proba, predicted_f, _ = method_runner_fun()
 
-            endtime = time.time()
+                endtime = time.time()
 
-            # make it the right shape
-            proba = np.array(proba)
-            if proba.ndim == 2 and proba.shape[1] > 1:
-                proba = proba[:, 1:2]
-            elif proba.ndim == 1:
-                proba = proba[:, None]
-            predictions = np.round(proba).astype(int)
+                # make it the right shape
+                proba = np.array(proba)
+                if proba.ndim == 2 and proba.shape[1] > 1:
+                    proba = proba[:, 1:2]
+                elif proba.ndim == 1:
+                    proba = proba[:, None]
+                predictions = np.round(proba).astype(int)
 
-            if predicted_f is not None:
-                predicted_f = np.array(predicted_f)
-                if predicted_f.ndim == 3:
-                    predicted_f = predicted_f[0]
-                if predicted_f.ndim == 1:
-                    predicted_f = predicted_f[:, None]
+                if predicted_f is not None:
+                    predicted_f = np.array(predicted_f)
+                    if predicted_f.ndim == 3:
+                        predicted_f = predicted_f[0]
+                    if predicted_f.ndim == 1:
+                        predicted_f = predicted_f[:, None]
 
-            logging.info("@@@ Completed fold %i with method %s in %f seconds." % (foldidx, method, endtime-starttime))
+                logging.info("@@@ Completed fold %i with method %s in %f seconds." % (foldidx, method, endtime-starttime))
 
-            #compute all metrics here
-            acc = accuracy_score(prefs_test == 2, predictions)
-            CEE = log_loss(prefs_test == 2, proba)
-            tau, _ = kendalltau(rating_gold, predicted_f)
-            runtime = endtime-starttime
+                #compute all metrics here
+                acc = accuracy_score(prefs_test == 2, predictions)
+                CEE = log_loss(prefs_test == 2, proba)
+                tau, _ = kendalltau(rating_gold, predicted_f)
+                runtime = endtime-starttime
 
-            print('Results: acc = %f, CEE = %f, tau = %f, runtime = %f' % (acc, CEE, tau, runtime))
+                print('Results: acc = %f, CEE = %f, tau = %f, runtime = %f' % (acc, CEE, tau, runtime))
 
-            metrics.append([acc, CEE, tau, runtime])
-            pd.DataFrame(metrics).to_csv(results_file)
+                metrics.append([acc, CEE, tau, runtime])
+                pd.DataFrame(metrics).to_csv(results_file)
 
-            # Save the data for later analysis ----------------------------------------------------------------------------
-            pair_pred.append(predictions.flatten().tolist())
-            pair_prob.append(proba.flatten().tolist())
-            rating_pred.append(predicted_f.flatten().tolist())
-            pair_gold_by_fold.append(prefs_test.flatten().tolist())
+                # Save the data for later analysis ----------------------------------------------------------------------------
+                pair_pred.append(predictions.flatten().tolist())
+                pair_prob.append(proba.flatten().tolist())
+                rating_pred.append(predicted_f.flatten().tolist())
+                pair_gold_by_fold.append(prefs_test.flatten().tolist())
 
-            pd.DataFrame(pair_pred).to_csv(pair_pred_file)
-            pd.DataFrame(pair_prob).to_csv(pair_prob_file)
-            pd.DataFrame(rating_pred).to_csv(ratings_file)
-            pd.DataFrame(pair_gold_by_fold).to_csv()
+                pd.DataFrame(pair_pred).to_csv(pair_pred_file)
+                pd.DataFrame(pair_prob).to_csv(pair_prob_file)
+                pd.DataFrame(rating_pred).to_csv(ratings_file)
+                pd.DataFrame(pair_gold_by_fold).to_csv()
+
+                foldidx += 1
 
 
         logging.info("**** Completed: method %s ****" % (method) )
@@ -347,13 +352,14 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'randsel4'
+    test_dir = 'randsel5'
 
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
 
-    nfolds = 32
-    max_no_folds = 1 # subset for debugging
+    nreps = 1
+    nfolds = 5#32
+    max_no_folds = nreps * nfolds # 1 # subset for debugging
     subset = 0
     verbose = False
 

@@ -38,7 +38,7 @@ class PersonalisedTestRunner(TestRunner):
         # initialise variational parameters
         Es = np.zeros(nitems)
         Eeta = np.ones(nworkers) * 0.9
-        sigma = 0.01 * np.ones(nitems)
+        sigma = 10.0 * np.ones(nitems)
         alpha = np.ones(nworkers) * 9
         beta = np.ones(nworkers)
 
