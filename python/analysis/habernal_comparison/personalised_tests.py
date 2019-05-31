@@ -201,8 +201,6 @@ class PersonalisedTestRunner(TestRunner):
 
         proba = self.model.predict(self.person_test, self.a1_test, self.a2_test)
 
-        print('Max probability = %f, min = %f' % (np.max(proba), np.min(proba)))
-
         # what did we change?
         # - more iterations ( 200 --> 500 )
         # - smaller rates ( 200 --> 20 ) because there are multiple factors whose scales all add up
@@ -245,6 +243,8 @@ class PersonalisedTestRunner(TestRunner):
         proba = self.model.predict_common(None, self.a1_test, self.a2_test)
         if self.a_rank_test is not None:
             predicted_f = self.model.predict_t()[self.a_rank_test]
+
+        print('Max probability = %f, min = %f' % (np.max(proba), np.min(proba)))
 
         return proba, predicted_f, None
 

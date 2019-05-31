@@ -183,8 +183,10 @@ in the case of book recommendation, interests in a particular genre of book.
 %model: (1) as additional dimensions of V or W (each feature cannot be a member of %both); (2) as input features on which V and W depend. The advantage of the latter is that 
 %In the single user model, we assumed a single latent utility function, $f$, of the observed item features. 
 For the multi-user case, we assume that there are $C$ latent functions of item features, $v_c\sim \mathcal{GP}(\bs 0, k_{\theta} /s_c)$, 
- and $C$ latent functions of user features, $w_c \sim \mathcal{GP}(\bs 0, k_{\theta})$,
- where $k$ is kernel function and $s_c$ is an inverse scale.
+ and $C$ latent functions of user features, $w_c \sim \mathcal{GP}(\bs 0, k_{\eta})$,
+ where $k$ is a kernel function, $s_c$ is an inverse scale for the item features,
+ $\theta$ are the kernel hyperparameters for the items and $\eta$ are the kernel 
+ hyperparameters for the users.
 %and thereby model the relationship between each observed feature and each of the latent features. 
 The matrices $V$ and $W$ are evaluations of these functions at the points corresponding to 
 the users and items observed during training.
@@ -221,13 +223,13 @@ to obtain a joint preference model for multiple users, \emph{crowdGPPL}:
 %Hence, $\bs t$ can model the underlying ground truth or consensus in crowdsourcing scenarios, or when using
 %multiple label sources to learn preferences for one individual.
 \begin{flalign}
-p\left( \bs{y}, \bs V, \bs W, \bs t, s_1, ..., s_C, \sigma_t | k_{\theta}, \alpha_0, \beta_0 \right) 
+p\left( \bs{y}, \bs V, \bs W, \bs t, s_1, ..., s_C, \sigma_t | k_{\theta}, k_{\eta}, \alpha_0, \beta_0 \right) 
 = \prod_{p=1}^P \Phi\left( z_p \right) 
-\mathcal{N}(\bs t; \bs 0, \bs K_{t,\theta} /\sigma_t)
+\mathcal{N}(\bs t; \bs 0, \bs K_{\theta} /\sigma_t)
  && \nonumber \\ 
 \mathcal{G}({\sigma_t}; \alpha_0, \beta_0)\prod_{c=1}^C \left\{
-\mathcal{N}(\bs v_c; \bs 0, \bs K_{v,\theta} /s_c) 
-\mathcal{N}(\bs w_c; \bs 0, \bs K_{w,\theta}) \mathcal{G}(s_c; \alpha_0, \beta_0) \right\}, 
+\mathcal{N}(\bs v_c; \bs 0, \bs K_{\theta} /s_c) 
+\mathcal{N}(\bs w_c; \bs 0, \bs K_{w,\eta}) \mathcal{G}(s_c; \alpha_0, \beta_0) \right\}, 
 \label{eq:joint_crowd}
 \end{flalign}
 where 
