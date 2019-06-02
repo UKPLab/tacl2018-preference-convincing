@@ -621,7 +621,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.tinvS = (1-rho_i) * self.prev_tinvS + rho_i * (self.invK_mm*self.shape_st/self.rate_st + w_i * self.Sigma_t)
 
             z0 = pref_likelihood(self.obs_f, v=self.pref_v[self.data_obs_idx_i], u=self.pref_u[self.data_obs_idx_i]) \
-                 - self.G.dot(self.t[self.w_idx_i, :] - self.w[self.w_idx_i].dot(self.y[:, self.y_idx_i]))# P x NU_i
+                 - self.G.dot(self.t[self.w_idx_i, :])# P x NU_i the latent factors cancel!
 
             invQ_f = (self.G.T / self.Q[None, self.data_obs_idx_i]).dot(self.z[self.data_obs_idx_i] - z0)
             x = covpair.dot(invQ_f)
@@ -695,10 +695,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.winvS[f] = (1-rho_i) * self.prev_winvS[f] + rho_i * (self.invK_mm*self.shape_sw[f]
                             / self.rate_sw[f] + w_i * Sigma_w_f)
 
-                notf = np.argwhere(np.arange(self.Nfactors) != f).flatten()
                 z0 = pref_likelihood(self.obs_f, v=self.pref_v[self.data_obs_idx_i], u=self.pref_u[self.data_obs_idx_i]) \
-                     - self.G.dot(self.w[self.w_idx_i, f:f+1] * self.y[f:f+1, self.y_idx_i].T) \
-                     + self.G.dot(self.w[self.w_idx_i, notf].dot(self.y[notf, self.y_idx_i]) + self.t[self.w_idx_i])# P x NU_i
+                     - self.G.dot(self.w[self.w_idx_i, f:f+1] * self.y[f:f+1, self.y_idx_i].T) # P x NU_i
 
                 invQ_f = (self.y[f:f+1, self.y_idx_i].T * self.G.T / self.Q[None, self.data_obs_idx_i]).dot(
                     self.z[self.data_obs_idx_i] - z0)
@@ -794,11 +792,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                     self.yinvS[f] = (1 - rho_i) * self.prev_yinvS[f] + rho_i * (self.shape_sy[f] / self.rate_sy[f]
                                                                                 + w_i * Sigma_y_f)
 
-                notf = np.argwhere(np.arange(self.Nfactors) != f).flatten()
-
                 z0 = pref_likelihood(self.obs_f, v=self.pref_v[self.data_obs_idx_i], u=self.pref_u[self.data_obs_idx_i]) \
-                     - self.G.dot(self.w[self.w_idx_i, f:f+1] * self.y[f:f+1, self.y_idx_i].T) \
-                     + self.G.dot(self.w[self.w_idx_i, notf].dot(self.y[notf, self.y_idx_i]) + self.t[self.w_idx_i])  # P x NU_i
+                     - self.G.dot(self.w[self.w_idx_i, f:f+1] * self.y[f:f+1, self.y_idx_i].T)  # P x NU_i
 
                 invQ_f = (self.w[self.w_idx_i, f:f+1] * self.G.T / self.Q[None, self.data_obs_idx_i]).dot(
                     self.z[self.data_obs_idx_i] - z0)
