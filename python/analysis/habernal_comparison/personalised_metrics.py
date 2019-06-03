@@ -13,6 +13,8 @@ if __name__ == '__main__':
     expt_settings['foldorderfile'] = None
 
     expt_root_dir = 'update_1' #'personalised_Qfix1'  #13_bigger_t'#10_from_cluster'
+    if len(sys.argv) > 2:
+        expt_root_dir = sys.argv[2]
 
     resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
     min_fold_no = 0
