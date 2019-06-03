@@ -167,7 +167,7 @@ class PersonalisedTestRunner(TestRunner):
                                            nfactors=F, rate_ls=1.0 / np.mean(self.ls_initial),
                                            use_common_mean_t=common_mean, max_update_size=SS, use_lb=True,
                                            shape_s0=shape_s0, rate_s0=rate_s0,
-                                           shape_sy0=1e6, rate_sy0=1e6,
+                                           shape_sy0=1e10, rate_sy0=1e10,
                                            ninducing=M, forgetting_rate=0.9,#0.7,
                                            delay=10.0)#1.0)
 
@@ -278,14 +278,14 @@ if __name__ == '__main__':
     feature_types = ['both']  # can be 'embeddings' or 'ling' or 'both' or 'debug'
     embeddings_types = ['word_mean']
 
-    runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
-                                    dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=5)
+    # runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
+    #                                 dataset_increment)
+    # runner.run_test_set(min_no_folds=0, max_no_folds=5)
 
     rate_s_vals = [10000]#[2*1e5, 2*1e6]#[20000] #2, 20, 200, 2000]
 
     for rate_s in rate_s_vals:
-        test_dir = 'rate_s_%i' % rate_s
+        test_dir = 'rate_s_%i_sy10' % rate_s
 
         methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
         runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
