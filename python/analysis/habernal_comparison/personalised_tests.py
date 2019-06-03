@@ -277,12 +277,12 @@ if __name__ == '__main__':
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
     feature_types = ['both']  # can be 'embeddings' or 'ling' or 'both' or 'debug'
     embeddings_types = ['word_mean']
-    
+
     runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
                                     dataset_increment)
     runner.run_test_set(min_no_folds=0, max_no_folds=5)
 
-    rate_s_vals = [2*1e5, 2*1e6]#[20000] #2, 20, 200, 2000]
+    rate_s_vals = [10000]#[2*1e5, 2*1e6]#[20000] #2, 20, 200, 2000]
 
     for rate_s in rate_s_vals:
         test_dir = 'rate_s_%i' % rate_s
