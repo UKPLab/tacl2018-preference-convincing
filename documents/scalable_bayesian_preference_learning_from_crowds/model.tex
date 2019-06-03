@@ -86,7 +86,7 @@ Noise in the observations is explained by a Gaussian-distributed noise term, $\d
 \end{align}
 Integrating out the unknown values of $\delta_a$ and $\delta_b$ gives:
 \begin{align}
-& p( y(a, b) | f(\bs x_a), f(\bs x_b),  )  \nonumber\\
+& p( y(a, b) | f(\bs x_a), f(\bs x_b) )  \nonumber\\
 & = \int\!\!\!\! \int p( y(a, b) | f(\bs x_a) + \delta_{a}, f(\bs x_b) + \delta_{b} ) \mathcal{N}(\delta_{a}; 0, 0.5)\mathcal{N}(\delta_{b}; 0, 0.5) d\delta_{a} d\delta_{b} \nonumber\\
 & = \Phi\left(f(\bs x_a) - f(\bs x_b)\right) = \Phi\left( z \right), 
 \label{eq:plphi}
@@ -97,15 +97,15 @@ This likelihood is the basis of Gaussian process preference learning (GPPL)~\cit
 Our formulation differs in that instead of learning the variance of $\delta$, we fix it 
 to $0.5$ and scale $f$ to vary the uncertainty in the pairwise labels,
 which conveniently leads to $z$ having a denominator of 1.
-If we have distributions over $f(\bs x_a)$ and $f(\bs x_b)$, they can be marginalized in a simple manner %as Gaussian noise
+If we have Gaussian distributions over $f(\bs x_a)$ and $f(\bs x_b)$, they can be marginalized in a simple manner %as Gaussian noise
 by modifying $z$:
 % we haven't mentioned that f is Gaussian yet. 
 \begin{align}
-\hat{z} = \frac{\mu_a - \mu_b}{\sqrt{1 + \sigma_a + \sigma_b - \sigma_{a,b}} } \label{eq:predict_z}
+\hat{z} = \frac{\hat{f}_a - \hat{f}_b}{\sqrt{1 + \sigma^2_a + \sigma^2_b - 2\sigma^2_{a,b}} } \label{eq:predict_z}
 \end{align}
-where $\mu_a$ and $\mu_b$ are the expected values of $f(\bs x_a)$ and $f(\bs x_b)$ respectively, 
-$\sigma_a$ and $\sigma_b$ are the corresponding variances,
-and $\sigma_{a,b}$ is the covariance between $f(\bs x_a)$ and $f(\bs x_b)$.
+where $\hat{f}_a$ and $\hat{f}_b$ are the expected values of $f(\bs x_a)$ and $f(\bs x_b)$ respectively, 
+$\sigma^2_a$ and $\sigma^2_b$ are the corresponding variances,
+and $\sigma^2_{a,b}$ is the covariance between $f(\bs x_a)$ and $f(\bs x_b)$.
 The next section introduces a model for the utility function, $f$.
 
 \subsection{Single User Preference Learning}
@@ -133,7 +133,7 @@ between a set of $N$ observed items with features $\{ \bs x_1, ..., \bs x_N \}$.
 Given a set of $P$ pairwise labels, %for a single user, 
 $\bs y=\{y_1,...,y_P\}$,
 where %the $p$th label, 
-$y_p=y(a_p \succ b_p)$, % refers to items $\{ a_p, b_p \}$.
+$y_p=y(a_p, b_p)$ is the preference label for items $a_p$ and $b_p$, % refers to items $\{ a_p, b_p \}$.
 we can write the joint distribution over all variables as follows:
 \begin{flalign}
 p\left( \bs{y}, \bs f, s | k_{\theta}, \alpha_0, \beta_0 \right) 
@@ -192,13 +192,16 @@ The matrices $V$ and $W$ are evaluations of these functions at the points corres
 the users and items observed during training.
 Since our goal is to infer a consensus from a crowd as well as to model individual users' preferences, 
 we introduce a consensus utility function over item features, 
-$t\sim \mathcal{GP}(\bs 0, k_{\theta} /\sigma_t)$, that is shared across all users,
+$t\sim \mathcal{GP}(\bs 0, k_{\theta} /s_t)$, that is shared across all users,
 with values $\bs t = \{t(\bs {x}_1),...,t(\bs {x}_N)\}$ for the training items.
 Therefore, the latent preference function, $f$, is 
 a weighted sum over latent functions:
 \begin{flalign}
   f(\bs x_a, \bs u_j) = \sum_{c=1}^C  v_c(\bs x_a) w_c(\bs u_j) + t(\bs x_a),
 \end{flalign}
+\todo{
+ The only new point is equation (5), but it is not clear why introducing t. I expected the authors should have more discussion on this.
+ }
 where $\bs u_j$ are the features of user $j$ and $\bs x_a$ are the features of item $a$.
 %We provide a Bayesian treatment to matrix factorization by placing Gaussian process priors over the latent functions.
 %differently for each user and item. For example, the observed user feature 'age' may correlate with some latent interests of users, but certain users will deviate from their peer group. 
@@ -216,6 +219,8 @@ for any dimensions that are not required to model the data.
 % joint distribution
 % notes about problems with inference.
 
+\todo{Page 7, equation (5): you might want to cite precedence to this form of equation
+e.g. K. Mo, E. Zhong, and Q. Yang. Cross-task crowdsourcing. In Proceedings of the 19th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, KDD '13, pages 677-685, New York, NY, USA, 2013. ACM. ISBN 978-1-4503-2174-7. doi: 10.1145/2487575.2487593. URL http://doi.acm.org/10.1145/2487575.2487593.}
 We combine the matrix factorization method with the preference likelihood of Equation \ref{eq:plphi}
 to obtain a joint preference model for multiple users, \emph{crowdGPPL}:
 %represent a consensus between users,
@@ -223,18 +228,18 @@ to obtain a joint preference model for multiple users, \emph{crowdGPPL}:
 %Hence, $\bs t$ can model the underlying ground truth or consensus in crowdsourcing scenarios, or when using
 %multiple label sources to learn preferences for one individual.
 \begin{flalign}
-p\left( \bs{y}, \bs V, \bs W, \bs t, s_1, ..., s_C, \sigma_t | k_{\theta}, k_{\eta}, \alpha_0, \beta_0 \right) 
+p\left( \bs{y}, \bs V, \bs W, \bs t, s_1, ..., s_C, s_t | k_{\theta}, k_{\eta}, \alpha_0, \beta_0 \right) 
 = \prod_{p=1}^P \Phi\left( z_p \right) 
-\mathcal{N}(\bs t; \bs 0, \bs K_{\theta} /\sigma_t)
+\mathcal{N}(\bs t; \bs 0, \bs K_{\theta} /s_t)
  && \nonumber \\ 
-\mathcal{G}({\sigma_t}; \alpha_0, \beta_0)\prod_{c=1}^C \left\{
+\mathcal{G}({s_t}; \alpha_0, \beta_0)\prod_{c=1}^C \left\{
 \mathcal{N}(\bs v_c; \bs 0, \bs K_{\theta} /s_c) 
 \mathcal{N}(\bs w_c; \bs 0, \bs L_{\eta}) \mathcal{G}(s_c; \alpha_0, \beta_0) \right\}, 
 \label{eq:joint_crowd}
 \end{flalign}
 where 
 $z_p = \bs v_{.,a_p}^T \bs{w}_{.,u_p} + t_{a_p} - \bs v_{.,b_p}^T \bs{w}_{.,u_p} - t_{b_p}$,
- $\sigma_t$ is the inverse scale of $t$,
+ $s_t$ is the inverse scale of $t$,
 index $p$ refers to a tuple, $\{u_p, a_p, b_p \}$, which identifies the user and a pair of items,
 and $L_{\eta}$ is the prior covariance between user feature vectors computed
 using the kernel function $k_{\eta}$.

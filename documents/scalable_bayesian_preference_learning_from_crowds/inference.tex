@@ -17,6 +17,7 @@ affecting $\bs F$, causing a \emph{non-identifiability problem}.
 EP would average these modes and produce uninformative predictions over $\bs F$, so
 \citet{houlsby2012collaborative} incorporate a VB step that approximates a single mode.
 A drawback of EP is that unlike VB, convergence is not guaranteed~\citep{minka2001expectation}.
+\todo{Page 8, line 12: VB is only guaranteed to converge for conjugate distributions.}
 %do they also linearise in the same way? -- both linearise. But EP uses a joint over y and f as its approximation to p(y|f), then optimises the parameters iteratively. It's not guaranteed to converge. Variational EGP instead approximates
 % p(y|f) directly with the best fit Gaussian. It's not clear whether this could be updated iteratively but it doesn't
 % seem to work if done simultaneously with the other variables we need to learn (the linearisation), 
@@ -24,6 +25,8 @@ A drawback of EP is that unlike VB, convergence is not guaranteed~\citep{minka20
 % Possibly because Q does not change incrementally. So it's
 % possible that an outer loop could be used.
 
+\todo{Page 8, second paragraph: you criticise GFITC for not being decentralisable.  It is
+not clear to me that crowdGPPL is decentralisable.  }
 %TODO: remove redundancy with the related work section. Consider whether this should actually be in a background section. NM^2 is limiting, not just the other costs. The other costs NP etc come into play in this pairwise model only.
 Exact inference for a Gaussian process has computational complexity $\mathcal{O}(N^3)$ 
 and memory complexity $\mathcal{O}(N^2)$, where $N$ is the number of data points.
@@ -53,6 +56,8 @@ First, we define an approximate likelihood that enables the SVI method.
 
 \subsection{Approximate Pairwise Likelihood}
 
+\todo{ got really confused by Section 4.1.  In equation (7), p(y|f) is a product of the cdfs.  Where does the expectation come from just after the first equal sign? The second equal sign in (7) should be an approximation.  In equation (7), Q is (approximately) the covariance of y conditioned on f and yet, in equation (8), Q is determined by the expectation over f.  Can you please check this section and provide some further explanation.}
+\todo{There are many approximations in Sec 4.1 in order to make a tractable inference. It is not clear after so many approximations, eq (7), eq (8), eq (9), eq (11)... , the resultant objective may be very far away from the original one. The properties from GP may not be effective. There is no study to check the gap.}
 To obtain a tracatable approximate posterior, we begin by approximating 
 the expected preference likelihood (Equation \ref{eq:plphi}) with a Gaussian:
 \begin{flalign}
@@ -118,7 +123,8 @@ We can now use the approximate likelihood to derive equations for SVI.% stochast
 \subsection{SVI for Single User GPPL}
 
 %TODO can we ommit the f from the posterior here?
-
+\todo{Page 9, Section 4.2: Please state up front that you are proposing a mean-field
+variational approximation in equation (11).  This will then justify why E[s] appears in equation (13). }
 We introduce a sparse approximation to the Gaussian process that allows
 us to limit the size of the covariance matrices we need to work with.
 % that needs to be inverted,
@@ -144,7 +150,7 @@ of the observations and the current subset of latent variables, $\bs z$.
 
 We marginalize $\bs f$ to obtain the factor for $\bs f_m$:
 \begin{flalign}
-\ln q(\bs f_m) &= \ln \mathcal{N}\left(\bs y; \tilde{\Phi}(\bs z), \bs Q\right)]
+\ln q(\bs f_m) &= \ln \mathcal{N}\left(\bs y; \tilde{\Phi}(\bs z), \bs Q\right)
 + \ln\mathcal{N}\left(\bs f_m; \bs 0, \bs K_{mm}/\mathbb{E}\left[s\right]\right)  + \textrm{const}, & \nonumber \\
  & = \ln \mathcal{N}(\bs f_m; \hat{\bs f}_m, \bs S ),
  \label{eq:fhat_m}
@@ -159,7 +165,7 @@ where $\bs A=\bs K_{nm} \bs K^{-1}_{mm}$.
 This means we no longer need to invert an $N \times N$ covariance matrix to compute $q(\bs f)$.
 The factor $q(s)$ is also modified to depend on the inducing points:
 \begin{flalign}
-& \ln q(s) = \ln\mathcal{N}(\mathbb{E}[\bs f_m| \bs 0, \bs K_{mm}/s] + \ln \mathcal{G}(s; \alpha_0, \beta_0) + \mathrm{const}
+& \ln q(s) = \mathbb{E}_{q(\bs f_m)}[\ln\mathcal{N}(\bs f_m| \bs 0, \bs K_{mm}/s)] + \ln \mathcal{G}(s; \alpha_0, \beta_0) + \mathrm{const}
 = \ln \mathcal{G}(s; \alpha, \beta), & \label{eq:qs}
 \end{flalign}
 where $\alpha= \alpha_0 + \frac{M}{2}$ and $\beta = \beta_0 + \frac{
@@ -232,18 +238,18 @@ and $\hat{\bs z}_i = \{ \mathbb{E}[\bs z_p] \forall p \in P_i \}$.
 The update equations optimize the natural parameters of the Gaussian distribution by following the
 natural gradient~\citep{hensman2015scalable}:
 \begin{flalign}
-\bs S^{-1}_i  & = (1 - \rho_i) \bs S^{-1}_{i-1} + \rho_i\left( \mathbb{E}[s]\bs K_{mm}^{-1} + w_i\bs A_i^T \bs G^T_{i} \bs Q^{-1}_i \bs G_{i} \bs A_{i} \right)& 
+\bs S^{-1}_i  & = (1 - \rho_i) \bs S^{-1}_{i-1} + \rho_i\left( \mathbb{E}[s]\bs K_{mm}^{-1} + \pi_i\bs A_i^T \bs G^T_{i} \bs Q^{-1}_i \bs G_{i} \bs A_{i} \right)& 
 \label{eq:S_stochastic} \\
 \hat{\bs f}_{m,i}  & = \bs S_i \left( (1 - \rho_i) \bs S^{-1}_{i-1} \hat{\bs f}_{m,i-1}  + 
 %\right. \nonumber \\
 %& \left.\hspace{1.5cm} 
-\rho_i w_i  
+\rho_i \pi_i  
 \bs A_{i}^{T} \bs G_{i}^T \bs Q_i^{-1} \left( \bs y_i  - \Phi(\mathbb{E}[\bs z_i]) + \bs G_{i} \bs A_i \hat{\bs f}_{m,i} \right) \right) & 
 \label{eq:fhat_stochastic}
 \end{flalign}
 where
 $\rho_i=(i + \epsilon)^{-r}$ is a mixing coefficient that controls the update rate,
-$w_i = \frac{P}{|P_i|}$ weights each update according to sample size,
+$\pi_i = \frac{P}{|P_i|}$ weights each update according to sample size,
  $\epsilon$ is a delay hyperparameter and $r$ is a forgetting rate~\citep{hoffman2013stochastic}.
 For the inverse scale, %, $s$, %can also be learned as part of the SVI procedure. Its variational factor,
 $q(s)$ is updated using Equation \ref{eq:qs}, then its expected value is computed as %has the following update equations:
@@ -298,13 +304,13 @@ Section \ref{sec:crowd_model}.
 To begin with, we extend the variational posterior in Equation \ref{eq:svi_approx}
 to approximate the crowd model defined in Equation \ref{eq:joint_crowd}:
 \begin{flalign}
-& p( \bs V, \bs V_m, \bs W, \bs W_m, \bs t, \bs t_m, s_1, ..., s_C, \sigma | \bs y, \bs x, \bs x_m, \bs u, \bs u_m, k, \alpha_0, \beta_0 ) & \\
+& p( \bs V, \bs V_m, \bs W, \bs W_m, \bs t, \bs t_m, s_1, ..., s_C, s_t | \bs y, \bs x, \bs x_m, \bs u, \bs u_m, k, \alpha_0, \beta_0 ) & \\
 & 
 \approx 
 q(\bs t) q(\bs t_m)
 \prod_{c=1}^{C} q(\bs v_{c})q(\bs w_c)q(\bs v_{c,m})q(\bs w_{c,m})
-q(s_c)q(\sigma)
-= q(\bs F) q(\sigma) \prod_{c=1}^C q(s_c), & \nonumber 
+q(s_c)q(s_t)
+= q(\bs F) q(s_t) \prod_{c=1}^C q(s_c), & \nonumber 
 \end{flalign}
 where $\bs u_m$ are the feature vectors of inducing users. By updating 
 each of the $q$ factors in turn,
@@ -312,9 +318,9 @@ the SVI procedure optimizes the lower bound on the marginal likelihood
 (see also Equation \ref{eq:lowerbound_crowd_full} in the Appendix):
 \begin{flalign}
 \mathcal{L}_{cr} & = 
-\mathbb{E}_{q(\bs F)}%(\bs t, \bs t_m, \bs V, \bs V_m, \bs W, \bs W_m, s_1,...,s_c,\sigma)
+\mathbb{E}_{q(\bs F)}%(\bs t, \bs t_m, \bs V, \bs V_m, \bs W, \bs W_m, s_1,...,s_c,s_t)
 [\ln p(\bs y | \bs F)] 
-+ \mathbb{E}_{q(\bs t_m), q(\sigma)}[\ln p(\bs t_m, \sigma | \bs K_{mm}, \alpha_0, \beta_0)
++ \mathbb{E}_{q(\bs t_m), q(s_t)}[\ln p(\bs t_m, s_t | \bs K_{mm}, \alpha_0, \beta_0)
 - \ln q(\bs t_m)] & \nonumber \\
 &\sum_{c=1}^C \!\! \bigg\{ 
 \mathbb{E}_{q(\bs v_{m,c}), q(s_c)}[\ln p(\bs v_{m,c}, s_c | \bs K_{mm}, \alpha_0, \beta_0) - \ln q(\bs v_{m,c})]
@@ -335,8 +341,9 @@ The variational factor for the inducing item factors is:
 %TODO big Sigma is variance of W because it's different...
 %TODO why is the scaling by W nice and simple without off-diagonals, but scaling by V is not? I think that when Q is diagonal, off-diagonals in any scaling factors are irrelevant.
 \begin{flalign}
-\ln q(\bs v_{m,c}) = \;\;& \mathbb{E}_{q(\bs F)}\left[\ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right)\right] 
- + \ln\mathcal{N}\left(\bs v_{m,c}; \bs 0, \frac{\bs K_{v,mm}}{\mathbb{E}[s_c]}\right) 
+\ln q(\bs v_{m,c}) = \;\;& % \mathbb{E}_{q(\bs F)}\left[ doesn't need this because it's already implicit in tilde Phi z
+\ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right) % \right] 
+ + \ln\mathcal{N}\left(\bs v_{m,c}; \bs 0, \bs K_{mm}/ \mathbb{E}[s_c]\right) 
 + \textrm{const} & \nonumber \\
 % are the dimensions collapsed to a single MVN?
 = \;&  \ln \mathcal{N}(\bs v_{m,c}; \hat{\bs v}_{m,c}, \bs S_{v,c}), &
@@ -347,13 +354,12 @@ Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}.
 For reasons of space, we provide the complete equations for $\hat{\bs v}_{m,c}$ and $\bs S_{v,c}$ in 
 Appendix \ref{sec:post_params}, Equations \ref{eq:Sv} and \ref{eq:hatv}.
 The variational component for the inducing points of the common item mean follows a similar pattern:
-\todo{Add the subscripts to the expectations. Change from the sum over W to a single component}
-\todo{Why not change the $K_mm$ subscripts to $K'$ superscript? It would save a lot of space and get rid of some double subsripts.}
 \begin{flalign}
-\ln q(\bs t_m) = \;\;& \mathbb{E}[\ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right)] 
-+ \mathbb{E}[\ln\mathcal{N}(\bs t_m; \bs 0, \bs K_{t,mm}/s)] 
+\ln q(\bs t_m) = \;\;& %\mathbb{E}_{q(\bs F)}[
+\ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right) %] 
++ \ln\mathcal{N}(\bs t_m; \bs 0, \bs K_{mm}/\mathbb{E}[s_t])
 + \textrm{const} & \nonumber \\
-= \;\;& \ln \mathcal{N}\left( \bs t; \hat{\bs t}, \bs S_t \right), &
+= \;\;& \ln \mathcal{N}\left( \bs t_m; \hat{\bs t}_{m}, \bs S_t \right), &
 \end{flalign}
 where again, the posterior mean $\hat{\bs t}$ and covariance $\bs S_{t}$ use similar updates to Equation
 Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}, and their full definitions
@@ -366,15 +372,16 @@ Finally, %require a different linearization matrix, $\bs J \in P \times U$, cont
 %now multiply by V. What about covariances between v?
 the variational distribution for the inducing users factors is:% then as follows:
 \begin{flalign}
-\ln q(\bs W_m) = \;\;& \mathbb{E}\left[\ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right)\right] 
-+ \sum_{c=1}^C \mathbb{E}[\ln\mathcal{N}(\bs w_c; \bs 0, \bs L_{mm})]
+\ln q(\bs w_{m,c}) = \;\;& %\mathbb{E}_{q(\bs F)}\left[
+\ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right) %\right] 
++ \ln\mathcal{N}(\bs w_{m,c}; \bs 0, \bs L_{mm})
 + \textrm{const} & \nonumber \\
-= \;\;& \sum_{c=1}^C \ln \mathcal{N}\left( \bs w_c; \hat{\bs w}_c, \bs \Sigma_c \right), & 
+= \;\;& \ln \mathcal{N}\left( \bs w_{m,c}; \hat{\bs w}_{m,c}, \bs \Sigma_c \right), & 
 \end{flalign}
 where $\hat{\bs w}_c$ and $\bs \Sigma_{c}$ also follow the pattern of
 Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}, and their full definitions
 are given in Appendix \ref{sec:post_params}, Equations \ref{eq:St} and \ref{eq:hatt}.
-The expectations for the inverse scales, $s_1,...,s_c$ and $\sigma$, can be 
+The expectations for the inverse scales, $s_1,...,s_c$ and $s_t$, can be 
 computed using Equation \ref{eq:qs} by
 substituting in the corresponding terms for each $\bs v_c$ or $\bs t$ instead of $\bs f$. 
 % The equations for the means and covariances 
@@ -387,9 +394,9 @@ substituting in the corresponding terms for each $\bs v_c$ or $\bs t$ instead of
 % (likewise for the observed users):
 % \begin{flalign}
 % \ln q(\bs V) & = \sum_{c=1}^C \ln \mathcal{N}\left( \bs v_c; \bs A_v\hat{\bs v}_{m,c}, 
-% \frac{\bs K_{v}}{\mathbb{E}[s_c]} + \bs A_v (\bs S_{m,c} - \frac{\bs K_{v,mm}}{\mathbb{E}[s_c]})\bs A_v \right) & \label{eq:qv} \\
+% \frac{\bs K_{v}}{\mathbb{E}[s_c]} + \bs A_v (\bs S_{m,c} - \frac{\bs K_{mm}}{\mathbb{E}[s_c]})\bs A_v \right) & \label{eq:qv} \\
 % \ln q(\bs t) & = \ln \mathcal{N}\left( \bs t; \bs A_t \hat{\bs t}_m, 
-% \frac{\bs K_{t}}{\mathbb{E}[\sigma]} + \bs A_t (\bs S_t - \frac{\bs K_{t,mm}}{\mathbb{E}[\sigma]})\bs A_t \right)  & \label{eq:qt}\\
+% \frac{\bs K_{t}}{\mathbb{E}[s_t]} + \bs A_t (\bs S_t - \frac{\bs K_{mm}}{\mathbb{E}[s_t]})\bs A_t \right)  & \label{eq:qt}\\
 % \ln q(\bs W) & = \sum_{c=1}^C \ln \mathcal{N}\left( \bs w_c; \bs A_w \hat{\bs w}_{m,c}, \bs L_{} + \bs A_w (\bs\Sigma - \bs L_{mm}) \bs A_w \right). &
 % \label{eq:qw}
 % \end{flalign}

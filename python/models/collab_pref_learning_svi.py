@@ -1097,6 +1097,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         if not self.use_t:
             return np.zeros(len(item_0_idxs))
 
+        # TODO Replace the pre-calculation of Kw with a function that computes on demand
+        #  (for any pairs that are zero) and saves results. Do this so we can generate a better plot for
+        #  figure 2b.
         if item_features is None:
             K = self.K_nm
             K_starstar = self.Kw

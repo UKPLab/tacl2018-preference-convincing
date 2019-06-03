@@ -26,6 +26,7 @@ each category as a separate feature.
 }
 \label{tab:datasets}
 \end{table}
+\todo{ Page 12, Section 5.  Can you provide a web reference to data sources (not just papers that use them)?}
 % NOTE: possible problem with convincingness data is that some users have very few observations in training data.
 We use the datasets summarized in Table \ref{tab:datasets} to test the key aspects of our proposed methods: recovering an underlying consensus from noisy pairwise labels; modeling personal preferences from pairwise labels; and the scalability of our proposed Bayesian preference learning methods, GPPL and crowdGPPL using SVI.
 In Section \ref{sec:exp_synth}, we use simulated data to test the robustness of our method to noise, small training sets and unknown numbers of latent components.
@@ -42,7 +43,8 @@ In Section \ref{sec:sushi},
 we compare our method against previous approaches for predicting the 
 personal preferences of thousands of users on the \emph{Sushi} datasets~\citep{kamishima2003nantonac}.
 Finally, Section \ref{sec:components} evaluates whether the Bayesian approach was able to ignore redundant
-components when $C$ is set larger than necessary.
+components when the number of components, $C$,
+ is larger than necessary.
 
 %\subsection{Methods Compared}
 %note that these are compared in sushi and synth tests only. Should be mentioned inside those?
@@ -68,9 +70,12 @@ For crowdGPPL, we set $C=20$
 and for all models, we set $\alpha_0 = 1$, $\beta_0 = 100$,
 and use Mat\'ern 3/2 kernels with length-scales chosen by a median heuristic:
 \begin{flalign}
- l_{d,MH} = D \mathrm{median}( \{ |x_{i,d} - x_{j,d}| \forall i=1,..,N, \forall j=1,...,N\} ).
+ l_{d,MH} = \mathrm{median}( \{ |x_{i,d} - x_{j,d}| \forall i=1,..,N, \forall j=1,...,N\} ) D.
 \end{flalign}
-\todo{is D actually defined?}
+\todo{is D actually defined? I think the comment below stems from confusion that this is not
+just a median function. But anyway, why not add the refs for using a median?
+ Page 13, equation (25): please provide reference for 'Dmedian' function.
+}
 %The motivation is that the median will normalize the feature, so that features
 %are equally weighted regardless of their scaling. By using a median to perform this 
 %normalization, 
@@ -81,6 +86,7 @@ which normalizes features and prevents the average covariance between items or u
 %  no guarantees of optimality. 
 The SVI hyperparameters were set to 
  $r=0.9$, $|P_i|=1000$ and $\epsilon=1$.
+ \todo{ Page 13, line 41: Can you provide some intuition as to how values for r, |P| and epsilon are chosen in general?}
 
 For the first test,
 we generate data by creating a $20\times 20$ grid of points and choosing $400$ pairs of these points at random,
@@ -120,7 +126,7 @@ GPPL's predictions may be worsened by biased users whose preferences deviate
 
 The second simulation modifies the previous setup by fixing $\sigma = 10$ and varying $s$
 to evaluate the methods'
-ability to to recover the personal preferences of simulated users.
+ability to recover the personal preferences of simulated users.
 Results in Figure \ref{fig:simC} show that crowdGPPL is able to make better 
 predictions when noise is below $0.3$ but its benefit disappears when 
 the noise level increases further. 
@@ -145,6 +151,9 @@ the noise level increases further.
 \caption{Simulations: Rank correlation between true and inferred preference values for different inference tasks.  (a) \& (b) varying level of noise in pairwise training labels, (c) varying number of pairwise training labels. 
 }
 \end{figure}
+\todo{
+ Page 14, Figure 1: include error bars, especially in sub-figure (c).
+}
 %In the final simulation, %we evaluate the effect of the quantity of training data 
 %with different numbers of latent factors in the generating model.
 We hypothesize that learning a model with a larger number of latent components
@@ -212,6 +221,10 @@ while $\tau$ is Kendall's $\tau$ for the predicted preference function. }
 % wilcoxon signed-rank test: crowdGPPL vs. GPPL --> medi. p = 
 \label{tab:convarg}
 \end{table}
+\todo{
+Page 15, Table 2: Please provide a definition of 'accuracy'.  Is this the proportion of pairs that
+are correctly ranked? 
+}
 We evaluate consensus learning, personal preference learning and scalability
 on an NLP task, namely identifying convincing arguments. 
 The dataset, \emph{UKPConvArgCrowdSample}, was subsampled by \citet{simpson2018finding}
@@ -552,7 +565,13 @@ CrowdGPPL produces similar classification scores to the earlier method of
 Performance is also improved over \citet{khan2014scalable} , 
 whose model comprised a GP for each user and matrix factorization (CEE=0.69 on \emph{Sushi-B}),
  as well as \citet{salimans2012collaborative}, using matrix factorization with no user or item features (Kendall's $\tau\approx0.39$ on \emph{Sushi-B}). 
-
+\todo{
+Page 17, lines 30 - 35: include, in Table 3, a comprehensive set of results for rival algorithms.
+}
+\todo{
+CrowdBT using GP may be interesting. However, as studied by Han's work and Pan's work, the crowdPL model is more robust than the crowdBT model, so the proposed model does not provide any improvement to crowdsourcing.
+Overall, the current version of this manuscript is not sufficient for machine learning models. The authors should empirically compare other baselines in crowdsourcing setting to demonstrate the significance.
+}
 %Figure \ref{fig:latent_factor_variance} again shows that the inferred crowdGPPL model relies
 %heavily on a subset of the latent factors.
 % We should bring the scalability experiments forward so that we don't need the runtimes here?

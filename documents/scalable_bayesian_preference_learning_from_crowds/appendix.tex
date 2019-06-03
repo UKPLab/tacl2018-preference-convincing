@@ -13,46 +13,49 @@ p(\bs f | \bs y, k_{\theta}, \alpha_0, \alpha_0) =
 
 We can derive a variational lower bound as follows, beginning with an approximation that does not use inducing points:
 \begin{flalign}
-\mathcal{L}_1 = \sum_{i=1}^{L} \mathbb{E}_{q}\left[ \ln p\left( v_i \succ u_i | f(v_i), f(u_i) \right) \right]
-+ \mathbb{E}_{q}\left[ \ln \frac{p\left( \bs f | \bs\mu, \bs K/s \right)}{q\left(\bs f\right)} \right]
-+ \mathbb{E}_{q}\left[ \ln \frac{p\left( s | \alpha_0, \beta_0\right)}{q\left(s \right)} \right] &&
+\mathcal{L}_1 = \sum_{p=1}^{P} \mathbb{E}_{q(\bs f)}\left[ \ln p\left( y(a_p, b_p) | f(\bs x_{a_p}), f(\bs x_{b_p}) \right) \right]
++ \mathbb{E}_{q(\bs f),q(s)}\left[ \ln \frac{p\left( \bs f | \bs 0, \bs K/s \right)}
+{q\left(\bs f\right)} \right] && \nonumber \\
++ \mathbb{E}_{q(s)}\left[ \ln \frac{p\left( s | \alpha_0, \beta_0\right)}{q\left(s \right)} \right] &&
 \label{eq:vblb}
 \end{flalign}
 Substituting the forms of the distributions with their variational parameters, we get:
 \begin{flalign}
-\mathcal{L}_1 & = \mathbb{E}_{q}\Bigg[ \sum_{i=1}^{L} [v_i \succ u_i]\ln\Phi(z_i) + [v_i \prec u_i]\left(1-\ln\Phi(z_i)\right) \Bigg] \nonumber&&\\
-& + \ln \mathcal{N}\left(\hat{\bs f}; \bs\mu, \bs K/\hat{s} \right) 
+\mathcal{L}_1 & = \mathbb{E}_{q(\bs f)}\Bigg[ \sum_{p=1}^{P} y(a_p,b_p) \ln\Phi(z_p) + y(b_p,a_p) \left(1-\ln\Phi(z_p)\right) \Bigg] \nonumber&&\\
+& + \ln \mathcal{N}\left(\hat{\bs f}; \bs\mu, \bs K/\mathbb{E}[s] \right) 
 - \ln\mathcal{N}\left(\hat{\bs f}; \hat{\bs f}, \bs C \right)
- + \mathbb{E}_{q}\left[ \ln\mathcal{G}\left( s; \alpha_0, \beta_0\right) - \ln\mathcal{G}\left(s; \alpha, \beta \right) \right]  &&
+ + \mathbb{E}_{q(s)}\left[ \ln\mathcal{G}\left( s; \alpha_0, \beta_0\right) - \ln\mathcal{G}\left(s; \alpha, \beta \right) \right]  &&
 \end{flalign}
 We now replace the likelihood with a Gaussian approximation:
 \begin{flalign}
-\mathcal{L}_1 \approx \mathcal{L}_2 & = \mathbb{E}_{q}\left[ \mathcal{N}( \bs y | \Phi(\bs z), \bs Q) \right]
- + \ln \mathcal{N}\left(\bs f; \bs\mu, \bs K/\hat{s} \right) - \ln\mathcal{N}\left(\bs f; \hat{\bs f}, \bs C \right) 
+\mathcal{L}_1 \approx \mathcal{L}_2 & = \mathbb{E}_{q(\bs f)}\left[ \mathcal{N}( \bs y | \Phi(\bs z), \bs Q) \right]
+ + \ln \mathcal{N}\left(\hat{\bs f}; \bs\mu, \bs K/\mathbb{E}[s] \right) - \ln\mathcal{N}\left(\hat{\bs f}; \hat{\bs f}, \bs C \right) 
 &\nonumber\\
-& + \mathbb{E}_q\left[ \ln\mathcal{G}\left( s; \alpha_0, \beta_0\right) - \ln\mathcal{G}\left(s; \alpha, \beta \right) \right] \nonumber&\\
+& + \mathbb{E}_{q(s)}\left[ \ln\mathcal{G}\left( s; \alpha_0, \beta_0\right) - \ln\mathcal{G}\left(s; \alpha, \beta \right) \right] \nonumber&\\
 & =  - \frac{1}{2} \left\{ L \ln 2\pi + \ln |\bs Q| - \ln|\bs C| 
- + \ln|\bs K/s| + (\hat{\bs f} - \bs\mu)\hat{s}\bs K^{-1}
+ + \ln|\bs K| - \mathbb{E}[\ln s] + (\hat{\bs f} - \bs\mu)\mathbb{E}[s]\bs K^{-1}
 (\hat{\bs f} - \bs\mu) \right. \nonumber &\\
-& \left. + \mathbb{E}_q\left[ (\bs y - \Phi(\bs z))^T \bs Q^{-1} (\bs y - \Phi(\bs z)) \right] \right\}
+& \left. + \mathbb{E}_{q(\bs f)}\left[ (\bs y - \Phi(\bs z))^T \bs Q^{-1} (\bs y - \Phi(\bs z)) \right] \right\}
  - \Gamma(\alpha_0) + \alpha_0(\ln \beta_0) + (\alpha_0-\alpha)\mathbb{E}[\ln s] \nonumber&\\
-& + \Gamma(\alpha) + (\beta-\beta_0) \hat{s} - \alpha \ln \beta,  &
+& + \Gamma(\alpha) + (\beta-\beta_0) \mathbb{E}[s] - \alpha \ln \beta,  &
 \end{flalign}
 where $\mathbb{E}[s] = \frac{\alpha}{\beta}$, $\mathbb{E}[\ln s] = \Psi(2\alpha) - \ln(2\beta)$,
 $\Psi$ is the digamma function and $\Gamma()$ is the gamma function, 
 Finally, we use a Taylor-series linearisation to make the remaining expectation tractable:
 \begin{flalign}
 \mathcal{L}_2 & \approx \mathcal{L}_3 = - \frac{1}{2} \left\{ L \ln 2\pi + \ln |\bs Q| - \ln|\bs C| \right.
- \left. + \ln|\bs K/\hat{s}| + (\hat{\bs f} - \bs\mu)\hat{s}\bs K^{-1}(\hat{\bs f} - \bs\mu) \right. \nonumber&&\\
+ \left. + \ln|\bs K/\mathbb{E}[s]| + (\hat{\bs f} - \bs\mu)\mathbb{E}[s]\bs K^{-1}(\hat{\bs f} - \bs\mu) \right. \nonumber&&\\
  & \left. + (\bs y - \Phi(\hat{\bs z}))^T \bs Q^{-1} (\bs y - \Phi(\hat{\bs z}))\right\}
  - \Gamma(\alpha_0) + \alpha_0(\ln \beta_0) + (\alpha_0-\alpha)\mathbb{E}[\ln s] \nonumber&&\\
-& + \Gamma(\alpha) + (\beta-\beta_0) \hat{s} - \alpha \ln \beta. &&
+& + \Gamma(\alpha) + (\beta-\beta_0) \mathbb{E}[s] - \alpha \ln \beta. &&
 \label{eq:vblb_terms} 
 \end{flalign}
 Now, we can introduce the sparse approximation to obtain the bound in Equation \ref{eq:lowerbound}:
 \begin{flalign}
-\mathcal{L} \approx \mathcal{L}_3 =\; & \mathbb{E}_{q(\bs f, \bs f_m, s)}[\ln p(\bs y | \bs f) + \ln p(\bs f_m, s | \bs K, 
-\alpha_0, \beta_0) -\ln q(\bs f_m) - \ln q(s) ] & \nonumber \\ 
+\mathcal{L} \approx \mathcal{L}_3 =\; & \mathbb{E}_{q(\bs f)}[\ln p(\bs y | \bs f)]
+ + \mathbb{E}_{q(\bs f_m), q(s)}[\ln p(\bs f_m, s | \bs K, 
+\alpha_0, \beta_0)] - \mathbb{E}_{q(\bs f_m)}[\ln q(\bs f_m)] 
+- \mathbb{E}_{q(s)}[\ln q(s) ] & \nonumber \\ 
 =\; & \sum_{p=1}^P \mathbb{E}_{q(\bs f)}[\ln p(y_p | f_{a_p}, f_{b_p})] - \frac{1}{2} \bigg\{ \ln|\bs K_{mm}| - \mathbb{E}[\ln s] - \ln|\bs S| - M
 \nonumber &\\
 & + \hat{\bs f}_m^T\mathbb{E}[s] \bs K_{mm}^{-1}\hat{\bs f}_m + 
@@ -75,26 +78,27 @@ where the terms relating to $\mathbb{E}[p(\bs f | \bs f_m) - q(\bs f)]$ cancel.
 For crowdGPPL, our approximate variational lower bound is:
 \begin{flalign}
 \mathcal{L}_{cr} & = \label{eq:lowerbound_crowd_full}
-\sum_{p=1}^P \mathbb{E}_{q(\bs f)}[\ln p(y_p | \bs v_{a_p}^T \! \bs w_{a_p} \!+ t_{a_p}\!, \bs v_{b_p}^T\! \bs w_{b_p} \!+ t_{b_p})] 
+\sum_{p=1}^P \ln p(y_p | \hat{\bs v}_{.,a_p}^T \! \hat{\bs w}_{.,j_p} \!+ \hat{t}_{a_p}\!,
+ \hat{\bs v}_{.,b_p}^T\! \hat{\bs w}_{.,j_p} \!+ \hat{t}_{b_p})
 - \frac{1}{2} 
-\Bigg\{  \sum_{c=1}^C \bigg\{  \! - \! M_n \! - \! M_u & \nonumber \\
-&  
- + \ln|\bs K_{v,mm}| + \ln|\bs K_{w,mm}|
-- \ln|\bs S_{v,c}|  - \mathbb{E}[\ln s_c] 
-+ \hat{\bs v}_{m,c}^T \mathbb{E}[s_c]\bs K_{v,mm}^{-1}\hat{\bs v}_{m,c} & \nonumber \\
-& 
-+ \textrm{tr}(\mathbb{E}[s_c] \bs K_{v,mm}^{-1} \bs S_{v,c}) 
-- \ln|\bs \Sigma_{c}|  + \hat{\bs w}_{m,c}^T \bs K_{w,mm}^{-1}\hat{\bs w}_{m,c} 
-+ \textrm{tr}(\bs K_{w,mm}^{-1} \bs \Sigma_{c})
-\bigg\}
+\Bigg\{  \sum_{c=1}^C \bigg\{  \! - \! M_n \! - \! M_u + \ln|\bs K_{mm}| 
 & \nonumber \\
 &  
-- M_n + \ln|\bs K_{t,mm}|
-- \ln|\bs S_{t}|  - \mathbb{E}[\ln \sigma] 
-+ \hat{\bs t}^T \mathbb{E}[\sigma] \bs K_{t,mm}^{-1} \hat{\bs t}  &
-\nonumber \\
-&
-+ \textrm{tr}(\mathbb{E}[\sigma] \bs K_{t,mm}^{-1} \bs S_{t})
++ \ln|\bs L_{mm}|
+- \ln|\bs S_{v,c}|  - \mathbb{E}[\ln s_c] 
++ \hat{\bs v}_{m,c}^T \mathbb{E}[s_c]\bs K_{mm}^{-1}\hat{\bs v}_{m,c} 
++ \textrm{tr}(\mathbb{E}[s_c] \bs K_{mm}^{-1} \bs S_{v,c}) 
+& \nonumber \\
+& 
+- \ln|\bs \Sigma_{c}|  + \hat{\bs w}_{m,c}^T \bs L_{mm}^{-1}\hat{\bs w}_{m,c} 
++ \textrm{tr}(\bs L_{mm}^{-1} \bs \Sigma_{c})
+\bigg\}
+- M_n + \ln|\bs K_{mm}|
+- \ln|\bs S_{t}|  - \mathbb{E}[\ln s_t] 
+& \nonumber \\
+&  
++ \hat{\bs t}^T \mathbb{E}[s_t] \bs K_{mm}^{-1} \hat{\bs t} 
++ \textrm{tr}(\mathbb{E}[s_t] \bs K_{mm}^{-1} \bs S_{t})
 \Bigg\} 
 - (C+1)(\ln\Gamma(\alpha_0)  + \alpha_0(\ln \beta_0))
 & \nonumber \\
@@ -103,8 +107,8 @@ For crowdGPPL, our approximate variational lower bound is:
 + (\beta_c - \beta_0) \mathbb{E}[s_c] - \alpha_c \ln \beta_c \bigg\}
  & 
 \nonumber \\ 
-& + \ln\Gamma(\alpha_{\sigma}) + (\alpha_0 - \alpha_{\sigma})\mathbb{E}[\ln \sigma]
-+ (\beta_{\sigma} - \beta_0) \mathbb{E}[s_c] - \alpha_{\sigma} \ln \beta_{\sigma}
+& + \ln\Gamma(\alpha_{s_t}) + (\alpha_0 - \alpha_{s_t})\mathbb{E}[\ln s_t]
++ (\beta_{s_t} - \beta_0) \mathbb{E}[s_c] - \alpha_{s_t} \ln \beta_{s_t}
 , &
 \end{flalign}
 
@@ -113,9 +117,8 @@ For crowdGPPL, our approximate variational lower bound is:
 
 For the latent item components, the posterior precision estimate for $\bs S^{-1}_{v,c}$ at iteration $i$ is given by:
 \begin{flalign}
-\bs S_{v,c,i}^{-1} & = (1-\rho_i)\bs S^{-1}_{v,c,i-1} + \rho_i\left( \bs K^{-1}_{v,mm}\mathbb{E}[s_c] 
-\right. \nonumber & \\ 
-& \left. \hspace{1.5cm} + w_i \bs A_{v,i}^T \bs G_i^T \textrm{diag}(\hat{\bs w}_{c,\bs u}^2 + \bs\Sigma_{c,\bs u,\bs u})\bs Q_i^{-1} \bs G_i \bs A_{v,i} \right), &
+\bs S_{v,c,i}^{-1} & = (1-\rho_i)\bs S^{-1}_{v,c,i-1} + \rho_i\left( \bs K^{-1}_{mm}\mathbb{E}[s_c] 
+ + \pi_i \bs A_{v,i}^T \bs G_i^T \textrm{diag}(\hat{\bs w}_{c,\bs u}^2 + \bs\Sigma_{c,\bs u,\bs u})\bs Q_i^{-1} \bs G_i \bs A_{v,i} \right), &
 \label{eq:Sv}
 \end{flalign}
 where $\bs A_{i} = \bs K_{im} \bs K_{mm}^{-1}$, 
@@ -126,10 +129,10 @@ and ${\bs u} = \{ u_p \forall p \in P_i \}$ is the vector of user indexes in the
 %scales the diagonal observation precision, $\bs Q^{-1}$, by the latent user factors.
 We use $\bs S_{v,c}^{-1}$ to compute the means for each row of $\bs V_m$:
 \begin{flalign}
-\hat{\bs v}_{m,c,i} & = \bs S_{v,c,i}\left( 
-(1-\rho_i)\bs S^{-1}_{v,c,i-1}\hat{\bs v}_{m,c,i-1} + \rho_i w_i \bigg(
-\bs S_{v,c,i} \bs A_{i}^T \bs G_i^T \textrm{diag}(\hat{\bs w}_{c,\bs u}) \bs Q_i^{-1} \right. & \nonumber \\
-&  \Big(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \sum_{j=1}^U \bs H^{(i)}_{j}(\hat{\bs v}_c^T \hat{\bs w}_{c,j})\Big) \bigg) \bigg), &
+\hat{\bs v}_{m,c,i} = \bs S_{v,c,i}\left( 
+(1-\rho_i)\bs S^{-1}_{v,c,i-1}\hat{\bs v}_{m,c,i-1} + \rho_i \pi_i \bigg(
+\bs S_{v,c,i} \bs A_{i}^T \bs G_i^T \textrm{diag}(\hat{\bs w}_{c,\bs u}) \bs Q_i^{-1} \right. && \nonumber \\
+ \Big(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \sum_{j=1}^U \bs H^{(i)}_{j}(\hat{\bs v}_c^T \hat{\bs w}_{c,j})\Big) \bigg) \bigg), &&
 \label{eq:hatv}
 \end{flalign}
 where $\bs H^{(i)}_{j} \in |P_i| \times N$ contains partial derivatives of the pairwise likelihood
@@ -143,11 +146,11 @@ For the consensus, the precision and mean are updated according to the following
 %This is needed to replace $\bs G$ in the single-user model, since the vector of utilities,
 %$\bs f$, has been replaced by the matrix $\bs F$, where each column of $\bs F$ corresponds to a single user.
 \begin{flalign}
-\bs S_{t,i}^{-1} = \;\;& (1-\rho_i)\bs S^{-1}_{t,i-1} + \rho_i\bs K^{-1}_{t,mm}/\mathbb{E}[\sigma] 
-+ \rho_i w_i \bs A_{i}^T \bs G_i^T \bs Q_i^{-1} \bs G_i \bs A_{i} & \label{eq:St}\\
+\bs S_{t,i}^{-1} = \;\;& (1-\rho_i)\bs S^{-1}_{t,i-1} + \rho_i\bs K^{-1}_{t,mm}/\mathbb{E}[s_t] 
++ \rho_i \pi_i \bs A_{i}^T \bs G_i^T \bs Q_i^{-1} \bs G_i \bs A_{i} & \label{eq:St}\\
 \hat{\bs t}_{m,i} = \;\;& \bs S_{t,i}\left(
-(1 - \rho_i) \bs S_{t,i-1}^{-1}\hat{\bs t}_{m,i-1}  \right. & \nonumber \\
-& \left. + \rho_i w_i \bs A_{i}^T \bs G_i^T \bs Q_i^{-1}
+(1 - \rho_i) \bs S_{t,i-1}^{-1}\hat{\bs t}_{m,i-1}  
+ + \rho_i \pi_i \bs A_{i}^T \bs G_i^T \bs Q_i^{-1}
 \left(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \bs G_i \bs A_{i} \hat{\bs t}_{i} \right) \right). & \label{eq:hatt}
 \end{flalign}
 
@@ -155,13 +158,13 @@ For the latent user components, the SVI updates for the parameters are:
 \begin{flalign}
 & \bs \Sigma^{-1}_{c,i} = (1-\rho_i)\bs \Sigma^{-1}_{c,i-1}
 + \rho_i\bs K^{-1}_{w,mm}
-+ \rho_i w_i \bs A_{w,i}^T \bigg( \sum_{p \in P_i} \bs H^{(i)T}_{.,p} \textrm{diag}\left(\hat{\bs v}_{c,\bs a}^2 + \right. &\nonumber \\
++ \rho_i \pi_i \bs A_{w,i}^T \bigg( \sum_{p \in P_i} \bs H^{(i)T}_{.,p} \textrm{diag}\left(\hat{\bs v}_{c,\bs a}^2 + \right. &\nonumber \\
 & \left. \bs S_{c,\bs a, \bs a} + 
 \hat{\bs v}_{c,\bs b}^2 + \bs S_{c,\bs b, \bs b}  
 - 2\hat{\bs v}_{c,\bs a}\hat{\bs v}_{c,\bs b} - 2\bs S_{c,\bs a, \bs b} \right) \bs Q_i^{-1} \sum_{p \in P_i} \bs H^{(i)}_{.,p} \bigg) \bs A_{w,i} & \label{eq:Sigma} \\
 %%%%
 & \hat{\bs w}_{m,c,i} = \bs \Sigma_{c,i} \bigg( (1 - \rho_i)\bs \Sigma_{c,i-1}\hat{\bs w}_{m,c,i-1} + 
- \rho_i w_i \bs A_{w,i}^T \sum_{p \in P_i} \bs H^{(i)}_{.,p}
+ \rho_i \pi_i \bs A_{w,i}^T \sum_{p \in P_i} \bs H^{(i)}_{.,p}
 \left( \textrm{diag}(\hat{\bs v}_{c,\bs a}) \right. & \nonumber  \\
 & \left. - \textrm{diag}(\hat{\bs v}_{c,\bs b}) \right) \bs Q_i^{-1} 
 \bigg(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \sum_{j=1}^U \bs H^{(i)}_u (\hat{\bs v}_c^T \hat{\bs w}_{c,j})\bigg) \bigg), & \label{eq:what}
@@ -180,7 +183,7 @@ The means, item covariances and user variance required for predictions with crow
 &\hat{\bs t}^* = \bs K_{*m} \bs K^{-1}_{mm} \hat{\bs t}_{m}, \hspace{0.7cm} 
 \hat{\bs v}_{c}^* = \bs K_{*m} \bs K^{-1}_{mm} \hat{\bs v}_{m,c}, \hspace{0.7cm}
 \hat{\bs w}_{c}^* = \bs K_{w,*m} \bs K^{-1}_{w,mm} \hat{\bs w}_{m,c}, & \label{eq:tstar}\\
-&\bs C_{t}^* \!= \frac{\bs K_{**}}{\mathbb{E}[\sigma]} + \bs A_{*m}(\bs S_{t} \!-\! \bs K_{mm}) \bs A_{*m}^T, \hspace{0.5cm}
+&\bs C_{t}^* \!= \frac{\bs K_{**}}{\mathbb{E}[s_t]} + \bs A_{*m}(\bs S_{t} \!-\! \bs K_{mm}) \bs A_{*m}^T, \hspace{0.5cm}
 \bs C_{v,c}^* \!= \frac{\bs K_{**}}{\mathbb{E}[s_c]} + \bs A_{*m}(\bs S_{v,c} \!\!-\! \bs K_{mm}) \bs A_{*m}^T  & \\
 &\omega_{c,u}^* = 1 + \bs A_{w,um}(\bs \Sigma_{w,c} - \bs K_{w,mm}) \bs A_{w,um}^T & \label{eq:omegastar}
 \end{flalign}
@@ -193,35 +196,35 @@ users.
 % % The gradient of $\mathcal{L}_3$ with respect to the lengthscale, $l_d$, is as follows:
 % % \begin{flalign}
 % % \nabla_{l_d} \mathcal{L}_3 & =  - \frac{1}{2} \left\lbrace 
-% % \frac{\partial \ln|\bs K/\hat{s}|}{\partial l_d} - \frac{\partial \ln|\bs C|}{\partial l_d} 
+% % \frac{\partial \ln|\bs K/\mathbb{E}[s]|}{\partial l_d} - \frac{\partial \ln|\bs C|}{\partial l_d} 
 % % \nonumber \right.
-% %  \left.  - (\hat{\bs f}-\bs\mu)\hat{s} \frac{\partial K^{-1}}{\partial l_d} (\hat{\bs f}-\bs\mu)
+% %  \left.  - (\hat{\bs f}-\bs\mu)\mathbb{E}[s] \frac{\partial K^{-1}}{\partial l_d} (\hat{\bs f}-\bs\mu)
 % % \right\rbrace \nonumber & \\
-% % %& = \frac{1}{2} \hat{s} \left\lbrace \frac{\partial \ln |\bs C \bs K^{-1}|}{\partial l_d}
+% % %& = \frac{1}{2} \mathbb{E}[s] \left\lbrace \frac{\partial \ln |\bs C \bs K^{-1}|}{\partial l_d}
 % % %\right. \\
 % % %& \left.  - (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
 % % %\right\rbrace  \nonumber \\
-% % & =  -\frac{1}{2} \left\lbrace  \frac{\partial \ln | \frac{1}{\hat{s}}\bs K \bs C^{-1} |}{\partial l_d} \right. 
-% % \left.  + \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
+% % & =  -\frac{1}{2} \left\lbrace  \frac{\partial \ln | \frac{1}{\mathbb{E}[s]}\bs K \bs C^{-1} |}{\partial l_d} \right. 
+% % \left.  + \mathbb{E}[s] (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
 % % \right\rbrace   &
 % % %& =  - \frac{1}{2} \left\lbrace \frac{\partial \ln|\bs K/s| }{\partial l_d} + \frac{\partial \ln |\bs K^{-1}s + \bs G\bs Q^{-1}\bs G^T|}{\partial l_d}
 % % %\right. \\
-% % %& \left.  - \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
+% % %& \left.  - \mathbb{E}[s] (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
 % % %\right\rbrace  \nonumber\\
 % % %& =  -\frac{1}{2} \left\lbrace \frac{\partial \ln |\bs I + \bs K/s\bs G\bs Q^{-1}\bs G^T|}{\partial l_d}
 % % %\right. \\
-% % %& \left.  - \hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
+% % %& \left.  - \mathbb{E}[s] (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)
 % % %\right\rbrace  \nonumber
 % % \end{flalign}
 % % Using the fact that $\ln | A | = \mathrm{tr}(\ln A)$, $\bs C = \left[\bs K^{-1} - \bs G \bs Q^{-1} \bs G^T \right]^{-1}$, and $\bs C = \bs C^{T}$, we obtain:
 % % \begin{flalign}
-% % \nabla_{l_d} \mathcal{L}_3 & =  -\frac{1}{2} \mathrm{tr}\left(\left(\hat{s}\bs K^{-1}\bs C\right) \bs G\bs Q^{-1}\bs G^T \frac{\partial \bs K}{\partial l_d}
+% % \nabla_{l_d} \mathcal{L}_3 & =  -\frac{1}{2} \mathrm{tr}\left(\left(\mathbb{E}[s]\bs K^{-1}\bs C\right) \bs G\bs Q^{-1}\bs G^T \frac{\partial \bs K}{\partial l_d}
 % % \right)
-% %  + \frac{1}{2}\hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)  \nonumber\\ 
-% % & =  -\frac{1}{2} \mathrm{tr}\left(\left(\hat{s}\bs K^{-1}\bs C\right)
-% % \left(\bs C^{-1} - \bs K^{-1}/\hat{s}\right) \frac{\partial \bs K}{\partial l_d}
+% %  + \frac{1}{2}\mathbb{E}[s] (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu)  \nonumber\\ 
+% % & =  -\frac{1}{2} \mathrm{tr}\left(\left(\mathbb{E}[s]\bs K^{-1}\bs C\right)
+% % \left(\bs C^{-1} - \bs K^{-1}/\mathbb{E}[s]\right) \frac{\partial \bs K}{\partial l_d}
 % % \right) 
-% % + \frac{1}{2}\hat{s} (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu).  \label{eq:gradient_ls}
+% % + \frac{1}{2}\mathbb{E}[s] (\hat{\bs f}-\bs\mu) \bs K^{-1} \frac{\partial \bs K}{\partial l_d} \bs K^{-1} (\hat{\bs f}-\bs\mu).  \label{eq:gradient_ls}
 % % \end{flalign}
 % % Assuming a product over kernels for each feature, $\bs K=\prod_{d=1}^{D} \bs K_d$, we can compute the kernel gradient 
 % % as follows for the Mat\'ern $\frac{3}{2}$ kernel function:
@@ -255,11 +258,11 @@ users.
 % % \mathbb{E}[s_c]\bs S_{v,c}^T\bs K_{ mm,v}^{-1}  - \frac{1}{2} \bs I  \right)
 % %  \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \bs K_{ mm,v}^{-1} \right) \bigg\}
 % %  + & \nonumber \\
-% %  & \mathbb{E}[\sigma] 
+% %  & \mathbb{E}[s_t] 
 % %  \hat{\bs t}_{ m}^T \bs K_{ mm,t}^{-1} 
 % % \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \hat{\bs t}_{ m} 
 % %  + \mathrm{tr}\left( \left(
-% % \mathbb{E}[\sigma]\bs S_{t}^T\bs K_{ mm,t}^{-1}  - \frac{1}{2} \bs I  \right)
+% % \mathbb{E}[s_t]\bs S_{t}^T\bs K_{ mm,t}^{-1}  - \frac{1}{2} \bs I  \right)
 % %  \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \right)
 % %  & \nonumber \\
 % % & = 
@@ -269,7 +272,7 @@ users.
 %  \frac{\partial \bs K_{ mm,v}}{\partial l_{w,d}} \right.
 %  & \nonumber \\
 %  & \left.  \bs K_{ mm,v}^{-1} \right) + \frac{1}{2}\mathrm{tr}\left( \left(
-% \mathbb{E}[\sigma](\hat{\bs t}_{ m}\hat{\bs t}_{ m}^T + \bs S_{t}^T) \bs K_{ mm,t}^{-1}  
+% \mathbb{E}[s_t](\hat{\bs t}_{ m}\hat{\bs t}_{ m}^T + \bs S_{t}^T) \bs K_{ mm,t}^{-1}  
 % - \bs I  \right)
 %  \frac{\partial \bs K_{ mm,t}}{\partial l_{w,d}} \bs K_{ mm,t}^{-1} \right)
 % .&
