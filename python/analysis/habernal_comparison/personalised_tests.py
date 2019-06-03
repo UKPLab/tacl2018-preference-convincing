@@ -282,7 +282,7 @@ if __name__ == '__main__':
     #                                 dataset_increment)
     # runner.run_test_set(min_no_folds=0, max_no_folds=5)
 
-    rate_s_vals = [10000]#[2*1e5, 2*1e6]#[20000] #2, 20, 200, 2000]
+    rate_s_vals = [20000]#[2*1e5, 2*1e6]#[20000] #2, 20, 200, 2000]
 
     for rate_s in rate_s_vals:
         test_dir = 'rate_s_%i_sy10' % rate_s
