@@ -268,7 +268,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    rate_s_vals = [2, 20, 200, 2000]
+    rate_s_vals = [20000] #2, 20, 200, 2000]
 
     for rate_s in rate_s_vals:
         test_dir = 'rate_s_%i' % rate_s
