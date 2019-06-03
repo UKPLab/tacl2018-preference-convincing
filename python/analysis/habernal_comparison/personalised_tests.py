@@ -299,12 +299,14 @@ if __name__ == '__main__':
             runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
             runner.run_test_set(min_no_folds=0, max_no_folds=5)
 
+    if len(sys.argv) > 2:
+        test_dir = sys.argv[2]
 
-        datasets = ['UKPConvArgCrowdSample']
-        methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
+    datasets = ['UKPConvArgCrowdSample']
+    methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
 
-        runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
-                                        dataset_increment)
+    runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
+                                    dataset_increment)
 
     # PERSONALISED PREDICTION
     if test_to_run == 0:
