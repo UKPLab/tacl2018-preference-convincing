@@ -163,6 +163,7 @@ def expec_q_gaussian(f_cov, D):
         logdet_C = np.sum(np.log(f_cov))
     else:
         _, logdet_C = np.linalg.slogdet(f_cov)
+        print(logdet_C)
 
     logqf = 0.5 * (- np.log(2 * np.pi) * D - logdet_C - D)
     return logqf

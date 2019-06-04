@@ -833,7 +833,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.yinvSm[:, f] = (1-rho_i) * self.prev_yinvSm[:, f] + rho_i * w_i * x.flatten()
 
                 if self.person_features is None:
-                    print(np.any(self.yinvS[f] == 0))
                     self.yS[f] = 1.0 / self.yinvS[f]
                     self.y_u[f] = (self.yS[f].T * self.yinvSm[:, f]).T
                     self.y[f] = self.y_u[f]
