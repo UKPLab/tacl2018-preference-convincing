@@ -1016,6 +1016,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         logqs_t = lnq_output_scale(self.shape_st, self.rate_st, st, Elnst)
 
         w_terms = logpw - logqw + logps_w - logqs_w
+        print('logpy = %f' % logpy)
+        print('logqy = %f' % logqy)
+        print('logps_y = %f' % logps_y)
+        print('logqs_y = %f' % logqs_y)
         y_terms = logpy - logqy + logps_y - logqs_y
         t_terms = logpt - logqt + logps_t - logqs_t
 
