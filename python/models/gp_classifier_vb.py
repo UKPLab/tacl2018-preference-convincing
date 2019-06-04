@@ -191,9 +191,9 @@ def matern_3_2_from_raw_vals(vals, ls, vals2=None, operator='*', n_threads=0, ve
         num_jobs = n_threads
 
     subset_size = int(np.ceil(vals.shape[1] / float(num_jobs)))
-    K = Parallel(n_jobs=num_jobs, backend='threading')(delayed(compute_K_subset)(i, subset_size, vals, vals2, ls, vector,
-                                                                                 matern_3_2_onedimension_from_raw_vals,
-                                                                                 operator) for i in range(num_jobs))
+    K = Parallel(n_jobs=num_jobs, backend='threading')(delayed(compute_K_subset)(i, subset_size, vals, vals2, ls,
+                                                                             matern_3_2_onedimension_from_raw_vals,
+                                                                             operator, vector) for i in range(num_jobs))
 
     # if vals2 is None:
     #    vals2 = vals
@@ -207,7 +207,7 @@ def matern_3_2_from_raw_vals(vals, ls, vals2=None, operator='*', n_threads=0, ve
     return K
 
 
-def compute_K_subset(subset, subset_size, vals, vals2, ls, fun, operator):
+def compute_K_subset(subset, subset_size, vals, vals2, ls, fun, operator, vector=False):
     if operator == '*':
         K_subset = 1
     elif operator == '+':
@@ -231,7 +231,7 @@ def compute_K_subset(subset, subset_size, vals, vals2, ls, fun, operator):
             ls_i = ls[i]
         else:
             ls_i = ls[0]
-        K_d = fun(xvals, xvals2, ls_i)
+        K_d = fun(xvals, xvals2, ls_i, vector)
         if operator == '*':
             K_subset *= K_d
         elif operator == '+':
