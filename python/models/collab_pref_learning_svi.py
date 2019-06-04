@@ -467,8 +467,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         else:
             self.Kw = np.zeros((self.N, self.N))
 
-        # Don't compute all the combinations -- save this until each iteration requires them
-        # so that pairs that are never compared are ignored.
+        # # Don't compute all the combinations -- save this until each iteration requires them
+        # # so that pairs that are never compared are ignored.
         # for b in range(nbatches):
         #
         #     logging.debug('Computing Kw batch %i' % b)
@@ -485,7 +485,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         #
         #         self.Kw[b*batchsize:(b+1)*batchsize, :][:, b2*batchsize:(b2+1)*batchsize] = self.kernel_func(
         #             self.obs_coords[b*batchsize:end1, :], self.ls, self.obs_coords[b2*batchsize:end2, :])
-        #
 
         self.Kw[range(self.N), range(self.N)] = 1.0
 
@@ -512,8 +511,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             u_new = u[uninited_idxs]
             v_new = v[uninited_idxs]
 
-            self.Kw[u_new, :][:, v_new] = self.kernel_func(self.obs_coords[u_new, :], self.ls, self.obs_coords[v_new, :])
-            self.Kw[v_new, :][:, u_new] = self.Kw[u, :][:, v].T
+            Kw_v = self.Kw[u_new, :]
+            Kw_v[:, v_new] = self.kernel_func(self.obs_coords[u_new, :], self.ls, self.obs_coords[v_new, :])
+            self.Kw[u_new, :] += Kw_v
+            self.Kw[:, u_new] += Kw_v.T
 
         if self.N > self.max_Kw_size: # flush any memmapped objects
             self.Kw.flush()

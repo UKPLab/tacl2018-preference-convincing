@@ -118,7 +118,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
         logging.info("**** Running method %s on dataset %s ****" % (method, dataset) )
 
-        feature_type = 'both'  # can be 'embeddings' or 'ling' or 'both' or 'debug'
+        feature_type = 'debug'  # can be 'embeddings' or 'ling' or 'both' or 'debug'
         embeddings_type = 'word_mean'
         self._set_embeddings(embeddings_type)
 
@@ -355,7 +355,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'randsel7'
+    test_dir = 'randsel8'
 
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
