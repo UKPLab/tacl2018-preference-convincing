@@ -512,7 +512,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             v_new = v[uninited_idxs]
 
             for pair in range(len(u_new)):
-                Kw_pair = self.kernel_func(self.obs_coords[u_new[pair], :], self.ls, self.obs_coords[v_new[pair], :])
+                Kw_pair = self.kernel_func(self.obs_coords[u_new[pair], :][None, :], self.ls,
+                                           self.obs_coords[v_new[pair], :][None, :])
                 self.Kw[u_new[pair], v_new[pair]] = Kw_pair
                 self.Kw[v_new[pair], u_new[pair]] = Kw_pair
 
