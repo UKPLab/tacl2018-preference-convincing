@@ -67,12 +67,17 @@ def derivfactor_diag_from_raw_vals(vals, vals2, ls_d, operator='*'):
     return 0
 
 
-def diagonal_from_raw_vals(vals, ls, vals2=None, operator='*'):
+def diagonal_from_raw_vals(vals, ls, vals2=None, operator='*', vector=False):
     '''
     No covariance between different locations. Operator is ignored.
     '''
     if vals2 is None:
         vals2 = vals
+
+    if vector:
+        K = np.zeros(vals.shape[0], dtype=float)
+        for i in range(vals.shape[0]):
+            K[i] = float((vals[i] == vals2[i]))
 
     K = np.zeros((vals.shape[0], vals2.shape[0]), dtype=float)
     for i in range(vals.shape[0]):
@@ -102,7 +107,7 @@ def diagonal_from_raw_vals(vals, ls, vals2=None, operator='*'):
 
 # Matern 3/2
 
-def matern_3_2_onedimension_from_raw_vals(xvals, x2vals, ls_d):
+def matern_3_2_onedimension_from_raw_vals(xvals, x2vals, ls_d, vector=False):
     xvals = xvals * 3 ** 0.5 / ls_d
     x2vals = x2vals * 3 ** 0.5 / ls_d
 
@@ -176,7 +181,7 @@ def derivfactor_matern_3_2_from_raw_vals(vals, ls, d, vals2=None, operator='*'):
     return K
 
 
-def matern_3_2_from_raw_vals(vals, ls, vals2=None, operator='*', n_threads=0):
+def matern_3_2_from_raw_vals(vals, ls, vals2=None, operator='*', n_threads=0, vector=False):
 
     if n_threads == 0:
         num_jobs = multiprocessing.cpu_count()
@@ -186,7 +191,7 @@ def matern_3_2_from_raw_vals(vals, ls, vals2=None, operator='*', n_threads=0):
         num_jobs = n_threads
 
     subset_size = int(np.ceil(vals.shape[1] / float(num_jobs)))
-    K = Parallel(n_jobs=num_jobs, backend='threading')(delayed(compute_K_subset)(i, subset_size, vals, vals2, ls,
+    K = Parallel(n_jobs=num_jobs, backend='threading')(delayed(compute_K_subset)(i, subset_size, vals, vals2, ls, vector,
                                                                                  matern_3_2_onedimension_from_raw_vals,
                                                                                  operator) for i in range(num_jobs))
 
