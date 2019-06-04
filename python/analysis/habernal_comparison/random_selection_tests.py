@@ -118,7 +118,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
         logging.info("**** Running method %s on dataset %s ****" % (method, dataset) )
 
-        feature_type = 'debug'  # can be 'embeddings' or 'ling' or 'both' or 'debug'
+        feature_type = 'both'  # can be 'embeddings' or 'ling' or 'both' or 'debug'
         embeddings_type = 'word_mean'
         self._set_embeddings(embeddings_type)
 
