@@ -73,6 +73,9 @@ if __name__ == '__main__':
         runtimes_dims = np.zeros((len(dims_methods), 4))
 
         runtimes_both = np.zeros(len(methods))
+        runtimes_both_lq = np.zeros(len(methods))
+        runtimes_both_uq = np.zeros(len(methods))
+
         acc_both = np.zeros(len(methods))
 
         for m, expt_settings['method'] in enumerate(methods):
@@ -125,7 +128,10 @@ if __name__ == '__main__':
 
             if len(acc_m):
                 acc_both[m] = np.mean(acc_m)
-                runtimes_both[m] = np.mean(runtimes_m)
+                runtimes_both[m] = np.median(runtimes_m)
+                runtimes_both_lq[m] = np.percentile(runtimes_m, 25)
+                runtimes_both_uq[m] = np.percentile(runtimes_m, 75)
+
                 if expt_settings['method'] in dims_methods:
                     m_dims = dims_methods == expt_settings['method']
                     runtimes_dims[m_dims, 3] = runtimes_both[m]
@@ -135,6 +141,9 @@ if __name__ == '__main__':
 
         runtimes_emb = np.zeros(len(methods))
         acc_emb = np.zeros(len(methods))
+
+        runtimes_emb_lq = np.zeros(len(methods))
+        runtimes_emb_uq = np.zeros(len(methods))
 
         for m, expt_settings['method'] in enumerate(methods):
             print("Processing method %s" % expt_settings['method'])
@@ -205,7 +214,11 @@ if __name__ == '__main__':
 
             if len(acc_m):
                 acc_emb[m] = np.mean(acc_m)
-                runtimes_emb[m] = np.mean(runtimes_m)
+
+                runtimes_emb[m] = np.median(runtimes_m)
+                runtimes_emb_lq[m] = np.percentile(runtimes_m, 25)
+                runtimes_emb_uq[m] = np.percentile(runtimes_m, 75)
+
                 if expt_settings['method'] in dims_methods:
                     m_dims = dims_methods == expt_settings['method']
                     runtimes_dims[m_dims, 1] = runtimes_emb[m]
@@ -217,8 +230,17 @@ if __name__ == '__main__':
         x_gppl = np.array([2, 10, 100, 200, 300, 400, 500])#, 600, 700])
         h1, = ax1.plot(x_gppl, runtimes_both[0:7], color='blue', marker='o', label='runtime, GPPL',
                        linewidth=2, markersize=8)
+
+        ax1.fill_between(x_gppl, runtimes_both_lq[0:7], runtimes_both_uq[0:7], alpha=0.2, edgecolor='blue',
+                         facecolor='blue')
+
+
         h2, = ax1.plot(x_gppl, runtimes_both[7:], color='green', marker='d', label='runtime, crowdGPPL',
                        linewidth=2, markersize=8)
+
+        ax1.fill_between(x_gppl, runtimes_both_lq[7:], runtimes_both_uq[7:], alpha=0.2, edgecolor='green',
+                         facecolor='green')
+
         ax1.set_ylabel('Runtime (s)')
         plt.xlabel('No. Inducing Points, M')
         ax1.grid('on', axis='y')
@@ -243,8 +265,16 @@ if __name__ == '__main__':
         fig1, ax2 = plt.subplots(figsize=(5,4))
         h1, = ax2.plot(x_gppl, runtimes_emb[0:7], color='blue', marker='o', label='runtime, GPPL',
                        linewidth=2, markersize=8)
+
+        ax2.fill_between(x_gppl, runtimes_emb_lq[0:7], runtimes_emb_uq[0:7], alpha=0.2, edgecolor='blue',
+                         facecolor='blue')
+
         h2, = ax2.plot(x_gppl, runtimes_emb[7:], color='green', marker='d', label='runtime, crowdGPPL',
                        linewidth=2, markersize=8)
+
+        ax2.fill_between(x_gppl, runtimes_emb_lq[0:7], runtimes_emb_uq[0:7], alpha=0.2, edgecolor='green',
+                         facecolor='green')
+
         plt.xlabel('No. Inducing Points, M')
         ax2.grid('on', axis='y')
         #ax2.set_ylabel('Runtime (s)')
@@ -272,6 +302,8 @@ if __name__ == '__main__':
 
         Nvals = [500, 1000, 2000, 4000, 7000, 10000]
         runtimes_N = np.zeros((len(methods), len(Nvals)))
+        runtimes_N_lq = np.zeros((len(methods), len(Nvals)))
+        runtimes_N_uq = np.zeros((len(methods), len(Nvals)))
 
         for n, N in enumerate(Nvals):
             foldername = 'p2_P%i/' % N
@@ -323,14 +355,23 @@ if __name__ == '__main__':
 
                     runtimes_m[f] = data_f[6]
 
-                runtimes_N[m, n] = np.mean(runtimes_m)
+                runtimes_N[m, n] = np.median(runtimes_m)
+                runtimes_N_lq[m, n] = np.percentile(runtimes_m, 25)
+                runtimes_N_uq[m, n] = np.percentile(runtimes_m, 75)
 
         fig3, ax3 = plt.subplots(figsize=(4, 2.5))
 
         ax3.plot(Nvals, runtimes_N[0], label='GPPL M=100', marker='o', color='blue', linewidth=2, linestyle='-.',
                  markersize=8)
+
+        ax3.fill_between(Nvals, runtimes_N_lq[0], runtimes_N_uq[0], alpha=0.2, edgecolor='blue',
+                         facecolor='blue')
+
         ax3.plot(Nvals, runtimes_N[1], label='Crowd-GPPL M=100', marker='<', color='green', linestyle='-.',
                  linewidth=2, markersize=8)
+
+        ax3.fill_between(Nvals, runtimes_N_lq[1], runtimes_N_uq[1], alpha=0.2, edgecolor='green',
+                         facecolor='green')
 
         ax3.set_xlabel('No. pairwise training labels')
         ax3.set_ylabel('Runtime (s)')
@@ -350,6 +391,8 @@ if __name__ == '__main__':
 
         Nvals = [50, 100, 200, 300, 400, 500]
         runtimes_N = np.zeros((len(methods), len(Nvals)))
+        runtimes_N_lq = np.zeros((len(methods), len(Nvals)))
+        runtimes_N_uq = np.zeros((len(methods), len(Nvals)))
 
         for n, N in enumerate(Nvals):
             foldername = 'p2_%i/' % N
@@ -403,14 +446,23 @@ if __name__ == '__main__':
 
                     runtimes_m[f] = data_f[6]
 
-                runtimes_N[m, n] = np.mean(runtimes_m)
+                runtimes_N[m, n] = np.median(runtimes_m)
+                runtimes_N_lq[m, n] = np.percentile(runtimes_m, 25)
+                runtimes_N_uq[m, n] = np.percentile(runtimes_m, 75)
 
         fig3, ax3 = plt.subplots(figsize=(4, 2.5))
 
         ax3.plot(Nvals, runtimes_N[0], label='GPPL M=100', marker='o', color='blue', linewidth=2, linestyle='-.',
                  markersize=8)
+
+        ax3.fill_between(Nvals, runtimes_N_lq[0], runtimes_N_uq[0], alpha=0.2, edgecolor='blue',
+                         facecolor='blue')
+
         ax3.plot(Nvals, runtimes_N[1], label='Crowd-GPPL M=100', marker='<', color='green', linestyle='-.',
                  linewidth=2, markersize=8)
+
+        ax3.fill_between(Nvals, runtimes_N_lq[1], runtimes_N_uq[1], alpha=0.2, edgecolor='green',
+                         facecolor='green')
 
         ax3.set_xlabel('No. arguments in training set')
         ax3.set_ylabel('Runtime (s)')

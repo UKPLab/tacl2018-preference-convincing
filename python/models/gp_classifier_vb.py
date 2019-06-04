@@ -111,7 +111,10 @@ def matern_3_2_onedimension_from_raw_vals(xvals, x2vals, ls_d, vector=False):
     xvals = xvals * 3 ** 0.5 / ls_d
     x2vals = x2vals * 3 ** 0.5 / ls_d
 
-    K = compute_distance(xvals, x2vals.T)
+    if vector:
+        K = compute_distance(xvals, x2vals)
+    else:
+        K = compute_distance(xvals, x2vals.T)
     K = np.abs(K, K)
 
     exp_minusK = np.exp(-K)
