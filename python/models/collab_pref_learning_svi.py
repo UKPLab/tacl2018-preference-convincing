@@ -511,10 +511,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             u_new = u[uninited_idxs]
             v_new = v[uninited_idxs]
 
-            Kw_v = self.Kw[u_new, :]
-            Kw_v[:, v_new] = self.kernel_func(self.obs_coords[u_new, :], self.ls, self.obs_coords[v_new, :])
-            self.Kw[u_new, :] += Kw_v
-            self.Kw[:, u_new] += Kw_v.T
+            for pair in range(len(u_new)):
+                Kw_pair = self.kernel_func(self.obs_coords[u_new[pair], :], self.ls, self.obs_coords[v_new[pair], :])
+                self.Kw[u_new[pair], v_new[pair]] = Kw_pair
+                self.Kw[v_new[pair], u_new[pair]] = Kw_pair
 
         if self.N > self.max_Kw_size: # flush any memmapped objects
             self.Kw.flush()
