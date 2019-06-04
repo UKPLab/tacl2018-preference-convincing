@@ -355,7 +355,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'randsel5'
+    test_dir = 'randsel7'
 
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
@@ -365,6 +365,8 @@ if __name__ == '__main__':
     max_no_folds = nreps * nfolds # 1 # subset for debugging
     subset = 0
     verbose = False
+
+    rate_s = 20000
 
     data_root_dir = os.path.abspath("./data/")
 

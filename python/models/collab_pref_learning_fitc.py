@@ -94,7 +94,6 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
                                                          f_cov=self.tS)
         self.st = self.shape_st / self.rate_st
 
-
     def _expec_w(self, update_s=True, update_G=True):
         """
         Compute the expectation over the latent features of the items and the latent personality components
@@ -172,7 +171,7 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
 
         if self.verbose:
             logging.debug('Computing w_cov_i')
-        Kw_i = self.Kw[self.uw_i, :][:, self.uw_i]
+        Kw_i = self._get_Kw()[self.uw_i, :][:, self.uw_i]
         K_nm_i = self.K_nm[self.uw_i]
 
         self.w_cov_i = np.zeros((self.Nfactors, self.uw_i.shape[0], self.uw_i.shape[0]))

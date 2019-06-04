@@ -157,7 +157,7 @@ For the consensus, the precision and mean are updated according to the following
 For the latent user components, the SVI updates for the parameters are:
 \begin{flalign}
 & \bs \Sigma^{-1}_{c,i} = (1-\rho_i)\bs \Sigma^{-1}_{c,i-1}
-+ \rho_i\bs K^{-1}_{w,mm}
++ \rho_i\bs L^{-1}_{mm}
 + \rho_i \pi_i \bs A_{w,i}^T \bigg( \sum_{p \in P_i} \bs H^{(i)T}_{.,p} \textrm{diag}\left(\hat{\bs v}_{c,\bs a}^2 + \right. &\nonumber \\
 & \left. \bs S_{c,\bs a, \bs a} + 
 \hat{\bs v}_{c,\bs b}^2 + \bs S_{c,\bs b, \bs b}  
@@ -171,7 +171,7 @@ For the latent user components, the SVI updates for the parameters are:
 \end{flalign}
 where the subscripts $\bs a = \{ a_p \forall p \in P_i \}$
 and  $\bs b = \{b_p \forall p \in P_i \}$ are lists of indices to the first and 
-second items in the pairs, respectively, and $\bs A_{w,i} = \bs K_{w,im} \bs K_{w,mm}^{-1}$.
+second items in the pairs, respectively, and $\bs A_{w,i} = \bs L_{im} \bs L_{mm}^{-1}$.
 
 
 \section{Predictions with CrowdGPPL}
@@ -182,13 +182,13 @@ The means, item covariances and user variance required for predictions with crow
 \begin{flalign}
 &\hat{\bs t}^* = \bs K_{*m} \bs K^{-1}_{mm} \hat{\bs t}_{m}, \hspace{0.7cm} 
 \hat{\bs v}_{c}^* = \bs K_{*m} \bs K^{-1}_{mm} \hat{\bs v}_{m,c}, \hspace{0.7cm}
-\hat{\bs w}_{c}^* = \bs K_{w,*m} \bs K^{-1}_{w,mm} \hat{\bs w}_{m,c}, & \label{eq:tstar}\\
+\hat{\bs w}_{c}^* = \bs L_{*m} \bs L^{-1}_{mm} \hat{\bs w}_{m,c}, & \label{eq:tstar}\\
 &\bs C_{t}^* \!= \frac{\bs K_{**}}{\mathbb{E}[s_t]} + \bs A_{*m}(\bs S_{t} \!-\! \bs K_{mm}) \bs A_{*m}^T, \hspace{0.5cm}
 \bs C_{v,c}^* \!= \frac{\bs K_{**}}{\mathbb{E}[s_c]} + \bs A_{*m}(\bs S_{v,c} \!\!-\! \bs K_{mm}) \bs A_{*m}^T  & \\
-&\omega_{c,u}^* = 1 + \bs A_{w,um}(\bs \Sigma_{w,c} - \bs K_{w,mm}) \bs A_{w,um}^T & \label{eq:omegastar}
+&\omega_{c,u}^* = 1 + \bs A_{w,um}(\bs \Sigma_{w,c} - \bs L_{mm}) \bs A_{w,um}^T & \label{eq:omegastar}
 \end{flalign}
 where  $\bs A_{*m}=\bs K_{*m}\bs K_{mm}^{-1}$,
-$\bs A_{w,um}=\bs K_{w,um}\bs K_{w,mm}^{-1}$ and $\bs K_{w,um}$ is the covariance between user $u$ and the inducing 
+$\bs A_{w,um}=\bs L_{um}\bs L_{mm}^{-1}$ and $\bs L_{um}$ is the covariance between user $u$ and the inducing 
 users.
 
 % \section{Converged Lower Bound Derivatives}

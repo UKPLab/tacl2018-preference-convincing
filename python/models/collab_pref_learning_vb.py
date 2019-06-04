@@ -1005,7 +1005,7 @@ class CollabPrefLearningVB(object):
 
         # set personids and itemids to None to compute all pairs
         mu, f_cov, personids = self.predict_f(item_features, person_features, personids,
-                                              return_cov=True, return_personids=True)
+                                          return_cov=True, cov_0=item_0_idxs, cov_1=item_1_idxs, return_personids=True)
 
         mu = mu.T.reshape(N * Npeople, 1)
 
@@ -1045,7 +1045,7 @@ class CollabPrefLearningVB(object):
 
         return y, y_var
 
-    def _compute_cov_w(self):
+    def _compute_cov_w(self, _, __):
         cov_w = np.zeros((self.Nfactors, self.N, self.N))
         for f in range(self.Nfactors):
             fidxs = np.arange(self.N) + self.N * f
@@ -1053,11 +1053,11 @@ class CollabPrefLearningVB(object):
 
         return cov_w
 
-    def _compute_cov_t(self):
+    def _compute_cov_t(self, _, __):
         return self.t_cov
 
-    def predict_f(self, item_features=None, person_features=None, personids=None, return_cov=False,
-                  return_personids=False):
+    def predict_f(self, item_features=None, person_features=None, personids=None, return_cov=False, cov_0=None,
+                  cov_1=None, return_personids=False):
 
         if personids is not None:
             personids = np.array(personids).astype(int)
@@ -1101,8 +1101,8 @@ class CollabPrefLearningVB(object):
             w = self.w
 
             if return_cov:
-                cov_w = self._compute_cov_w()
-                cov_t = self._compute_cov_t()
+                cov_w = self._compute_cov_w(cov_0, cov_1)
+                cov_t = self._compute_cov_t(cov_0, cov_1)
         else:
             t, w, cov_t, cov_w = self._predict_w_t(item_features, return_cov)
 
@@ -1128,9 +1128,7 @@ class CollabPrefLearningVB(object):
         # covariance of a product of two independent gaussians (product-Gaussian distribution)
         for f in range(self.Nfactors):
             cov_f_f = np.zeros((Npeople, N, N))
-            cov_f_f += var_y[f][:, None, None]
-            cov_f_f *= cov_w[f][None, :, :]
-            cov_f += cov_f_f
+            cov_f_f += var_y[f][:, None, None] * cov_w[f][None, :, :]
 
             yscaling = y[f, :]**2
             cov_wf = cov_w[f][None, :, :] * yscaling[:, None, None]
@@ -1138,7 +1136,7 @@ class CollabPrefLearningVB(object):
             wscaling = (w[:, f:f + 1].dot(w[:, f:f + 1].T))
             cov_yf = var_y[f][:, None, None] * wscaling[None, :, :]
 
-            cov_f += cov_wf + cov_yf
+            cov_f += cov_f_f + cov_wf + cov_yf
 
         # return predicted_f, t, cov_t, w, cov_w, y, cov_y
         if not return_personids:

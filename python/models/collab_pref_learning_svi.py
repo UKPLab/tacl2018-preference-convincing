@@ -467,30 +467,58 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         else:
             self.Kw = np.zeros((self.N, self.N))
 
-        for b in range(nbatches):
+        # Don't compute all the combinations -- save this until each iteration requires them
+        # so that pairs that are never compared are ignored.
+        # for b in range(nbatches):
+        #
+        #     logging.debug('Computing Kw batch %i' % b)
+        #
+        #     end1 = (b+1)*batchsize
+        #     if end1 > self.N:
+        #         end1 = self.N
+        #
+        #     for b2 in range(nbatches):
+        #
+        #         end2 = (b2+1)*batchsize
+        #         if end2 > self.N:
+        #             end2 = self.N
+        #
+        #         self.Kw[b*batchsize:(b+1)*batchsize, :][:, b2*batchsize:(b2+1)*batchsize] = self.kernel_func(
+        #             self.obs_coords[b*batchsize:end1, :], self.ls, self.obs_coords[b2*batchsize:end2, :])
+        #
 
-            logging.debug('Computing Kw batch %i' % b)
-
-            end1 = (b+1)*batchsize
-            if end1 > self.N:
-                end1 = self.N
-
-            for b2 in range(nbatches):
-
-                end2 = (b2+1)*batchsize
-                if end2 > self.N:
-                    end2 = self.N
-
-                self.Kw[b*batchsize:(b+1)*batchsize, :][:, b2*batchsize:(b2+1)*batchsize] = self.kernel_func(
-                    self.obs_coords[b*batchsize:end1, :], self.ls, self.obs_coords[b2*batchsize:end2, :])
+        self.Kw[range(self.N), range(self.N)] = 1.0
 
         if self.N > self.max_Kw_size:
             self.Kw.flush()
+
 
         if not self.new_obs:
             return
 
         self.Q = self._estimate_obs_noise()
+
+    def _get_Kw(self, idxs0=None, idxs1=None):
+
+        if idxs0 is None or idxs1 is None:
+            u = self.tpref_u[self.data_obs_idx_i]
+            v = self.tpref_v[self.data_obs_idx_i]
+        else:
+            u = idxs1
+            v = idxs0
+
+        uninited_idxs = self.Kw[u, v] == 0
+        if np.any(uninited_idxs):
+            u_new = u[uninited_idxs]
+            v_new = v[uninited_idxs]
+
+            self.Kw[u_new, :][:, v_new] = self.kernel_func(self.obs_coords[u_new, :], self.ls, self.obs_coords[v_new, :])
+            self.Kw[v_new, :][:, u_new] = self.Kw[u, :][:, v].T
+
+        if self.N > self.max_Kw_size: # flush any memmapped objects
+            self.Kw.flush()
+
+        return self.Kw
 
     def _init_t(self):
         self.t = np.zeros((self.N, 1))
@@ -728,7 +756,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         if self.verbose:
             logging.debug('Computing w_cov_i')
-        Kw_i = self.Kw[self.uw_i, :][:, self.uw_i]
+        Kw_i = self._get_Kw()[self.uw_i, :][:, self.uw_i]
         K_nm_i = self.K_nm[self.uw_i]
 
         self.w_cov_i = np.zeros((self.Nfactors, self.uw_i.shape[0], self.uw_i.shape[0]))
@@ -1006,22 +1034,23 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         return lb
 
-    def _compute_cov_w(self):
-        cov_w = np.zeros((self.Nfactors, self.N, self.N))
+    def _compute_cov_w(self, cov_0, cov_1):
+        N = len(cov_0)
+        cov_w = np.zeros((self.Nfactors, N, N))
         covpair = self.K_nm.dot(self.invK_mm)
 
         for f in range(self.Nfactors):
-            cov_w[f] = self.Kw * self.rate_sw[f] / self.shape_sw[f] + \
+            cov_w[f] = self._get_Kw(cov_0, cov_1) * self.rate_sw[f] / self.shape_sw[f] + \
                        covpair.dot(self.wS[f] - self.K_mm * self.rate_sw[f] / self.shape_sw[f]).dot(covpair.T)
 
         return cov_w
 
-    def _compute_cov_t(self):
+    def _compute_cov_t(self, cov_0, cov_1):
         if self.use_t:
             covpair = self.K_nm.dot(self.invK_mm)
 
             covpair_uS = covpair.dot(self.tS)
-            cov_t = self.Kw * self.rate_st / self.shape_st + (covpair_uS -
+            cov_t = self._get_Kw(cov_0, cov_1) * self.rate_st / self.shape_st + (covpair_uS -
                          covpair.dot(self.K_mm * self.rate_st / self.shape_st)).dot(covpair.T)
             return cov_t
         else:
@@ -1102,7 +1131,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         #  figure 2b.
         if item_features is None:
             K = self.K_nm
-            K_starstar = self.Kw
+            K_starstar = self._get_Kw(item_0_idxs, item_1_idxs)
         else:
             if self.verbose:
                 logging.debug('Computing K_nm in predict_common')
@@ -1188,7 +1217,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             K_nm_i = self.K_nm[self.uw_i]
             covpair = K_nm_i.dot(self.invK_mm)
             sw = self.shape_sw / self.rate_sw
-            Kw_i = self.Kw[self.uw_i, :][:, self.uw_i]
+            Kw_i = self._get_Kw()[self.uw_i, :][:, self.uw_i]
 
             for f in range(self.Nfactors):
                 self.w_cov_i[f] = Kw_i / sw[f] + covpair.dot(self.wS[f] - self.K_mm / sw[f]).dot(covpair.T)
