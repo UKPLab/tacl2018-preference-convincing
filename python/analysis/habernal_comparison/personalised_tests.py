@@ -171,7 +171,8 @@ class PersonalisedTestRunner(TestRunner):
                                            shape_s0=shape_s0, rate_s0=rate_s0,
                                            shape_sy0=1e10, rate_sy0=1e10,
                                            ninducing=M, forgetting_rate=0.9,#0.7,
-                                           delay=10.0)#1.0)
+                                           delay=10.0,
+                                           exhaustive_train_count=2)#1.0)
 
         self.model.max_iter = 500 # same as for single user GPPL
         self.model.max_Kw_size = max_Kw_size
@@ -290,7 +291,7 @@ if __name__ == '__main__':
         rate_s_vals = [20000]#[2*1e5, 2*1e6]#[20000] #2, 20, 200, 2000]
 
         for rate_s in rate_s_vals:
-            test_dir = 'rate_s_%i_sy10' % rate_s
+            test_dir = 'rate_s_%i_sy10_extr2' % rate_s
 
             methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
             runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
