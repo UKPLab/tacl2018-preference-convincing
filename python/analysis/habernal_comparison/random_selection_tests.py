@@ -118,7 +118,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
         logging.info("**** Running method %s on dataset %s ****" % (method, dataset) )
 
-        feature_type = 'debug'  # can be 'embeddings' or 'ling' or 'both' or 'debug'
+        feature_type = 'both'  # can be 'embeddings' or 'ling' or 'both' or 'debug'
         embeddings_type = 'word_mean'
         self._set_embeddings(embeddings_type)
 
@@ -363,7 +363,7 @@ if __name__ == '__main__':
     nreps = 1
     nfolds = 5#32
     max_no_folds = nreps * nfolds # 1 # subset for debugging
-    subset = 20
+    subset = 0
     verbose = False
 
     rate_s = 20000
