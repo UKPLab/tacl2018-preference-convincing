@@ -117,8 +117,8 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
     # TODO check whether this setup still works for Sushi-B tests. Then run on conv tests -- probably need to tune sy hyperparameters
     # TODO test with the original selection of user inducing points again.
 
-    model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                  shape_sy0=1e6 if sushiB else 1e6, rate_sy0=1e6 if sushiB else 1e6, ls=None,
+    model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0 / Nfactors,
+                                  shape_sy0=1e10 if sushiB else 1e10, rate_sy0=1e10 if sushiB else 1e10, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                   use_common_mean_t=use_common_mean, delay=delay)
@@ -126,7 +126,7 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
     model.max_Kw_size = max_Kw_size
     model.max_iter = 200
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
-    # model.use_local_obs_posterior_y = False
+    #model.use_local_obs_posterior_y = False
 
     if vscales is not None:
         vscales.append(np.sort((model.rate_sw / model.shape_sw) * (model.rate_sy / model.shape_sy))[::-1])
@@ -739,9 +739,9 @@ if __name__ == '__main__':
         item_features = item_data.values[:, 1:].astype(float)
         item_features = convert_discrete_to_continuous(item_features, cols_to_convert=[2])
 
-        user_data = pd.read_csv(user_feat_file, sep='\t', index_col=0, header=None)
+        user_data = pd.read_csv(user_feat_file, sep='\t', index_col=0, header=None, usecols=[0,3,4,5,6,10])
         user_features = user_data.values.astype(float)
-        user_features = convert_discrete_to_continuous(user_features, cols_to_convert=[0, 3, 4, 6, 7])
+        user_features = convert_discrete_to_continuous(user_features, cols_to_convert=[1,2,3])#0, 3, 4, 6, 7])
 
 
         # Load SUSHI-A dataset -------------------------------------------------------------------------------------------------
@@ -972,7 +972,7 @@ if __name__ == '__main__':
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
                    'crowd-GPPL',
-                   #'crowd-GPPL\\u',
+                   'crowd-GPPL\\u',
                    #'crowd-BMF',
                    #'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
                    #'GPPL-pooled',
