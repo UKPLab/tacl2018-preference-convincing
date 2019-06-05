@@ -204,7 +204,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.y_u += np.random.rand(*self.y_u.shape) * 1e-6
             else:
                 # positive values
-                self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))**2
+                self.y_u = norm.rvs(0, 100, (self.Nfactors, self.y_ninducing))**2
 
             self.yinvSm = np.zeros((self.y_ninducing, self.Nfactors))
             #self.yinvSm = np.concatenate([(self.yinvS[f] * (self.y_u[f]))[:, None] for f in range(self.Nfactors)], axis=1)
@@ -1037,12 +1037,15 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         return lb
 
     def _compute_cov_w(self, cov_0, cov_1):
-        N = len(cov_0)
+
+        Kw = self._get_Kw(cov_0, cov_1)
+        N = Kw.shape[0]
+
         cov_w = np.zeros((self.Nfactors, N, N))
         covpair = self.K_nm.dot(self.invK_mm)
 
         for f in range(self.Nfactors):
-            cov_w[f] = self._get_Kw(cov_0, cov_1) * self.rate_sw[f] / self.shape_sw[f] + \
+            cov_w[f] = Kw * self.rate_sw[f] / self.shape_sw[f] + \
                        covpair.dot(self.wS[f] - self.K_mm * self.rate_sw[f] / self.shape_sw[f]).dot(covpair.T)
 
         return cov_w

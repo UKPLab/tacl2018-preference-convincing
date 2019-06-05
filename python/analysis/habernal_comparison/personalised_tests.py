@@ -294,7 +294,7 @@ if __name__ == '__main__':
         rate_s_vals = [20000]#[2*1e5, 2*1e6]#[20000] #2, 20, 200, 2000]
 
         for rate_s in rate_s_vals:
-            test_dir = 'rate_s_%i_sy10_extr2' % rate_s
+            test_dir = 'rate_s_%i_sy10_extr2_yinit100' % rate_s
 
             methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
             runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,

@@ -361,7 +361,7 @@ if __name__ == '__main__':
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
 
     nreps = 1
-    nfolds = 5#32
+    nfolds = 5
     max_no_folds = nreps * nfolds # 1 # subset for debugging
     subset = 0
     verbose = False
