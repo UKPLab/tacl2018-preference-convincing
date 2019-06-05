@@ -511,8 +511,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             u_new = u[uninited_idxs]
             v_new = v[uninited_idxs]
 
-            Kw_pairs = self.kernel_func(self.obs_coords[u_new, :][None, :], self.ls,
-                                        self.obs_coords[v_new, :][None, :], vector=True)
+            Kw_pairs = self.kernel_func(self.obs_coords[u_new, :], self.ls,
+                                        self.obs_coords[v_new, :], vector=True).flatten()
 
             self.Kw[u_new, v_new] = Kw_pairs
             self.Kw[v_new, u_new] = Kw_pairs
