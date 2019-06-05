@@ -173,7 +173,7 @@ class PersonalisedTestRunner(TestRunner):
                                            use_common_mean_t=common_mean, max_update_size=SS, use_lb=True,
                                            shape_s0=shape_s0, rate_s0=rate_s0,
                                            shape_sy0=1e10, rate_sy0=1e10,
-                                           ninducing=M, forgetting_rate=0.7,
+                                           ninducing=M, forgetting_rate=0.9,
                                            delay=10.0,
                                            exhaustive_train_count=2)#1.0)
 
@@ -343,7 +343,7 @@ if __name__ == '__main__':
         runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
     # Plot the scales of the latent factors ----------------------------------------------------------------------
-    if test_to_run < 4:
+    if test_to_run < 4 and len(runner.vscales):
         vscales = np.mean(runner.vscales, axis=0)
 
         logging.getLogger().setLevel(logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
