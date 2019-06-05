@@ -173,9 +173,9 @@ class PersonalisedTestRunner(TestRunner):
                                            use_common_mean_t=common_mean, max_update_size=SS, use_lb=True,
                                            shape_s0=shape_s0, rate_s0=rate_s0,
                                            shape_sy0=1e10, rate_sy0=1e10,
-                                           ninducing=M, forgetting_rate=0.9,#0.7,
+                                           ninducing=M, forgetting_rate=0.7,
                                            delay=10.0,
-                                           exhaustive_train_count=3)#1.0)
+                                           exhaustive_train_count=2)#1.0)
 
         self.model.max_iter = 500 # same as for single user GPPL
         self.model.max_Kw_size = max_Kw_size
@@ -294,14 +294,14 @@ if __name__ == '__main__':
         rate_s_vals = [20000]#[2*1e5, 2*1e6]#[20000] #2, 20, 200, 2000]
 
         for rate_s in rate_s_vals:
-            test_dir = 'rate_s_%i_sy10_extr3' % rate_s
+            test_dir = 'rate_s_%i_sy10_extr2_fr07' % rate_s
 
             methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
             runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
                                             dataset_increment)
             runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
             runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
-            runner.run_test_set(min_no_folds=0, max_no_folds=5)
+            runner.run_test_set(min_no_folds=0, max_no_folds=32)
 
     if len(sys.argv) > 2:
         test_dir = sys.argv[2]
