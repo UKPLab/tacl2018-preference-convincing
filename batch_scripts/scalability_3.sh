@@ -9,6 +9,8 @@
 #SBATCH -c 24
 #SBATCH --mem-per-cpu=16384
 #SBATCH --exclusive
+#SBATCH -C avx
+
 
 # ----------------------------------
 
