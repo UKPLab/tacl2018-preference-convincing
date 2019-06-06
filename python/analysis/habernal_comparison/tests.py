@@ -794,7 +794,7 @@ class TestRunner:
         elif 'GP' in self.method:
 
             ls_file = './data/ls_%s_%s_%s.csv' % (self.dataset, feature_type, embeddings_type)
-            if os.path.exist(ls_file):
+            if os.path.exists(ls_file):
                 self.default_ls = np.genfromtxt(ls_file)
             else:
                 self.default_ls = compute_lengthscale_heuristic(feature_type, embeddings_type, self.embeddings,
