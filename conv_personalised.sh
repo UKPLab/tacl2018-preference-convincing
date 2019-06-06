@@ -9,10 +9,11 @@
 #SBATCH -c 24
 #SBATCH --mem-per-cpu=16384
 #SBATCH --exclusive
+#SBATCH -C avx
 
 # ----------------------------------
 
-module load python
-module load intel
+# enable this if running on lichtenberg
+module load intel python/3.6.8
 
 python3 python/analysis/habernal_comparison/personalised_tests.py 0 
