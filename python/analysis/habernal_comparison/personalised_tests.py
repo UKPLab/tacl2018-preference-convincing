@@ -108,7 +108,7 @@ class PersonalisedTestRunner(TestRunner):
 
             if np.any(np.isnan(Es)):
                 continue
-            
+
             tr_proba = np.exp(Es[self.a1_train]) / (np.exp(Es[self.a1_train]) + np.exp(Es[self.a2_train]) + balance)
             tr_acc = accuracy_score(self.prefs_train[self.prefs_train != 1]==2, np.round(tr_proba[self.prefs_train != 1]))
             print('training set accuracy = %f with scale %f' % (tr_acc, scale) )
@@ -358,7 +358,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'rate_s_tests_single'
+    test_dir = 'use_neutral'  #'rate_s_tests_single'
 
     methods = ['SinglePrefGP_noOpt_weaksprior']
     datasets = ['UKPConvArgCrowdSample_evalMACE']
