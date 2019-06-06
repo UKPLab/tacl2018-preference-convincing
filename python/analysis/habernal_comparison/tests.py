@@ -1004,6 +1004,7 @@ class TestRunner:
                 
                 self.a1_unseen = a1_train[pair_subset]  #unseen_subset] change it so we test on train -- test the aggregated labels after combining the crowd
                 self.a2_unseen = a2_train[pair_subset]  #unseen_subset]
+                self.person_unseen = person_train[pair_subset] #unseen_subset]
                 
                 self.a_rank_train = a_rank_train
                 self.scores_rank_train = scores_rank_train

@@ -284,6 +284,7 @@ class PersonalisedTestRunner(TestRunner):
                                         (self.model.rate_sw / self.model.shape_sw))[::-1])
 
         proba = self.model.predict(self.person_test, self.a1_test, self.a2_test)
+        tr_proba = self.model.predict(self.person_unseen, self.a1_unseen, self.a2_unseen)
 
         # what did we change?
         # - more iterations ( 200 --> 500 )
@@ -298,7 +299,7 @@ class PersonalisedTestRunner(TestRunner):
         if self.a_rank_test is not None:
             predicted_f = self.model.predict_f_item_person(self.a_rank_test, self.person_rank_test)
 
-        return proba, predicted_f, None
+        return proba, predicted_f, tr_proba
 
     def run_persgppl_consensus(self):
         '''
@@ -325,12 +326,14 @@ class PersonalisedTestRunner(TestRunner):
             self.vscales.append(np.sort(self.model.rate_sw / self.model.shape_sw)[::-1])
 
         proba = self.model.predict_common(None, self.a1_test, self.a2_test)
+        tr_proba = self.model.predict(self.person_unseen, self.a1_unseen, self.a2_unseen)
+
         if self.a_rank_test is not None:
             predicted_f = self.model.predict_t()[self.a_rank_test]
 
         print('Max probability = %f, min = %f' % (np.max(proba), np.min(proba)))
 
-        return proba, predicted_f, None
+        return proba, predicted_f, tr_proba
 
     def _choose_method_fun(self, feature_type):
         if 'PersPrefGP' in self.method:
