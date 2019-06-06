@@ -16,4 +16,4 @@
 # enable this if running on lichtenberg
 module load intel python/3.6.8
 
-python3 python/analysis/habernal_comparison/personalised_tests.py 0 
+python3 -u python/analysis/habernal_comparison/personalised_tests.py 0

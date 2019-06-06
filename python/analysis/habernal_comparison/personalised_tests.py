@@ -16,15 +16,16 @@ import sys
 import logging
 #import matplotlib.pyplot as plt # do this here so we don't get the debugging crap later from the logger
 
-from sklearn.gaussian_process.gpr import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import Matern
+# from sklearn.gaussian_process.gpr import GaussianProcessRegressor
+# from sklearn.gaussian_process.kernels import Matern
 from sklearn.metrics import accuracy_score
 
-from gp_regressor_svi import GPRegressorSVI
-
 logging.basicConfig(level=logging.DEBUG)
-from tests import TestRunner
+
 sys.path.append("./python/analysis/habernal_comparison")
+
+from tests import TestRunner
+from gp_regressor_svi import GPRegressorSVI
 from collab_pref_learning_svi import CollabPrefLearningSVI
 import numpy as np
 
