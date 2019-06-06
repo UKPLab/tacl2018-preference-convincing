@@ -64,6 +64,9 @@ class PersonalisedTestRunner(TestRunner):
                 a1 = self.a1_train[pair_idx]
                 a2 = self.a2_train[pair_idx]
 
+                if self.prefs_train[pair_idx] == 1:
+                    continue
+
                 if self.prefs_train[pair_idx] != 2:  # swap so a2 is the preferred one
                     tmp = a1
                     a1 = a2
@@ -105,7 +108,7 @@ class PersonalisedTestRunner(TestRunner):
 
             if np.any(np.isnan(Es)):
                 continue
-
+            
             tr_proba = np.exp(Es[self.a1_train]) / (np.exp(Es[self.a1_train]) + np.exp(Es[self.a2_train]) + balance)
             tr_acc = accuracy_score(self.prefs_train[self.prefs_train != 1]==2, np.round(tr_proba[self.prefs_train != 1]))
             print('training set accuracy = %f with scale %f' % (tr_acc, scale) )
