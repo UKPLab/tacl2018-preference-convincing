@@ -403,6 +403,7 @@ class TestRunner:
                     ninducing=M, max_update_size=SS, kernel_combination=kernel_combination, forgetting_rate=0.9,
                     delay=10.0)
             self.model.max_iter_VB = 200
+            self.model.exhaustive_train = 2
             new_items_feat = self.items_feat # pass only when initialising
         else:
             new_items_feat = None
