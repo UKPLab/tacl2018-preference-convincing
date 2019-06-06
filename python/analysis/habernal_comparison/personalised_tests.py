@@ -206,7 +206,7 @@ class PersonalisedTestRunner(TestRunner):
         return proba, predicted_f, tr_proba
 
 
-    def _train_persgppl(self):
+    def _train_persgppl(self, delay):
         common_mean = False
 
         if '_commonmean' in self.method:
@@ -252,7 +252,7 @@ class PersonalisedTestRunner(TestRunner):
                                            shape_s0=shape_s0, rate_s0=rate_s0,
                                            shape_sy0=1e10, rate_sy0=1e10,
                                            ninducing=M, forgetting_rate=0.9,
-                                           delay=10.0,
+                                           delay=delay,
                                            exhaustive_train_count=2)#1.0)
 
         self.model.max_iter = 500 # same as for single user GPPL
@@ -277,7 +277,7 @@ class PersonalisedTestRunner(TestRunner):
         :return:
         '''
 
-        self._train_persgppl()
+        self._train_persgppl(delay=10)
 
         if self.vscales is not None:
             self.vscales.append(np.sort((self.model.rate_sw / self.model.shape_sw) *
@@ -320,7 +320,7 @@ class PersonalisedTestRunner(TestRunner):
         #     logging.info('I didnae find any pretrained model :(')
         #     self._train_persgppl()
 
-        self._train_persgppl()
+        self._train_persgppl(delay=1.0)
 
         if self.vscales is not None:
             self.vscales.append(np.sort(self.model.rate_sw / self.model.shape_sw)[::-1])

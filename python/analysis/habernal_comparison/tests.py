@@ -401,9 +401,8 @@ class TestRunner:
             self.model = GPPrefLearning(ninput_features=self.ndims, ls_initial=ls_initial, verbose=self.verbose, 
                     shape_s0=shape_s0, rate_s0=rate_s0, rate_ls = 1.0 / np.mean(ls_initial), use_svi=use_svi, 
                     ninducing=M, max_update_size=SS, kernel_combination=kernel_combination, forgetting_rate=0.9,
-                    delay=10.0)
+                    delay=1.0)
             self.model.max_iter_VB = 200
-            self.model.exhaustive_train = 2
             new_items_feat = self.items_feat # pass only when initialising
         else:
             new_items_feat = None
