@@ -276,7 +276,9 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
                 self.a_rank_test = rating_a
                 self.person_rank_test = rating_person
 
-                self.a1_unseen = None # don't try to predict on this
+                self.a1_unseen = self.a1_train
+                self.a2_unseen = self.a2_train
+                self.person_unseen = self.person_train
 
                 self.load_features(feature_type, embeddings_type, self.a1_train, self.a2_train, uids, utexts)
                 #items_feat = items_feat[:, :ndebug_features]
