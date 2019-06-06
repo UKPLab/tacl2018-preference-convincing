@@ -214,10 +214,10 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
         pairs_non_neutral = np.array(pair_gold) != 1
 
-        #a1 = np.array(a1)[pairs_non_neutral]
-        #a2 = np.array(a2)[pairs_non_neutral]
-        #pair_gold = np.array(pair_gold)[pairs_non_neutral]
-        #pair_person = np.array(pair_person)[pairs_non_neutral]
+        a1 = np.array(a1)  #[pairs_non_neutral]
+        a2 = np.array(a2)  #[pairs_non_neutral]
+        pair_gold = np.array(pair_gold)  #[pairs_non_neutral]
+        pair_person = np.array(pair_person)  #[pairs_non_neutral]
 
         rating_a = np.array(rating_a)
         rating_gold = np.array(rating_gold)
