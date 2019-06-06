@@ -4,6 +4,7 @@ import numpy as np
 from scipy.linalg import cholesky, solve_triangular
 from scipy.sparse import coo_matrix, issparse
 from scipy.optimize import minimize
+from scipy.spatial.distance import pdist, cdist, squareform
 from scipy.special import gammaln, psi, binom
 from scipy.stats import gamma
 import logging
@@ -186,27 +187,33 @@ def derivfactor_matern_3_2_from_raw_vals(vals, ls, d, vals2=None, operator='*'):
 
 def matern_3_2_from_raw_vals(vals, ls, vals2=None, operator='*', n_threads=0, vector=False):
 
-    if n_threads == 0:
-        num_jobs = multiprocessing.cpu_count()
-        if num_jobs > max_no_jobs:
-            num_jobs = max_no_jobs
+    # if n_threads == 0:
+    #     num_jobs = multiprocessing.cpu_count()
+    #     if num_jobs > max_no_jobs:
+    #         num_jobs = max_no_jobs
+    # else:
+    #     num_jobs = n_threads
+    #
+    # subset_size = int(np.ceil(vals.shape[1] / float(num_jobs)))
+    # K = Parallel(n_jobs=num_jobs, backend='threading')(delayed(compute_K_subset)(i, subset_size, vals, vals2, ls,
+    #                                                                          matern_3_2_onedimension_from_raw_vals,
+    #                                                                          operator, vector) for i in range(num_jobs))
+
+    if vals2 is None:
+        dists = pdist(vals / ls, metric='euclidean')
+    elif vector:
+        dists = np.sqrt(np.sum((vals/ls) ** 2 + (vals2/ls) ** 2 - 2 * (vals/ls) * (vals2/ls), axis=1))
     else:
-        num_jobs = n_threads
+        dists = cdist(vals / ls, vals2 / ls, metric='euclidean')
 
-    subset_size = int(np.ceil(vals.shape[1] / float(num_jobs)))
-    K = Parallel(n_jobs=num_jobs, backend='threading')(delayed(compute_K_subset)(i, subset_size, vals, vals2, ls,
-                                                                             matern_3_2_onedimension_from_raw_vals,
-                                                                             operator, vector) for i in range(num_jobs))
+    K = dists * np.sqrt(3)
+    K = (1. + K) * np.exp(-K)
 
-    # if vals2 is None:
-    #    vals2 = vals
-    # K = Parallel(n_jobs=num_jobs, backend='threading')(delayed(matern_3_2_onedimension_from_raw_vals)(vals[:, i:i+1], vals2[:, i:i+1], ls[i])
-    #                                  for i in range(vals.shape[1]))
+    if vals2 is None and not vector:
+        # convert from upper-triangular matrix to square matrix
+        K = squareform(K)
+        np.fill_diagonal(K, 1)
 
-    if operator == '*':
-        K = np.prod(K, axis=0)
-    elif operator == '+':
-        K = np.sum(K, axis=0) / float(vals.shape[1])
     return K
 
 

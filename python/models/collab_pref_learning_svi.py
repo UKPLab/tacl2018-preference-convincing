@@ -204,7 +204,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.y_u += np.random.rand(*self.y_u.shape) * 1e-6
             else:
                 # positive values
-                self.y_u = norm.rvs(0, 100, (self.Nfactors, self.y_ninducing))**2
+                self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))**2
 
             self.yinvSm = np.zeros((self.y_ninducing, self.Nfactors))
             #self.yinvSm = np.concatenate([(self.yinvS[f] * (self.y_u[f]))[:, None] for f in range(self.Nfactors)], axis=1)

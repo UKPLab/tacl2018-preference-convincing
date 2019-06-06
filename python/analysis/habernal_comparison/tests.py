@@ -786,19 +786,28 @@ class TestRunner:
         self.dataset = dataset
             
     def _init_ls(self, feature_type, embeddings_type):
+
+
         if self.dataset in self.default_ls_values and feature_type in self.default_ls_values[self.dataset] and \
                                 embeddings_type in self.default_ls_values[self.dataset][feature_type]:
             self.default_ls = self.default_ls_values[self.dataset][feature_type][embeddings_type]
         elif 'GP' in self.method:
-            self.default_ls = compute_lengthscale_heuristic(feature_type, embeddings_type, self.embeddings,
+
+            ls_file = './data/ls_%s_%s_%s.csv' % (self.dataset, feature_type, embeddings_type)
+            if os.path.exist(ls_file):
+                self.default_ls = np.genfromtxt(ls_file)
+            else:
+                self.default_ls = compute_lengthscale_heuristic(feature_type, embeddings_type, self.embeddings,
                                  self.ling_feat_spmatrix, self.docids, self.folds, self.index_to_word_map)
+                np.savetxt(ls_file, self.default_ls)
+
             if self.dataset not in self.default_ls_values:
                 self.default_ls_values[self.dataset] = {}
             if feature_type not in self.default_ls_values[self.dataset]:
                 self.default_ls_values[self.dataset][feature_type] = {}
             self.default_ls_values[self.dataset][feature_type][embeddings_type] = self.default_ls
         else:
-            self.default_ls = []        
+            self.default_ls = []
 
     def _set_embeddings(self, embeddings_type):
         if 'word_mean' == embeddings_type and not hasattr(self, 'word_embeddings'):
