@@ -18,6 +18,9 @@ import logging
 
 from sklearn.gaussian_process.gpr import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Matern
+from sklearn.metrics import accuracy_score
+
+from gp_regressor_svi import GPRegressorSVI
 
 logging.basicConfig(level=logging.DEBUG)
 from tests import TestRunner
@@ -38,61 +41,83 @@ class PersonalisedTestRunner(TestRunner):
         workers = np.unique(self.person_train)
         nworkers = np.max(workers) + 1
 
-        # initialise variational parameters
-        Es = np.zeros(nitems)
-        Eeta = np.ones(nworkers) * 0.9
-        sigma = np.ones(nitems)
-        alpha = np.ones(nworkers) * 9
-        beta = np.ones(nworkers)
+        scales = [1]  # [0.01, 0.1, 1, 10, 100]  # 10 was found to be optimal on the random selection tests.
 
-        balance = 0.000001 # tiny amount to ensure numerical stability
+        tr_proba_best = None
+        tr_acc_best = 0
 
-        for pair_idx in range(len(self.a1_train)):
+        for scale in scales:
 
-            # get the indices
-            a1 = self.a1_train[pair_idx]
-            a2 = self.a2_train[pair_idx]
+            # initialise variational parameters
+            Es = np.zeros(nitems)
+            Eeta = np.ones(nworkers) * 0.9
+            sigma = np.ones(nitems) * scale
+            alpha = np.ones(nworkers) * 9
+            beta = np.ones(nworkers)
 
-            if self.prefs_train[pair_idx] != 2:  # swap so a1 is the preferred one
-                tmp = a1
-                a1 = a2
-                a2 = tmp
+            balance = 0#1e-6 # tiny amount to ensure numerical stability
 
-            k = self.person_train[pair_idx]
+            for pair_idx in range(len(self.a1_train)):
 
-            # update the means
-            prob_incr = alpha[k] * np.exp(Es[a1]) / (alpha[k] * np.exp(Es[a1]) + beta[k] * np.exp(Es[a2]) + balance) \
-                         - np.exp(Es[a1]) / (np.exp(Es[a1]) + np.exp(Es[a2]) + balance)
-            Es[a1] = Es[a1] + sigma[a1] ** 2 * prob_incr
-            Es[a2] = Es[a2] - sigma[a2] ** 2 * prob_incr
+                # get the indices
+                a1 = self.a1_train[pair_idx]
+                a2 = self.a2_train[pair_idx]
 
-            var_diff = alpha[k]  *np.exp(Es[a1]) * beta[k] * np.exp(Es[a2]) / \
-                       ((alpha[k] * np.exp(Es[a1]) + beta[k] * np.exp(Es[a2]))**2 + balance) \
-                       - np.exp(Es[a1]) * np.exp(Es[a2]) / ((np.exp(Es[a1]) + np.exp(Es[a2]))**2 + balance)
-            sigma[a1] = np.sqrt(sigma[a1] ** 2 * np.max([1 + sigma[a1] ** 2 * (var_diff), 10e-4]))
-            sigma[a2] = np.sqrt(sigma[a2] ** 2 * np.max([1 + sigma[a2] ** 2 * (var_diff), 10e-4]))
+                if self.prefs_train[pair_idx] != 2:  # swap so a2 is the preferred one
+                    tmp = a1
+                    a1 = a2
+                    a2 = tmp
 
-            C1 = np.exp(Es[a1]) / (np.exp(Es[a1] + np.exp(Es[a2])) + balance) \
-                 + 0.5 * (sigma[a1] ** 2 + sigma[a2] ** 2) \
-                 * np.exp(Es[a1]) * np.exp(Es[a2]) * (np.exp(Es[a2]) - np.exp(Es[a1])) \
-                 / (np.exp(Es[a1]) + np.exp(Es[a2]) + balance) ** 3
+                k = self.person_train[pair_idx]
 
-            C2 = 1 - C1
+                # update the means
+                prob_incr = alpha[k] * np.exp(Es[a1]) / (alpha[k] * np.exp(Es[a1]) + beta[k] * np.exp(Es[a2]) + balance) \
+                             - np.exp(Es[a1]) / (np.exp(Es[a1]) + np.exp(Es[a2]) + balance)
+                Es[a1] = Es[a1] + sigma[a1] ** 2 * prob_incr
+                Es[a2] = Es[a2] - sigma[a2] ** 2 * prob_incr
 
-            C = (C1 * alpha[k] + C2 * beta[k]) / (alpha[k] + beta[k] + balance)  # normalisation constant for p( 1 > 2 | worker k)
+                var_diff = alpha[k]  *np.exp(Es[a1]) * beta[k] * np.exp(Es[a2]) / \
+                           ((alpha[k] * np.exp(Es[a1]) + beta[k] * np.exp(Es[a2]))**2 + balance) \
+                           - np.exp(Es[a1]) * np.exp(Es[a2]) / ((np.exp(Es[a1]) + np.exp(Es[a2]))**2 + balance)
+                sigma[a1] = np.sqrt(sigma[a1] ** 2 * np.max([1 + sigma[a1] ** 2 * (var_diff), 10e-4]))
+                sigma[a2] = np.sqrt(sigma[a2] ** 2 * np.max([1 + sigma[a2] ** 2 * (var_diff), 10e-4]))
 
-            Eeta[k] = (C1 * (alpha[k] + 1) * alpha[k] + C2 * alpha[k] * beta[k]) / (
-                        C * (alpha[k] + beta[k] + 1) * (alpha[k] + beta[k]) + balance)
-            Eeta_sq_k = (C1 * (alpha[k] + 2) * (alpha[k] + 1) * alpha[k] + C2 * (alpha[k] + 1) * alpha[k] * beta[k]) / \
-                        (C * (alpha[k] + beta[k] + 2) * (alpha[k] + beta[k] + 1) * (alpha[k] + beta[k]) + balance)
+                C1 = np.exp(Es[a1]) / (np.exp(Es[a1]) + np.exp(Es[a2]) + balance) \
+                     + 0.5 * (sigma[a1] ** 2 + sigma[a2] ** 2) \
+                     * np.exp(Es[a1]) * np.exp(Es[a2]) * (np.exp(Es[a2]) - np.exp(Es[a1])) \
+                     / (np.exp(Es[a1]) + np.exp(Es[a2]) + balance) ** 3
 
-            alpha[k] = (Eeta[k] - Eeta_sq_k) * Eeta[k] / (Eeta_sq_k - Eeta[k] ** 2 + balance)
-            beta[k] = (Eeta[k] - Eeta_sq_k) * (1 - Eeta[k]) / (Eeta_sq_k - Eeta[k] ** 2 + balance)
+                C2 = 1 - C1
 
-            if np.mod(pair_idx, 100) == 0:
-                print('Learning crowdBT, iteration %i' % pair_idx)
+                C = (C1 * alpha[k] + C2 * beta[k]) / (alpha[k] + beta[k] + balance)  # normalisation constant for p( 1 > 2 | worker k)
 
-        print('Completed online learning of crowd BT')
+                Eeta[k] = (C1 * (alpha[k] + 1) * alpha[k] + C2 * alpha[k] * beta[k]) / (
+                            C * (alpha[k] + beta[k] + 1) * (alpha[k] + beta[k]) + balance)
+                Eeta_sq_k = (C1 * (alpha[k] + 2) * (alpha[k] + 1) * alpha[k] + C2 * (alpha[k] + 1) * alpha[k] * beta[k]) / \
+                            (C * (alpha[k] + beta[k] + 2) * (alpha[k] + beta[k] + 1) * (alpha[k] + beta[k]) + balance)
+
+                alpha[k] = (Eeta[k] - Eeta_sq_k) * Eeta[k] / (Eeta_sq_k - Eeta[k] ** 2 + balance)
+                beta[k] = (Eeta[k] - Eeta_sq_k) * (1 - Eeta[k]) / (Eeta_sq_k - Eeta[k] ** 2 + balance)
+
+                if np.mod(pair_idx, 100) == 0:
+                    print('Learning crowdBT, iteration %i' % pair_idx)
+
+            if np.any(np.isnan(Es)):
+                continue
+
+            tr_proba = np.exp(Es[self.a1_train]) / (np.exp(Es[self.a1_train]) + np.exp(Es[self.a2_train]) + balance)
+            tr_acc = accuracy_score(self.prefs_train[self.prefs_train != 1]==2, np.round(tr_proba[self.prefs_train != 1]))
+            print('training set accuracy = %f with scale %f' % (tr_acc, scale) )
+            if tr_acc > tr_acc_best:
+                Es_best = Es
+                tr_proba_best = tr_proba
+                scale_best = scale
+                tr_acc_best = tr_acc
+
+        Es = Es_best
+        tr_proba = tr_proba_best
+
+        print('Completed online learning of crowd BT. Found best scale is %f' % scale_best)
 
         proba = np.exp(Es[self.a1_test]) / (np.exp(Es[self.a1_test]) + np.exp(Es[self.a2_test]) + balance)
 
@@ -101,7 +126,7 @@ class PersonalisedTestRunner(TestRunner):
 
         scores = Es[self.a_rank_test]
 
-        return proba, scores, None
+        return proba, scores, tr_proba
 
 
     def run_crowd_bt_gpr(self):
@@ -113,11 +138,60 @@ class PersonalisedTestRunner(TestRunner):
 
         self.run_crowd_bt()
         # estimate the output scale of the GP using same prior as for GPPL
-        function_var = (np.var(self.crowdBT_s) * len(self.crowdBT_s) + 200.0) / (len(self.crowdBT_s) + 200.0)
-        gpr = GaussianProcessRegressor(kernel=Matern(self.ls_initial) * function_var, alpha=self.crowdBT_sigma ** 2)
-        gpr.fit(self.items_feat, self.crowdBT_s)
+        # function_var = (np.var(self.crowdBT_s) * len(self.crowdBT_s) + 200.0) / (len(self.crowdBT_s) + 200.0)
+        # gpr = GaussianProcessRegressor(kernel=Matern(self.ls_initial) * function_var, alpha=self.crowdBT_sigma ** 2)
+        # gpr.fit(self.items_feat, self.crowdBT_s)
+        #
+        # predicted_f = gpr.predict(self.items_feat)
 
-        predicted_f = gpr.predict(self.items_feat)
+        if 'additive' in self.method:
+            kernel_combination = '+'
+        else:
+            kernel_combination = '*'
+
+        if 'shrunk' in self.method:
+            ls_initial = self.ls_initial / float(len(self.ls_initial))
+        else:
+            ls_initial = self.ls_initial
+
+        if 'weaksprior' in self.method:
+            shape_s0 = 2.0
+            rate_s0 = 200.0
+        elif 'lowsprior' in self.method:
+            shape_s0 = 1.0
+            rate_s0 = 1.0
+        elif 'weakersprior' in self.method:
+            shape_s0 = 2.0
+            rate_s0 = 2000.0
+        else:
+            shape_s0 = 200.0
+            rate_s0 = 20000.0
+
+        if '_M' in self.method:
+            validx = self.method.find('_M') + 2
+            M = int(self.method[validx:])
+        else:
+            M = 500
+
+        if '_SS' in self.method:
+            validx = self.method.find('_SS') + 3
+            SS = int(self.method[validx:])
+        else:
+            SS = 200
+
+        self.model = GPRegressorSVI(ninput_features=self.ndims, ls_initial=ls_initial, verbose=self.verbose,
+                                    shape_s0=shape_s0, rate_s0=rate_s0, rate_ls=1.0 / np.mean(ls_initial),
+                                    use_svi=True,
+                                    ninducing=M, max_update_size=SS, kernel_combination=kernel_combination,
+                                    forgetting_rate=0.7,
+                                    delay=1.0)
+        self.model.max_iter_VB = 200
+        new_items_feat = self.items_feat  # pass only when initialising
+
+        print("no. features: %i" % new_items_feat.shape[1])
+        self.model.fit(self.items_feat, self.crowdBT_s, obs_noise=self.crowdBT_sigma ** 2)
+
+        predicted_f = self.model.obs_f
 
         balance = 0.000001
         proba = np.exp(predicted_f[self.a1_test]) / (
@@ -125,7 +199,10 @@ class PersonalisedTestRunner(TestRunner):
 
         predicted_f = predicted_f[self.a_rank_test]
 
-        return proba, predicted_f, None
+        tr_proba = np.exp(self.crowdBT_s[self.a1_unseen]) / (
+                    np.exp(self.crowdBT_s[self.a1_unseen]) + np.exp(self.crowdBT_s[self.a2_unseen]) + balance)
+
+        return proba, predicted_f, tr_proba
 
 
     def _train_persgppl(self):

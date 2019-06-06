@@ -1002,8 +1002,8 @@ class TestRunner:
                 self.a2_test = a2_test
                 self.person_test = person_test
                 
-                self.a1_unseen = a1_train[unseen_subset]
-                self.a2_unseen = a2_train[unseen_subset]
+                self.a1_unseen = a1_train[pair_subset]  #unseen_subset] change it so we test on train -- test the aggregated labels after combining the crowd
+                self.a2_unseen = a2_train[pair_subset]  #unseen_subset]
                 
                 self.a_rank_train = a_rank_train
                 self.scores_rank_train = scores_rank_train
@@ -1060,10 +1060,10 @@ class TestRunner:
                     new_pair_subset = np.argwhere(unseen_subset)[new_pair_subset].flatten()
                     pair_subset = np.concatenate((pair_subset, new_pair_subset))
                     
-                if tr_proba is not None:
-                    tr_proba_complete = prefs_train.flatten()[:, np.newaxis] / 2.0
-                    tr_proba_complete[unseen_subset] = tr_proba
-                    tr_proba = tr_proba_complete
+                # if tr_proba is not None:
+                #     tr_proba_complete = prefs_train.flatten()[:, np.newaxis] / 2.0
+                #     tr_proba_complete[unseen_subset] = tr_proba
+                #     tr_proba = tr_proba_complete
                     
                 logging.info("@@@ Completed running fold %i with method %s, features %s, %i data so far, in %f seconds." % (
                     foldidx, self.method, feature_type, nseen_so_far, endtime-starttime) )
@@ -1078,8 +1078,8 @@ class TestRunner:
                     logging.info("Pearson correlation for fold = %f" % pearsonr(scores_rank_test, predicted_f.flatten())[0])
                   
                 if tr_proba is not None:
-                    prefs_unseen = prefs_train[unseen_subset]
-                    tr_proba_unseen = tr_proba[unseen_subset]
+                    prefs_unseen = prefs_train[pair_subset]#unseen_subset]
+                    tr_proba_unseen = tr_proba#[unseen_subset]
                     logging.info("Unseen data in the training fold, accuracy for fold = %f" % (
                         np.sum(prefs_unseen[prefs_unseen != 1] == 2 * np.round(tr_proba_unseen).flatten()[prefs_unseen != 1]
                             ) / float(np.sum(prefs_unseen != 1))) )   

@@ -124,6 +124,8 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
 
         if 'GP' in method:
             self._init_ls(feature_type, embeddings_type)
+        else:
+            self.default_ls = []
 
         results_stem, pair_pred_file, pair_prob_file, pair_gold_file, ratings_file, results_file = self._set_resultsfile(dataset, method)
 
@@ -265,6 +267,7 @@ class RandomSelectionTestRunner(PersonalisedTestRunner):
                 self.prefs_train = pair_gold[tr_pair_idxs]
                 self.person_train = pair_person[tr_pair_idxs]
 
+                test_pair_idxs = test_pair_idxs[pair_gold[test_pair_idxs] != 1] # get rid of the don't knows
                 self.a1_test = a1[test_pair_idxs]
                 self.a2_test = a2[test_pair_idxs]
                 prefs_test = pair_gold[test_pair_idxs] # gold for evaluation
@@ -355,7 +358,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'randsel9'
+    test_dir = 'randsel10'
 
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.

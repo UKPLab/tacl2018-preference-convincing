@@ -236,7 +236,6 @@ class GPClassifierSVI(GPClassifierVB):
         if not self.use_svi:
             return super(GPClassifierSVI, self)._logpf()
 
-        _, G = self._compute_jacobian()
         _, logdet_K = np.linalg.slogdet(self.K_mm)
         D = len(self.um_minus_mu0)
         logdet_Ks = - D * self.Elns + logdet_K
