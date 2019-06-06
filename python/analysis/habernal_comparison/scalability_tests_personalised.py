@@ -7,7 +7,7 @@ if __name__ == '__main__':
     acc = 1.0
     dataset_increment = 0
 
-    max_no_folds = 15
+    max_no_folds = 32
 
     if len(sys.argv) > 1:
         test_to_run = int(sys.argv[1])
