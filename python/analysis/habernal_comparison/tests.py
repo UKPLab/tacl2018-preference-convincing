@@ -213,7 +213,7 @@ def get_noisy_fold_data(folds, folds_test, fold, docids, acc, tr_pair_subset=Non
     a1_train, a2_train, prefs_train, person_train, _, _, _, _, X, \
         uids, utexts, upersonIDs = get_fold_data(folds, fold, docids)
 
-    _, _, gold_train, _, a1_test, a2_test, prefs_test, person_test, _, \
+    a1_agg, a2_agg, gold_train, person_agg, a1_test, a2_test, prefs_test, person_test, _, \
         _, _, _ = get_fold_data(folds_test, fold, docids)
 
     # now subsample the training data
@@ -235,7 +235,7 @@ def get_noisy_fold_data(folds, folds_test, fold, docids, acc, tr_pair_subset=Non
         prefs_train[flip_labels] = 2 - prefs_train[flip_labels] # labels are 0, 1 or 2
     
     return a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, \
-        X, uids, utexts, upersonIDs, gold_train
+        X, uids, utexts, upersonIDs, a1_agg, a2_agg, gold_train, person_agg
     
 def get_fold_regression_data(folds_regression, fold, docids):
     if folds_regression is not None:
@@ -427,7 +427,12 @@ class TestRunner:
         else:
             predicted_f = None
 
-        return proba, predicted_f, tr_proba
+        if self.a_rank_train is not None:
+            tr_f, _ = self.model.predict_f(None, self.a_rank_train)
+        else:
+            tr_f = None
+
+        return proba, predicted_f, tr_proba, tr_f
     
 #     model, _, a1_train, a2_train, self.prefs_train, items_feat, _, _, self.a1_test, self.a2_test, 
 #                   self.a1_unseen, self.a2_unseen, ls_initial, verbose, _, self.a_rank_test=None, _, _, _
@@ -907,14 +912,41 @@ class TestRunner:
             # Get data for this fold --------------------------------------------------------------------------------------
             print(("Fold name ", self.fold))
             a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test,\
-                    self.X, uids, utexts, upersonIDs, gold_train = get_noisy_fold_data(
-                self.folds, self.folds_test, self.fold, self.docids, acc)
-
-
+                    self.X, uids, utexts, upersonIDs, a1_agg, a2_agg, gold_train, person_agg \
+                = get_noisy_fold_data(self.folds, self.folds_test, self.fold, self.docids, acc)
             
             # ranking folds
             a_rank_train, scores_rank_train, _, person_rank_train, a_rank_test, scores_rank_test, _, \
                                 person_rank_test = get_fold_regression_data(self.folds_r, self.fold, self.docids)
+
+            rand_items = np.random.choice(1052, 200, replace=False)
+            tridxs = np.in1d(a1_train, rand_items) & np.in1d(a2_train, rand_items)
+            a1_train = a1_train[tridxs]
+            a2_train = a2_train[tridxs]
+            prefs_train = prefs_train[tridxs]
+            person_train = person_train[tridxs]
+
+            # aggidxs = np.in1d(a1_agg, rand_items) & np.in1d(a2_agg, rand_items)
+            # a1_agg = a1_agg[aggidxs]
+            # a2_agg = a2_agg[aggidxs]
+            # if len(person_agg):
+            #     person_agg = person_agg[aggidxs]
+            # gold_train = gold_train[aggidxs]
+            #
+            #teidxs = np.in1d(a1_test, rand_items) & np.in1d(a2_test, rand_items)
+            # a1_test = a1_test[teidxs]
+            # a2_test = a2_test[teidxs]
+            # prefs_test = prefs_test[teidxs]
+            # person_test = person_test[teidxs]
+
+            #test items should all be included.
+            #
+            # terankidxs = np.in1d(a_rank_test, rand_items)
+            # a_rank_test = a_rank_test[terankidxs]
+            # scores_rank_test = scores_rank_test[terankidxs]
+            # if len(person_rank_test):
+            #     person_rank_test = person_rank_test[terankidxs]
+
 
             # convert the ranking person IDs to the idxs
             if person_rank_train is not None and len(person_rank_train):
@@ -950,7 +982,7 @@ class TestRunner:
 
             self.load_features(feature_type, embeddings_type, a1_train, a2_train, uids, utexts)
             #items_feat = items_feat[:, :ndebug_features]     
-    
+
             # Subsample training data --------------------------------------------------------------------------------------    
             if npairs == 0:
                 npairs_f = len(a1_train)
@@ -1015,15 +1047,14 @@ class TestRunner:
                 self.a2_train = a2_train[pair_subset]
                 self.prefs_train = prefs_train[pair_subset]
                 self.person_train = person_train[pair_subset]
-                gold_train = gold_train[pair_subset]
-                
+
                 self.a1_test = a1_test
                 self.a2_test = a2_test
                 self.person_test = person_test
                 
-                self.a1_unseen = a1_train[pair_subset]  #unseen_subset] change it so we test on train -- test the aggregated labels after combining the crowd
-                self.a2_unseen = a2_train[pair_subset]  #unseen_subset]
-                self.person_unseen = person_train[pair_subset] #unseen_subset]
+                self.a1_unseen = a1_agg #unseen_subset] change it so we test on train -- test the aggregated labels after combining the crowd
+                self.a2_unseen = a2_agg  #unseen_subset]
+                self.person_unseen = person_agg #unseen_subset]
                 
                 self.a_rank_train = a_rank_train
                 self.scores_rank_train = scores_rank_train
@@ -1037,7 +1068,7 @@ class TestRunner:
                 # run the method with the current data subset
                 method_runner_fun = self._choose_method_fun(feature_type)
 
-                proba, predicted_f, tr_proba = method_runner_fun()
+                proba, predicted_f, tr_proba, tr_f = method_runner_fun()
             
                 endtime = time.time() 
 
@@ -1089,20 +1120,28 @@ class TestRunner:
                     foldidx, self.method, feature_type, nseen_so_far, endtime-starttime) )
 
                 if predictions.size == prefs_test.size:
-                    logging.info("Accuracy for fold = %f" % (
-                        np.sum(prefs_test[prefs_test != 1] == 2 * predictions.flatten()[prefs_test != 1]
-                            ) / float(np.sum(prefs_test != 1))) )
+                    acc = np.sum(prefs_test[prefs_test != 1] == 2 * predictions.flatten()[prefs_test != 1]
+                            ) / float(np.sum(prefs_test != 1))
+
+                    logging.info("Accuracy for fold = %f" % acc)
 
                 if predicted_f is not None and predicted_f.size == scores_rank_test.size:
                     # print out the pearson correlation
                     logging.info("Pearson correlation for fold = %f" % pearsonr(scores_rank_test, predicted_f.flatten())[0])
                   
                 if tr_proba is not None:
-                    prefs_unseen = prefs_train[pair_subset]#unseen_subset]
-                    tr_proba_unseen = tr_proba#[unseen_subset]
+                    tr_acc = np.sum(gold_train[gold_train != 1] == 2 * np.round(tr_proba).flatten()[gold_train != 1]
+                            ) / float(np.sum(gold_train != 1))
+
+                    tr_cee = log_loss(gold_train[gold_train != 1]==2, tr_proba[gold_train != 1])
+                    tr_tau, _ = kendalltau(scores_rank_train, tr_f)
+
                     logging.info("Unseen data in the training fold, accuracy for fold = %f" % (
-                        np.sum(gold_train[gold_train != 1] == 2 * np.round(tr_proba_unseen).flatten()[prefs_unseen != 1]
-                            ) / float(np.sum(gold_train != 1))) )
+                        tr_acc) )
+                else:
+                    tr_acc = 0
+                    tr_cee = 0
+                    tr_tau = 0
 
                 if proba.size == prefs_test.size:
                     logging.info("AUC = %f" % roc_auc_score(prefs_test[prefs_test!=1] / 2.0, proba[prefs_test!=1]) )
@@ -1155,10 +1194,33 @@ class TestRunner:
                 if not os.path.isfile(results_stem + "/foldorder.txt"):
                     np.savetxt(results_stem + "/foldorder.txt", fold_keys[:, None], fmt="%s")
 
+                # pair_pred_file = os.path.join(self.results_stem, 'pair_pred.csv')
+                # pair_prob_file = os.path.join(self.results_stem, 'pair_prob.csv')
+                # pair_gold_file = os.path.join(self.results_stem, 'pair_gold.csv')
+                # ratings_file = os.path.join(self.results_stem, 'ratings.csv')
+                results_file = os.path.join(self.results_stem, 'metrics.csv')
+                try:
+                    metrics = pd.read_csv(results_file).values.tolist()
+                except:
+                    metrics = []
+
+                metrics.append([acc, CEE, tau, tr_acc, tr_cee, tr_tau])
+                pd.DataFrame(metrics).to_csv(results_file, index=False)
+
+
                 #with open(modelfile % foldidx, 'w') as fh:
                 #        pickle.dump(model, fh)
     
-            del self.model # release the memory before we try to do another iteration         
+            del self.model # release the memory before we try to do another iteration
+
+        results_file = os.path.join(self.results_stem, 'metrics.csv')
+        try:
+            metrics = pd.read_csv(results_file).values.tolist()
+            metrics.append(np.mean(metrics, axis=0))
+            pd.DataFrame(metrics).to_csv(results_file, index=False)
+        except:
+            print('no metrics file found')
+
 
     def run_test_set(self, subsample_tr=0, min_no_folds=0, max_no_folds=32, 
                      npairs=0, test_on_train=False):

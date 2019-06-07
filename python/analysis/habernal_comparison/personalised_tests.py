@@ -203,10 +203,12 @@ class PersonalisedTestRunner(TestRunner):
 
         predicted_f = predicted_f[self.a_rank_test]
 
+        tr_f = self.crowdBT_s[self.a_rank_train]
+
         tr_proba = np.exp(self.crowdBT_s[self.a1_unseen]) / (
                     np.exp(self.crowdBT_s[self.a1_unseen]) + np.exp(self.crowdBT_s[self.a2_unseen]) + balance)
 
-        return proba, predicted_f, tr_proba
+        return proba, predicted_f, tr_proba, tr_f
 
 
     def _train_persgppl(self, delay):
@@ -301,8 +303,15 @@ class PersonalisedTestRunner(TestRunner):
 
         if self.a_rank_test is not None:
             predicted_f = self.model.predict_f_item_person(self.a_rank_test, self.person_rank_test)
+        else:
+            predicted_f = None
 
-        return proba, predicted_f, tr_proba
+        if self.a_rank_train is not None:
+            tr_f = self.model.predict_f_item_person(self.a_rank_train, self.person_rank_train)
+        else:
+            tr_f = None
+
+        return proba, predicted_f, tr_proba, tr_f
 
     def run_persgppl_consensus(self):
         '''
@@ -337,10 +346,17 @@ class PersonalisedTestRunner(TestRunner):
 
         if self.a_rank_test is not None:
             predicted_f = self.model.predict_t()[self.a_rank_test]
+        else:
+            predicted_f = None
+
+        if self.a_rank_train is not None:
+            tr_f = self.model.predict_t()[self.a_rank_train]
+        else:
+            predicted_f = None
 
         print('Max probability = %f, min = %f' % (np.max(proba), np.min(proba)))
 
-        return proba, predicted_f, tr_proba
+        return proba, predicted_f, tr_proba, tr_f
 
     def _choose_method_fun(self, feature_type):
         if 'PersPrefGP' in self.method:
@@ -362,7 +378,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'training_tests'  #'rate_s_tests_single'
+    test_dir = 'training_tests_200'  #'rate_s_tests_single'
 
     methods = ['SinglePrefGP_noOpt_weaksprior']
     datasets = ['UKPConvArgCrowdSample_evalMACE']
