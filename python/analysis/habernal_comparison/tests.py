@@ -801,6 +801,8 @@ class TestRunner:
                                  self.ling_feat_spmatrix, self.docids, self.folds, self.index_to_word_map)
                 np.savetxt(ls_file, self.default_ls)
 
+            self.default_ls /= float(len(self.default_ls)) # new kernel doesn't need the heuristic multiplier
+
             if self.dataset not in self.default_ls_values:
                 self.default_ls_values[self.dataset] = {}
             if feature_type not in self.default_ls_values[self.dataset]:

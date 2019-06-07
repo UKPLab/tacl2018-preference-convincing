@@ -368,7 +368,7 @@ if __name__ == '__main__':
     nreps = 1
     nfolds = 5
     max_no_folds = nreps * nfolds # 1 # subset for debugging
-    subset = 0
+    subset = 5
     verbose = False
 
     rate_s = 20000
@@ -390,7 +390,7 @@ if __name__ == '__main__':
         method = 'PersConsensusPrefGP_commonmean_noOpt_weaksprior'
         runner.run_test_set(nfolds, dataset, method)
 
-        method = 'SinglePrefGP_noOpt_weaksprior'
+        method = 'cBT_GP'  #'SinglePrefGP_noOpt_weaksprior'
         runner.run_test_set(nfolds, dataset, method)
 
     # # PERSONALISED WITH ARD

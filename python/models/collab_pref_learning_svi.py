@@ -229,9 +229,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.y_ninducing, compute_labels=True)
                 kmeans.fit(self.person_features / self.lsy[None, :])
 
-                # self.y_inducing_coords = kmeans.cluster_centers_ * self.lsy[None, :]
-                # TODO check whether this is the correct initialization
-                # # choose a random set of points, one from each cluster.
                 shuffled_idxs = np.random.permutation(self.person_features.shape[0])
 
                 self.y_inducing_coords = self.person_features[

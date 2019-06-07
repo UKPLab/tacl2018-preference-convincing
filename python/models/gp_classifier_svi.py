@@ -148,6 +148,16 @@ class GPClassifierSVI(GPClassifierVB):
             # self.inducing_coords = self.obs_coords[np.random.randint(0, self.n_locs, size=(ninducing)), :]
             self.inducing_coords = kmeans.cluster_centers_ * self.ls[None, :]
             # self.inducing_coords = self.obs_coords
+
+            # shuffled_idxs = np.random.permutation(self.obs_coords.shape[0])
+            # self.inducing_coords = self.obs_coords[
+            #     shuffled_idxs[
+            #         np.unique(kmeans.labels_[shuffled_idxs], return_index=True)
+            #         [1]]
+            # ]
+            # if self.inducing_coords.shape[0] < self.ninducing:
+            #     self.ninducing = self.inducing_coords.shape[0]
+
             self.reset_kernel()
 
         if self.K_mm is None:

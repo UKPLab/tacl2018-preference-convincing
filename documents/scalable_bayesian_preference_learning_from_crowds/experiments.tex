@@ -206,7 +206,7 @@ to mismatches between $C$ and $C_{true}$.
  % .78 & .51 & .52 & .72 & .56 & .33
  %GPPL opt. & .76 & .51 & .47 & .70 & .58 &  .30 \\
  crowdGPPL %medi. 
- & .78 & .48 & .51 & .73 & .61 & .33 & .74 & .59 & .29  %.71 & .59 & .32 \\ % now showing workers with > 40 training examples
+ & .78 & .48 & .51 & .73 & .61 & .33 & .74 & .59 & .29  \\ %.71 & .59 & .32 \\ % now showing workers with > 40 training examples
  % new values since Q and various minor bugfixes (Qfix1): 
  % .77 & .67 & .52 & .72 & .60 & .33 \\
  % Qfix3 (nothing changed; main problem is CEE on consensus -- try tuning st separately from sw hyperparameters):
@@ -214,6 +214,7 @@ to mismatches between $C$ and $C_{true}$.
  %crowdGPPL opt. & .78 & .48 & .50 & .69 & .59 & .29
  %PL+ SVR & .75 & .55 & \textbf{.40} & .75 & & .40 \\
  %GPC & .73 & .53 & - & .68 & .59 & - \\
+ crowdBT-GP & .78 & .58 & .53 &
  \\\hline
 \end{tabularx}
 \caption{Performance comparison on UKPConvArgCrowdSample using ling+GloVe features. \emph{Acc} and \emph{CEE} show classification accuracy and cross entropy error (or log-loss) for pairwise predictions, 
@@ -225,6 +226,8 @@ while $\tau$ is Kendall's $\tau$ for the predicted preference function. }
 Page 15, Table 2: Please provide a definition of 'accuracy'.  Is this the proportion of pairs that
 are correctly ranked? 
 }
+ \todo{we should note that differences in performance stem from better selection of 
+ samples across more iterations + using the neutral dont know labels}
 We evaluate consensus learning, personal preference learning and scalability
 on an NLP task, namely identifying convincing arguments. 
 The dataset, \emph{UKPConvArgCrowdSample}, was subsampled by \citet{simpson2018finding}
@@ -464,7 +467,8 @@ Method & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time & Acc &
 %old results from submission: & .79 & .51 & .66 & 60 %149.6 %(20.86)
 %new results 02.04: 
 & .81 & .39 & .66 & 21
-& \textbf{.79} & \textbf{.57} & .50 & 393 \\
+& .73 & .57 & .47 & 393 \\
+%& \textbf{.79} & \textbf{.57} & .50 & 393 \\
 % april rerun:
 % .72 & .60 & .45 & 4706 % --> too many iterations? or do i need to divide by 25?
 %old results: & .69 & 2.23 & .45 & 9163 \\
@@ -520,6 +524,8 @@ GPPL-per-user & .67 & .64 & .42 & 183 %(1.12) %& .50 (.00) & .69 (.00) & nan (na
 & .83 & .40 & .79 & 44
 & .75 & .60 & \textbf{.60} & 3172 %(.44)
 \\
+coll. GP & .69 & .58 & n/a & \textbf{2} & & & n/a & & \\
+%\textbf{.81} & \textbf{.40} & n/a & 761 \\
 \hline
 %\citet{houlsby2012collaborative} CP & & & & & .84 \\
 %\citet{houlsby2012collaborative} CPU & & & & & .83 \\ 
