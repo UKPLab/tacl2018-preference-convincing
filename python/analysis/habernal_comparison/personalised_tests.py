@@ -195,13 +195,13 @@ class PersonalisedTestRunner(TestRunner):
         print("no. features: %i" % new_items_feat.shape[1])
         self.model.fit(self.items_feat, self.crowdBT_s, obs_noise=self.crowdBT_sigma ** 2)
 
-        predicted_f = self.model.obs_f
+        predicted_f = self.model.predict_f(None)  #self.model.obs_f
 
         balance = 0.000001
         proba = np.exp(predicted_f[self.a1_test]) / (
                     np.exp(predicted_f[self.a1_test]) + np.exp(predicted_f[self.a2_test]) + balance)
 
-        predicted_f = self.model.predict_f(None, self.a_rank_test)  #predicted_f[self.a_rank_test]
+        predicted_f = predicted_f[self.a_rank_test]
 
         tr_proba = np.exp(self.crowdBT_s[self.a1_unseen]) / (
                     np.exp(self.crowdBT_s[self.a1_unseen]) + np.exp(self.crowdBT_s[self.a2_unseen]) + balance)
