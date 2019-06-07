@@ -261,7 +261,7 @@ if __name__ == '__main__':
     
     if 'folds' not in globals():
         # load some example data.
-        folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = \
+        folds, folds_test, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = \
                                                                                     load_train_test_data(dataset)    
     
     ling_feat_spmatrix, docids = load_ling_features(dataset)
@@ -288,7 +288,7 @@ if __name__ == '__main__':
     fold = list(folds.keys())[0]
     print(("Fold name ", fold))
     trainids_a1, trainids_a2, prefs_train, personIDs_train, testids_a1, testids_a2, prefs_test, personIDs_test,\
-                        X, uids, utexts, _ = get_noisy_fold_data(folds, fold, docids, 1.0)
+                        X, uids, utexts, _, _ = get_noisy_fold_data(folds, folds_test fold, docids, 1.0)
 
     items_feat = get_mean_embeddings(embeddings, X)
     ndims = items_feat.shape[1]

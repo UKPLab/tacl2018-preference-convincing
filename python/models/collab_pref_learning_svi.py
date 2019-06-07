@@ -300,7 +300,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                      Ky_nm, invKy_mm, y_u, y_var, v, u, expectedlog=False):
 
         # sample the inducing points because we don't have full covariance matrix. In this case, f_cov should be Ks_nm
-        nsamples = 1000
+        nsamples = 100#0
 
         if wS.ndim == 3:
             w_samples = np.array([mvn.rvs(mean=w_u[:, f], cov=wS[f], size=(nsamples))

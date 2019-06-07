@@ -249,7 +249,8 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
         
         if expt_settings['dataset'] != dataset_next or expt_settings['folds'] is None:
             expt_settings['dataset'] = dataset_next            
-            expt_settings['folds'], expt_settings['folds_regression'], _, _, _ = load_train_test_data(expt_settings['dataset'])
+            expt_settings['folds'], expt_settings['folds_test'], expt_settings['folds_regression'], _, _, _ = \
+                load_train_test_data(expt_settings['dataset'])
 
 
         for m, expt_settings['method'] in enumerate(methods):
@@ -532,7 +533,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                 return (result * N - Nseen) / Nunseen
                             
                             if pred_tr_prob is not None and AL_round < pred_tr_disc.shape[1] and compute_tr_performance:
-                                _, _, gold_tr, _, _, _, _ = expt_settings['folds'].get(fold)["training"]
+                                _, _, gold_tr, _, _, _, _ = expt_settings['folds_test'].get(fold)["training"]
                                 gold_tr = np.array(gold_tr)
 
                                 if (gold_tr!=1).shape[0] != pred_tr_disc.shape[0]:

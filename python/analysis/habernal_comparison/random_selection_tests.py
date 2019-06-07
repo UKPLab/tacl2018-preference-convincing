@@ -360,7 +360,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'randsel10_with_neutrals'
+    test_dir = 'randsel11_with_neutrals'
 
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
@@ -390,8 +390,6 @@ if __name__ == '__main__':
         method = 'PersConsensusPrefGP_commonmean_noOpt_weaksprior'
         runner.run_test_set(nfolds, dataset, method)
 
-        method = 'cBT_GP'  #'SinglePrefGP_noOpt_weaksprior'
-        runner.run_test_set(nfolds, dataset, method)
 
     # # PERSONALISED WITH ARD
     # elif test_to_run == 2:

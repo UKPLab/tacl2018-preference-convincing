@@ -184,6 +184,257 @@ to mismatches between $C$ and $C_{true}$.
 % I think this needs us to vary C and keep C_true=3, otherwise we don't know whether the 
 % performance differences are due to the mismatched no. factors or due to different underlying dataset, i.e. we need to keep the data the same to compare!
 
+
+\subsection{Sushi Preferences}\label{sec:sushi}
+
+%TODO sushi-A small needs describing or cutting out.
+We use sushi preference data (shown in Table \ref{tab:datasets}),
+to compare GPPL and crowdGPPL with different sets of features
+against the previous benchmark method, \emph{collaborative GP (collabGP)} \citep{houlsby2012collaborative}.
+Collaborative GP uses a simpler model than crowdGPPL, with no consensus function, and no learning of the 
+output scales of the utility functions, which makes it more important to select the correct number of factors in advance.
+It also uses an inference scheme based on expectation propagation (EP)
+ and variational Bayes, which has a couple of important
+  practical drawbacks:
+  firstly, it does not infer the utilities, but learns pairwise labels directly, so its predictions cannot 
+  directly be used to
+  rank or rate large sets of items; 
+  secondly, the number of parameters in the model is proportional to the dataset size, 
+  as it represents every combination of
+  (user, item-pair) with a separate set of parameters, rather than working with inducing points,
+  which may prevent the use of the model with large datasets due to memory constraints.
+However, as the EP approach of collabGP has been consistently shown to perform well for non-Gaussian likelihoods\citep{?},
+we consider its performance as a target for our SVI approach for crowdGPPL.
+
+The sushi datasets contain, for each user, a gold standard preference ranking 
+of $10$ types of sushi,
+from which we generate gold-standard pairwise labels. 
+%These labels can be considered noise-free, since
+%they are derived directly from the gold standard ranking.  
+To test performance with very few training pairs, we obtain \emph{Sushi-A-small}
+by selecting $100$ users at random from the complete \emph{Sushi-A} dataset,
+then selecting $5$ pairs for training and $25$ for testing per user.
+For \emph{Sushi-A}, we select a subset of $100$ users at random from the complete dataset, then 
+split the data into training and test sets by randomly
+selecting $20$ pairs for each user for training and $25$ for testing. 
+For \emph{Sushi-B}, we use all $5000$ workers, and subsample $10$ training pairs and $1$ test pair per user.
+%These subsampling steps are repeated $25$ times.
+Beside GPPL, crowdGPPL and GPPL-per-user, we 
+% but this could not be applied to larger datasets as the 
+%computation costs were too high.
+introduce four further baselines: 
+\emph{crowdGPPL$\mathbf{\backslash \bs u}$}, which ignores the user features;
+ \emph{crowdGPPL$\mathbf{\backslash \bs u \backslash \bs x}$}, which ignores both user and item features;
+ \emph{crowdGPPL$\mathbf{\backslash \bs u \backslash \bs t}$}, which 
+excludes the consensus function $\bs t$ from the model as well as the user
+features;
+and  \emph{crowdGPPL$\backslash$induc}, which uses all features but does 
+not use inducing points for a sparse approximation.
+For $\backslash\bs u$ methods, the user covariance matrix, $\bs K_w$, in the crowdGPPL model is replaced by the identity matrix, and for crowdGPPL$\mathbf{\backslash \bs u \backslash \bs x}$, the item covariance matrices, $\bs K_v$ and $\bs K_t$ are also replaced by the identity matrix.
+%We evaluate the quality of pairwise predictions using classification accuracy and cross entropy 
+%error (also known as log loss) to gauge the quality of the probabilities that each method outputs.
+%We also evaluate each method's inferred personal preference values
+%against the gold standard rankings by computing Kendall's $\tau$ rank correlation
+%coefficient between the negative rank and the inferred preference function values,
+%for all the items contained in each subsampled user's ranking.
+We set hyperparameters $C=20$ without optimization,
+$\alpha_0=1, \beta_0=100$ using a grid search over values 
+$10^{\{-1,...,3\}}$ on withheld user data from the \emph{Sushi-A} dataset,
+$\epsilon=5$, $|P_i|=200$ for \emph{Sushi-A} and $|P_i|=2000$ for \emph{Sushi-B}. All other hyperparameters are the same 
+as for Section \ref{sec:exp_synth}.
+The complete process of subsampling, training and testing, was repeated $25$ times
+for each dataset.
+
+% Houlsby results: for comparison against a different inference technique on small data, include
+% the test error results from their paper.
+% Guo results: not directly comparable. We will rerun a similar approach but with our inference method.
+% Khan results: for a different model that separates the latent features from the item/user features.
+% Abbasnejad results (community-based preference learning): sushi data with 10 items; 60/40 train/test split of each user's preference pairs. This means the result is based on 27 pairs training.
+% don't worry about this though, it doesn't seem to work very well in their results.
+
+% Number of users affects value of including user features.
+% Plot results on increasing dataset size.
+
+% [10] T. Kamishima. Nantonac collaborative filtering:
+% Recommendation based on order responses. In
+% ACM SIGKDD 9th Int. Conf. Knowledge Discov-
+% ery and Data Mining, 2003.
+
+% Run 25 repeats of random train/test splits with:
+% Exclude these two as we focus on bigger datasets in this paper. Cutting these creates the space 
+% for including three metrics.
+% Downside: cannot test whether increasing no. users imroves performance through better collaborative learning. 
+% 
+% 100 (a la Houlsby 20 pairs per user), 
+% 200 (a la Khan, 3 training, 1 test, P=600, P_test=200), 
+% For small datasets, we may want to test on the argumentation data so we can assess the crowd
+% consensus results with small data. That dataset is more interesting here because lots of items,
+% small data is a new scenario.
+% % % % [a] 1000 (a la Houlsby 15 training, 5 test pairs per user, $P=15000,P_{test}=5000$), Sushi-A (10 items), 
+% % % % and [b] 5000 users (a la Khan, 10 training, 1 test pairs per user, $P=50000, P_{test}=5000$), \emph{Sushi-B} (100 items).
+% % % % Evaluate on parwise labelling error, pairwise label logloss, spearman rank correlation,
+% % % % and runtime.
+% could use normalized mean loss from guo, but not sure where the utilities come from -- ranking?
+
+% 25 random train/test splits on all 5000 users with varying no. (1, 5, 10, 20, 40) pairs per user.
+
+% Can put in the Houlsby (100/1000 users, 20 pairs each, labelling error) and Khan (200 users, 3 pairs each, logloss) results.
+% Khan also provide code, so could be rerun to get classification error.
+
+\begin{table}
+\small
+\begin{tabularx}{\textwidth}{| p{1.1cm} | X | X | X | p{0.55cm} | X | X | X | p{0.7cm} | X | X | X | p{0.7cm} |}
+\hline
+& \multicolumn{4}{c|}{\textbf{Sushi-A-small}} & \multicolumn{4}{c|}{\textbf{Sushi-A}} & \multicolumn{4}{c|}{\textbf{Sushi-B}} \\ 
+Method & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time \\
+\hline\hline
+%\multicolumn{13}{|l|}{\textit{crowdGPPL}} \\
+\multicolumn{1}{|b{1.1cm}|}{crowd-GPPL} & .68 & .03 & .39 & 38%76.91 %(27.23) %& .63 (.02) & .69 (.00) & .25 (.02)
+%old results from submission: & .79 & .51 & .66 & 60 %149.6 %(20.86)
+%new results 02.04: 
+& .81 & .39 & .66 & 21
+& .73 & .57 & .47 & 4724 \\
+%& \textbf{.79} & \textbf{.57} & .50 & 393 \\
+% april rerun:
+% .72 & .60 & .45 & 4706 % --> too many iterations? or do i need to divide by 25?
+%old results: & .69 & 2.23 & .45 & 9163 \\
+%full, opt. & & & & & .80 & .48 & .68 & 3718 
+%& - & - & - & - \\%(2193.72) \\
+$\backslash $induc & .70 & \textbf{.57} & .46 & 51 %(14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
+% new results 02.04
+& .84 & .33 & .79 & 39
+% old results from submission: & .84 & \textbf{.33} & .79 & 646 %(50.17) 
+& - & - & - & -
+\\
+%$\backslash t$ & .67 & .80 & .39 & 7.45 (29.00) %& .61 (.02) & .69 (.00) & .19 (.03)
+%& .79 & .57 & .65 & 158.51 (25.06)
+%\\
+$\backslash u$ & .70 & .58 & .46 & 9  &%(24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
+% new results 02.04:
+
+\textbf{.85} & \textbf{.31} & \textbf{.81} & 21
+%old results from submission & .84 & \textbf{.33} & \textbf{.80} & 95 %(4.93)
+& .78 &\textbf{.57} & .49 & 3788 \\
+%old results & \textbf{.76} & \textbf{.47} & \textbf{.60} & 21052\\
+%$\backslash u$, opt. & & & & & \textbf{.85} & \textbf{.33} &  \textbf{.80} & 5016 %(1978.82) \\
+%& - & - & - & - \\
+$\backslash u \backslash x$ & \textbf{.71} & \textbf{.57} & \textbf{.49} & 5 & %(3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
+%old results from submission: & \textbf{.85} & \textbf{.33} & \textbf{.80} & 89 %(12.12)
+%new results 02.04: 
+\textbf{.85} & .33 & .80 & 14
+& .77 & .58 & .48 & 3363
+%old results & \textbf{.76} & .48 & \textbf{.60} & 15478
+\\
+%$\backslash u$, FITC & .70 & .58 & .46 & 333.68 (57.36) %& .65 (.01) & .64 (.02) & .29 (.02)
+%& \textbf{.85} & \textbf{.33} & \textbf{.80} & 551.56 (16.82)
+%\\
+$\backslash u,\backslash t$ % this is also FITC to emulate Houlsby -- mention it in the text, not here
+& .68 & .60 & .43 & 291 %(48.62) %& .50 (.00) & .69 (.00) & nan (nan)
+%old results from submission & .84 & \textbf{.33} & .79 & 204 %(12.15) 
+%new results 02.04:
+& .84 & .33 & .80 & 230
+& .76 & .61 & .54 & 12513
+% old results & .75 & .49 & .59 & 30484
+\\ 
+%$\backslash u$$\backslash t$, FITC, opt. & & & &  & .84 & \textbf{.33} & \textbf{.80} & 7413.53 (2849.63) \\
+\hline 
+GPPL & .65 & .62 & .31 & \textbf{2} %(.26) %& .65 (.02) & .63 (.02) & .30 (.03)
+% old results from submission: & .66 & .62 & .32 & \textbf{6} %(.38) & 
+% new results 02.04:
+& .65 & .62 & .31 & \textbf{2}
+& .65 & .62 & .31 & \textbf{51}
+\\
+GPPL-per-user & .67 & .64 & .42 & 183 %(1.12) %& .50 (.00) & .69 (.00) & nan (nan)
+%old results from submission & .83 & .40 & .79 & 1106 
+% new results 02.04:
+& .83 & .40 & .79 & 44
+& .75 & .60 & \textbf{.60} & 3172 %(.44)
+\\
+collabGP & .69 & .58 & n/a & \textbf{2}* & .83 & .35 & n/a & 6* & .76 & .49 & n/a &  1283* \\
+%\textbf{.81} & \textbf{.40} & n/a & 761 \\
+\hline
+%\citet{houlsby2012collaborative} CP & & & & & .84 \\
+%\citet{houlsby2012collaborative} CPU & & & & & .83 \\ 
+%\citet{khan2014scalable} & &&& & & & & & .69 & &
+%\\ \hline
+\end{tabularx}
+\caption{Predicting personal preferences: performance on \emph{Sushi-A} dataset and \emph{Sushi-B} datasets.
+Runtimes are means in seconds over $25$ repeats given. The runtimes for \emph{collaborative GP} are marked
+with a star as these methods were implemented using \emph{R} and \emph{C} libraries,
+which contributed to their faster runtimes over the other methods, which were implemented using \emph{Python 3}.
+For accuracy, the standard deviations of all metrics shown are $\leq 0.02$, for CEE, $\leq 0.08$, for $\tau$, $\leq 0.03$.
+ }
+\label{tab:sushi}
+\end{table}
+%  -- the stds were removed because they're not very informative for acc, CEE, tau
+% The commented results are predictions on new users -- for sushiAsmall, the only interesting 
+% point is that excluding the consensus decreases accuracy. How does it make predictions without a t?
+The results in Table \ref{tab:sushi} 
+%we re-state the previous performance metrics and did not re-implement these methods. 
+illustrate the performance benefit of crowd models over single-user GPPL, and
+the runtimes 
+show the speedup of the sparse approximation of crowdGPPL over crowdGPPL$\backslash$induc.
+GPPL is substantially quicker to train than crowd-GPPL, and GPPL-per-user does not scale well to larger numbers
+of users.
+% including feature data for items and users leads to faster convergence than crowdGPPL$\backslash \bs u$ and crowd$\backslash \bs u \backslash \bs x$.
+%Likewise, the use of matrix factorization leads to only a small increase in
+% runtimes of these methods over joint-GPPL. 
+ %However, the runtimes for crowdGPPL are higher than those of GPPL.
+ When using inducing points, the user features decrease the performance of crowdGPPL: 
+ crowdGPPL$\backslash$induc
+ and crowdGPPL$\backslash\bs u$ both outperform the full crowdGPPL. 
+ To use inducing points,
+ there must be a strong relationship between neighbouring points, which
+ may not to be the case given the features in this dataset, since
+ they describe only very general characteristics, such as the user's region and age group.
+ Comparing crowdGPPL$\backslash\bs u$ with crowdGPPL$\backslash\bs u\bs t$, including the consensus function appears to improve performance by a modest amount.
+ The strong performance of GPPL-per-user 
+ suggests that even ten preferences per person were enough to learn a reasonable model for \emph{Sushi-B}.
+\todo{some comment on the strength of GPPL-per-user?}
+\todo{does houlsby learn the output scales of the factors? If not, then they are not learning to discard the unused ones. Make sure to mention this when presenting the output scale plot and model differences.}
+\todo{
+New strategy == add so
+In the Houlsby paper, it appears that they use their own EP implementation for the models
+they compare against. They give the following footnote:
+"Although this is not the same as the original implementations (sampling-based for BI, Laplace approxi-mation for BO), the preference kernel and EP are likely to augment the performance of these algorithms, andprovides the fairest comparison of the underlying models." This could be done in our paper for Houlsby and Khan if we compare the models themselves only. For making claims about the inference algorithm, it's less clear how to avoid comparing with Houlsby directly.}
+
+Like crowdGPPL, collaborative GP (collabGP) considers user features as inputs 
+but requires many more model parameters.  
+This allows it to outperform crowdGPPL on accuracy and CEE but does not provide a ranking function for computing Kendall's $\tau$.
+ The inference method of collabGP did not present practical problems 
+ on the Sushi dataset on computer with 16GB RAM, 
+ and in fact produces relatively fast run times due to its more efficient implementation using a C library in place of 
+ Python. 
+ However, the results show that crowdGPPL is able to obtain competitive performance despite 
+ the approximations required for our proposed SVI method. In the next experiment, we test the approach on a larger dataset with many more pairs, users and items, for which 
+  the memory requirements of collabGP become problematic.
+ \todo{state why we couldn't use collabGP for convincingness, or run it and add it to the results.
+ Consider why Khan does not compare against collabGP? And check that the memory requirements thing
+ is the core reason for favouring SVI -- I think this should either be shown on the 
+ convincingness dataset (even if we use VB with FITC approximation to show it) or more strongly excluded as a possibility.
+Or... do not present our method as a rival but an alternative implementation. Then make the proposal to use this type
+of model for this type of subjective crowdsourcing task the novel claim. 
+ }
+%  
+% while using a more scalable inference method.
+%Performance is also improved over \citet{khan2014scalable} , 
+%whose model comprised a GP for each user and matrix factorization (CEE=0.69 on \emph{Sushi-B}),
+% as well as \citet{salimans2012collaborative}, using matrix factorization with no user or item features (Kendall's $\tau\approx0.39$ on \emph{Sushi-B}). 
+%\todo{
+%Page 17, lines 30 - 35: include, in Table 3, a comprehensive set of results for rival algorithms.
+%}
+\todo{
+CrowdBT using GP may be interesting. However, as studied by Han's work and Pan's work, the crowdPL model is more robust than the crowdBT model, so the proposed model does not provide any improvement to crowdsourcing.
+Overall, the current version of this manuscript is not sufficient for machine learning models. The authors should empirically compare other baselines in crowdsourcing setting to demonstrate the significance.
+}
+%Figure \ref{fig:latent_factor_variance} again shows that the inferred crowdGPPL model relies
+%heavily on a subset of the latent factors.
+% We should bring the scalability experiments forward so that we don't need the runtimes here?
+% Or so we can at least avoid comparing with Houlsby and Khan on runtimes. 
+% The Khan runtime should be GPPL-per-user + BMF. However, the interconnection of the two might 
+% make them take more or less time?
+
+
 \subsection{Argument Convincingness}\label{sec:exp_scale}
 
 % TODO: split the personalised results by no. training examples per worker
@@ -206,7 +457,7 @@ to mismatches between $C$ and $C_{true}$.
  % .78 & .51 & .52 & .72 & .56 & .33
  %GPPL opt. & .76 & .51 & .47 & .70 & .58 &  .30 \\
  crowdGPPL %medi. 
- & .78 & .48 & .51 & .73 & .61 & .33 & .74 & .59 & .29  \\ %.71 & .59 & .32 \\ % now showing workers with > 40 training examples
+ & .78 & .50 & .53 & .73 & .61 & .33 & .74 & .59 & .29  \\ %.71 & .59 & .32 \\ % now showing workers with > 40 training examples
  % new values since Q and various minor bugfixes (Qfix1): 
  % .77 & .67 & .52 & .72 & .60 & .33 \\
  % Qfix3 (nothing changed; main problem is CEE on consensus -- try tuning st separately from sw hyperparameters):
@@ -214,7 +465,7 @@ to mismatches between $C$ and $C_{true}$.
  %crowdGPPL opt. & .78 & .48 & .50 & .69 & .59 & .29
  %PL+ SVR & .75 & .55 & \textbf{.40} & .75 & & .40 \\
  %GPC & .73 & .53 & - & .68 & .59 & - \\
- crowdBT-GP & .78 & .58 & .53 &
+ crowdBT-GP & .78 & .58 & .53 & .71 & .60 & 
  \\\hline
 \end{tabularx}
 \caption{Performance comparison on UKPConvArgCrowdSample using ling+GloVe features. \emph{Acc} and \emph{CEE} show classification accuracy and cross entropy error (or log-loss) for pairwise predictions, 
@@ -372,224 +623,6 @@ Increasing the number of pairwise labels, $P$, above 1000, however, does not vis
     Runtimes for training+prediction on UKPConvArgCrowdSample. 300 GloVe features. Means over 15 runs. CrowdGPPL with 5 components.
 }
 \end{figure}
-
-\subsection{Sushi Preferences}\label{sec:sushi}
-
-%TODO sushi-A small needs describing or cutting out.
-We use Sushi preference data (shown in Table \ref{tab:datasets}),
-to benchmark the classification and ranking performance of GPPL and crowdGPPL, 
-against previous approaches 
-and investigate the use of user features for predicting preferences.
-The datasets contain, for each user, a gold standard preference ranking 
-of $10$ types of sushi,
-from which we generate gold-standard pairwise labels. 
-%These labels can be considered noise-free, since
-%they are derived directly from the gold standard ranking.  
-To test performance with very few training pairs, we obtain \emph{Sushi-A-small}
-by selecting $100$ users at random from the complete \emph{Sushi-A} dataset,
-then selecting $5$ pairs for training and $25$ for testing per user.
-For \emph{Sushi-A}, we select a subset of $100$ users at random from the complete dataset, then 
-split the data into training and test sets by randomly
-selecting $20$ pairs for each user for training and $25$ for testing. 
-For \emph{Sushi-B}, we use all $5000$ workers, and subsample $10$ training pairs and $1$ test pair per user.
-%These subsampling steps are repeated $25$ times.
-Beside GPPL, crowdGPPL and GPPL-per-user, we 
-% but this could not be applied to larger datasets as the 
-%computation costs were too high.
-introduce four further baselines: 
-\emph{crowdGPPL$\mathbf{\backslash \bs u}$}, which ignores the user features;
- \emph{crowdGPPL$\mathbf{\backslash \bs u \backslash \bs x}$}, which ignores both user and item features;
- \emph{crowdGPPL$\mathbf{\backslash \bs u \backslash \bs t}$}, which 
-excludes the consensus function $\bs t$ from the model as well as the user
-features;
-and  \emph{crowdGPPL$\backslash$induc}, which uses all features but does 
-not use inducing points for a sparse approximation.
-For $\backslash\bs u$ methods, the user covariance matrix, $\bs K_w$, in the crowdGPPL model is replaced by the identity matrix, and for crowdGPPL$\mathbf{\backslash \bs u \backslash \bs x}$, the item covariance matrices, $\bs K_v$ and $\bs K_t$ are also replaced by the identity matrix.
-%We evaluate the quality of pairwise predictions using classification accuracy and cross entropy 
-%error (also known as log loss) to gauge the quality of the probabilities that each method outputs.
-%We also evaluate each method's inferred personal preference values
-%against the gold standard rankings by computing Kendall's $\tau$ rank correlation
-%coefficient between the negative rank and the inferred preference function values,
-%for all the items contained in each subsampled user's ranking.
-We set hyperparameters $C=20$ without optimization,
-$\alpha_0=1, \beta_0=100$ using a grid search over values 
-$10^{\{-1,...,3\}}$ on withheld user data from the \emph{Sushi-A} dataset,
-$\epsilon=5$, $|P_i|=200$ for \emph{Sushi-A} and $|P_i|=2000$ for \emph{Sushi-B}. All other hyperparameters are the same 
-as for Section \ref{sec:exp_synth}.
-The complete process of subsampling, training and testing, was repeated $25$ times
-for each dataset.
-
-% Houlsby results: for comparison against a different inference technique on small data, include
-% the test error results from their paper.
-% Guo results: not directly comparable. We will rerun a similar approach but with our inference method.
-% Khan results: for a different model that separates the latent features from the item/user features.
-% Abbasnejad results (community-based preference learning): sushi data with 10 items; 60/40 train/test split of each user's preference pairs. This means the result is based on 27 pairs training.
-% don't worry about this though, it doesn't seem to work very well in their results.
-
-% Number of users affects value of including user features.
-% Plot results on increasing dataset size.
-
-% [10] T. Kamishima. Nantonac collaborative filtering:
-% Recommendation based on order responses. In
-% ACM SIGKDD 9th Int. Conf. Knowledge Discov-
-% ery and Data Mining, 2003.
-
-% Run 25 repeats of random train/test splits with:
-% Exclude these two as we focus on bigger datasets in this paper. Cutting these creates the space 
-% for including three metrics.
-% Downside: cannot test whether increasing no. users imroves performance through better collaborative learning. 
-% 
-% 100 (a la Houlsby 20 pairs per user), 
-% 200 (a la Khan, 3 training, 1 test, P=600, P_test=200), 
-% For small datasets, we may want to test on the argumentation data so we can assess the crowd
-% consensus results with small data. That dataset is more interesting here because lots of items,
-% small data is a new scenario.
-% % % % [a] 1000 (a la Houlsby 15 training, 5 test pairs per user, $P=15000,P_{test}=5000$), Sushi-A (10 items), 
-% % % % and [b] 5000 users (a la Khan, 10 training, 1 test pairs per user, $P=50000, P_{test}=5000$), \emph{Sushi-B} (100 items).
-% % % % Evaluate on parwise labelling error, pairwise label logloss, spearman rank correlation,
-% % % % and runtime.
-% could use normalized mean loss from guo, but not sure where the utilities come from -- ranking?
-
-% 25 random train/test splits on all 5000 users with varying no. (1, 5, 10, 20, 40) pairs per user.
-
-% Can put in the Houlsby (100/1000 users, 20 pairs each, labelling error) and Khan (200 users, 3 pairs each, logloss) results.
-% Khan also provide code, so could be rerun to get classification error.
-
-\begin{table}
-\small
-\begin{tabularx}{\textwidth}{| p{1.1cm} | X | X | X | p{0.55cm} | X | X | X | p{0.7cm} | X | X | X | p{0.7cm} |}
-\hline
-& \multicolumn{4}{c|}{\textbf{Sushi-A-small}} & \multicolumn{4}{c|}{\textbf{Sushi-A}} & \multicolumn{4}{c|}{\textbf{Sushi-B}} \\ 
-Method & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time \\
-\hline\hline
-%\multicolumn{13}{|l|}{\textit{crowdGPPL}} \\
-\multicolumn{1}{|b{1.1cm}|}{crowd-GPPL} & .67 & .63 & .39 & 38%76.91 %(27.23) %& .63 (.02) & .69 (.00) & .25 (.02)
-%old results from submission: & .79 & .51 & .66 & 60 %149.6 %(20.86)
-%new results 02.04: 
-& .81 & .39 & .66 & 21
-& .73 & .57 & .47 & 393 \\
-%& \textbf{.79} & \textbf{.57} & .50 & 393 \\
-% april rerun:
-% .72 & .60 & .45 & 4706 % --> too many iterations? or do i need to divide by 25?
-%old results: & .69 & 2.23 & .45 & 9163 \\
-%full, opt. & & & & & .80 & .48 & .68 & 3718 
-%& - & - & - & - \\%(2193.72) \\
-$\backslash $induc & .70 & \textbf{.57} & .46 & 51 %(14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
-% new results 02.04
-& .84 & .33 & .79 & 39
-% old results from submission: & .84 & \textbf{.33} & .79 & 646 %(50.17) 
-& - & - & - & -
-\\
-%$\backslash t$ & .67 & .80 & .39 & 7.45 (29.00) %& .61 (.02) & .69 (.00) & .19 (.03)
-%& .79 & .57 & .65 & 158.51 (25.06)
-%\\
-$\backslash u$ & .70 & .58 & .46 & 9  &%(24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
-% new results 02.04:
-
-\textbf{.85} & \textbf{.31} & \textbf{.81} & 21
-%old results from submission & .84 & \textbf{.33} & \textbf{.80} & 95 %(4.93)
-& .78 &\textbf{.57} & .49 & 303 \\
-%old results & \textbf{.76} & \textbf{.47} & \textbf{.60} & 21052\\
-%$\backslash u$, opt. & & & & & \textbf{.85} & \textbf{.33} &  \textbf{.80} & 5016 %(1978.82) \\
-%& - & - & - & - \\
-$\backslash u \backslash x$ & \textbf{.71} & \textbf{.57} & \textbf{.49} & 5 & %(3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
-%old results from submission: & \textbf{.85} & \textbf{.33} & \textbf{.80} & 89 %(12.12)
-%new results 02.04: 
-\textbf{.85} & .33 & .80 & 14
-& .77 & .58 & .48 & 269
-%old results & \textbf{.76} & .48 & \textbf{.60} & 15478
-\\
-%$\backslash u$, FITC & .70 & .58 & .46 & 333.68 (57.36) %& .65 (.01) & .64 (.02) & .29 (.02)
-%& \textbf{.85} & \textbf{.33} & \textbf{.80} & 551.56 (16.82)
-%\\
-$\backslash u,\backslash t$ % this is also FITC to emulate Houlsby -- mention it in the text, not here
-& .68 & .60 & .43 & 291 %(48.62) %& .50 (.00) & .69 (.00) & nan (nan)
-%old results from submission & .84 & \textbf{.33} & .79 & 204 %(12.15) 
-%new results 02.04:
-& .84 & .33 & .80 & 230
-& .76 & .61 & .54 & 1001
-% old results & .75 & .49 & .59 & 30484
-\\ 
-%$\backslash u$$\backslash t$, FITC, opt. & & & &  & .84 & \textbf{.33} & \textbf{.80} & 7413.53 (2849.63) \\
-\hline 
-GPPL & .65 & .62 & .31 & \textbf{2} %(.26) %& .65 (.02) & .63 (.02) & .30 (.03)
-% old results from submission: & .66 & .62 & .32 & \textbf{6} %(.38) & 
-% new results 02.04:
-& .65 & .62 & .31 & \textbf{2}
-& .65 & .62 & .31 & \textbf{51}
-\\
-GPPL-per-user & .67 & .64 & .42 & 183 %(1.12) %& .50 (.00) & .69 (.00) & nan (nan)
-%old results from submission & .83 & .40 & .79 & 1106 
-% new results 02.04:
-& .83 & .40 & .79 & 44
-& .75 & .60 & \textbf{.60} & 3172 %(.44)
-\\
-coll. GP & .69 & .58 & n/a & \textbf{2} & & & n/a & & \\
-%\textbf{.81} & \textbf{.40} & n/a & 761 \\
-\hline
-%\citet{houlsby2012collaborative} CP & & & & & .84 \\
-%\citet{houlsby2012collaborative} CPU & & & & & .83 \\ 
-%\citet{khan2014scalable} & &&& & & & & & .69 & &
-%\\ \hline
-\end{tabularx}
-\caption{Predicting personal preferences: performance on \emph{Sushi-A} dataset and \emph{Sushi-B} datasets.
-Runtimes are means in seconds over $25$ repeats given.
-For accuracy, the standard deviations of all metrics shown are $\leq 0.02$, for CEE, $\leq 0.08$, for $\tau$, $\leq 0.03$.
- }
-\label{tab:sushi}
-\end{table}
-%  -- the stds were removed because they're not very informative for acc, CEE, tau
-% The commented results are predictions on new users -- for sushiAsmall, the only interesting 
-% point is that excluding the consensus decreases accuracy. How does it make predictions without a t?
-The results in Table \ref{tab:sushi} 
-%we re-state the previous performance metrics and did not re-implement these methods. 
-illustrate the performance benefit of crowd models over single-user GPPL, and
-the runtimes 
-show the speedup of the sparse approximation of crowdGPPL over crowdGPPL$\backslash$induc.
-GPPL is substantially quicker to train than crowd-GPPL, and GPPL-per-user does not scale well to larger numbers
-of users.
-% including feature data for items and users leads to faster convergence than crowdGPPL$\backslash \bs u$ and crowd$\backslash \bs u \backslash \bs x$.
-%Likewise, the use of matrix factorization leads to only a small increase in
-% runtimes of these methods over joint-GPPL. 
- %However, the runtimes for crowdGPPL are higher than those of GPPL.
- When using inducing points, the user features decrease the performance of crowdGPPL on \emph{Sushi-A} and \emph{Sushi-A-small}: crowdGPPL$\backslash$induc
- and crowdGPPL$\backslash\bs u$ both outperform the full crowdGPPL. 
- To use inducing points,
- there must be a strong relationship between neighbouring points, which
- may not to be the case given the features in this dataset.
- However, on \emph{Sushi-B}, the user features provide a small improvement, so may be weakly informative
- given enough users when we have only $10$ pairwise labels per user, rather than $15$ as for \emph{Sushi-A}.
- Comparing crowdGPPL$\backslash\bs u$ with crowdGPPL$\backslash\bs u\bs t$, including the consensus function appears to improve performance by a modest amount.
- GPPL-per-user performs well on \emph{Sushi-A}, but does not perform as well as other methods on \emph{Sushi-B}, as
-there are only $10$ pairwise training labels per user and no collaborative learning.
- %Again, we see small improvements in performance after length-scale optimization,
- %but this takes approximately 22 times as long to train.
-% as are the performance metrics. 
-\todo{does houlsby learn the output scales of the factors? If not, then they are not learning to discard the unused ones. Make sure to mention this when presenting the output scale plot and model differences.}
-\todo{
-New strategy == add so
-In the Houlsby paper, it appears that they use their own EP implementation for the models
-they compare against. They give the following footnote:
-"Although this is not the same as the original implementations (sampling-based for BI, Laplace approxi-mation for BO), the preference kernel and EP are likely to augment the performance of these algorithms, andprovides the fairest comparison of the underlying models." This could be done in our paper for Houlsby and Khan if we compare the models themselves only. For making claims about the inference algorithm, it's less clear how to avoid comparing with Houlsby directly.}
-CrowdGPPL produces similar classification scores to the earlier method of 
- \citet{houlsby2012collaborative} (0.83 on \emph{Sushi-A} with user features, and 0.84 without), 
- while using a more scalable inference method.
-Performance is also improved over \citet{khan2014scalable} , 
-whose model comprised a GP for each user and matrix factorization (CEE=0.69 on \emph{Sushi-B}),
- as well as \citet{salimans2012collaborative}, using matrix factorization with no user or item features (Kendall's $\tau\approx0.39$ on \emph{Sushi-B}). 
-\todo{
-Page 17, lines 30 - 35: include, in Table 3, a comprehensive set of results for rival algorithms.
-}
-\todo{
-CrowdBT using GP may be interesting. However, as studied by Han's work and Pan's work, the crowdPL model is more robust than the crowdBT model, so the proposed model does not provide any improvement to crowdsourcing.
-Overall, the current version of this manuscript is not sufficient for machine learning models. The authors should empirically compare other baselines in crowdsourcing setting to demonstrate the significance.
-}
-%Figure \ref{fig:latent_factor_variance} again shows that the inferred crowdGPPL model relies
-%heavily on a subset of the latent factors.
-% We should bring the scalability experiments forward so that we don't need the runtimes here?
-% Or so we can at least avoid comparing with Houlsby and Khan on runtimes. 
-% The Khan runtime should be GPPL-per-user + BMF. However, the interconnection of the two might 
-% make them take more or less time?
 
 \subsection{Posterior Variance of Item Components}
 \label{sec:components}

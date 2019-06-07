@@ -209,10 +209,13 @@ def get_fold_data(folds, fold, docids):
     return a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, \
         X, uids, utexts, upersonIDs
         
-def get_noisy_fold_data(folds, fold, docids, acc, tr_pair_subset=None):
-    a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, X, \
+def get_noisy_fold_data(folds, folds_test, fold, docids, acc, tr_pair_subset=None):
+    a1_train, a2_train, prefs_train, person_train, _, _, _, _, X, \
         uids, utexts, upersonIDs = get_fold_data(folds, fold, docids)
-    
+
+    _, _, gold_train, _, a1_test, a2_test, prefs_test, person_test, _, \
+        _, _, _ = get_fold_data(folds_test, fold, docids)
+
     # now subsample the training data
     N = len(a1_train)
     if tr_pair_subset is not None:
@@ -222,6 +225,7 @@ def get_noisy_fold_data(folds, fold, docids, acc, tr_pair_subset=None):
         a2_train = a2_train[subidxs]
         prefs_train = prefs_train[subidxs]
         person_train = person_train[subidxs]
+        gold_train = gold_train[subidxs]
     else:
         Nsub = N
 
@@ -231,7 +235,7 @@ def get_noisy_fold_data(folds, fold, docids, acc, tr_pair_subset=None):
         prefs_train[flip_labels] = 2 - prefs_train[flip_labels] # labels are 0, 1 or 2
     
     return a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, \
-        X, uids, utexts, upersonIDs
+        X, uids, utexts, upersonIDs, gold_train
     
 def get_fold_regression_data(folds_regression, fold, docids):
     if folds_regression is not None:
@@ -779,7 +783,7 @@ class TestRunner:
         return resultsfile, results_stem    
     
     def _load_dataset(self, dataset):
-        self.folds, self.folds_r, self.word_index_to_embeddings_map, self.word_to_indices_map, \
+        self.folds, self.folds_test, self.folds_r, self.word_index_to_embeddings_map, self.word_to_indices_map, \
             self.index_to_word_map = load_train_test_data(dataset)
 
         self.ling_feat_spmatrix, self.docids = load_ling_features(dataset)
@@ -801,7 +805,7 @@ class TestRunner:
                                  self.ling_feat_spmatrix, self.docids, self.folds, self.index_to_word_map)
                 np.savetxt(ls_file, self.default_ls)
 
-            self.default_ls /= float(len(self.default_ls)) # new kernel doesn't need the heuristic multiplier
+            # self.default_ls /= float(len(self.default_ls)) # long lengthscale does strange things with training dataset
 
             if self.dataset not in self.default_ls_values:
                 self.default_ls_values[self.dataset] = {}
@@ -903,7 +907,10 @@ class TestRunner:
             # Get data for this fold --------------------------------------------------------------------------------------
             print(("Fold name ", self.fold))
             a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test,\
-                        self.X, uids, utexts, upersonIDs = get_noisy_fold_data(self.folds, self.fold, self.docids, acc)
+                    self.X, uids, utexts, upersonIDs, gold_train = get_noisy_fold_data(
+                self.folds, self.folds_test, self.fold, self.docids, acc)
+
+
             
             # ranking folds
             a_rank_train, scores_rank_train, _, person_rank_train, a_rank_test, scores_rank_test, _, \
@@ -1008,6 +1015,7 @@ class TestRunner:
                 self.a2_train = a2_train[pair_subset]
                 self.prefs_train = prefs_train[pair_subset]
                 self.person_train = person_train[pair_subset]
+                gold_train = gold_train[pair_subset]
                 
                 self.a1_test = a1_test
                 self.a2_test = a2_test
@@ -1093,8 +1101,8 @@ class TestRunner:
                     prefs_unseen = prefs_train[pair_subset]#unseen_subset]
                     tr_proba_unseen = tr_proba#[unseen_subset]
                     logging.info("Unseen data in the training fold, accuracy for fold = %f" % (
-                        np.sum(prefs_unseen[prefs_unseen != 1] == 2 * np.round(tr_proba_unseen).flatten()[prefs_unseen != 1]
-                            ) / float(np.sum(prefs_unseen != 1))) )   
+                        np.sum(gold_train[gold_train != 1] == 2 * np.round(tr_proba_unseen).flatten()[prefs_unseen != 1]
+                            ) / float(np.sum(gold_train != 1))) )
 
                 if proba.size == prefs_test.size:
                     logging.info("AUC = %f" % roc_auc_score(prefs_test[prefs_test!=1] / 2.0, proba[prefs_test!=1]) )

@@ -83,7 +83,7 @@ if __name__ == '__main__':
         # If we have discarded some features that were all zeros, the current index will not be the original feature idx.
         # How to map them back? Reload the original data and find out which features were discarded.
 
-        folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = load_train_test_data(dataset)
+        folds, _, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = load_train_test_data(dataset)
         word_embeddings = load_embeddings(word_index_to_embeddings_map)
         ling_feat_spmatrix, docids = load_ling_features(dataset)
 

@@ -201,7 +201,7 @@ class PersonalisedTestRunner(TestRunner):
         proba = np.exp(predicted_f[self.a1_test]) / (
                     np.exp(predicted_f[self.a1_test]) + np.exp(predicted_f[self.a2_test]) + balance)
 
-        predicted_f = predicted_f[self.a_rank_test]
+        predicted_f = self.model.predict_f(None, self.a_rank_test)  #predicted_f[self.a_rank_test]
 
         tr_proba = np.exp(self.crowdBT_s[self.a1_unseen]) / (
                     np.exp(self.crowdBT_s[self.a1_unseen]) + np.exp(self.crowdBT_s[self.a2_unseen]) + balance)
@@ -323,13 +323,17 @@ class PersonalisedTestRunner(TestRunner):
         #     logging.info('I didnae find any pretrained model :(')
         #     self._train_persgppl()
 
+        print('Training crowdGPPL to predict consensus...')
+
         self._train_persgppl(delay=1.0)
 
         if self.vscales is not None:
             self.vscales.append(np.sort(self.model.rate_sw / self.model.shape_sw)[::-1])
 
+
+        print('Testing crowdGPPL on consensus -- making predictions now.')
         proba = self.model.predict_common(None, self.a1_test, self.a2_test)
-        tr_proba = self.model.predict(self.person_unseen, self.a1_unseen, self.a2_unseen)
+        tr_proba = self.model.predict_common(None, self.a1_unseen, self.a2_unseen)
 
         if self.a_rank_test is not None:
             predicted_f = self.model.predict_t()[self.a_rank_test]
@@ -358,7 +362,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'use_neutral2_small_ls'  #'rate_s_tests_single'
+    test_dir = 'training_tests'  #'rate_s_tests_single'
 
     methods = ['SinglePrefGP_noOpt_weaksprior']
     datasets = ['UKPConvArgCrowdSample_evalMACE']

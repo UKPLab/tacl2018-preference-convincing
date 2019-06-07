@@ -372,12 +372,12 @@ def compute_errors_in_training(expt_settings, method, feature_type, embeddings_t
 
     expt_settings_1 = expt_settings.copy()
     expt_settings_1['dataset'] = 'UKPConvArgCrowdSample_evalMACE'
-    folds_noisy, _, _, _, _ = load_train_test_data(expt_settings_1['dataset'])
+    folds_noisy, _, _, _, _, _ = load_train_test_data(expt_settings_1['dataset'])
     expt_settings_1['folds'] = folds_noisy
 
     expt_settings_2 = expt_settings.copy()
     expt_settings_2['dataset'] = 'UKPConvArgAll'
-    folds_clean, _, _, _, _ = load_train_test_data(expt_settings['dataset'])
+    folds_clean, _, _, _, _, _ = load_train_test_data(expt_settings['dataset'])
 
     expt_settings_1['method'] = method
     expt_settings_1['feature_type'] = feature_type
@@ -547,7 +547,7 @@ if __name__ == '__main__':
 
     expt_settings['dataset'] = 'UKPConvArgStrict'
     expt_settings['method'] = 'SinglePrefGP_noOpt_weaksprior'
-    folds, folds_regression, _, _, _ = load_train_test_data(expt_settings['dataset'])
+    folds, _, folds_regression, _, _, _ = load_train_test_data(expt_settings['dataset'])
     expt_settings['folds'] = folds
     expt_settings['folds_regression'] = folds_regression
 
@@ -588,7 +588,7 @@ if __name__ == '__main__':
     # a. Compute the rankings for GPPL and SVM.
     # b. Compute deviations from gold rank.
     expt_settings['dataset'] = 'UKPConvArgAll'
-    folds, folds_regression, _, _, _ = load_train_test_data(expt_settings['dataset'])
+    folds, _, folds_regression, _, _, _ = load_train_test_data(expt_settings['dataset'])
     expt_settings['folds'] = folds
     expt_settings['folds_regression'] = folds_regression
 

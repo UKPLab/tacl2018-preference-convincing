@@ -423,13 +423,13 @@ def load_train_test_data(dataset):
     elif dataset == 'UKPConvArgCrowd_evalMACE': # train on the crowd dataset and evaluate on the MACE dataset
         dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-full-XML/')
         ranking_csvdirname = os.path.join(data_root_dir, 'argument_data/UKPConvArgAllRank-CSV/')
-        folds_test, folds_regression_test, _, _, _ = load_train_test_data('UKPConvArgAll')
+        folds_test, _, folds_regression_test, _, _, _ = load_train_test_data('UKPConvArgAll')
         dataset = 'UKPConvArgCrowd'
 
     elif dataset == 'UKPConvArgCrowdSample_evalMACE':
         dirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-crowdsample-XML/')
         ranking_csvdirname = os.path.join(data_root_dir, 'argument_data/UKPConvArg1-crowdsample-ranking-CSV/')
-        folds_test, folds_regression_test, _, _, _ = load_train_test_data('UKPConvArgAll')
+        folds_test, _, folds_regression_test, _, _, _ = load_train_test_data('UKPConvArgAll')
         dataset = 'UKPConvArgCrowdSample'
 
     else:
@@ -468,15 +468,18 @@ def load_train_test_data(dataset):
         folds_regression, _ = load_my_data_regression(ranking_csvdirname, embeddings_dir=embeddings_dir,
                                                       load_embeddings=True)
 
-    if folds_test is not None:
-        for fold in folds:
-            folds[fold]["test"] = folds_test[fold]["test"]
+
+
+    if folds_test is None:
+        folds_test = folds
+        #for fold in folds:
+        #    folds[fold]["test"] = folds_test[fold]["test"]
 
     if folds_regression_test is not None:
         for fold in folds_regression:
             folds_regression[fold]["test"] = folds_regression_test[fold]["test"]
 
-    return folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map
+    return folds, folds_test, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map
 
 
 def load_single_file_regression(directory, file_name, word_to_indices_map, nb_words=None):
