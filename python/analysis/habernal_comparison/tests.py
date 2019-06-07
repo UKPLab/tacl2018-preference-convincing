@@ -919,12 +919,12 @@ class TestRunner:
             a_rank_train, scores_rank_train, _, person_rank_train, a_rank_test, scores_rank_test, _, \
                                 person_rank_test = get_fold_regression_data(self.folds_r, self.fold, self.docids)
 
-            rand_items = np.random.choice(1052, 200, replace=False)
-            tridxs = np.in1d(a1_train, rand_items) & np.in1d(a2_train, rand_items)
-            a1_train = a1_train[tridxs]
-            a2_train = a2_train[tridxs]
-            prefs_train = prefs_train[tridxs]
-            person_train = person_train[tridxs]
+            # rand_items = np.random.choice(1052, 200, replace=False)
+            # tridxs = np.in1d(a1_train, rand_items) & np.in1d(a2_train, rand_items)
+            # a1_train = a1_train[tridxs]
+            # a2_train = a2_train[tridxs]
+            # prefs_train = prefs_train[tridxs]
+            # person_train = person_train[tridxs]
 
             # aggidxs = np.in1d(a1_agg, rand_items) & np.in1d(a2_agg, rand_items)
             # a1_agg = a1_agg[aggidxs]
