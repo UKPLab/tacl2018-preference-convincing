@@ -123,7 +123,7 @@ def get_fold_data(data, f, expt_settings, flip_labels=False):
             
         if len(data) > 8 and data[8] is not None:
             pred_tr_disc = np.round(np.array(data[8])) * 2
-            pred_tr_prob = np.round(np.array(data[8]))
+            pred_tr_prob = np.array(data[8])
         else:
             pred_tr_disc = None
             pred_tr_prob = None
