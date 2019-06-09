@@ -851,6 +851,7 @@ class TestRunner:
             all_predictions = {}
             all_f = {}
             all_tr_proba = {}
+            all_tr_f = {}
             
             all_target_prefs = {}
             all_target_rankscores = {}
@@ -859,11 +860,14 @@ class TestRunner:
         else:
             with open(resultsfile, 'rb') as fh:
                 all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, _, times, final_ls, \
-                                                                    all_tr_proba = pickle.load(fh, encoding='latin1')
+                                                        all_tr_proba, all_tr_f = pickle.load(fh, encoding='latin1')
             if all_tr_proba is None:
                 all_tr_proba = {}
+            if all_tr_f is None:
+                all_tr_f = {}
                 
-        return all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, all_tr_proba
+        return all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, \
+               all_tr_proba, all_tr_f
            
     def run_test(self, feature_type, embeddings_type=None, dataset_increment=0, acc=1.0, subsample_amount=0, 
                  min_no_folds=0, max_no_folds=32, npairs=0, test_on_all_training_pairs=False):
@@ -878,8 +882,8 @@ class TestRunner:
         resultsfile, results_stem = self._set_resultsfile(feature_type, embeddings_type, acc, dataset_increment)
 
         self.results_stem = results_stem
-        all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, all_tr_proba = \
-                                                                                self._reload_partial_result(resultsfile)
+        all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, all_tr_proba, \
+            all_tr_f = self._reload_partial_result(resultsfile)
                 
         np.random.seed(121) # allows us to get the same initialisation for all methods/feature types/embeddings
 
@@ -1164,6 +1168,7 @@ class TestRunner:
                     all_predictions[foldidx] = predictions
                     all_f[foldidx] = predicted_f
                     all_tr_proba[foldidx] = tr_proba
+                    all_tr_f[foldidx] = tr_f
                 else:
                     all_proba[foldidx] = np.concatenate((all_proba[foldidx], proba), axis=1)
                     all_predictions[foldidx] = np.concatenate((all_predictions[foldidx], predictions), axis=1)
@@ -1171,6 +1176,8 @@ class TestRunner:
                         all_f[foldidx] = np.concatenate((all_f[foldidx], predicted_f), axis=1)
                     if tr_proba is not None:
                         all_tr_proba[foldidx] = np.concatenate((all_tr_proba[foldidx], tr_proba), axis=1)
+                    if tr_f is not None:
+                        all_tr_f[foldidx] = np.concatenate((all_tr_f[foldidx], tr_f), axis=1)
 
                 # Save the ground truth
                 all_target_prefs[foldidx] = prefs_test
@@ -1184,7 +1191,7 @@ class TestRunner:
     
                 results = (all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],
                    all_target_rankscores[foldidx], self.ls_initial, times[foldidx], final_ls[foldidx], 
-                   all_tr_proba[foldidx], len(self.a1_train))
+                   all_tr_proba[foldidx], all_tr_f[foldidx], len(self.a1_train))
                 with open(foldresultsfile, 'wb') as fh:
                     pickle.dump(results, fh)
 
