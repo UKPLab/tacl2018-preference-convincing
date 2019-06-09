@@ -264,7 +264,7 @@ def _dists_f(items_feat_sample, f):
     return med
 
 
-def compute_median_lengthscales(items_feat, multiply_heuristic_power=1.0, N_max=3000, n_threads=0):
+def compute_median_lengthscales(items_feat, multiply_heuristic_power=0.5, N_max=3000, n_threads=0):
     if items_feat.shape[0] > N_max:
         items_feat = items_feat[np.random.choice(items_feat.shape[0], N_max, replace=False)]
 
