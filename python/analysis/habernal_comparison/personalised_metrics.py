@@ -26,6 +26,8 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
+    eval_training_set = True
+
     if test_to_run == 6:
         # Personalised predictions -- single-user methods
 
@@ -37,7 +39,8 @@ if __name__ == '__main__':
         results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
         = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                          min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir, split_by_person=True)
+                          min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir,
+                          split_by_person=True, compute_tr_performance=eval_training_set)
         print("Completed compute metrics")
 
     elif test_to_run == 7:
@@ -49,7 +52,7 @@ if __name__ == '__main__':
         results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
         = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                          max_fold_no=max_fold_no, foldername=expt_root_dir)
+                          max_fold_no=max_fold_no, foldername=expt_root_dir, compute_tr_performance=eval_training_set)
         print("Completed compute metrics")
 
     if test_to_run == 4:
@@ -63,7 +66,8 @@ if __name__ == '__main__':
         results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
             = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                              max_fold_no=max_fold_no, foldername=expt_root_dir, split_by_person=True)
+                              max_fold_no=max_fold_no, foldername=expt_root_dir, split_by_person=True,
+                              compute_tr_performance=eval_training_set)
         print("Completed compute metrics")
 
     elif test_to_run == 5:
@@ -75,7 +79,8 @@ if __name__ == '__main__':
         results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
             = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                              max_fold_no=max_fold_no, foldername=expt_root_dir)
+                              max_fold_no=max_fold_no, foldername=expt_root_dir,
+                              compute_tr_performance=eval_training_set)
         print("Completed compute metrics")
 
     elif test_to_run == 0:
@@ -89,7 +94,8 @@ if __name__ == '__main__':
         results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
         = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                          max_fold_no=max_fold_no, foldername=expt_root_dir, split_by_person=True)
+                          max_fold_no=max_fold_no, foldername=expt_root_dir, split_by_person=True,
+                          compute_tr_performance=eval_training_set)
 
         print("Completed compute metrics")
 
@@ -104,7 +110,8 @@ if __name__ == '__main__':
         results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
         = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                          max_fold_no=max_fold_no, foldername=expt_root_dir)
+                          max_fold_no=max_fold_no, foldername=expt_root_dir,
+                          compute_tr_performance=eval_training_set)
 
         print("Completed compute metrics")
 
@@ -119,7 +126,8 @@ if __name__ == '__main__':
         results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
             = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                              max_fold_no=max_fold_no, foldername=expt_root_dir, split_by_person=True)
+                              max_fold_no=max_fold_no, foldername=expt_root_dir, split_by_person=True,
+                              compute_tr_performance=eval_training_set)
 
         print("Completed compute metrics")
 
@@ -134,7 +142,8 @@ if __name__ == '__main__':
         results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
             = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                              max_fold_no=max_fold_no, foldername=expt_root_dir)
+                              max_fold_no=max_fold_no, foldername=expt_root_dir,
+                              compute_tr_performance=eval_training_set)
 
         print("Completed compute metrics")
 
@@ -152,7 +161,8 @@ if __name__ == '__main__':
         results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
             = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                              max_fold_no=max_fold_no, foldername=expt_root_dir)
+                              max_fold_no=max_fold_no, foldername=expt_root_dir,
+                              compute_tr_performance=eval_training_set)
 
         print("Completed compute metrics")
 
@@ -170,6 +180,7 @@ if __name__ == '__main__':
         results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
             = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                              max_fold_no=max_fold_no, foldername=expt_root_dir)
+                              max_fold_no=max_fold_no, foldername=expt_root_dir,
+                              compute_tr_performance=eval_training_set)
 
         print("Completed compute metrics")
