@@ -378,14 +378,14 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'training_tests_alltr'  #'rate_s_tests_single'
+    test_dir = 'debug'  #'rate_s_tests_single'
 
     methods = ['SinglePrefGP_noOpt_weaksprior']
     datasets = ['UKPConvArgCrowdSample_evalMACE']
     dataset_increment = 0
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
-    feature_types = ['both']  # can be 'embeddings' or 'ling' or 'both' or 'debug'
+    feature_types = ['debug']  # can be 'embeddings' or 'ling' or 'both' or 'debug'
     embeddings_types = ['word_mean']
 
     if test_to_run == -1:
@@ -418,7 +418,7 @@ if __name__ == '__main__':
 
     # PERSONALISED PREDICTION
     if test_to_run == 0:
-        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+        runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=2)
 
     # CONSENSUS PREDICTION
     elif test_to_run == 1:
