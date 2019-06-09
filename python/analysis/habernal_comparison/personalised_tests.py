@@ -378,14 +378,14 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'debug'  #'rate_s_tests_single'
+    test_dir = 'tests_train_all_ls05'  #'rate_s_tests_single'
 
     methods = ['SinglePrefGP_noOpt_weaksprior']
     datasets = ['UKPConvArgCrowdSample_evalMACE']
     dataset_increment = 0
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
-    feature_types = ['debug']  # can be 'embeddings' or 'ling' or 'both' or 'debug'
+    feature_types = ['both']  # can be 'embeddings' or 'ling' or 'both' or 'debug'
     embeddings_types = ['word_mean']
 
     if test_to_run == -1:
