@@ -512,8 +512,9 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                                                                 pred_tr_prob[gold_tr!=1, AL_round]),
                                                                                 remove_seen_from_mean)
 
-                                tr_results_tau[row, col, f, AL_round] = mean_unseen(kendalltau(
-                                    gold_tr_rank, pred_tr_rank[:, AL_round])[0])
+                                if pred_tr_rank is not None:
+                                    tr_results_tau[row, col, f, AL_round] = mean_unseen(kendalltau(
+                                        gold_tr_rank, pred_tr_rank[:, AL_round])[0])
 
                             elif pred_tr_prob is not None and AL_round >= pred_tr_disc.shape[1]:
                                 tr_results_f1[row, col, f, AL_round] = 1
