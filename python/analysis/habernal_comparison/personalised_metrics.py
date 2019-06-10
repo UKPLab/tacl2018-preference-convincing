@@ -184,3 +184,21 @@ if __name__ == '__main__':
                               compute_tr_performance=eval_training_set)
 
         print("Completed compute metrics")
+
+    elif test_to_run == 11:
+        # Consensus predictions -- multi-user methods (single-user methods were already included in the TACL paper so
+        # can be copied from there).
+        datasets = ['UKPConvArgCrowdSample_evalMACE']
+        methods = [
+            'crowdBT',
+        ]
+        feature_types = ['both']  # 'both'
+        embeddings_types = ['word_mean']
+
+        results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
+        tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
+            = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
+                              min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir,
+                              compute_tr_performance=eval_training_set)
+
+        print("Completed compute metrics")
