@@ -130,7 +130,7 @@ class PersonalisedTestRunner(TestRunner):
 
         scores = Es[self.a_rank_test]
 
-        return proba, scores, tr_proba
+        return proba, scores, tr_proba, Es[self.a_rank_train]
 
 
     def run_crowd_bt_gpr(self):
