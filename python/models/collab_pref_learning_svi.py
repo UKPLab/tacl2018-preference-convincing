@@ -137,15 +137,15 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.ninducing = self.obs_coords.shape[0]
             self.inducing_coords = self.obs_coords
         else:
-            # init_size = 300
-            # if init_size < self.ninducing:
-            #     init_size = self.ninducing
-            # kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.ninducing)
-            # kmeans.fit(self.obs_coords / self.ls[None, :])
-            #
-            # self.inducing_coords = kmeans.cluster_centers_ * self.ls[None, :]
+            init_size = 300
+            if init_size < self.ninducing:
+                init_size = self.ninducing
+            kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.ninducing)
+            kmeans.fit(self.obs_coords / self.ls[None, :])
 
-            self.inducing_coords = self.obs_coords[np.random.choice(self.N, self.ninducing, replace=False), :]
+            self.inducing_coords = kmeans.cluster_centers_ * self.ls[None, :]
+
+            # self.inducing_coords = self.obs_coords[np.random.choice(self.N, self.ninducing, replace=False), :]
 
         # Kernel over items (used to construct priors over w and t)
         if self.verbose:
@@ -225,26 +225,26 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.y_ninducing = self.Npeople
                 self.y_inducing_coords = self.person_features
             else:
-                # init_size = 300
-                # if self.y_ninducing > init_size:
-                #     init_size = self.y_ninducing
-                # kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.y_ninducing, compute_labels=True)
-                # kmeans.fit(self.person_features / self.lsy[None, :])
-                #
-                # shuffled_idxs = np.random.permutation(self.person_features.shape[0])
-                #
-                # self.y_inducing_coords = self.person_features[
-                #     shuffled_idxs[
-                #         np.unique(kmeans.labels_[shuffled_idxs], return_index=True)
-                #     [1]]
-                # ]
-                #
-                # if self.y_inducing_coords.shape[0] < self.y_ninducing:
-                #      self.y_ninducing = self.y_inducing_coords.shape[0]
+                init_size = 300
+                if self.y_ninducing > init_size:
+                    init_size = self.y_ninducing
+                kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.y_ninducing, compute_labels=True)
+                kmeans.fit(self.person_features / self.lsy[None, :])
 
-                self.y_inducing_coords = self.person_features[np.random.choice(self.Npeople,
-                                                                               self.y_ninducing,
-                                                                               replace=False)]
+                shuffled_idxs = np.random.permutation(self.person_features.shape[0])
+
+                self.y_inducing_coords = self.person_features[
+                    shuffled_idxs[
+                        np.unique(kmeans.labels_[shuffled_idxs], return_index=True)
+                    [1]]
+                ]
+
+                if self.y_inducing_coords.shape[0] < self.y_ninducing:
+                     self.y_ninducing = self.y_inducing_coords.shape[0]
+
+                # self.y_inducing_coords = self.person_features[np.random.choice(self.Npeople,
+                #                                                                self.y_ninducing,
+                #                                                                replace=False)]
                 # self.person_features[:self.y_ninducing]
 
             # Kernel over people used to construct prior covariance for y
