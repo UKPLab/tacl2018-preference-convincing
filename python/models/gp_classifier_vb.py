@@ -200,15 +200,11 @@ def matern_3_2_from_raw_vals(vals, ls, vals2=None, operator='*', n_threads=0, ve
     #                                                                          operator, vector) for i in range(num_jobs))
 
     if vals2 is None:
-        dists = pdist((vals/ls), metric='cityblock')  #euclidean')
+        dists = pdist((vals/ls), metric='euclidean')
     elif vector:
-        dists = np.sum(np.sqrt((vals/ls)**2 + (vals2/ls)**2 - 2 * (vals/ls) * (vals2/ls)), axis=1)
-        # dists = np.sqrt(np.sum((vals/ls) ** 2 + (vals2/ls) ** 2 - 2 * (vals/ls) * (vals2/ls), axis=1))
+        dists = np.sqrt(np.sum((vals/ls) ** 2 + (vals2/ls) ** 2 - 2 * (vals/ls) * (vals2/ls), axis=1))
     else:
-        dists = cdist((vals/ls), (vals2/ls), metric='cityblock')  #euclidean')
-
-    if np.any(dists < 0):
-        print('!!!!!!!!!!!!!!!!!!')
+        dists = cdist((vals/ls), (vals2/ls), metric='euclidean')
 
     K = dists * np.sqrt(3)
     K = (1. + K) * np.exp(-K)
@@ -290,7 +286,7 @@ def compute_median_lengthscales(items_feat, N_max=3000, n_threads=0):
     ls_initial_guess = np.ones(ndims) * default_ls_value
 
     if items_feat.shape[1] > 200:
-        ls_initial_guess *= items_feat.shape[1] ** multiply_heuristic_power
+        ls_initial_guess *= 2.0 * items_feat.shape[1] ** multiply_heuristic_power
     else:
         ls_initial_guess *= 0.5
     # this is a heuristic, see e.g. "On the High-dimensional
