@@ -208,7 +208,7 @@ def matern_3_2_from_raw_vals(vals, ls, vals2=None, operator='*', n_threads=0, ve
         dists = np.sum(np.sqrt(vals**2 + vals2**2 - 2 * vals * vals2), axis=1)
     else:
         vals2 /- ls
-        dists = cdist(vals / ls, vals2 / ls, metric='citblock')
+        dists = cdist(vals / ls, vals2 / ls, metric='cityblock')
 
     K = dists * np.sqrt(3)
     K = (1. + K) * np.exp(-K)
