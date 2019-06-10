@@ -505,7 +505,9 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                 #skip the don't knows
                                 tr_results_acc[row, col, f, AL_round] = mean_unseen(accuracy_score(gold_tr[gold_tr!=1], 
                                                                                 pred_tr_disc[gold_tr!=1, AL_round]),
-                                                                                remove_seen_from_mean) 
+                                                                                remove_seen_from_mean)
+
+                                print('Training set accuracy = %f' % tr_results_acc[row, col, f, AL_round])
                                 
                                 tr_results_logloss[row, col, f, AL_round] = mean_unseen(log_loss(gold_tr_prob[gold_tr!=1], 
                                                                             pred_tr_prob[gold_tr!=1, AL_round]),
@@ -558,24 +560,24 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             print('%f,' % results_acc[row, col, idx, 0])
                         print('----')
 
-                    if foldrange is not None:
-                        print('p-values for %s, %s, %s, %s:' % (expt_settings['dataset'], expt_settings['method'],
-                                                expt_settings['feature_type'], expt_settings['embeddings_type']))
-
-                        print(wilcoxon(results_f1[0, 0, foldrange, AL_round],
-                                                                  results_f1[row, col, foldrange, AL_round])[1])
-                        print(wilcoxon(results_acc[0, 0, foldrange, AL_round],
-                                                                  results_acc[row, col, foldrange, AL_round])[1])
-                        print(wilcoxon(results_logloss[0, 0, foldrange, AL_round],
-                                                                  results_logloss[row, col, foldrange, AL_round])[1])
-                        print(wilcoxon(results_auc[0, 0, foldrange, AL_round],
-                                                                  results_auc[row, col, foldrange, AL_round])[1])
-                        print(wilcoxon(results_pearson[0, 0, foldrange, AL_round],
-                                                                  results_pearson[row, col, foldrange, AL_round])[1])
-                        print(wilcoxon(results_spearman[0, 0, foldrange, AL_round],
-                                                                  results_spearman[row, col, foldrange, AL_round])[1])
-                        print(wilcoxon(results_kendall[0, 0, foldrange, AL_round],
-                                                                  results_kendall[row, col, foldrange, AL_round])[1])
+                    # if foldrange is not None:
+                    #     print('p-values for %s, %s, %s, %s:' % (expt_settings['dataset'], expt_settings['method'],
+                    #                             expt_settings['feature_type'], expt_settings['embeddings_type']))
+                    #
+                    #     print(wilcoxon(results_f1[0, 0, foldrange, AL_round],
+                    #                                               results_f1[row, col, foldrange, AL_round])[1])
+                    #     print(wilcoxon(results_acc[0, 0, foldrange, AL_round],
+                    #                                               results_acc[row, col, foldrange, AL_round])[1])
+                    #     print(wilcoxon(results_logloss[0, 0, foldrange, AL_round],
+                    #                                               results_logloss[row, col, foldrange, AL_round])[1])
+                    #     print(wilcoxon(results_auc[0, 0, foldrange, AL_round],
+                    #                                               results_auc[row, col, foldrange, AL_round])[1])
+                    #     print(wilcoxon(results_pearson[0, 0, foldrange, AL_round],
+                    #                                               results_pearson[row, col, foldrange, AL_round])[1])
+                    #     print(wilcoxon(results_spearman[0, 0, foldrange, AL_round],
+                    #                                               results_spearman[row, col, foldrange, AL_round])[1])
+                    #     print(wilcoxon(results_kendall[0, 0, foldrange, AL_round],
+                    #                                               results_kendall[row, col, foldrange, AL_round])[1])
                         
                     if row == 0: # set the column headers    
                         columns[col] = expt_settings['feature_type'] + ', ' + expt_settings['embeddings_type']
