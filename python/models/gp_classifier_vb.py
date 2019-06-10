@@ -202,13 +202,13 @@ def matern_3_2_from_raw_vals(vals, ls, vals2=None, operator='*', n_threads=0, ve
     vals /= ls
 
     if vals2 is None:
-        dists = pdist(vals, metric='cityblock')
+        dists = pdist(vals, metric='euclidean')
     elif vector:
         vals2 /= ls
         dists = np.sum(np.sqrt(vals**2 + vals2**2 - 2 * vals * vals2), axis=1)
     else:
         vals2 /= ls
-        dists = cdist(vals, vals2, metric='cityblock')
+        dists = cdist(vals, vals2, metric='euclidean')
 
     K = dists * np.sqrt(3)
     K = (1. + K) * np.exp(-K)
@@ -268,7 +268,7 @@ def _dists_f(items_feat_sample, f):
     return med
 
 
-def compute_median_lengthscales(items_feat, multiply_heuristic_power=1.0, N_max=3000, n_threads=0):
+def compute_median_lengthscales(items_feat, multiply_heuristic_power=0.5, N_max=3000, n_threads=0):
     if items_feat.shape[0] > N_max:
         items_feat = items_feat[np.random.choice(items_feat.shape[0], N_max, replace=False)]
 
@@ -289,7 +289,7 @@ def compute_median_lengthscales(items_feat, multiply_heuristic_power=1.0, N_max=
     ls_initial_guess = np.ones(ndims) * default_ls_value
 
     if items_feat.shape[1] > 200:
-        ls_initial_guess *= items_feat.shape[1] ** multiply_heuristic_power
+        ls_initial_guess *= 2 * items_feat.shape[1] ** multiply_heuristic_power
     else:
         ls_initial_guess *= 0.5
     # this is a heuristic, see e.g. "On the High-dimensional
