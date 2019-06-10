@@ -286,7 +286,7 @@ def compute_median_lengthscales(items_feat, N_max=3000, n_threads=0):
     ls_initial_guess = np.ones(ndims) * default_ls_value
 
     if items_feat.shape[1] > 200:
-        ls_initial_guess *= 2.0 * items_feat.shape[1] ** multiply_heuristic_power
+        ls_initial_guess *= items_feat.shape[1] ** multiply_heuristic_power
     else:
         ls_initial_guess *= 0.5
     # this is a heuristic, see e.g. "On the High-dimensional
