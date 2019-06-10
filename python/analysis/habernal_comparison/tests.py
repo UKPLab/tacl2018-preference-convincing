@@ -72,7 +72,7 @@ verbose = True
 # use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.
 # First, grab a sample of points because N^2 could be too large.    
 def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, ling_feat_spmatrix, docids, folds,
-                                  index_to_word_map, multiply_heuristic_power=1.0):
+                                  index_to_word_map):
     # get the embedding values for the test data -- need to find embeddings of the whole piece of text
     if feature_type == 'both' or feature_type == 'embeddings' or feature_type == 'debug':
         
@@ -115,7 +115,7 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
     starttime = time.time()
                                 
     #for f in range(items_feat.shape[1]):  
-    ls_initial = compute_median_lengthscales(items_feat, multiply_heuristic_power, N_max=3000)
+    ls_initial = compute_median_lengthscales(items_feat, N_max=3000)
             
     endtime = time.time()
     logging.info('@@@ Selected initial lengthscales in %f seconds' % (endtime - starttime))
