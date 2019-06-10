@@ -1097,6 +1097,11 @@ class TestRunner:
                         tr_proba = tr_proba[:, 1:2]
                     elif tr_proba.ndim == 1:
                         tr_proba = tr_proba[:, None]
+
+                if tr_f is not None:
+                    tr_f = np.array(tr_f)
+                    if tr_f.ndim == 1:
+                        tr_f = tr_f[:, None]
                         
                 # get more data
                 nseen_so_far += nnew_pairs

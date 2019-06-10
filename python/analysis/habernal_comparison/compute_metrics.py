@@ -73,7 +73,7 @@ def get_fold_data(data, f, expt_settings, flip_labels=False):
     if len(data) > 8 and data[8] is not None:
         pred_tr_disc = np.round(np.array(data[8])) * 2
         pred_tr_prob = np.array(data[8])
-        pred_tr_rank = np.array(data[10])
+        pred_tr_rank = np.array(data[9])
     else:
         pred_tr_disc = None
         pred_tr_prob = None
@@ -513,6 +513,9 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                                                                                 remove_seen_from_mean)
 
                                 if pred_tr_rank is not None:
+                                    if pred_tr_rank.ndim  == 1:
+                                        pred_tr_rank = pred_tr_rank[:, None]
+
                                     tr_results_tau[row, col, f, AL_round] = mean_unseen(kendalltau(
                                         gold_tr_rank, pred_tr_rank[:, AL_round])[0])
 
