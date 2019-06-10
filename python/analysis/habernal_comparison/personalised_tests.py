@@ -119,7 +119,6 @@ class PersonalisedTestRunner(TestRunner):
                 tr_acc_best = tr_acc
 
         Es = Es_best
-        tr_proba = tr_proba_best
 
         print('Completed online learning of crowd BT. Found best scale is %f' % scale_best)
 
@@ -129,6 +128,9 @@ class PersonalisedTestRunner(TestRunner):
         self.crowdBT_s = Es
 
         scores = Es[self.a_rank_test]
+
+        tr_proba = np.exp(Es[self.a1_unseen]) / (
+                    np.exp(Es[self.a1_unseen]) + np.exp(Es[self.a2_unseen]) + balance)
 
         return proba, scores, tr_proba, Es[self.a_rank_train]
 
