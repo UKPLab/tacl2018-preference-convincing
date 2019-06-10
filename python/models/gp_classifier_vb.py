@@ -269,7 +269,7 @@ def compute_median_lengthscales(items_feat, N_max=3000, n_threads=0):
         items_feat = items_feat[np.random.choice(items_feat.shape[0], N_max, replace=False)]
 
     ndims = items_feat.shape[1]
-    multiply_heuristic_power = 1.0
+    multiply_heuristic_power = 0.5
 
     if n_threads == 0:
         num_jobs = multiprocessing.cpu_count()
