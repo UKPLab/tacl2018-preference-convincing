@@ -202,13 +202,13 @@ def matern_3_2_from_raw_vals(vals, ls, vals2=None, operator='*', n_threads=0, ve
     vals /= ls
 
     if vals2 is None:
-        dists = pdist(vals / ls, metric='cityblock')
+        dists = pdist(vals, metric='cityblock')
     elif vector:
         vals2 /= ls
         dists = np.sum(np.sqrt(vals**2 + vals2**2 - 2 * vals * vals2), axis=1)
     else:
-        vals2 /- ls
-        dists = cdist(vals / ls, vals2 / ls, metric='cityblock')
+        vals2 /= ls
+        dists = cdist(vals, vals2, metric='cityblock')
 
     K = dists * np.sqrt(3)
     K = (1. + K) * np.exp(-K)
