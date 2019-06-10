@@ -200,11 +200,11 @@ def matern_3_2_from_raw_vals(vals, ls, vals2=None, operator='*', n_threads=0, ve
     #                                                                          operator, vector) for i in range(num_jobs))
 
     if vals2 is None:
-        dists = pdist(vals / ls, metric='euclidean')
+        dists = pdist(vals / ls, metric='manhattan')
     elif vector:
         dists = np.sqrt(np.sum((vals/ls) ** 2 + (vals2/ls) ** 2 - 2 * (vals/ls) * (vals2/ls), axis=1))
     else:
-        dists = cdist(vals / ls, vals2 / ls, metric='euclidean')
+        dists = cdist(vals / ls, vals2 / ls, metric='manhattan')
 
     K = dists * np.sqrt(3)
     K = (1. + K) * np.exp(-K)
@@ -264,7 +264,7 @@ def _dists_f(items_feat_sample, f):
     return med
 
 
-def compute_median_lengthscales(items_feat, multiply_heuristic_power=0.5, N_max=3000, n_threads=0):
+def compute_median_lengthscales(items_feat, multiply_heuristic_power=1.0, N_max=3000, n_threads=0):
     if items_feat.shape[0] > N_max:
         items_feat = items_feat[np.random.choice(items_feat.shape[0], N_max, replace=False)]
 
@@ -967,7 +967,7 @@ class GPClassifierVB(object):
             new_locations = (features is not None) or (self.n_locs != prev_n_locs)
 
             if use_median_ls and new_locations:
-                self.ls = compute_median_lengthscales(self.obs_coords, multiply_heuristic_power=0.5)
+                self.ls = compute_median_lengthscales(self.obs_coords)
 
             self._init_params(mu0, new_locations, K)
             self.vb_iter = 0 # reset if we have processed new observations
@@ -1020,7 +1020,7 @@ class GPClassifierVB(object):
             self._process_observations(obs_coords, obs_values, totals)  # process the data here so we don't repeat each call
 
             if use_median_ls:
-                self.ls = compute_median_lengthscales(self.obs_coords, multiply_heuristic_power=0.5)
+                self.ls = compute_median_lengthscales(self.obs_coords)
 
             self.vb_iter = 0 # reset if we have processed new observations
             self._init_params(mu0, True, K)

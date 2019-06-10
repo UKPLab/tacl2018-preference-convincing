@@ -537,9 +537,9 @@ class CollabPrefLearningVB(object):
                                    person_features, input_type)
 
         if use_median_ls and personIDs is not None:
-            self.ls = compute_median_lengthscales(self.obs_coords, multiply_heuristic_power=0.5)
+            self.ls = compute_median_lengthscales(self.obs_coords)
             if self.person_features is not None:
-                self.lsy = compute_median_lengthscales(self.person_features, multiply_heuristic_power=0.5)
+                self.lsy = compute_median_lengthscales(self.person_features)
 
         self._init_params()
 

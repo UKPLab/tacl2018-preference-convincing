@@ -567,8 +567,7 @@ if __name__ == '__main__':
     ling_feat_spmatrix, docids = load_ling_features(expt_settings['dataset'])
 
     if 'ls' not in globals():
-        ls = compute_lengthscale_heuristic('ling', '', None, ling_feat_spmatrix, docids, folds, None,
-                                       multiply_heuristic_power=0.5)
+        ls = compute_lengthscale_heuristic('ling', '', None, ling_feat_spmatrix, docids, folds, None)
     items_feat = ling_feat_spmatrix.toarray()
 
     if 'similarity' not in globals():
