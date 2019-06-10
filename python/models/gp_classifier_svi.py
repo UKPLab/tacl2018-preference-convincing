@@ -132,22 +132,20 @@ class GPClassifierSVI(GPClassifierVB):
             # invalidate matrices passed in to init_inducing_points() as we need to recompute for new inducing points
             self.reset_kernel()
         elif self.inducing_coords is None:
-            # init_size = 300
-            # if self.ninducing > init_size:
-            #     init_size = self.ninducing
-            # kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.ninducing)
+            init_size = 300
+            if self.ninducing > init_size:
+                init_size = self.ninducing
+            kmeans = MiniBatchKMeans(init_size=init_size, n_clusters=self.ninducing)
+
+            if self.obs_coords.shape[0] > 20 * self.ninducing:
+                coords = self.obs_coords[np.random.choice(self.obs_coords.shape[0], 20 * self.ninducing, replace=False),
+                         :]
+            else:
+                coords = self.obs_coords
+
+            kmeans.fit(coords / self.ls[None, :])
             #
-            # if self.obs_coords.shape[0] > 20 * self.ninducing:
-            #     coords = self.obs_coords[np.random.choice(self.obs_coords.shape[0], 20 * self.ninducing, replace=False),
-            #              :]
-            # else:
-            #     coords = self.obs_coords
-            #
-            # kmeans.fit(coords / self.ls[None, :])
-            # #
-            self.inducing_coords = self.obs_coords[np.random.choice(self.n_locs, self.ninducing, replace=False), :]
-            # self.inducing_coords = kmeans.cluster_centers_ * self.ls[None, :]
-            # self.inducing_coords = self.obs_coords
+            self.inducing_coords = kmeans.cluster_centers_ * self.ls[None, :]
 
             # shuffled_idxs = np.random.permutation(self.obs_coords.shape[0])
             # self.inducing_coords = self.obs_coords[
@@ -157,6 +155,8 @@ class GPClassifierSVI(GPClassifierVB):
             # ]
             # if self.inducing_coords.shape[0] < self.ninducing:
             #     self.ninducing = self.inducing_coords.shape[0]
+
+            # self.inducing_coords = self.obs_coords[np.random.choice(self.n_locs, self.ninducing, replace=False), :]
 
             self.reset_kernel()
 
