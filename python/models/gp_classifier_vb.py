@@ -199,17 +199,13 @@ def matern_3_2_from_raw_vals(vals, ls, vals2=None, operator='*', n_threads=0, ve
     #                                                                          matern_3_2_onedimension_from_raw_vals,
     #                                                                          operator, vector) for i in range(num_jobs))
 
-    # vals /= ls
-
     if vals2 is None:
-        dists = pdist((vals/ls), metric='euclidean')
+        dists = pdist((vals/ls), metric='cityblock')  #euclidean')
     elif vector:
-        # vals2 /= ls
-        # dists = np.sum(np.sqrt((vals/ls)**2 + (vals2/ls)**2 - 2 * (vals/ls) * (vals2/ls)), axis=1)
-        dists = np.sqrt(np.sum((vals/ls) ** 2 + (vals2/ls) ** 2 - 2 * (vals/ls) * (vals2/ls), axis=1))
+        dists = np.sum(np.sqrt((vals/ls)**2 + (vals2/ls)**2 - 2 * (vals/ls) * (vals2/ls)), axis=1)
+        # dists = np.sqrt(np.sum((vals/ls) ** 2 + (vals2/ls) ** 2 - 2 * (vals/ls) * (vals2/ls), axis=1))
     else:
-        # (vals2/ls) /= ls
-        dists = cdist((vals/ls), (vals2/ls), metric='euclidean')
+        dists = cdist((vals/ls), (vals2/ls), metric='cityblock')  #euclidean')
 
     K = dists * np.sqrt(3)
     K = (1. + K) * np.exp(-K)
