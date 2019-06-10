@@ -197,7 +197,7 @@ class PersonalisedTestRunner(TestRunner):
 
         predicted_f, _ = self.model.predict_f(None)  #self.model.obs_f
 
-        balance = 0.000001
+        balance = 0
         proba = np.exp(predicted_f[self.a1_test]) / (
                     np.exp(predicted_f[self.a1_test]) + np.exp(predicted_f[self.a2_test]) + balance)
 
@@ -378,7 +378,7 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'train_all_manhattan'  #'rate_s_tests_single'
+    test_dir = 'train_all_manhattan2'  #'rate_s_tests_single'
 
     methods = ['SinglePrefGP_noOpt_weaksprior']
     datasets = ['UKPConvArgCrowdSample_evalMACE']
