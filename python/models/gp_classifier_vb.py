@@ -287,8 +287,7 @@ def compute_median_lengthscales(items_feat, N_max=3000, n_threads=0):
 
     if items_feat.shape[1] > 200:
         ls_initial_guess *= items_feat.shape[1] ** multiply_heuristic_power
-    else:
-        ls_initial_guess *= 0.5
+
     # this is a heuristic, see e.g. "On the High-dimensional
     # Power of Linear-time Kernel Two-Sample Testing under Mean-difference Alternatives" by Ramdas et al. 2014. In that
     # paper they refer to root(no. dimensions) because they square the lengthscale in the kernel function.

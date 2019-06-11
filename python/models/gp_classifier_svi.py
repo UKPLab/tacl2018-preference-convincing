@@ -10,7 +10,7 @@ import logging
 
 import scipy
 
-from gp_classifier_vb import GPClassifierVB, sigmoid, max_no_jobs
+from gp_classifier_vb import GPClassifierVB, max_no_jobs
 from sklearn.cluster import MiniBatchKMeans
 from joblib import Parallel, delayed
 import multiprocessing

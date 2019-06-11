@@ -145,6 +145,17 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
             self.inducing_coords = kmeans.cluster_centers_ * self.ls[None, :]
 
+            # shuffled_idxs = np.random.permutation(self.person_features.shape[0])
+            #
+            # self.inducing_coords = self.obs_coords[
+            #     shuffled_idxs[
+            #         np.unique(kmeans.labels_[shuffled_idxs], return_index=True)
+            #         [1]]
+            # ]
+            #
+            # if self.inducing_coords.shape[0] < self.ninducing:
+            #     self.ninducing = self.inducing_coords.shape[0]
+
             # self.inducing_coords = self.obs_coords[np.random.choice(self.N, self.ninducing, replace=False), :]
 
         # Kernel over items (used to construct priors over w and t)
@@ -274,7 +285,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.y_u[:self.y_ninducing, :] = np.eye(self.y_ninducing)
                 self.y_u += np.random.rand(*self.y_u.shape) * 1e-6
             else:
-                # TODO check this initialisation
                 #self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))**2
                 self.y_u = mvn.rvs(np.zeros(self.y_ninducing), self.Ky_mm, self.Nfactors) ** 2
 
@@ -716,7 +726,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 # scale the precision by y
                 scaling_f = self.y[f:f+1, self.y_idx_i].T.dot(self.y[f:f+1, self.y_idx_i]) + \
                             self.y_cov_i[f][self.uy_idx_i, :][:, self.uy_idx_i]
-                # np.diag(self.y[f, self.y_idx_i]**2 + self.y_cov_i[f][self.uy_idx_i, self.uy_idx_i])
 
                 Sigma_w_f = covpair.dot(invQGT.dot(self.G) * scaling_f).dot(covpair.T)
 
@@ -743,7 +752,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
                 self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
 
-            prev_diff_G = diff  # save last iteration's difference
+            prev_diff_G = diff  # save last iteration's diffhttps://www.theguardian.com/uk/commentisfreeerence
             diff = np.max(np.abs(oldG - self.G))
 
             if np.abs(np.abs(diff) - np.abs(prev_diff_G)) < 1e-3 and G_update_rate > 0.1:
@@ -818,7 +827,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                                                                               self.invKy_mm + w_i * Sigma_y_f)
                 else:
                     Sigma_y_f = np.diag(Sigma_y_f)
-                    self.yinvS[f] = (1 - rho_i) * self.prev_yinvS[f] + rho_i * (self.shape_sy[f] / self.rate_sy[f]
+                    self.yinvS[f] = (1-rho_i) * self.prev_yinvS[f] + rho_i * (self.shape_sy[f] / self.rate_sy[f]
                                                                                 + w_i * Sigma_y_f)
 
                 z0 = pref_likelihood(self.obs_f, v=self.pref_v[self.data_obs_idx_i], u=self.pref_u[self.data_obs_idx_i]) \
@@ -862,8 +871,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         for f in range(self.Nfactors):
             self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.y_ninducing,
-                                                                   self.invKy_mm, self.y_u[f:f + 1, :], np.zeros((self.y_ninducing, 1)),
-                                                                   f_cov=self.yS[f])
+                   self.invKy_mm, self.y_u[f:f + 1, :], np.zeros((self.y_ninducing, 1)), f_cov=self.yS[f])
+
 
     def _update_sample_idxs(self, data_obs_idx_i=None, compute_y_var=True):
         # do this in first iteration
