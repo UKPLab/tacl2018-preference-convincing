@@ -1213,7 +1213,9 @@ class TestRunner:
         results_file = os.path.join(self.results_stem, 'metrics.csv')
         try:
             metrics = pd.read_csv(results_file).values.tolist()
-            metrics.append(np.mean(metrics, axis=0))
+            metric_means = np.mean(metrics, axis=0)
+            print(metric_means)
+            metrics.append(metric_means)
             pd.DataFrame(metrics, columns=metric_names).to_csv(results_file, index=False)
         except:
             print('no metrics file found')

@@ -29,7 +29,7 @@ import numpy as np
 nfactors = 50
 max_Kw_size = 2000
 
-rate_s = 20000
+rate_s = 200
 
 class PersonalisedTestRunner(TestRunner):
 
@@ -252,7 +252,7 @@ class PersonalisedTestRunner(TestRunner):
                                            nfactors=F, rate_ls=1.0 / np.mean(self.ls_initial),
                                            use_common_mean_t=common_mean, max_update_size=SS, use_lb=True,
                                            shape_s0=shape_s0, rate_s0=rate_s0,
-                                           shape_sy0=1e10, rate_sy0=1e10,
+                                           shape_sy0=shape_s0, rate_sy0=rate_s0,
                                            ninducing=M, forgetting_rate=0.9,
                                            delay=delay,
                                            exhaustive_train_count=2)#1.0)

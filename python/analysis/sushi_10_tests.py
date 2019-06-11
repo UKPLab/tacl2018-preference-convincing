@@ -278,7 +278,7 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
         Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                  shape_sy0=1e10, rate_sy0=1e10, ls=None,
+                                  shape_sy0=shape_s0, rate_sy0=rate_s0, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                   use_common_mean_t=True, delay=delay)
@@ -864,7 +864,7 @@ if __name__ == '__main__':
 
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
-                   'crowd-GPPL',
+                   # 'crowd-GPPL',
                    #'crowd-GPPL-noInduc',
                    'crowd-GPPL\\u',
                    #'crowd-BMF',
