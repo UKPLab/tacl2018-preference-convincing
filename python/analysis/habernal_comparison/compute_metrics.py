@@ -138,8 +138,7 @@ def collate_AL_results(AL_rounds, results, combined_labels, label):
 def get_results_dir(data_root_dir, resultsfile_template, expt_settings, foldername=expt_root_dir):
     resultsdir = os.path.join(data_root_dir, 'outputdata', foldername, \
             resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
-                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
-                expt_settings['di']))
+                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['di']))
             
     print(expt_settings['foldorderfile'])
             
