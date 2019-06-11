@@ -36,7 +36,7 @@ import datetime, time
 
 data_root_dir = os.path.abspath("./data/")
 expt_root_dir = 'personalised_10_from_cluster'#'crowdsourcing_argumentation_opt/'
-resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
+resultsfile_template = 'habernal_%s_%s_%s_%s_di%.2f'
 
 def get_fold_data(data, f, expt_settings, flip_labels=False):
     # discrete labels are 0, 1 or 2
@@ -158,8 +158,7 @@ def load_results_data(data_root_dir, resultsfile_template, expt_settings, max_no
     # start by loading the old-style data
     resultsfile = os.path.join(data_root_dir, 'outputdata/', foldername, \
             resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
-                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
-                expt_settings['di']) + '_test.pkl')
+            expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['di']) + '_test.pkl')
     
     resultsdir = get_results_dir(data_root_dir, resultsfile_template, expt_settings, foldername)                       
     
@@ -637,7 +636,7 @@ if __name__ == '__main__':
     expt_settings['foldorderfile'] = None
     data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 
-    resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
+    resultsfile_template = 'habernal_%s_%s_%s_%s_di%.2f'
 
     npairs = 0
     di = 0
