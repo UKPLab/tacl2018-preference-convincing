@@ -209,7 +209,7 @@ def get_fold_data(folds, fold, docids):
     return a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, \
         X, uids, utexts, upersonIDs
         
-def get_noisy_fold_data(folds, folds_test, fold, docids, acc, tr_pair_subset=None):
+def get_noisy_fold_data(folds, folds_test, fold, docids, tr_pair_subset=None):
     a1_train, a2_train, prefs_train, person_train, _, _, _, _, X, \
         uids, utexts, upersonIDs = get_fold_data(folds, fold, docids)
 
@@ -229,11 +229,6 @@ def get_noisy_fold_data(folds, folds_test, fold, docids, acc, tr_pair_subset=Non
     else:
         Nsub = N
 
-    if acc != 1.0:
-        # now we add noise to the training data
-        flip_labels = np.random.rand(Nsub) > acc
-        prefs_train[flip_labels] = 2 - prefs_train[flip_labels] # labels are 0, 1 or 2
-    
     return a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, \
         X, uids, utexts, upersonIDs, a1_agg, a2_agg, gold_train, person_agg
     
@@ -760,33 +755,31 @@ class TestRunner:
 
         return method_runner_fun
                
-    def _set_resultsfile(self, feature_type, embeddings_type, acc, dataset_increment):
-        # To run the active learning tests, call this function with dataset_increment << 1.0. 
-        # To add artificial noise to the data, run with acc < 1.0.
+    def _set_resultsfile(self, feature_type, embeddings_type, data_inc):
+        # To run the active learning tests, call this function with dataset_increment << 1.0.
         output_data_dir = os.path.join(data_root_dir, 'outputdata/')
         if not os.path.isdir(output_data_dir):
             os.mkdir(output_data_dir)
-            
+
         output_data_dir = os.path.join(output_data_dir, self.expt_output_dir)
         if not os.path.isdir(output_data_dir):
-            os.mkdir(output_data_dir)    
-            
+            os.mkdir(output_data_dir)
+
         # Select output paths for CSV files and final results
         output_filename_template = output_data_dir + '/%s' % self.expt_tag
-        output_filename_template += '_%s_%s_%s_%s_acc%.2f_di%.2f' 
-    
-        results_stem = output_filename_template % (self.dataset, self.method, feature_type, embeddings_type, acc, 
-                                                                  dataset_increment) 
+        output_filename_template += '_%s_%s_%s_%s_di%.2f'
+
+        results_stem = output_filename_template % (self.dataset, self.method, feature_type, embeddings_type, data_inc)
         resultsfile = results_stem + '_test.pkl' # the old results format with everything in one file
     #     modelfile = results_stem + '_model_fold%i.pkl'
-                    
-        logging.info('The output file for the results will be: %s' % resultsfile)    
-        
+
+        logging.info('The output file for the results will be: %s' % resultsfile)
+
         if not os.path.isdir(results_stem):
             os.mkdir(results_stem)
-            
-        return resultsfile, results_stem    
-    
+
+        return resultsfile, results_stem
+
     def _load_dataset(self, dataset):
         self.folds, self.folds_test, self.folds_r, self.word_index_to_embeddings_map, self.word_to_indices_map, \
             self.index_to_word_map = load_train_test_data(dataset)
@@ -869,7 +862,7 @@ class TestRunner:
         return all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, \
                all_tr_proba, all_tr_f
            
-    def run_test(self, feature_type, embeddings_type=None, dataset_increment=0, acc=1.0, subsample_amount=0, 
+    def run_test(self, feature_type, embeddings_type=None, dataset_increment=0, subsample_amount=0,
                  min_no_folds=0, max_no_folds=32, npairs=0, test_on_all_training_pairs=False):
 
         logging.info("**** Running method %s with features %s, embeddings %s, on dataset %s ****" % (self.method, 
@@ -879,7 +872,7 @@ class TestRunner:
                                                 
         self._init_ls(feature_type, embeddings_type)
 
-        resultsfile, results_stem = self._set_resultsfile(feature_type, embeddings_type, acc, dataset_increment)
+        resultsfile, results_stem = self._set_resultsfile(feature_type, embeddings_type, dataset_increment)
 
         self.results_stem = results_stem
         all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, all_tr_proba, \
@@ -917,7 +910,7 @@ class TestRunner:
             print(("Fold name ", self.fold))
             a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test,\
                     self.X, uids, utexts, upersonIDs, a1_agg, a2_agg, gold_train, person_agg \
-                = get_noisy_fold_data(self.folds, self.folds_test, self.fold, self.docids, acc)
+                = get_noisy_fold_data(self.folds, self.folds_test, self.fold, self.docids)
             
             # ranking folds
             a_rank_train, scores_rank_train, _, person_rank_train, a_rank_test, scores_rank_test, _, \
@@ -1131,12 +1124,15 @@ class TestRunner:
                 if predictions.size == prefs_test.size:
                     acc = np.sum(prefs_test[prefs_test != 1] == 2 * predictions.flatten()[prefs_test != 1]
                             ) / float(np.sum(prefs_test != 1))
+                    CEE = log_loss(prefs_test[prefs_test != 1] == 2, proba[prefs_test != 1])
 
-                    logging.info("Accuracy for fold = %f" % acc)
+                    print("Accuracy for fold = %f" % acc)
+                    print('CEE = %f' % CEE)
 
                 if predicted_f is not None and predicted_f.size == scores_rank_test.size:
                     # print out the pearson correlation
-                    logging.info("Pearson correlation for fold = %f" % pearsonr(scores_rank_test, predicted_f.flatten())[0])
+                    tau, _ = kendalltau(scores_rank_test, predicted_f.flatten())
+                    print("Kendall's tau for fold = %f" % tau)
                   
                 if tr_proba is not None:
                     tr_acc = np.sum(gold_train[gold_train != 1] == 2 * np.round(tr_proba).flatten()[gold_train != 1]
@@ -1145,21 +1141,13 @@ class TestRunner:
                     tr_cee = log_loss(gold_train[gold_train != 1]==2, tr_proba[gold_train != 1])
                     tr_tau, _ = kendalltau(scores_rank_train, tr_f)
 
-                    logging.info("Unseen data in the training fold, accuracy for fold = %f" % (
-                        tr_acc) )
+                    print("Unseen data in the training fold, accuracy for fold = %f" % tr_acc )
                 else:
                     tr_acc = 0
                     tr_cee = 0
                     tr_tau = 0
 
-                if proba.size == prefs_test.size:
-                    logging.info("AUC = %f" % roc_auc_score(prefs_test[prefs_test!=1] / 2.0, proba[prefs_test!=1]) )
 
-                CEE = log_loss(prefs_test[prefs_test != 1] == 2, proba[prefs_test != 1])
-                print('CEE = %f' % CEE)
-
-                tau, _ = kendalltau(scores_rank_test, predicted_f)
-                print('tau = %f' % tau)
 
                 # Save the data for later analysis ----------------------------------------------------------------------------
                 if hasattr(self.model, 'ls'):
@@ -1206,10 +1194,6 @@ class TestRunner:
                 if not os.path.isfile(results_stem + "/foldorder.txt"):
                     np.savetxt(results_stem + "/foldorder.txt", fold_keys[:, None], fmt="%s")
 
-                # pair_pred_file = os.path.join(self.results_stem, 'pair_pred.csv')
-                # pair_prob_file = os.path.join(self.results_stem, 'pair_prob.csv')
-                # pair_gold_file = os.path.join(self.results_stem, 'pair_gold.csv')
-                # ratings_file = os.path.join(self.results_stem, 'ratings.csv')
                 results_file = os.path.join(self.results_stem, 'metrics.csv')
                 try:
                     metrics = pd.read_csv(results_file).values.tolist()
@@ -1217,7 +1201,8 @@ class TestRunner:
                     metrics = []
 
                 metrics.append([acc, CEE, tau, tr_acc, tr_cee, tr_tau])
-                pd.DataFrame(metrics).to_csv(results_file, index=False)
+                metric_names = ['acc', 'CEE', 'tau', 'tr_acc', 'tr_CEE', 'tr_tau']
+                pd.DataFrame(metrics).to_csv(results_file, index=False, columns=metric_names)
 
 
                 #with open(modelfile % foldidx, 'w') as fh:
@@ -1229,7 +1214,7 @@ class TestRunner:
         try:
             metrics = pd.read_csv(results_file).values.tolist()
             metrics.append(np.mean(metrics, axis=0))
-            pd.DataFrame(metrics).to_csv(results_file, index=False)
+            pd.DataFrame(metrics).to_csv(results_file, index=False, columns=metric_names)
         except:
             print('no metrics file found')
 
@@ -1258,15 +1243,13 @@ class TestRunner:
                         embeddings_to_use = ['']
                         
                     for embeddings_type in embeddings_to_use:                         
-                        self.run_test(feature_type, embeddings_type, dataset_increment=self.dataset_increment, acc=1.0, 
+                        self.run_test(feature_type, embeddings_type, dataset_increment=self.dataset_increment,
                                 subsample_amount=subsample_tr, min_no_folds=min_no_folds, max_no_folds=max_no_folds, 
                                 npairs=npairs, test_on_all_training_pairs=test_on_train)
                         
                         logging.info("**** Completed: method %s with features %s, embeddings %s ****" % (self.method, feature_type, 
                                                                                embeddings_type) )
 if __name__ == '__main__':
-
-    acc = 1.0
     dataset_increment = 0
 
     datasets = ['UKPConvArgCrowdSample_evalMACE']

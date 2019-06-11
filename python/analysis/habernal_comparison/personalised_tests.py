@@ -4,8 +4,6 @@ Is prior stance a useful user feature for predicting belief change? It should be
 an argument if they did not previously believe in it.
 Topic-specific nature means predictions based on linguistic features are likely to be weak?
 
-TODO:
-
 Created on 19 Jun 2017
 
 @author: simpson
@@ -16,8 +14,8 @@ import sys
 import logging
 #import matplotlib.pyplot as plt # do this here so we don't get the debugging crap later from the logger
 
-# from sklearn.gaussian_process.gpr import GaussianProcessRegressor
-# from sklearn.gaussian_process.kernels import Matern
+from sklearn.gaussian_process.gpr import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import Matern
 from sklearn.metrics import accuracy_score
 
 logging.basicConfig(level=logging.DEBUG)
@@ -130,9 +128,6 @@ class PersonalisedTestRunner(TestRunner):
         tr_proba = np.exp(Es[self.a1_unseen]) / (
                     np.exp(Es[self.a1_unseen]) + np.exp(Es[self.a2_unseen]) + balance)
 
-        print(self.a1_unseen)
-        print(self.a2_unseen)
-
         return proba, scores, tr_proba, Es[self.a_rank_train]
 
 
@@ -143,13 +138,13 @@ class PersonalisedTestRunner(TestRunner):
         # from the training items to all items, plus the GP will do some smoothing over the training items in case they
         # had sparse noisy data.
 
-        self.run_crowd_bt()
+        proba, predicted_f, tr_proba, tr_f = self.run_crowd_bt()
         # estimate the output scale of the GP using same prior as for GPPL
-        # function_var = (np.var(self.crowdBT_s) * len(self.crowdBT_s) + 200.0) / (len(self.crowdBT_s) + 200.0)
-        # gpr = GaussianProcessRegressor(kernel=Matern(self.ls_initial) * function_var, alpha=self.crowdBT_sigma ** 2)
-        # gpr.fit(self.items_feat, self.crowdBT_s)
-        #
-        # predicted_f = gpr.predict(self.items_feat)
+        function_var = (np.var(self.crowdBT_s) * len(self.crowdBT_s) + 200.0) / (len(self.crowdBT_s) + 200.0)
+        gpr = GaussianProcessRegressor(kernel=Matern(self.ls_initial) * function_var, alpha=self.crowdBT_sigma ** 2)
+        gpr.fit(self.items_feat, self.crowdBT_s)
+
+        predicted_f = gpr.predict(self.items_feat)
 
         if 'additive' in self.method:
             kernel_combination = '+'
@@ -210,9 +205,6 @@ class PersonalisedTestRunner(TestRunner):
 
         tr_proba = np.exp(self.crowdBT_s[self.a1_unseen]) / (
                     np.exp(self.crowdBT_s[self.a1_unseen]) + np.exp(self.crowdBT_s[self.a2_unseen]) + balance)
-
-        print(self.a1_unseen)
-        print(self.a2_unseen)
 
         return proba, predicted_f, tr_proba, tr_f
 
@@ -384,14 +376,14 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'train_all_7'  #'rate_s_tests_single'
+    test_dir = 'train_all_9'  #'rate_s_tests_single'
 
     methods = ['SinglePrefGP_noOpt_weaksprior']
     datasets = ['UKPConvArgCrowdSample_evalMACE']
     dataset_increment = 0
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
-    feature_types = ['debug']  # can be 'embeddings' or 'ling' or 'both' or 'debug'
+    feature_types = ['both']  # can be 'embeddings' or 'ling' or 'both' or 'debug'
     embeddings_types = ['word_mean']
 
     if test_to_run == -1:
