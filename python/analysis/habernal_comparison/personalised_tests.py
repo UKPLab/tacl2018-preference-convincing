@@ -9,10 +9,9 @@ Created on 19 Jun 2017
 @author: simpson
 '''
 import os
-import pickle
 import sys
 import logging
-#import matplotlib.pyplot as plt # do this here so we don't get the debugging crap later from the logger
+import matplotlib.pyplot as plt # do this here so we don't get the debugging crap later from the logger
 
 from sklearn.gaussian_process.gpr import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Matern

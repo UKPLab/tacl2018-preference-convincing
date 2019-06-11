@@ -25,8 +25,6 @@ any learned personal biases may not be accurate.
 
 import logging
 from scipy.stats.stats import kendalltau
-from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import Matern
 from sklearn.metrics import accuracy_score, log_loss
 from sklearn.model_selection import KFold
 from personalised_tests import PersonalisedTestRunner
