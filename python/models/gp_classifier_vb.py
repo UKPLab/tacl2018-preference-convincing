@@ -379,7 +379,7 @@ class GPClassifierVB(object):
     max_iter_G = 10
     conv_threshold = 1e-4
     conv_threshold_G = 1e-5
-    conv_check_freq = 2
+    conv_check_freq = 4
 
     uselowerbound = True
 

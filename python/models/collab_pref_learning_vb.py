@@ -243,6 +243,8 @@ class CollabPrefLearningVB(object):
         else:
             self.conv_threshold = 1e-2
 
+        self.conv_check_freq = 4
+
         self.max_iter_G = 10
         self.max_iter = 200
         self.min_iter = 1
@@ -561,7 +563,9 @@ class CollabPrefLearningVB(object):
 
             self.new_obs = False # observations have now been processed once, only updates are required
 
-            if self.uselowerbound:
+            if not np.mod(self.vb_iter, self.conv_check_freq) == 0:
+                converged = False # don't check anything
+            elif self.uselowerbound :
                 lb = self.lowerbound()
                 converged = check_convergence(lb, old_lb, self.conv_threshold, True,
                                               self.vb_iter, self.verbose,
@@ -590,8 +594,7 @@ class CollabPrefLearningVB(object):
             if self.verbose:
                 logging.debug('Converged count = %i' % converged_count)
 
-        logging.debug("Preference personality model converged in %i iterations. Running one final update to harmonise"
-                      "kernels..." % self.vb_iter)
+        logging.debug("Converged in %i iterations. Running final update..." % self.vb_iter)
 
         # Do a final iteration with the latest values of s so that predictions and inducing point distributions all used
         # matching values of s for their kernels.
@@ -599,7 +602,8 @@ class CollabPrefLearningVB(object):
         self._expec_w(update_s=False, update_G=False)
         self._expec_y(update_s=False, update_G=False)
 
-        logging.debug('Completed final update.')
+        if self.verbose:
+            logging.debug('Completed final update.')
 
     def _expec_t(self, update_s=True, update_G=True):
 
