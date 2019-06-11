@@ -66,7 +66,7 @@ import numpy as np
 import pandas as pd
     
 ndebug_features = 10
-verbose = True
+verbose = False
     
 # Lengthscale initialisation -------------------------------------------------------------------------------------------
 # use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.

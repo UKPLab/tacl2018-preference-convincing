@@ -44,7 +44,6 @@ class PersonalisedTestRunner(TestRunner):
 
         scales = [1]  # [0.01, 0.1, 1, 10, 100]  # 10 was found to be optimal on the random selection tests.
 
-        tr_proba_best = None
         tr_acc_best = 0
 
         for scale in scales:
@@ -103,7 +102,7 @@ class PersonalisedTestRunner(TestRunner):
                 alpha[k] = (Eeta[k] - Eeta_sq_k) * Eeta[k] / (Eeta_sq_k - Eeta[k] ** 2 + balance)
                 beta[k] = (Eeta[k] - Eeta_sq_k) * (1 - Eeta[k]) / (Eeta_sq_k - Eeta[k] ** 2 + balance)
 
-                if np.mod(pair_idx, 100) == 0:
+                if np.mod(pair_idx, 1000) == 0:
                     print('Learning crowdBT, iteration %i' % pair_idx)
 
             if np.any(np.isnan(Es)):
@@ -114,7 +113,6 @@ class PersonalisedTestRunner(TestRunner):
             print('training set accuracy = %f with scale %f' % (tr_acc, scale) )
             if tr_acc > tr_acc_best:
                 Es_best = Es
-                tr_proba_best = tr_proba
                 scale_best = scale
                 tr_acc_best = tr_acc
 
@@ -131,6 +129,9 @@ class PersonalisedTestRunner(TestRunner):
 
         tr_proba = np.exp(Es[self.a1_unseen]) / (
                     np.exp(Es[self.a1_unseen]) + np.exp(Es[self.a2_unseen]) + balance)
+
+        print(self.a1_unseen)
+        print(self.a2_unseen)
 
         return proba, scores, tr_proba, Es[self.a_rank_train]
 
@@ -209,6 +210,9 @@ class PersonalisedTestRunner(TestRunner):
 
         tr_proba = np.exp(self.crowdBT_s[self.a1_unseen]) / (
                     np.exp(self.crowdBT_s[self.a1_unseen]) + np.exp(self.crowdBT_s[self.a2_unseen]) + balance)
+
+        print(self.a1_unseen)
+        print(self.a2_unseen)
 
         return proba, predicted_f, tr_proba, tr_f
 
@@ -380,14 +384,14 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'train_all_5'  #'rate_s_tests_single'
+    test_dir = 'train_all_6'  #'rate_s_tests_single'
 
     methods = ['SinglePrefGP_noOpt_weaksprior']
     datasets = ['UKPConvArgCrowdSample_evalMACE']
     dataset_increment = 0
     # UKPConvArgCrowdSample tests prediction of personal data.
     # UKPConvArgCrowdSample_evalMACE uses the personal data as input, but predicts the global labels/rankings.
-    feature_types = ['both']  # can be 'embeddings' or 'ling' or 'both' or 'debug'
+    feature_types = ['debug']  # can be 'embeddings' or 'ling' or 'both' or 'debug'
     embeddings_types = ['word_mean']
 
     if test_to_run == -1:
