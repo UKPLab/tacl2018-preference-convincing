@@ -46,7 +46,7 @@ class GPClassifierSVI(GPClassifierVB):
         # number of inducing points
         self.ninducing = ninducing
 
-        self.n_converged = 10  # usually needs more converged iterations and can drop below zero due to approx. errors
+        self.n_converged = 5  # usually needs more converged iterations and can drop below zero due to approx. errors
 
         # default state before initialisation, unless some inducing coordinates are set by external call
         self.inducing_coords = None
