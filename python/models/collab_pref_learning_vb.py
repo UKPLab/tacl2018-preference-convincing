@@ -174,9 +174,9 @@ class CollabPrefLearningVB(object):
     variational Bayes.
     """
 
-    def __init__(self, nitem_features, nperson_features=0, shape_s0=1, rate_s0=1, shape_sy0=None, rate_sy0=None,
-                 shape_ls=1, rate_ls=100, ls=100, shape_lsy=1, rate_lsy=100, lsy=100, verbose=False, nfactors=20,
-                 use_common_mean_t=True, kernel_func='matern_3_2', use_lb=True):
+    def __init__(self, nitem_features, nperson_features=0, shape_s0=1, rate_s0=1, shape_st0=None, rate_st0=None,
+                 shape_sy0=None, rate_sy0=None, shape_ls=1, rate_ls=100, ls=100, shape_lsy=1, rate_lsy=100, lsy=100,
+                 verbose=False, nfactors=20, use_common_mean_t=True, kernel_func='matern_3_2', use_lb=True):
         """
 
         :param nitem_features:
@@ -208,8 +208,8 @@ class CollabPrefLearningVB(object):
         self.shape_sy0 = shape_sy0 if shape_sy0 is not None else shape_s0
         self.rate_sy0 = rate_sy0 if rate_sy0 is not None else rate_s0#/ self.Nfactors
 
-        self.shape_st0 = shape_s0
-        self.rate_st0 = rate_s0 #* self.Nfactors # this rebalances the prior expected variance of t against the latent components
+        self.shape_st0 = shape_st0 if shape_st0 is not None else shape_s0
+        self.rate_st0 = rate_st0 if rate_st0 is not None else rate_s0 #* self.Nfactors # this rebalances the prior expected variance of t against the latent components
 
         # posterior moments
         self.shape_st = self.shape_st0

@@ -84,7 +84,7 @@ def inducing_to_observation_moments(Ks_mm, invK_mm, K_nm, fhat_mm, mu0, S=None, 
 
 class CollabPrefLearningSVI(CollabPrefLearningVB):
 
-    def __init__(self, nitem_features, nperson_features=0, mu0=0, shape_s0=1, rate_s0=1,
+    def __init__(self, nitem_features, nperson_features=0, mu0=0, shape_s0=1, rate_s0=1, shape_st0=None, rate_st0=None,
                  shape_sy0=None, rate_sy0=None, shape_ls=1, rate_ls=100, ls=100, shape_lsy=1, rate_lsy=100, lsy=100,
                  verbose=False, nfactors=20, use_common_mean_t=True, kernel_func='matern_3_2',
                  max_update_size=500, ninducing=500, forgetting_rate=0.9, delay=1.0, use_lb=True,
@@ -101,9 +101,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         self.max_Kw_size = 500 # maximum size to hold in memory. Larger matrices are saved to memmap files
 
-        super(CollabPrefLearningSVI, self).__init__(nitem_features, nperson_features, shape_s0, rate_s0, shape_sy0,
-                                                    rate_sy0, shape_ls, rate_ls, ls, shape_lsy, rate_lsy, lsy,
-                                                    verbose, nfactors, use_common_mean_t, kernel_func, use_lb=use_lb)
+        super(CollabPrefLearningSVI, self).__init__(nitem_features, nperson_features, shape_s0, rate_s0, shape_st0,
+            rate_st0, shape_sy0, rate_sy0, shape_ls, rate_ls, ls, shape_lsy, rate_lsy, lsy, verbose, nfactors,
+            use_common_mean_t, kernel_func, use_lb=use_lb)
 
         self.exhaustive_train = exhaustive_train_count
         # number of iterations that all training data must be used in when doing stochastic
