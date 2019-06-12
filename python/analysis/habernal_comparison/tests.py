@@ -803,6 +803,8 @@ class TestRunner:
                                  self.ling_feat_spmatrix, self.docids, self.folds, self.index_to_word_map)
                 np.savetxt(ls_file, self.default_ls)
 
+            self.default_ls *= 10.0
+
             # self.default_ls /= float(len(self.default_ls)) # long lengthscale does strange things with training dataset
 
             if self.dataset not in self.default_ls_values:
