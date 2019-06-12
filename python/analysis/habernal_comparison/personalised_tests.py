@@ -138,12 +138,6 @@ class PersonalisedTestRunner(TestRunner):
         # had sparse noisy data.
 
         proba, predicted_f, tr_proba, tr_f = self.run_crowd_bt()
-        # estimate the output scale of the GP using same prior as for GPPL
-        function_var = (np.var(self.crowdBT_s) * len(self.crowdBT_s) + 200.0) / (len(self.crowdBT_s) + 200.0)
-        gpr = GaussianProcessRegressor(kernel=Matern(self.ls_initial) * function_var, alpha=self.crowdBT_sigma ** 2)
-        gpr.fit(self.items_feat, self.crowdBT_s)
-
-        predicted_f = gpr.predict(self.items_feat)
 
         if 'additive' in self.method:
             kernel_combination = '+'
@@ -192,20 +186,20 @@ class PersonalisedTestRunner(TestRunner):
         print("no. features: %i" % new_items_feat.shape[1])
         self.model.fit(self.items_feat, self.crowdBT_s, obs_noise=self.crowdBT_sigma ** 2)
 
-        predicted_f, _ = self.model.predict_f(None)  #self.model.obs_f
+        predicted_f, _ = self.model.predict_f()  #self.model.obs_f
 
         balance = 0
         proba = np.exp(predicted_f[self.a1_test]) / (
                     np.exp(predicted_f[self.a1_test]) + np.exp(predicted_f[self.a2_test]) + balance)
 
-        predicted_f = predicted_f[self.a_rank_test]
+        f = predicted_f[self.a_rank_test]
 
         tr_f = predicted_f[self.a_rank_train]
 
         tr_proba = np.exp(predicted_f[self.a1_unseen]) / (
                     np.exp(predicted_f[self.a1_unseen]) + np.exp(predicted_f[self.a2_unseen]) + balance)
 
-        return proba, predicted_f, tr_proba, tr_f
+        return proba, f, tr_proba, tr_f
 
 
     def _train_persgppl(self, delay):
@@ -375,7 +369,17 @@ if __name__ == '__main__':
 
     test_to_run = int(sys.argv[1])
 
-    test_dir = 'train_all_D05'  #'rate_s_tests_single'
+    if len(sys.argv) > 2:
+        npairs = int(sys.argv[2])
+    else:
+        npairs = 0 #5000
+
+    if len(sys.argv) > 3:
+        lsm = int(sys.argv[3])
+    else:
+        lsm = 1
+
+    test_dir = 'train_all_D05-%i_P%i' % (lsm, npairs)  #'rate_s_tests_single'
 
     methods = ['SinglePrefGP_noOpt_weaksprior']
     datasets = ['UKPConvArgCrowdSample_evalMACE']
@@ -385,28 +389,6 @@ if __name__ == '__main__':
     feature_types = ['both']  # can be 'embeddings' or 'ling' or 'both' or 'debug'
     embeddings_types = ['word_mean']
 
-    if test_to_run == -1:
-        # use this setting for debugging
-
-        # runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
-        #                                 dataset_increment)
-        # runner.run_test_set(min_no_folds=0, max_no_folds=5)
-
-        rate_s_vals = [20000]#[2*1e5, 2*1e6]#[20000] #2, 20, 200, 2000]
-
-        for rate_s in rate_s_vals:
-            test_dir = 'rate_s_%i_sy10_extr2_yinit100' % rate_s
-
-            methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
-            runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
-                                            dataset_increment)
-            runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-            runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
-            runner.run_test_set(min_no_folds=0, max_no_folds=32)
-
-    if len(sys.argv) > 2:
-        test_dir = sys.argv[2]
-
     datasets = ['UKPConvArgCrowdSample']
     methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
 
@@ -415,33 +397,13 @@ if __name__ == '__main__':
 
     # PERSONALISED PREDICTION
     if test_to_run == 0:
-        runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=2)
+        runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=npairs, ls_factor=lsm)
 
     # CONSENSUS PREDICTION
     elif test_to_run == 1:
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
         runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
-        runner.run_test_set(min_no_folds=0, max_no_folds=32)
-
-        # runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-        # runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weakersprior']
-        # runner.run_test_set(min_no_folds=0, max_no_folds=32)
-        #
-        # runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-        # runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_lowsprior']
-        # runner.run_test_set(min_no_folds=0, max_no_folds=32)
-
-    # PERSONALISED WITH ARD
-    elif test_to_run == 2:
-        runner.datasets = ['UKPConvArgCrowdSample']
-        runner.methods = ['PersPrefGP_commonmean_weaksprior']
-        runner.run_test_set(min_no_folds=0, max_no_folds=32)
-
-    # CONSENSUS WITH ARD
-    elif test_to_run == 3:
-        runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-        runner.methods = ['PersConsensusPrefGP_commonmean_weaksprior']
-        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+        runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=npairs, ls_factor=lsm)
 
     # Plot the scales of the latent factors ----------------------------------------------------------------------
     if test_to_run < 4 and len(runner.vscales):
@@ -478,41 +440,21 @@ if __name__ == '__main__':
         logging.getLogger().setLevel(logging.DEBUG)
 
     # PERSONALISED PREDICTION for other methods -----------------------------------------------------------------
-    if test_to_run == 4:
-        methods = [
-               # 'SVM', 'GP+SVM', 'Bi-LSTM' # forget these methods as the other paper showed they were worse already, and the SVM
-               # does not scale either -- it's worse than the GP.
-               'SinglePrefGP_weaksprior' # 'SinglePrefGP_noOpt_weaksprior',
-            ]
-        runner.datasets = ['UKPConvArgCrowdSample']
-        runner.methods = methods
-        runner.run_test_set(min_no_folds=0, max_no_folds=32)
-
-    elif test_to_run == 5:
-        methods = ['SinglePrefGP_weaksprior']
-        runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
-        runner.methods = methods
-        runner.run_test_set(min_no_folds=0, max_no_folds=32)
-
     elif test_to_run == 6:
         methods = [
-               # 'SVM', 'GP+SVM', 'Bi-LSTM' # forget these methods as the other paper showed they were worse already, and the SVM
-               # does not scale either -- it's worse than the GP.
                'SinglePrefGP_noOpt_weaksprior' # 'SinglePrefGP_noOpt_weaksprior',
             ]
         runner.datasets = ['UKPConvArgCrowdSample']
         runner.methods = methods
-        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+        runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=npairs, ls_factor=lsm)
 
     elif test_to_run == 7:
         methods = [
-               # 'SVM', 'GP+SVM', 'Bi-LSTM' # forget these methods as the other paper showed they were worse already, and the SVM
-               # does not scale either -- it's worse than the GP.
                'SinglePrefGP_noOpt_weaksprior' # 'SinglePrefGP_noOpt_weaksprior',
             ]
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
         runner.methods = methods
-        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+        runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=npairs, ls_factor=lsm)
 
     elif test_to_run == 8:
         methods = [
@@ -521,7 +463,7 @@ if __name__ == '__main__':
             ]
         runner.datasets = ['UKPConvArgCrowdSample']
         runner.methods = methods
-        runner.run_test_set(min_no_folds=6, max_no_folds=32)
+        runner.run_test_set(min_no_folds=6, max_no_folds=32, npairs=npairs, ls_factor=lsm)
 
     elif test_to_run == 9: # commented so we run both tests with cBT
         methods = [
@@ -530,7 +472,7 @@ if __name__ == '__main__':
         ]
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
         runner.methods = methods
-        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+        runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=npairs, ls_factor=lsm)
 
     elif test_to_run == 11: # commented so we run both tests with cBT
         methods = [
@@ -538,4 +480,4 @@ if __name__ == '__main__':
         ]
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
         runner.methods = methods
-        runner.run_test_set(min_no_folds=0, max_no_folds=32)
+        runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=npairs, ls_factor=lsm)

@@ -787,7 +787,7 @@ class TestRunner:
         self.ling_feat_spmatrix, self.docids = load_ling_features(dataset)
         self.dataset = dataset
             
-    def _init_ls(self, feature_type, embeddings_type):
+    def _init_ls(self, feature_type, embeddings_type, ls_factor=1):
 
 
         if self.dataset in self.default_ls_values and feature_type in self.default_ls_values[self.dataset] and \
@@ -803,7 +803,7 @@ class TestRunner:
                                  self.ling_feat_spmatrix, self.docids, self.folds, self.index_to_word_map)
                 np.savetxt(ls_file, self.default_ls)
 
-            #self.default_ls *= 10.0
+            self.default_ls *= ls_factor
 
             # self.default_ls /= float(len(self.default_ls)) # long lengthscale does strange things with training dataset
 
@@ -865,14 +865,14 @@ class TestRunner:
                all_tr_proba, all_tr_f
            
     def run_test(self, feature_type, embeddings_type=None, dataset_increment=0, subsample_amount=0,
-                 min_no_folds=0, max_no_folds=32, npairs=0, test_on_all_training_pairs=False):
+                 min_no_folds=0, max_no_folds=32, npairs=0, test_on_all_training_pairs=False, ls_factor=1):
 
         logging.info("**** Running method %s with features %s, embeddings %s, on dataset %s ****" % (self.method, 
                                                         feature_type, embeddings_type, self.dataset) )
     
         self._set_embeddings(embeddings_type) 
                                                 
-        self._init_ls(feature_type, embeddings_type)
+        self._init_ls(feature_type, embeddings_type, ls_factor)
 
         resultsfile, results_stem = self._set_resultsfile(feature_type, embeddings_type, dataset_increment)
 
@@ -924,28 +924,6 @@ class TestRunner:
             # a2_train = a2_train[tridxs]
             # prefs_train = prefs_train[tridxs]
             # person_train = person_train[tridxs]
-
-            # aggidxs = np.in1d(a1_agg, rand_items) & np.in1d(a2_agg, rand_items)
-            # a1_agg = a1_agg[aggidxs]
-            # a2_agg = a2_agg[aggidxs]
-            # if len(person_agg):
-            #     person_agg = person_agg[aggidxs]
-            # gold_train = gold_train[aggidxs]
-            #
-            #teidxs = np.in1d(a1_test, rand_items) & np.in1d(a2_test, rand_items)
-            # a1_test = a1_test[teidxs]
-            # a2_test = a2_test[teidxs]
-            # prefs_test = prefs_test[teidxs]
-            # person_test = person_test[teidxs]
-
-            #test items should all be included.
-            #
-            # terankidxs = np.in1d(a_rank_test, rand_items)
-            # a_rank_test = a_rank_test[terankidxs]
-            # scores_rank_test = scores_rank_test[terankidxs]
-            # if len(person_rank_test):
-            #     person_rank_test = person_rank_test[terankidxs]
-
 
             # convert the ranking person IDs to the idxs
             if person_rank_train is not None and len(person_rank_train):
@@ -1224,7 +1202,7 @@ class TestRunner:
 
 
     def run_test_set(self, subsample_tr=0, min_no_folds=0, max_no_folds=32, 
-                     npairs=0, test_on_train=False):
+                     npairs=0, test_on_train=False, ls_factor=1):
         # keep these variables around in case we are restarting the script with different method settings and same data.
         for dataset in self.datasets:
             
@@ -1249,7 +1227,7 @@ class TestRunner:
                     for embeddings_type in embeddings_to_use:                         
                         self.run_test(feature_type, embeddings_type, dataset_increment=self.dataset_increment,
                                 subsample_amount=subsample_tr, min_no_folds=min_no_folds, max_no_folds=max_no_folds, 
-                                npairs=npairs, test_on_all_training_pairs=test_on_train)
+                                npairs=npairs, test_on_all_training_pairs=test_on_train, ls_factor=ls_factor)
                         
                         logging.info("**** Completed: method %s with features %s, embeddings %s ****" % (self.method, feature_type, 
                                                                                embeddings_type) )
