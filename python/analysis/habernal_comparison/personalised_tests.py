@@ -200,10 +200,10 @@ class PersonalisedTestRunner(TestRunner):
 
         predicted_f = predicted_f[self.a_rank_test]
 
-        tr_f = self.crowdBT_s[self.a_rank_train]
+        tr_f = predicted_f[self.a_rank_train]
 
-        tr_proba = np.exp(self.crowdBT_s[self.a1_unseen]) / (
-                    np.exp(self.crowdBT_s[self.a1_unseen]) + np.exp(self.crowdBT_s[self.a2_unseen]) + balance)
+        tr_proba = np.exp(predicted_f[self.a1_unseen]) / (
+                    np.exp(predicted_f[self.a1_unseen]) + np.exp(predicted_f[self.a2_unseen]) + balance)
 
         return proba, predicted_f, tr_proba, tr_f
 
