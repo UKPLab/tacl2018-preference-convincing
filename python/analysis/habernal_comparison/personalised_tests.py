@@ -26,7 +26,7 @@ from gp_regressor_svi import GPRegressorSVI
 from collab_pref_learning_svi import CollabPrefLearningSVI
 import numpy as np
 
-nfactors = 50
+nfactors = 20
 max_Kw_size = 2000
 
 rate_s = 200

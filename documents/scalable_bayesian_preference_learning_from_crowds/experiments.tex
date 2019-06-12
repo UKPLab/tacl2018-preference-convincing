@@ -1,25 +1,25 @@
 \section{Experiments}\label{sec:expts}
 
-% TODO: needs to show comparison of no. iterations required for optimizing using LBFGS vs. without gradient. Or compare performance after 20 iterations of each.
-
 \begin{table}[h]
+\centering
 \small
-\begin{tabularx}{\textwidth}{| p{1.8cm} | X | X | X | X | X | X | X | X |}
-\hline
-Dataset & Folds /subs-amples & Users & Items & Pairs, train & Pairs, test & Pref vals, test & Item features & User features \\
-\hline\hline
-%Simulation (a) & 25 & 25 & 100 & 900 & 0  & 100 & 2 & 2\\
+ \setlength{\tabcolsep}{4pt}
+\begin{tabular}{p{1.8cm} p{1cm} p{1cm} l@{\hskip 0.4cm} l@{\hskip 0.5cm} l l@{\hskip 0.5cm} l l }
+\toprule
+Dataset & \#folds/ & \#users & \#items & train & \multicolumn{2}{c}{test} & \multicolumn{2}{c}{\#features} \\
+              & samples &              &               & \#pairs  & \#pairs & \#scores          & items & users \\
+\midrule
 Simulation a & 25 & 25 & 100 & 900 & 0 & 100 & 2 & 2 \\
 Simulation b & 25 & 25 & 100 & 900 & 0 & 100 & 2 & 2\\
-Simulation c & 25 & 25 & 100 & 36-2304 & 0 & 100 & 2 & 2\\
-\hline
+Simulation c & 25 & 25 & 100 & 36--2304 & 0 & 100 & 2 & 2\\
+\midrule
 Sushi A-small & 25 & 100 & 10 & 500 & 2500 & 1000 & 18 & 123 \\
 Sushi A & 25 & 100 & 10 & 2000 & 2500 & 1000 & 18 & 123 \\
 Sushi B & 25 & 5000 & 100 & 50000 & 5000 & 500000 &  18 & 123 \\
-\hline
+\midrule
 UKPConvArg-CrowdSample & 32 & 1442 & 1052 & 16398 & 529 & 33 & 32310 & 0
-\\ \hline
-\end{tabularx}
+\\ \bottomrule
+\end{tabular}
 \caption{Summary of datasets showing mean counts per subsample or per fold. For the simulation datasets, we generate the subsamples of data independently, for Sushi we select subsamples independently from the dataset.  
 UKPConvArgCrowdSample is divided into folds, where the test data in each fold corresponds to a single topic and stance. The numbers of features are given after categorical labels have been converted to one-hot encoding, counting
 each category as a separate feature.
@@ -28,7 +28,9 @@ each category as a separate feature.
 \end{table}
 \todo{ Page 12, Section 5.  Can you provide a web reference to data sources (not just papers that use them)?}
 % NOTE: possible problem with convincingness data is that some users have very few observations in training data.
-We use the datasets summarized in Table \ref{tab:datasets} to test the key aspects of our proposed methods: recovering an underlying consensus from noisy pairwise labels; modeling personal preferences from pairwise labels; and the scalability of our proposed Bayesian preference learning methods, GPPL and crowdGPPL using SVI.
+We test the key aspects of our proposed methods using
+ the datasets summarized in Table \ref{tab:datasets}: 
+ recovering an underlying consensus from noisy pairwise labels in a subjective task; modeling personal preferences from pairwise labels; and the scalability of our proposed Bayesian preference learning methods, GPPL and crowdGPPL using SVI.
 In Section \ref{sec:exp_synth}, we use simulated data to test the robustness of our method to noise, small training sets and unknown numbers of latent components.
 % from noisy data when the correct number of latent factors is unknown. 
 Section \ref{sec:exp_scale} evaluates the ability of our approach to
@@ -282,87 +284,65 @@ for each dataset.
 % Khan also provide code, so could be rerun to get classification error.
 
 \begin{table}
-\small
-\begin{tabularx}{\textwidth}{| p{1.1cm} | X | X | X | p{0.55cm} | X | X | X | p{0.7cm} | X | X | X | p{0.7cm} |}
-\hline
-& \multicolumn{4}{c|}{\textbf{Sushi-A-small}} & \multicolumn{4}{c|}{\textbf{Sushi-A}} & \multicolumn{4}{c|}{\textbf{Sushi-B}} \\ 
-Method & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time & Acc & CE E & $\tau$ & Run-time \\
-\hline\hline
+ \centering
+ \small
+ \setlength{\tabcolsep}{4pt}
+ \begin{tabular}{l l l l@{\hskip 0.5cm} l l l@{\hskip 0.5cm} l l l}
+\toprule
+& \multicolumn{3}{c}{\textbf{Sushi-A-small}} & \multicolumn{3}{c}{\textbf{Sushi-A}} & \multicolumn{3}{c}{\textbf{Sushi-B}} \\ 
+Method & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ \\
+\midrule
 %\multicolumn{13}{|l|}{\textit{crowdGPPL}} \\
-\multicolumn{1}{|b{1.1cm}|}{crowd-GPPL} & .68 & .03 & .39 & 38%76.91 %(27.23) %& .63 (.02) & .69 (.00) & .25 (.02)
-%old results from submission: & .79 & .51 & .66 & 60 %149.6 %(20.86)
-%new results 02.04: 
-& .81 & .39 & .66 & 21
-& .73 & .57 & .47 & 4724 \\
-%& \textbf{.79} & \textbf{.57} & .50 & 393 \\
-% april rerun:
-% .72 & .60 & .45 & 4706 % --> too many iterations? or do i need to divide by 25?
-%old results: & .69 & 2.23 & .45 & 9163 \\
-%full, opt. & & & & & .80 & .48 & .68 & 3718 
-%& - & - & - & - \\%(2193.72) \\
-$\backslash $induc & .70 & \textbf{.57} & .46 & 51 %(14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
+crowdGPPL & .68 & .03 & .39 %& 38%
+& .81 & .39 & .66 %& 21
+& .73 & .57 & .47 %& 4724 \\
+\\
+crowdGPPL $\backslash $inducing & .70 & \textbf{.57} & .46 %& 51 %(14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
 % new results 02.04
-& .84 & .33 & .79 & 39
-% old results from submission: & .84 & \textbf{.33} & .79 & 646 %(50.17) 
-& - & - & - & -
+& .84 & .33 & .79 %& 39
+& - & - & - 
 \\
-%$\backslash t$ & .67 & .80 & .39 & 7.45 (29.00) %& .61 (.02) & .69 (.00) & .19 (.03)
-%& .79 & .57 & .65 & 158.51 (25.06)
-%\\
-$\backslash u$ & .70 & .58 & .46 & 9  &%(24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
+crowdGPPL $\backslash u$ & .70 & .58 & .46 &  %9  &%(24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
 % new results 02.04:
-\textbf{.85} & \textbf{.31} & \textbf{.81} & 21
-%old results from submission & .84 & \textbf{.33} & \textbf{.80} & 95 %(4.93)
-& .78 &\textbf{.57} & .49 & 3788 \\
-%old results & \textbf{.76} & \textbf{.47} & \textbf{.60} & 21052\\
-%$\backslash u$, opt. & & & & & \textbf{.85} & \textbf{.33} &  \textbf{.80} & 5016 %(1978.82) \\
-%& - & - & - & - \\
-$\backslash u \backslash x$ & \textbf{.71} & \textbf{.57} & \textbf{.49} & 5 & %(3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
-%old results from submission: & \textbf{.85} & \textbf{.33} & \textbf{.80} & 89 %(12.12)
+\textbf{.85} & \textbf{.31} & \textbf{.81} %& 21
+& .78 &\textbf{.57} & .49 %& 3788 
+\\
+crowdGPPL $\backslash u, C=50$ & & & & .83 & .34 & .78 & 
+\\
+crowdGPPL $\backslash u \backslash x$ & \textbf{.71} & \textbf{.57} & \textbf{.49} & % 5 & %(3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
 %new results 02.04: 
-\textbf{.85} & .33 & .80 & 14
-& .77 & .58 & .48 & 3363
-%old results & \textbf{.76} & .48 & \textbf{.60} & 15478
+\textbf{.85} & .33 & .80 % & 14
+& .77 & .58 & .48 % & 3363
 \\
-%$\backslash u$, FITC & .70 & .58 & .46 & 333.68 (57.36) %& .65 (.01) & .64 (.02) & .29 (.02)
-%& \textbf{.85} & \textbf{.33} & \textbf{.80} & 551.56 (16.82)
-%\\
-$\backslash u,\backslash t$ % this is also FITC to emulate Houlsby -- mention it in the text, not here
-& .68 & .60 & .43 & 291 %(48.62) %& .50 (.00) & .69 (.00) & nan (nan)
-%old results from submission & .84 & \textbf{.33} & .79 & 204 %(12.15) 
-%new results 02.04:
-& .84 & .33 & .80 & 230
-& .76 & .61 & .54 & 12513
-% old results & .75 & .49 & .59 & 30484
+crowdGPPL $\backslash u,\backslash t$ % this is also FITC to emulate Houlsby -- mention it in the text, not here
+& .68 & .60 & .43 % & 291 %(48.62) %& .50 (.00) & .69 (.00) & nan (nan)
+& .84 & .33 & .80 % & 230
+& .76 & .61 & .54 % & 12513
 \\ 
-%$\backslash u$$\backslash t$, FITC, opt. & & & &  & .84 & \textbf{.33} & \textbf{.80} & 7413.53 (2849.63) \\
-\hline 
-GPPL & .65 & .62 & .31 & \textbf{2} %(.26) %& .65 (.02) & .63 (.02) & .30 (.03)
-% old results from submission: & .66 & .62 & .32 & \textbf{6} %(.38) & 
-% new results 02.04:
-& .65 & .62 & .31 & \textbf{2}
-& .65 & .62 & .31 & \textbf{51}
+\midrule 
+GPPL & .65 & .62 & .31 %& \textbf{2} %(.26) %& .65 (.02) & .63 (.02) & .30 (.03)
+& .65 & .62 & .31 % & \textbf{2}
+& .65 & .62 & .31 % & \textbf{51}
 \\
-GPPL-per-user & .67 & .64 & .42 & 183 %(1.12) %& .50 (.00) & .69 (.00) & nan (nan)
-%old results from submission & .83 & .40 & .79 & 1106 
-% new results 02.04:
-& .83 & .40 & .79 & 44
-& .75 & .60 & \textbf{.60} & 3172 %(.44)
+GPPL-per-user & .67 & .64 & .42 % & 183 %(1.12) %& .50 (.00) & .69 (.00) & nan (nan)
+& .83 & .40 & .79 % & 44
+& .75 & .60 & \textbf{.60} % & 3172 %(.44)
 \\
-collabGP & .69 & .58 & n/a & \textbf{2}* & .83 & .35 & n/a & 6* & .76 & .49 & n/a &  1283* \\
-%\textbf{.81} & \textbf{.40} & n/a & 761 \\
-\hline
-%\citet{houlsby2012collaborative} CP & & & & & .84 \\
+collabGP & .69 & .58 & n/a %& \textbf{2}* 
+& .83 & .35 & n/a %& 6* 
+& .76 & .49 & n/a % & 1283* \\
 %\citet{houlsby2012collaborative} CPU & & & & & .83 \\ 
 %\citet{khan2014scalable} & &&& & & & & & .69 & &
 %\\ \hline
-crowdGPPL$\backslash u, C=50$ & & & & & .83 & .34 & .78 & 
-\end{tabularx}
-\caption{Predicting personal preferences: performance on \emph{Sushi-A} dataset and \emph{Sushi-B} datasets.
-Runtimes are means in seconds over $25$ repeats given. The runtimes for \emph{collaborative GP} are marked
-with a star as these methods were implemented using \emph{R} and \emph{C} libraries,
-which contributed to their faster runtimes over the other methods, which were implemented using \emph{Python 3}.
-For accuracy, the standard deviations of all metrics shown are $\leq 0.02$, for CEE, $\leq 0.08$, for $\tau$, $\leq 0.03$.
+\\
+\bottomrule
+\end{tabular}
+\caption{Predicting personal preferences: performance on \emph{Sushi-A} dataset and \emph{Sushi-B} datasets,
+means over $25$ repeats. 
+CrowdGPPL uses $C=20$ unless otherwise specified.
+The standard deviations of all metrics shown are $\leq 0.02$, for CEE, $\leq 0.08$, for $\tau$, $\leq 0.03$.
+For Sushi-B, crowdGPPL, GPPL-per-user and collabGP had runtimes of approximately 30 minutes on a 12 core, 2.6GHz CPU server,
+while GPPL required only one minute.
  }
 \label{tab:sushi}
 \end{table}
@@ -374,7 +354,7 @@ The results in Table \ref{tab:sushi}
 illustrate the performance benefit of crowd models over single-user GPPL, and
 the runtimes 
 show the speedup of the sparse approximation of crowdGPPL over crowdGPPL$\backslash$induc.
-GPPL is substantially quicker to train than crowd-GPPL, and GPPL-per-user does not scale well to larger numbers
+GPPL is substantially quicker to train than crowdGPPL, and GPPL-per-user does not scale well to larger numbers
 of users.
 % including feature data for items and users leads to faster convergence than crowdGPPL$\backslash \bs u$ and crowd$\backslash \bs u \backslash \bs x$.
 %Likewise, the use of matrix factorization leads to only a small increase in
@@ -442,14 +422,17 @@ Overall, the current version of this manuscript is not sufficient for machine le
 % help? Do workers with more data get better predictions?
 
 \begin{table}
-\small
-\begin{tabularx}{\columnwidth}{ | l | X | X | X | X | X | X | X | X | X |}
+ \centering
+ \small
+ \setlength{\tabcolsep}{4pt}
+\begin{tabular}{ l l l l@{\hskip 0.8cm} l l l@{\hskip 0.8cm} l l l }
 \hline
- & \multicolumn{3}{l|}{Consensus}&\multicolumn{3}{l|}{Personal} &\multicolumn{3}{p{3.1cm}|}{Personal, workers with $>$40 pairs in training set} \\ \hline
- Method & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ \\ \hline
+ & \multicolumn{3}{l}{Consensus}&\multicolumn{3}{l}{Personal: all workers} &\multicolumn{3}{l}{$>$40 training pairs} \\
+ Method & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ \\ 
+  \midrule
  %SVM & .70 & .58 & .31 & .63 & .66 & .31 \\
  %Bi-LSTM & .73 &  .55 & .21 & .64 & .64 & .21 \\
- GPPL %medi.
+ GPPL %medi. 
   & .77 & .50 & .40 & .71 & .56 & .32 & .72 & .55 & .26 \\ % .71 & .56 & .32 \\ % now showing with > 40 training examples
  % new values since Q and various minor bugfixes (Qfix1): 
  % .76 & .50 & .46 & .69 & .58 & .30 & 
@@ -465,11 +448,17 @@ Overall, the current version of this manuscript is not sufficient for machine le
  %crowdGPPL opt. & .78 & .48 & .50 & .69 & .59 & .29
  %PL+ SVR & .75 & .55 & \textbf{.40} & .75 & & .40 \\
  %GPC & .73 & .53 & - & .68 & .59 & - \\
- crowdBT-GP & .78 & .58 & .53 & .71 & .60 & 
+ crowdBT-GP & .77 & .52 & .50 & .71 & .60 & 
  \\\hline
-\end{tabularx}
-\caption{Performance comparison on UKPConvArgCrowdSample using ling+GloVe features. \emph{Acc} and \emph{CEE} show classification accuracy and cross entropy error (or log-loss) for pairwise predictions, 
-while $\tau$ is Kendall's $\tau$ for the predicted preference function. }
+\end{tabular}
+\caption{UKPConvArgCrowdSample,  using ling+GloVe features: predicting consensus values, personal preferences,
+and personal preferences for workers with >40 pairs in the training set.
+Classification accuracy (\emph{Acc}) and cross entropy error (or log-loss, \emph{CEE}) evaluate
+pairwise predictions, 
+Kendall's $\tau$ evaluates the predicted utilities. 
+Runtimes on a 12 core, 2.6GHz CPU server were approximately 3 minutes for GPPL and crowdBT-GP, 
+ 60 minutes for crowdGPPL.
+}
 % wilcoxon signed-rank test: crowdGPPL vs. GPPL --> medi. p = 
 \label{tab:convarg}
 \end{table}
