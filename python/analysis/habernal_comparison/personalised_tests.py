@@ -379,7 +379,7 @@ if __name__ == '__main__':
     else:
         lsm = 1
 
-    test_dir = 'train_all_D05-%i_P%i' % (lsm, npairs)  #'rate_s_tests_single'
+    test_dir = 'D05-%i_P%i' % (lsm, npairs)  #'rate_s_tests_single'
 
     methods = ['SinglePrefGP_noOpt_weaksprior']
     datasets = ['UKPConvArgCrowdSample_evalMACE']
