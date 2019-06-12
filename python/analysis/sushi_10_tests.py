@@ -781,7 +781,7 @@ if __name__ == '__main__':
 
 
         # Hyperparameters common to most models --------------------------------------------------------------------------------
-        max_facs = 20
+        max_facs = 50  #20
         shape_s0 = 1.0
         rate_s0 = 100.0
         max_update_size = 200 # there are 20 x 100 = 2000 pairs in total. After 10 iterations, all pairs are seen.
@@ -823,9 +823,9 @@ if __name__ == '__main__':
 
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
-                   'crowd-GPPL',
+                   #'crowd-GPPL',
                    # 'crowd-GPPL-noInduc',
-                   # 'crowd-GPPL\\u',
+                   'crowd-GPPL\\u',
                    # 'crowd-BMF',
                    # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
                    # 'GPPL-pooled',
