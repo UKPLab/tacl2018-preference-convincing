@@ -115,7 +115,7 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
     starttime = time.time()
                                 
     #for f in range(items_feat.shape[1]):  
-    ls_initial = items_feat.shape[1]**0.5 * compute_median_lengthscales(items_feat, N_max=3000)
+    ls_initial = compute_median_lengthscales(items_feat, N_max=3000)
             
     endtime = time.time()
     logging.info('@@@ Selected initial lengthscales in %f seconds' % (endtime - starttime))
