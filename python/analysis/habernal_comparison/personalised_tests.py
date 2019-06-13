@@ -26,11 +26,11 @@ from gp_regressor_svi import GPRegressorSVI
 from collab_pref_learning_svi import CollabPrefLearningSVI
 import numpy as np
 
-nfactors = 20
+nfactors = 50
 max_Kw_size = 2000
 
 # we changed this from 20000 when we allowed sy to be learned again.
-rate_s = 200
+rate_s = 20000
 
 class PersonalisedTestRunner(TestRunner):
 
@@ -247,7 +247,7 @@ class PersonalisedTestRunner(TestRunner):
                                            nfactors=F, rate_ls=1.0 / np.mean(self.ls_initial),
                                            use_common_mean_t=common_mean, max_update_size=SS, use_lb=True,
                                            shape_s0=shape_s0, rate_s0=rate_s0,
-                                           shape_st0=shape_s0, rate_st0=rate_s0*100,
+                                           shape_st0=shape_s0, rate_st0=rate_s0,
                                            shape_sy0=shape_s0, rate_sy0=rate_s0,
                                            ninducing=M, forgetting_rate=0.9,
                                            delay=delay,

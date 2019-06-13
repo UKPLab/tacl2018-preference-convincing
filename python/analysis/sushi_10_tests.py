@@ -42,7 +42,7 @@ from gp_pref_learning import GPPrefLearning
 from per_user_pref_learning import GPPrefPerUser
 
 
-verbose = True
+verbose = False
 
 def extract_pairs_from_ranking(ranked_items):
 
@@ -278,6 +278,7 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
         Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
+                                  shape_st0=shape_s0, rate_st0=rate_s0,
                                   shape_sy0=shape_s0, rate_sy0=rate_s0, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
@@ -781,7 +782,7 @@ if __name__ == '__main__':
 
 
         # Hyperparameters common to most models --------------------------------------------------------------------------------
-        max_facs = 50  #20
+        max_facs = 20
         shape_s0 = 1.0
         rate_s0 = 100.0
         max_update_size = 200 # there are 20 x 100 = 2000 pairs in total. After 10 iterations, all pairs are seen.
@@ -956,7 +957,7 @@ if __name__ == '__main__':
 
         # SUSHI B, global parameters ------------------------------------------------------------------------------------
 
-        max_facs = 50  #20
+        max_facs = 50
         shape_s0 = 1.0
         rate_s0 = 100.0  #0.1
         forgetting_rate = 0.9

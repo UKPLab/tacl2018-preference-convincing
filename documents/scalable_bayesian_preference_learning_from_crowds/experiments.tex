@@ -6,7 +6,7 @@
  \setlength{\tabcolsep}{4pt}
 \begin{tabular}{p{1.8cm} p{1cm} p{1cm} l@{\hskip 0.4cm} l@{\hskip 0.5cm} l l@{\hskip 0.5cm} l l }
 \toprule
-Dataset & \#folds/ & \#users & \#items & train & \multicolumn{2}{c}{test} & \multicolumn{2}{c}{\#features} \\
+Dataset & \#folds/ & \#users & \#items & train & \multicolumn{2}{l}{test} & \multicolumn{2}{l}{\#features} \\
               & samples &              &               & \#pairs  & \#pairs & \#scores          & items & users \\
 \midrule
 Simulation a & 25 & 25 & 100 & 900 & 0 & 100 & 2 & 2 \\
@@ -26,30 +26,31 @@ each category as a separate feature.
 }
 \label{tab:datasets}
 \end{table}
-\todo{ Page 12, Section 5.  Can you provide a web reference to data sources (not just papers that use them)?}
-% NOTE: possible problem with convincingness data is that some users have very few observations in training data.
-We test the key aspects of our proposed methods using
- the datasets summarized in Table \ref{tab:datasets}: 
- recovering an underlying consensus from noisy pairwise labels in a subjective task; modeling personal preferences from pairwise labels; and the scalability of our proposed Bayesian preference learning methods, GPPL and crowdGPPL using SVI.
-In Section \ref{sec:exp_synth}, we use simulated data to test the robustness of our method to noise, small training sets and unknown numbers of latent components.
-% from noisy data when the correct number of latent factors is unknown. 
-Section \ref{sec:exp_scale} evaluates the ability of our approach to
-recover personal and consensus utilities on an NLP task with high-dimensional feature vectors.
-GPPL previously established the best performance on this dataset in \citet{simpson2018finding}.
-%, which 
-%The task  involves using pairwise judgments of arguments from online debate forums
-%to learn a function of argument \emph{convincingness}. We use the \emph{UKPConvArgSample} dataset,
-%sampled from data provided by \citet{habernal2016argument} dataset.
-Using the same dataset, we then analyze the scalability of our SVI approach. 
-In Section \ref{sec:sushi}, 
-we compare our method against previous approaches for predicting the 
-personal preferences of thousands of users on the \emph{Sushi} datasets~\citep{kamishima2003nantonac}.
-Finally, Section \ref{sec:components} evaluates whether the Bayesian approach was able to ignore redundant
+Our experiments test the key aspects of \emph{crowdGPPL}: 
+ modelling personal preferences from pairwise labels;
+ predicting consensus utilities from noisy crowdsourced preferences
+  in a subjective task; 
+ and the scalability of our proposed SVI method.
+In Section \ref{sec:exp_synth}, we use simulated data to test the robustness of crowdGPPL
+to noise and unknown numbers of latent components.
+Section \ref{sec:sushi}, 
+compares different configurations of the model
+against alternative approaches
+using the \emph{Sushi} datasets\footnote{\url{http://www.kamishima.net/sushi/}}~\citep{kamishima2003nantonac}.
+Section \ref{sec:exp_scale} evaluates 
+the ability of crowdGPPL to predict both personal and consensus utilities 
+in a high-dimensional
+natural language processing (NLP) task
+with sparse, noisy crowdsourced preferences
+(\emph{UKPConvArgCrowdSample}\footnote{\url{https://github.com/ukplab/tacl2018-preference-convincing}}, ~\citet{simpson2018finding}).
+Using the same dataset, Section \ref{sec:exp_scale} analyses
+the scalability of our SVI approach. 
+Finally, Section \ref{sec:components} evaluates whether crowdGPPL ignores redundant
 components when the number of components, $C$,
- is larger than necessary.
+is larger than necessary.
+The datasets are summarised in Table \ref{tab:datasets}.
 
-%\subsection{Methods Compared}
-%note that these are compared in sushi and synth tests only. Should be mentioned inside those?
+\subsection{Method Comparison}
 
 % Ranking-SVM baseline -- only easy to compare in the single user case. My GPPL paper perhaps needs
 % this adding in any follow up works.
@@ -59,15 +60,50 @@ components when the number of components, $C$,
 % these are done at scale, which we can do with our inference method --> *this is a new claim i.e. 
 % new empirical results*. They also test a per-user model.
 
+We compare crowdGPPL against 
+\emph{GPPL},
+which we train on all users' preference labels to learn a single utility function,
+%and a Gaussian process over the joint feature space of users and items 
+%(\emph{joint-GPPL}), as proposed by \citet{guo2010gaussian}.
+and \emph{GPPL-per-user},
+in which a separate GPPL instance is learned for each user with no collaborative
+learning.
+
+The \emph{collaborative Gaussian process} (\emph{collabGP}, ~\citet{houlsby2012collaborative}), 
+is a similar model that, like crowdGPPL,
+ assumes Gaussian processes over latent user and item components,
+ but does not learn a consensus or the scales of the components to 
+ identify active and unneeded components.
+ The inference method maintains a set of parameters for each pairwise label and
+ for each user, but uses an inducing point method, \emph{GFITC}, 
+ to reduce computational complexity, as described in Section \ref{sec:inf}.
+As collabGP requires more parameters, it has higher memory complexity 
+($\mathcal{O}(P+U)$ in contrast to $\mathcal{O}(|P_i| + M)$).
+We therefore treat the performance of collabGP as a target for crowdGPPL.
+
+\emph{CrowdBT}~\citep{chen2013pairwise}
+has been shown to be an effective method for learning from crowdsourced preferences.
+CrowdBT learns a model of each worker's accuracy and infers consensus utilities, 
+therefore assuming that the differences between workers' labels are 
+due to random errors rather than subjective preferences.
+Since crowdBT does not account for the item features,
+it cannot predict utilities for items that were not part of the training set
+and is hence purely an aggregation method.
+However, the aggregated utilities produced by crowdBT can be treated as training labels
+for regression. Here, we use the posterior mean utilities from crowdBT 
+as target values for training a Gaussian process regressor,
+and set the observation noise variance of the GP equal to the posterior variance
+of the utilities estimated by crowdBT. 
+This pipeline method, \emph{crowdBT--GP}, 
+allows us to compare predictive performance when using
+crowdBT, which treats annotator differences as noise,
+against crowdGPPL, which models the individual preferences of annotators.
+
 \subsection{Simulated Noisy Data}\label{sec:exp_synth}
 
 First, we test how well crowdGPPL is able to recover an underlying consensus function
 from pairwise labels with varying amounts of noise.
-We compare crowdGPPL against \emph{GPPL} trained on all users' preference labels to learn a single  function, %and a Gaussian process over the joint feature space of users and items 
-%(\emph{joint-GPPL}), as proposed by \citet{guo2010gaussian}.
-%For datasets up to 100 users (simulated data, subsamples of the real datasets), 
-and separate GPPL instances per user with no collaborative
-learning (\emph{GPPL-per-user}). The consensus for GPPL-per-user is the mean of all users' predicted utilities. 
+The consensus for GPPL-per-user is the mean of all users' predicted utilities. 
 For crowdGPPL, we set $C=20$
 and for all models, we set $\alpha_0 = 1$, $\beta_0 = 100$,
 and use Mat\'ern 3/2 kernels with length-scales chosen by a median heuristic:
@@ -307,7 +343,7 @@ crowdGPPL $\backslash u$ & .70 & .58 & .46 &  %9  &%(24.62) %& .65 (.02) & .64 (
 \textbf{.85} & \textbf{.31} & \textbf{.81} %& 21
 & .78 &\textbf{.57} & .49 %& 3788 
 \\
-crowdGPPL $\backslash u, C=50$ & & & & .83 & .34 & .78 & 
+crowdGPPL $\backslash u, C=50$ & .70 & .58 & .46 & .84 & .32 & .80 & 
 \\
 crowdGPPL $\backslash u \backslash x$ & \textbf{.71} & \textbf{.57} & \textbf{.49} & % 5 & %(3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
 %new results 02.04: 
@@ -335,6 +371,9 @@ collabGP & .69 & .58 & n/a %& \textbf{2}*
 %\citet{khan2014scalable} & &&& & & & & & .69 & &
 %\\ \hline
 \\
+collabGP$\backslash u$ & .69 & .59 & n/a & .84 & .33 & n/a & .76 & .50 & n/a
+\\
+%collabGP$\backslash u, C=50$ & .70 & .58 & n/a & .85 & .33 & n/a & \\
 \bottomrule
 \end{tabular}
 \caption{Predicting personal preferences: performance on \emph{Sushi-A} dataset and \emph{Sushi-B} datasets,
@@ -425,9 +464,25 @@ Overall, the current version of this manuscript is not sufficient for machine le
  \centering
  \small
  \setlength{\tabcolsep}{4pt}
-\begin{tabular}{ l l l l@{\hskip 0.8cm} l l l@{\hskip 0.8cm} l l l }
+\subfloat[8000 training pairs per fold]{
+\begin{tabular}{ l l l l@{\hskip 1.0cm} l l l@{\hskip 1.0cm} l l l}
 \hline
- & \multicolumn{3}{l}{Consensus}&\multicolumn{3}{l}{Personal: all workers} &\multicolumn{3}{l}{$>$40 training pairs} \\
+ & \multicolumn{3}{l}{Consensus} & 
+ \multicolumn{3}{l}{Personal: all workers} &\multicolumn{3}{l}{$>$40 training pairs} \\
+ Method & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ \\ 
+  \midrule
+ GPPL 
+  &  & & & & & & & & \\  
+ crowdGPPL 
+ & & & & & & & & &  \\  
+ crowdBT-GP & .70 & .57 & .36 & & & 
+ \\\hline
+\end{tabular}} \\
+\subfloat[All training data ($>$16,000 training pairs per fold)]{
+\begin{tabular}{ l l l l@{\hskip 1.0cm} l l l@{\hskip 1.0cm} l l l}
+\hline
+ & \multicolumn{3}{l}{Consensus} & 
+ \multicolumn{3}{l}{Personal: all workers} &\multicolumn{3}{l}{$>$40 training pairs} \\
  Method & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ \\ 
   \midrule
  %SVM & .70 & .58 & .31 & .63 & .66 & .31 \\
@@ -450,9 +505,9 @@ Overall, the current version of this manuscript is not sufficient for machine le
  %GPC & .73 & .53 & - & .68 & .59 & - \\
  crowdBT-GP & .77 & .52 & .50 & .71 & .60 & 
  \\\hline
-\end{tabular}
-\caption{UKPConvArgCrowdSample,  using ling+GloVe features: predicting consensus values, personal preferences,
-and personal preferences for workers with >40 pairs in the training set.
+\end{tabular}}
+\caption{UKPConvArgCrowdSample,  using ling+GloVe features: predicting consensus values, personal preferences for all workers,
+and personal preferences for workers who had $>$40 pairs in the training set.
 Classification accuracy (\emph{Acc}) and cross entropy error (or log-loss, \emph{CEE}) evaluate
 pairwise predictions, 
 Kendall's $\tau$ evaluates the predicted utilities. 
