@@ -60,13 +60,15 @@ $a \succ b$ indicates that $a$ is preferred to $b$.
 % %\end{equation} 
 We assume that items have latent \emph{utilities},
 $f(\bs x_a)$ and $f(\bs x_b)$, that represent their value to a user,
-and that
+and that the 
 utility $f(\bs x_a) : \mathbb{R}^D \mapsto \mathbb{R}$ 
 is a function of the item's features, where $\bs x_a$ is a vector of length $D$
 containing the features of item $a$.
-Hence if $f(\bs x_a) > f(\bs x_b)$, then $a \succ b$,
-and we observe a pairwise label $y(a, b)=1$,
-assuming that pairwise labels never contain errors.
+Hence if $f(\bs x_a) > f(\bs x_b)$, then $a \succ b$.
+We record the outcome of a comparison between $a$ and $b$ as 
+a pairwise label, $y(a, b)$.
+Assuming that pairwise labels never contain errors,
+then $y(a, b)=1$ if $a \succ b$ and $0$ otherwise.
 
 \citet{thurstone1927law} proposed the \emph{random utility model},
 which relaxes the assumption that pairwise labels, $y(a, b)$,
@@ -76,7 +78,7 @@ increases as $f_a - f_b$ increases, i.e.,
 as the utility of item $a$ increases
 relative to the utility of item $b$.
 However, since $0 < p(y(a,b)=1) < 1$, the model 
-allows for uncertainty about the value of $y(a,b)$,
+is uncertain about the value of $y(a,b)$,
 which accommodates labelling errors or
 inconsistency in a user's choices at different points in time.
 The uncertainty is lower if the values $f_a$ and $f_b$ are further apart, 
@@ -84,8 +86,8 @@ which reflects greater consistency in a user's choices
 when their preferences are stronger.
  
 The random utility model is defined by a likelihood function that
-maps the utilities to the labels, $p(y(a,b))$.
-Two important models are the Bradley-Terry model ~\citep{bradley1952rank,plackett1975analysis,luce1959possible},
+maps the utilities to $p(y(a,b))$.
+Two important random utility models for pairwise labels are the Bradley-Terry model ~\citep{bradley1952rank,plackett1975analysis,luce1959possible},
 which assumes a logistic likelihood,
 and the Thurstone-Mosteller model, also known as \emph{Thurstone case V}~\citep{thurstone1927law,mosteller2006remarks}, which assumes a probit likelihood.
 %or the Thurstone-Mosteller model.
@@ -110,33 +112,37 @@ Integrating out the unknown values of $\delta_a$ and $\delta_b$ gives:
 \label{eq:plphi}
 \end{align}
 where $z = \frac{f(\bs x_a) - f(\bs x_b)}{\sqrt{2\sigma^2}}$,
-and $\Phi$ is the cumulative distribution function of the standard normal distribution. 
+and $\Phi$ is the cumulative distribution function of the standard normal distribution,
+meaning that $\Phi(z)$ is a probit likelihood. 
 
-In this paper we follow the Thurstone-Mosteller model as it enables 
-more convenient Bayesian inference: 
-given a posterior distribution over $f$,
-we can compute a posterior $p(y(a,b)=1 | \bs y)$ over test labels
-by marginalising $f$ analytically, 
-where $\bs y$ is a set of pairwise training labels.
-Obtaining the posterior over $f$ is itself challenging, however, 
-and therefore in Section $\ref{sec:inf}$ we propose 
-an approximate inference method to address this problem.
-
-
-This likelihood is the basis of Gaussian process preference learning (GPPL)~\citep{chu2005preference}. 
-Our formulation differs in that instead of learning the variance of $\delta$, we fix it 
-to $0.5$ and scale $f$ to vary the uncertainty in the pairwise labels,
-which conveniently leads to $z$ having a denominator of 1.
-If we have Gaussian distributions over $f(\bs x_a)$ and $f(\bs x_b)$, they can be marginalized in a simple manner %as Gaussian noise
-by modifying $z$:
-% we haven't mentioned that f is Gaussian yet. 
+In practice, $f(\bs x_a)$ and $f(\bs x_b)$ must be inferred from
+pairwise training labels, $\bs y$,
+so that we obtain a posterior distribution over their values.
+If we assume that this posterior is a multivariate Gaussian distribution,
+then the probit likelihood allows us to analytically marginalise 
+$f(\bs x_a)$ and $f(\bs x_b)$
+to obtain the probability of a pairwise label:
 \begin{align}
-\hat{z} = \frac{\hat{f}_a - \hat{f}_b}{\sqrt{1 + \sigma^2_a + \sigma^2_b - 2\sigma^2_{a,b}} } \label{eq:predict_z}
+p(y(a,b)| \bs y) 
+= \Phi(\hat{z}),& & \hat{z} = \frac{\hat{f}_a - \hat{f}_b}{\sqrt{2\sigma^2 + C_{a,a} + C_{b,b} 
+- 2C_{a,b}} }, \label{eq:predict_z}
 \end{align}
-where $\hat{f}_a$ and $\hat{f}_b$ are the expected values of $f(\bs x_a)$ and $f(\bs x_b)$ respectively, 
-$\sigma^2_a$ and $\sigma^2_b$ are the corresponding variances,
-and $\sigma^2_{a,b}$ is the covariance between $f(\bs x_a)$ and $f(\bs x_b)$.
-The next section introduces a model for the utility function, $f$.
+where $\hat{f}_a$ and $\hat{f}_b$ are the means and
+$\bs C$ is the covariance matrix of the multivariate Gaussian over
+$f(\bs x_a)$ and $f(\bs x_b)$.
+This likelihood model is the basis of Gaussian process preference learning (GPPL)~\citep{chu2005preference}. 
+Due to this mathematical convenience,
+we also assume this pairwise label likelihood for the crowd
+preference learning model proposed in this paper.
+Here, in contrast to \citet{chu2005preference},
+we simplify the formulation by assuming that $\sigma^2 = 0.5$,
+which leads to $z$ having a denominator of $\sqrt{2 \times 0.5}=1$.
+Instead, we model varying degrees of noise in the pairwise labels
+by scaling $f$ itself, as we describe in the next section.
+%Obtaining the posterior over $f$ is itself challenging, however, 
+%and therefore in Section $\ref{sec:inf}$ we propose 
+%an approximate inference method to address this problem.
+
 
 \subsection{Single User Preference Learning}
 %TODO check use of 'user' versus 'annotator' terminology throughout, especially in the intro. Is it explicit that the term 'user' is abstract and refers to any of these things?
