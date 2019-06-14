@@ -29,8 +29,7 @@ import numpy as np
 nfactors = 50
 max_Kw_size = 2000
 
-# we changed this from 20000 when we allowed sy to be learned again.
-rate_s = 200
+rate_s = 20000
 
 class PersonalisedTestRunner(TestRunner):
 
@@ -176,7 +175,7 @@ class PersonalisedTestRunner(TestRunner):
             SS = 200
 
         self.model = GPRegressorSVI(ninput_features=self.ndims, ls_initial=ls_initial, verbose=self.verbose,
-                                    shape_s0=shape_s0, rate_s0=rate_s0, rate_ls=1.0 / np.mean(ls_initial),
+                                    shape_s0=2, rate_s0=200, rate_ls=1.0 / np.mean(ls_initial),
                                     use_svi=True,
                                     ninducing=M, max_update_size=SS, kernel_combination=kernel_combination,
                                     forgetting_rate=0.7,
@@ -248,7 +247,7 @@ class PersonalisedTestRunner(TestRunner):
                                            use_common_mean_t=common_mean, max_update_size=SS, use_lb=True,
                                            shape_s0=shape_s0, rate_s0=rate_s0,
                                            shape_st0=shape_s0, rate_st0=rate_s0,
-                                           shape_sy0=shape_s0, rate_sy0=rate_s0,
+                                           shape_sy0=2, rate_sy0=2,
                                            ninducing=M, forgetting_rate=0.9,
                                            delay=delay,
                                            exhaustive_train_count=1)

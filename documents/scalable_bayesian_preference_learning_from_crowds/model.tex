@@ -52,7 +52,6 @@
 % this should be introduced in section 1. \citep{handleycomparative} -- compares BT with TM models
 For a pair of items, $a$ and $b$, 
 $a \succ b$ indicates that $a$ is preferred to $b$.  
-%A pairwise label has value $y(a, b) =1 $ if $a \succ b$ and $0$ otherwise.
 % %\begin{equation}
 % $y(a, b) = \begin{cases}
 % 1 & a \succ b \\
@@ -65,12 +64,13 @@ and that
 utility $f(\bs x_a) : \mathbb{R}^D \mapsto \mathbb{R}$ 
 is a function of the item's features, where $\bs x_a$ is a vector of length $D$
 containing the features of item $a$.
-Hence if $f_a > f_b$ then $a \succ b$,
-and therefore if the pairwise labels are noise-free, $y(a, b) =1$.
+Hence if $f(\bs x_a) > f(\bs x_b)$, then $a \succ b$,
+and we observe a pairwise label $y(a, b)=1$,
+assuming that pairwise labels never contain errors.
 
 \citet{thurstone1927law} proposed the \emph{random utility model},
 which relaxes the assumption that pairwise labels, $y(a, b)$,
-are always consistent with the ordering of $f_a$ and $f_b$.
+are always consistent with the ordering of $f(\bs x_a)$ and $f(\bs x_b)$.
 Under the random utility model, the likelihood $p(y(a,b)=1)$ 
 increases as $f_a - f_b$ increases, i.e.,
 as the utility of item $a$ increases
@@ -78,22 +78,22 @@ relative to the utility of item $b$.
 However, since $0 < p(y(a,b)=1) < 1$, the model 
 allows for uncertainty about the value of $y(a,b)$,
 which accommodates labelling errors or
-inconsistency in a user's annotations over time.
+inconsistency in a user's choices at different points in time.
 The uncertainty is lower if the values $f_a$ and $f_b$ are further apart, 
 which reflects greater consistency in a user's choices
 when their preferences are stronger.
  
-Typical choices for a random utility model include
-the Bradley-Terry model ~\citep{bradley1952rank,plackett1975analysis,luce1959possible},
-which assumes that utilities are related to $p(y(a,b))$ by a logistic likelihood,
+The random utility model is defined by a likelihood function that
+maps the utilities to the labels, $p(y(a,b))$.
+Two important models are the Bradley-Terry model ~\citep{bradley1952rank,plackett1975analysis,luce1959possible},
+which assumes a logistic likelihood,
 and the Thurstone-Mosteller model, also known as \emph{Thurstone case V}~\citep{thurstone1927law,mosteller2006remarks}, which assumes a probit likelihood.
 %or the Thurstone-Mosteller model.
 %\begin{align}
 %p(y(a, b) | f) & = \frac{1}{1 + \exp( f(\bs x_a) - f(\bs x_b) ) }
 %\end{align}
-We define the Thurstone case V model as follows,
-assuming that the utility of an item is
-Noise in the observations is explained by a Gaussian-distributed noise term, $\delta \sim \mathcal{N}(0, 0.5)$:
+In the Thurstone case V model, 
+noise in the observations is explained by a Gaussian-distributed noise term, $\delta \sim \mathcal{N}(0, \sigma^2)$:
 \begin{align}
  p(y(a, b) | f(\bs x_a) + \delta_{a}, f(\bs x_b) + \delta_{b} )  
  \hspace{0.9cm} & = \begin{cases}
@@ -105,11 +105,11 @@ Noise in the observations is explained by a Gaussian-distributed noise term, $\d
 Integrating out the unknown values of $\delta_a$ and $\delta_b$ gives:
 \begin{align}
 & p( y(a, b) | f(\bs x_a), f(\bs x_b) )  \nonumber\\
-& = \int\!\!\!\! \int p( y(a, b) | f(\bs x_a) + \delta_{a}, f(\bs x_b) + \delta_{b} ) \mathcal{N}(\delta_{a}; 0, 0.5)\mathcal{N}(\delta_{b}; 0, 0.5) d\delta_{a} d\delta_{b} \nonumber\\
-& = \Phi\left(f(\bs x_a) - f(\bs x_b)\right) = \Phi\left( z \right), 
+& = \int\!\!\!\! \int p( y(a, b) | f(\bs x_a) + \delta_{a}, f(\bs x_b) + \delta_{b} ) \mathcal{N}(\delta_{a}; 0, \sigma^2)\mathcal{N}(\delta_{b}; 0, \sigma^2) d\delta_{a} d\delta_{b} \nonumber\\
+& = \Phi\left(\frac{f(\bs x_a) - f(\bs x_b)}{\sqrt{2\sigma^2}}\right) = \Phi\left( z \right), 
 \label{eq:plphi}
 \end{align}
-where $z = f(\bs x_a) - f(\bs x_b)$,
+where $z = \frac{f(\bs x_a) - f(\bs x_b)}{\sqrt{2\sigma^2}}$,
 and $\Phi$ is the cumulative distribution function of the standard normal distribution. 
 
 In this paper we follow the Thurstone-Mosteller model as it enables 
