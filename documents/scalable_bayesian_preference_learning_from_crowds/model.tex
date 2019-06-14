@@ -146,25 +146,31 @@ by scaling $f$ itself, as we describe in the next section.
 
 \subsection{Single User Preference Learning}
 %TODO check use of 'user' versus 'annotator' terminology throughout, especially in the intro. Is it explicit that the term 'user' is abstract and refers to any of these things?
-
-%First consider modeling the preferences of a single user. In this case, we 
-We assume a Gaussian process prior over the utility function, 
+We can model the preferences of a single user by assuming
+a Gaussian process prior over the user's utility function, 
 %is a function of item features and 
-$f \sim \mathcal{GP}(0, k_{\theta}/s)$, where $k_{\theta}$ is a kernel function with hyper-parameters $\theta$, 
-and $s$ is an inverse scale drawn from a gamma prior, 
-$s \sim \mathcal{G}(\alpha_0, \beta_0)$, with shape $\alpha_0$ and scale $\beta_0$.
-The value of $s$ determines the variance of $f$ and therefore its magnitude, which affects the level of certainty
-in the pairwise label likelihood (Equation \ref{eq:plphi}).
+$f \sim \mathcal{GP}(0, k_{\theta}/s)$, where $k_{\theta}$ is a kernel function with hyperparameters $\theta$
+and $s$ is an inverse scale parameter.
 The kernel function takes numerical item features as inputs and determines the covariance between values of $f$ for different items. 
 The choice of kernel function and its hyperparameters controls the shape and smoothness of the function 
 across the feature space and is often treated as a model selection problem.
-Typical choices of kernel function include the \emph{squared exponential} or \emph{Mat\'ern} functions~\citep{rasmussen_gaussian_2006},
-which produce higher covariance between items with similar feature values.
-These kernel functions make minimal assumptions and are effective in a wide range of tasks. 
-% Covariance of different items with same feature: worth mentioning here? We need to multiply the kernel by a small
-% amount < 1 to ensure covariance is not 1 and the values can differ.
-We use the kernel function $k_{\theta}$ to compute the covariance matrix $K_{\theta}$,
+Typical kernel functions include the \emph{squared exponential} 
+and the \emph{Mat\'ern}~\citep{rasmussen_gaussian_2006},
+which both make minimal assumptions and are effective in a wide range of tasks. 
+These functions assign higher covariance to items with similar feature values.
+We use the kernel function $k_{\theta}$ to compute a covariance matrix $K_{\theta}$,
 between a set of $N$ observed items with features $\{ \bs x_1, ..., \bs x_N \}$.
+
+The model extends the original definition of
+\emph{Gaussian process preference learning (GPPL)}~\citep{chu2005preference},
+by introducing the inverse scale, $s$. 
+We also assume that $s$ is drawn from a gamma prior, 
+$s \sim \mathcal{G}(\alpha_0, \beta_0)$, with shape $\alpha_0$ and scale $\beta_0$.
+The value of $1/s$ determines the variance of $f$,
+and therefore 
+the magnitude of differences between $f(\bs x_a)$ and $f(\bs x_b)$ for
+items $a$ and $b$. This in turn affects the level of certainty
+in the pairwise label likelihood as per Equation \ref{eq:plphi}.
 
 Given a set of $P$ pairwise labels, %for a single user, 
 $\bs y=\{y_1,...,y_P\}$,
@@ -181,10 +187,9 @@ p\left( \bs{y}, \bs f, s | k_{\theta}, \alpha_0, \beta_0 \right)
 \end{flalign}
 where 
 $\bs f = \{f(\bs {x}_1),...,f(\bs {x}_N)\}$
-are the utilities of the $N$ items referred to by $\bs y$,
+is a vector containing the utilities of the $N$ items referred to by $\bs y$,
 and $p( y_p | \bs f ) = \Phi\left( z_p \right)$ is the pairwise likelihood (Equation \ref{eq:plphi}). 
-%, and $\theta$, $\alpha_0$ and $\beta_0$ are hyper-parameters.
-We henceforth refer to this single-user model as \emph{GPPL}.
+We henceforth refer to this model simply as \emph{GPPL}.
 
 \subsection{Crowd Preference Learning} \label{sec:crowd_model}
 
@@ -195,23 +200,31 @@ We henceforth refer to this single-user model as \emph{GPPL}.
 
 To predict the individual preferences of users in a crowd,
 we could assume an independent GPPL model for each user.
-However, a joint model of all users' preferences can
+However, by modelling all users' preferences jointly, we can
 exploit the correlations between different users' interests
 to improve predictions when preference data is sparse,
-and reduce the memory footprint required to store separate models for all users.
+and reduce the cost of storing separate models for all users.
 Groups of users may share common interests over certain subsets of items,
 for example, in a book recommendation task,
-some users may share an interest for one particular genre 
+some users may share an interest in one particular genre 
 but otherwise prefer different categories of books.
 Identifying such correlations between users' interests helps to predict 
 the preferences of users for whom we have only observed a small number of preferences.
 This is the core idea of recommendation techniques such as collaborative filtering~\citep{resnick1997recommender} and matrix factorisation~\citep{koren2009matrix}.
-It may also be beneficial to account for the different 
-preferences of individuals when predicting the consensus,
-particularly when data is only available from a subset of users,
-since their individual preferences may otherwise bias the consensus predictions.
-We therefore extend GPPL to \emph{crowdGPPL}, a joint model for 
-the preferences of individual users in a crowd as well as the underlying consensus.
+
+As well as predicting individual preferences, 
+we wish to predict the consensus by aggregating
+preference labels from multiple users. 
+If we do not account for the individual biases of different users
+when predicting the consensus,
+these biases may affect the consensus predictions,
+particularly when data for certain items is only available from a small subset of users.
+We address this problem by proposing \emph{crowdGPPL}, which jointly models 
+the preferences of individual users as well as the underlying consensus of the crowd.
+Unlike previous methods for inferring the consensus, 
+such as \emph{CrowdBT}~\citep{chen2013pairwise}, we do not treat differences between individuals as simply the result of labelling errors, 
+but instead assume that differences result from the users' subjective biases
+towards particular items. 
  
 % is there a better word than 'label sources' for the different sources of implicit feedback or other types of labeling?
 %In a scenario with multiple users or label sources, 
@@ -226,7 +239,7 @@ plus a vector of consensus utilities, $\bs{t}$, of the $N$ items, as follows:
 where $\bs{W} \in \mathbb{R}^{C \times U}$ is a latent representation
 of the users,
 $\bs{V} \in \mathbb{R}^{C \times N}$ is a latent representation of the items,
-and $C$ is the number of latent \emph{components}, i.e., dimensions
+and $C$ is the number of latent \emph{components}, i.e., the dimension
 of the latent representations.
 The column $\bs v_{.,a}$ of $\bs V$, and the column $\bs w_{.,j}$ of $\bs W$,
  are latent vector representations of item $a$ and user $j$,
@@ -234,9 +247,9 @@ The column $\bs v_{.,a}$ of $\bs V$, and the column $\bs w_{.,j}$ of $\bs W$,
 %Users with similar values for a certain feature will have similar preferences for 
 %the subset of items with corresponding feature values. 
 Each latent component corresponds to a utility function 
-for certain items shared by a subset of users.
-One component could represent, for example, 
-in the case of book recommendation, the membership of certain books to a particular
+for certain items, which is shared by a subset of users.
+For example, in the case of book recommendation,
+one component could represent the membership of certain books to a particular
 genre and the interests of certain users in that genre.
 %Besides latent features, we may also observe a number of item features, $\bs x$,
 %and . 
@@ -262,7 +275,7 @@ $w_c \sim \mathcal{GP}(\bs 0, k_{\eta} / s^{(w)}_c)$,
 of user features, $\bs u_j$, 
 with inverse scale $s^{(w)}_c$ 
 and kernel hyperparameters $\eta$.
-Therefore, the utilities in $\bs F$ are defined by a
+Therefore, the utilities in $\bs F$ are evaluations of a joint
 preference function, $f$, which is a weighted sum over the latent functions:
 \begin{flalign}
   f(\bs x_a, \bs u_j) = \sum_{c=1}^C  v_c(\bs x_a) w_c(\bs u_j) + t(\bs x_a),
@@ -279,10 +292,6 @@ where $\bs u_j$ are the features of user $j$ and $\bs x_a$ are the features of i
 %It is not necessary to learn a separate scale for $w_c$, since $v_c$ and $w_c$ are multiplied with each other, making a single $s^{(v)}_c$ equivalent to the product of two separate scales. 
 %The choice of $C$ can be treated as a hyperparameter, or modeled using a non-parametric prior, such as 
 %the Indian Buffet Process, which assumes an infinite number of latent components ~\citep{ding2010nonparametric}.
-
-For simplicity, we assume fixed values of $C$ in this paper. 
-The Bayesian approach avoids overfitting by inferring $s^{(v)}_c \approx 0$ with high probability
-for any dimensions that are not required to model the data.
 %This section described a Bayesian matrix factorization model, 
 %which we will subsequently extend to a preference learning model for crowds of users and label sources. 
 % joint distribution
@@ -312,3 +321,9 @@ $z_p = \bs v_{.,a_p}^T \bs{w}_{.,u_p} + t_{a_p} - \bs v_{.,b_p}^T \bs{w}_{.,u_p}
 index $p$ refers to a tuple, $\{u_p, a_p, b_p \}$, which identifies the user and a pair of items,
 and $L_{\eta}$ is the prior covariance between user feature vectors computed
 using the kernel function $k_{\eta}$.
+Although the model assumes a fixed number of components, $C$,
+unnecessary components have no effect if $\bs v_c$ or $\bs w_c$ contain only zeroes.
+By setting the prior over $s^{(v)}_c$ or $s^{(w)}_c$ to favour large values,
+ $\bs v_c$ or $\bs w_c$ have a higher probability of being close to zero,
+ hence the posterior will avoid using any components 
+ that are not required to model the data.
