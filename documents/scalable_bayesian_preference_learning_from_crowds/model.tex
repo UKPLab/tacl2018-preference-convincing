@@ -280,10 +280,16 @@ preference function, $f$, which is a weighted sum over the latent functions:
 \begin{flalign}
   f(\bs x_a, \bs u_j) = \sum_{c=1}^C  v_c(\bs x_a) w_c(\bs u_j) + t(\bs x_a),
 \end{flalign}
-\todo{
- The only new point is equation (5), but it is not clear why introducing t. I expected the authors should have more discussion on this.
- }
 where $\bs u_j$ are the features of user $j$ and $\bs x_a$ are the features of item $a$.
+This model therefore assumes that items have an underlying consensus utility,
+given by $t(\bs x_a)$,
+and that individual user preferences then deviate from the consensus according
+to $\sum_{c=1}^C  v_c(\bs x_a) w_c(\bs u_j)$. 
+Hence, when inferring the consensus utilities, we can subtract the effect of individual
+biases. The consensus can also help 
+when inferring personal preferences for user-item combinations that are
+not similar to the combinations in the training data, by
+taking into account any objective quality or widespread appeal that an item may have.
 %We provide a Bayesian treatment to matrix factorization by placing Gaussian process priors over the latent functions.
 %differently for each user and item. For example, the observed user feature 'age' may correlate with some latent interests of users, but certain users will deviate from their peer group. 
 % what happens if two users have identical features (say, the feature representation
@@ -296,9 +302,9 @@ where $\bs u_j$ are the features of user $j$ and $\bs x_a$ are the features of i
 %which we will subsequently extend to a preference learning model for crowds of users and label sources. 
 % joint distribution
 % notes about problems with inference.
-
 \todo{Page 7, equation (5): you might want to cite precedence to this form of equation
 e.g. K. Mo, E. Zhong, and Q. Yang. Cross-task crowdsourcing. In Proceedings of the 19th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, KDD '13, pages 677-685, New York, NY, USA, 2013. ACM. ISBN 978-1-4503-2174-7. doi: 10.1145/2487575.2487593. URL http://doi.acm.org/10.1145/2487575.2487593.}
+
 We combine the matrix factorization method with the preference likelihood of Equation \ref{eq:plphi}
 to obtain a joint preference model for multiple users, \emph{crowdGPPL}:
 %represent a consensus between users,
