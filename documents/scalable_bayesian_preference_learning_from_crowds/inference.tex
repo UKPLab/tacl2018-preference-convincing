@@ -304,13 +304,13 @@ Section \ref{sec:crowd_model}.
 To begin with, we extend the variational posterior in Equation \ref{eq:svi_approx}
 to approximate the crowd model defined in Equation \ref{eq:joint_crowd}:
 \begin{flalign}
-& p( \bs V, \bs V_m, \bs W, \bs W_m, \bs t, \bs t_m, s_1, ..., s_C, s_t | \bs y, \bs x, \bs x_m, \bs u, \bs u_m, k, \alpha_0, \beta_0 ) & \\
+& p( \bs V, \bs V_m, \bs W, \bs W_m, \bs t, \bs t_m, s_1, ..., s^{(v)}_c, s^{(t)} | \bs y, \bs x, \bs x_m, \bs u, \bs u_m, k, \alpha_0, \beta_0 ) & \\
 & 
 \approx 
 q(\bs t) q(\bs t_m)
 \prod_{c=1}^{C} q(\bs v_{c})q(\bs w_c)q(\bs v_{c,m})q(\bs w_{c,m})
-q(s_c)q(s_t)
-= q(\bs F) q(s_t) \prod_{c=1}^C q(s_c), & \nonumber 
+q(s^{(v)}_c)q(s^{(t)})
+= q(\bs F) q(s^{(t)}) \prod_{c=1}^C q(s^{(v)}_c), & \nonumber 
 \end{flalign}
 where $\bs u_m$ are the feature vectors of inducing users. By updating 
 each of the $q$ factors in turn,
@@ -318,14 +318,14 @@ the SVI procedure optimizes the lower bound on the marginal likelihood
 (see also Equation \ref{eq:lowerbound_crowd_full} in the Appendix):
 \begin{flalign}
 \mathcal{L}_{cr} & = 
-\mathbb{E}_{q(\bs F)}%(\bs t, \bs t_m, \bs V, \bs V_m, \bs W, \bs W_m, s_1,...,s_c,s_t)
+\mathbb{E}_{q(\bs F)}%(\bs t, \bs t_m, \bs V, \bs V_m, \bs W, \bs W_m, s_1,...,s^{(v)}_c,s^{(t)})
 [\ln p(\bs y | \bs F)] 
-+ \mathbb{E}_{q(\bs t_m), q(s_t)}[\ln p(\bs t_m, s_t | \bs K_{mm}, \alpha_0, \beta_0)
++ \mathbb{E}_{q(\bs t_m), q(s^{(t)})}[\ln p(\bs t_m, s^{(t)} | \bs K_{mm}, \alpha_0, \beta_0)
 - \ln q(\bs t_m)] & \nonumber \\
 &\sum_{c=1}^C \!\! \bigg\{ 
-\mathbb{E}_{q(\bs v_{m,c}), q(s_c)}[\ln p(\bs v_{m,c}, s_c | \bs K_{mm}, \alpha_0, \beta_0) - \ln q(\bs v_{m,c})]
+\mathbb{E}_{q(\bs v_{m,c}), q(s^{(v)}_c)}[\ln p(\bs v_{m,c}, s^{(v)}_c | \bs K_{mm}, \alpha_0, \beta_0) - \ln q(\bs v_{m,c})]
 &  \nonumber \\ 
- & +  \mathbb{E}_{q(\bs w_{m,c})}[\ln p(\bs w_{m,c} | \bs L_{mm} )
+ & +  \mathbb{E}_{q(\bs w_{m,c})}[\ln p(\bs w_{m,c} | \bs L_{mm}/s^{(w)}_c )
   - \ln q(\bs w_{m,c} ) ] \bigg\} . & 
   \label{eq:lowerbound_crowd}
 \end{flalign}
@@ -343,7 +343,7 @@ The variational factor for the inducing item factors is:
 \begin{flalign}
 \ln q(\bs v_{m,c}) = \;\;& % \mathbb{E}_{q(\bs F)}\left[ doesn't need this because it's already implicit in tilde Phi z
 \ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right) % \right] 
- + \ln\mathcal{N}\left(\bs v_{m,c}; \bs 0, \bs K_{mm}/ \mathbb{E}[s_c]\right) 
+ + \ln\mathcal{N}\left(\bs v_{m,c}; \bs 0, \bs K_{mm}/ \mathbb{E}[s^{(v)}_c]\right) 
 + \textrm{const} & \nonumber \\
 % are the dimensions collapsed to a single MVN?
 = \;&  \ln \mathcal{N}(\bs v_{m,c}; \hat{\bs v}_{m,c}, \bs S_{v,c}), &
@@ -357,9 +357,9 @@ The variational component for the inducing points of the common item mean follow
 \begin{flalign}
 \ln q(\bs t_m) = \;\;& %\mathbb{E}_{q(\bs F)}[
 \ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right) %] 
-+ \ln\mathcal{N}(\bs t_m; \bs 0, \bs K_{mm}/\mathbb{E}[s_t])
++ \ln\mathcal{N}(\bs t_m; \bs 0, \bs K_{mm}/\mathbb{E}[s^{(t)}])
 + \textrm{const} & \nonumber \\
-= \;\;& \ln \mathcal{N}\left( \bs t_m; \hat{\bs t}_{m}, \bs S_t \right), &
+= \;\;& \ln \mathcal{N}\left( \bs t_m; \hat{\bs t}_{m}, \bs s^{(t)} \right), &
 \end{flalign}
 where again, the posterior mean $\hat{\bs t}$ and covariance $\bs S_{t}$ use similar updates to Equation
 Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}, and their full definitions
@@ -374,14 +374,14 @@ the variational distribution for the inducing users factors is:% then as follows
 \begin{flalign}
 \ln q(\bs w_{m,c}) = \;\;& %\mathbb{E}_{q(\bs F)}\left[
 \ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right) %\right] 
-+ \ln\mathcal{N}(\bs w_{m,c}; \bs 0, \bs L_{mm})
++ \ln\mathcal{N}(\bs w_{m,c}; \bs 0, \bs L_{mm}/s^{(w)}_c)
 + \textrm{const} & \nonumber \\
 = \;\;& \ln \mathcal{N}\left( \bs w_{m,c}; \hat{\bs w}_{m,c}, \bs \Sigma_c \right), & 
 \end{flalign}
 where $\hat{\bs w}_c$ and $\bs \Sigma_{c}$ also follow the pattern of
 Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}, and their full definitions
 are given in Appendix \ref{sec:post_params}, Equations \ref{eq:St} and \ref{eq:hatt}.
-The expectations for the inverse scales, $s_1,...,s_c$ and $s_t$, can be 
+The expectations for the inverse scales, $s_1,...,s^{(v)}_c$ and $s^{(t)}$, can be 
 computed using Equation \ref{eq:qs} by
 substituting in the corresponding terms for each $\bs v_c$ or $\bs t$ instead of $\bs f$. 
 % The equations for the means and covariances 
@@ -394,10 +394,10 @@ substituting in the corresponding terms for each $\bs v_c$ or $\bs t$ instead of
 % (likewise for the observed users):
 % \begin{flalign}
 % \ln q(\bs V) & = \sum_{c=1}^C \ln \mathcal{N}\left( \bs v_c; \bs A_v\hat{\bs v}_{m,c}, 
-% \frac{\bs K_{v}}{\mathbb{E}[s_c]} + \bs A_v (\bs S_{m,c} - \frac{\bs K_{mm}}{\mathbb{E}[s_c]})\bs A_v \right) & \label{eq:qv} \\
+% \frac{\bs K_{v}}{\mathbb{E}[s^{(v)}_c]} + \bs A_v (\bs S_{m,c} - \frac{\bs K_{mm}}{\mathbb{E}[s^{(v)}_c]})\bs A_v \right) & \label{eq:qv} \\
 % \ln q(\bs t) & = \ln \mathcal{N}\left( \bs t; \bs A_t \hat{\bs t}_m, 
-% \frac{\bs K_{t}}{\mathbb{E}[s_t]} + \bs A_t (\bs S_t - \frac{\bs K_{mm}}{\mathbb{E}[s_t]})\bs A_t \right)  & \label{eq:qt}\\
-% \ln q(\bs W) & = \sum_{c=1}^C \ln \mathcal{N}\left( \bs w_c; \bs A_w \hat{\bs w}_{m,c}, \bs L_{} + \bs A_w (\bs\Sigma - \bs L_{mm}) \bs A_w \right). &
+% \frac{\bs K_{t}}{\mathbb{E}[s^{(t)}]} + \bs A_t (\bs s^{(t)} - \frac{\bs K_{mm}}{\mathbb{E}[s^{(t)}]})\bs A_t \right)  & \label{eq:qt}\\
+% \ln q(\bs W) & = \sum_{c=1}^C \ln \mathcal{N}\left( \bs w_c; \bs A_w \hat{\bs w}_{m,c}, \bs L_{} + \bs A_w (\bs\Sigma - \bs L_{mm}/s^{(w)}_c) \bs A_w \right). &
 % \label{eq:qw}
 % \end{flalign}
 

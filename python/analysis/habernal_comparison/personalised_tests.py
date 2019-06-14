@@ -30,7 +30,7 @@ nfactors = 50
 max_Kw_size = 2000
 
 # we changed this from 20000 when we allowed sy to be learned again.
-rate_s = 20000
+rate_s = 200
 
 class PersonalisedTestRunner(TestRunner):
 
@@ -251,7 +251,7 @@ class PersonalisedTestRunner(TestRunner):
                                            shape_sy0=shape_s0, rate_sy0=rate_s0,
                                            ninducing=M, forgetting_rate=0.9,
                                            delay=delay,
-                                           exhaustive_train_count=2)#1.0)
+                                           exhaustive_train_count=1)
 
         self.model.max_iter = 500 # same as for single user GPPL
         self.model.max_Kw_size = max_Kw_size
@@ -397,15 +397,17 @@ if __name__ == '__main__':
     runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
                                     dataset_increment)
 
+    max_fold = 5
+
     # PERSONALISED PREDICTION
     if test_to_run == 0:
-        runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=npairs, ls_factor=lsm)
+        runner.run_test_set(min_no_folds=0, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
 
     # CONSENSUS PREDICTION
     elif test_to_run == 1:
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
         runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
-        runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=npairs, ls_factor=lsm)
+        runner.run_test_set(min_no_folds=0, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
 
     # Plot the scales of the latent factors ----------------------------------------------------------------------
     if test_to_run < 4 and len(runner.vscales):
@@ -448,7 +450,7 @@ if __name__ == '__main__':
             ]
         runner.datasets = ['UKPConvArgCrowdSample']
         runner.methods = methods
-        runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=npairs, ls_factor=lsm)
+        runner.run_test_set(min_no_folds=0, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
 
     elif test_to_run == 7:
         methods = [
@@ -456,7 +458,7 @@ if __name__ == '__main__':
             ]
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
         runner.methods = methods
-        runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=npairs, ls_factor=lsm)
+        runner.run_test_set(min_no_folds=0, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
 
     elif test_to_run == 8:
         methods = [
@@ -465,7 +467,7 @@ if __name__ == '__main__':
             ]
         runner.datasets = ['UKPConvArgCrowdSample']
         runner.methods = methods
-        runner.run_test_set(min_no_folds=6, max_no_folds=32, npairs=npairs, ls_factor=lsm)
+        runner.run_test_set(min_no_folds=6, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
 
     elif test_to_run == 9: # commented so we run both tests with cBT
         methods = [
@@ -474,7 +476,7 @@ if __name__ == '__main__':
         ]
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
         runner.methods = methods
-        runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=npairs, ls_factor=lsm)
+        runner.run_test_set(min_no_folds=0, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
 
     elif test_to_run == 11: # commented so we run both tests with cBT
         methods = [
@@ -482,4 +484,4 @@ if __name__ == '__main__':
         ]
         runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
         runner.methods = methods
-        runner.run_test_set(min_no_folds=0, max_no_folds=32, npairs=npairs, ls_factor=lsm)
+        runner.run_test_set(min_no_folds=0, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
