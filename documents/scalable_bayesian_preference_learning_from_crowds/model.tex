@@ -302,6 +302,14 @@ taking into account any objective quality or widespread appeal that an item may 
 %which we will subsequently extend to a preference learning model for crowds of users and label sources. 
 % joint distribution
 % notes about problems with inference.
+
+This equation takes a similar form to the 
+\emph{cross-task crowdsourcing} model of ~\citet{mo2013cross}.
+Their approach uses matrix factorisation to model annotator performance in different tasks:
+ performance is a function of latent task features, latent annotator features, plus the annotator's overall performance. These correspond to the user components,
+ item components, and consensus utilities in crowdGPPL. The model differs, however,
+ in that it does not assume 
+
 \todo{Page 7, equation (5): you might want to cite precedence to this form of equation
 e.g. K. Mo, E. Zhong, and Q. Yang. Cross-task crowdsourcing. In Proceedings of the 19th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, KDD '13, pages 677-685, New York, NY, USA, 2013. ACM. ISBN 978-1-4503-2174-7. doi: 10.1145/2487575.2487593. URL http://doi.acm.org/10.1145/2487575.2487593.}
 

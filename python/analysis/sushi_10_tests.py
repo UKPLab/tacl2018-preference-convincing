@@ -114,9 +114,6 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
     if ninducing is None:
         ninducing = np.max([ifeats.shape[0], ufeats.shape[0]])
 
-    # TODO check whether this setup still works for Sushi-B tests. Then run on conv tests -- probably need to tune sy hyperparameters
-    # TODO test with the original selection of user inducing points again.
-
     model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
                                   shape_sy0=1e10, rate_sy0=1e10, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
@@ -278,7 +275,7 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
         Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                  shape_st0=shape_s0, rate_st0=rate_s0,
+                                  shape_st0=shape_s0, rate_st0=rate_s0 ** 100,
                                   shape_sy0=shape_s0, rate_sy0=rate_s0, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,

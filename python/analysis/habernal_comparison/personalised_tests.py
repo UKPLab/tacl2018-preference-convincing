@@ -240,13 +240,13 @@ class PersonalisedTestRunner(TestRunner):
             validx = self.method.find('_SS') + 3
             SS = int(self.method[validx:])
         else:
-            SS = 200
+            SS = 2000
 
         self.model = CollabPrefLearningSVI(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose,
                                            nfactors=F, rate_ls=1.0 / np.mean(self.ls_initial),
                                            use_common_mean_t=common_mean, max_update_size=SS, use_lb=True,
                                            shape_s0=shape_s0, rate_s0=rate_s0,
-                                           shape_st0=rate_s0, rate_st0=shape_s0,
+                                           shape_st0=shape_s0, rate_st0=rate_s0,
                                            shape_sy0=shape_s0, rate_sy0=rate_s0,
                                            ninducing=M, forgetting_rate=0.9,
                                            delay=delay,
