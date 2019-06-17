@@ -29,7 +29,7 @@ import numpy as np
 nfactors = 50
 max_Kw_size = 2000
 
-rate_s = 200
+rate_s = 20000
 
 class PersonalisedTestRunner(TestRunner):
 
@@ -240,7 +240,7 @@ class PersonalisedTestRunner(TestRunner):
             validx = self.method.find('_SS') + 3
             SS = int(self.method[validx:])
         else:
-            SS = 2000
+            SS = 200
 
         # TODO: has it actually learned different values for each factor?
         # If not, perhaps the initial y sample is too random, so it causes the factors to end up too similar?
