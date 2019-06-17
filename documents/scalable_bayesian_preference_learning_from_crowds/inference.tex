@@ -35,11 +35,17 @@ The cost of inference can be reduced using a \emph{sparse} approximation based o
 \emph{inducing points}, which act as substitutes for the set of points in the training dataset.
 By choosing a fixed number of inducing points, $M \ll N$, the computational cost is cut to $\mathcal{O}(NM^2)$,
 and the memory complexity to $\mathcal{O}(NM)$.
-These points must be selected so as to give a good approximation, 
-using either heuristics or optimizing their positions to maximize the approximate
+These points must be selected to give a good approximation
+using either heuristics or by optimizing their positions to maximize the approximate
 marginal likelihood. 
 The sparse approximation used by \citet{houlsby2012collaborative} for the collaborative GP 
-is the \emph{generalized fully independent training conditional} (GFITC)~\citep{snelson2006sparse}.
+is the \emph{generalized fully independent training conditional} (GFITC)~\citep{NIPS2007_3351}, 
+which generalizes the fully independent training conditional 
+(FITC)~\cite{snelson2006sparse} method to non-Gaussian likelihoods.
+FITC assumes that each training and test point is independent of all other points
+given the function values at the inducing points.
+This works for 
+
 In practice, GFITC is unsuitable for datasets with more than a few thousands points,
 as the computational and memory costs cannot be constrained
 and GFITC is not amenable to distributed computation~\citep{hensman2015scalable}.  

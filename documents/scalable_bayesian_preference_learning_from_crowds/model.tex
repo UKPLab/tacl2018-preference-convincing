@@ -281,6 +281,7 @@ Therefore, the utilities in $\bs F$ are evaluations of a joint
 preference function, $f$, which is a weighted sum over the latent functions:
 \begin{flalign}
   f(\bs x_a, \bs u_j) = \sum_{c=1}^C  v_c(\bs x_a) w_c(\bs u_j) + t(\bs x_a),
+  \label{eq:vw_plus_t}
 \end{flalign}
 where $\bs u_j$ are the features of user $j$ and $\bs x_a$ are the features of item $a$.
 
@@ -308,13 +309,27 @@ taking into account any objective quality or widespread appeal that an item may 
 % joint distribution
 % notes about problems with inference.
 
-This form of equation is also used in the 
+Although the model assumes a fixed number of components, $C$,
+the GP priors over $\bs w_c$ and $\bs v_c$ have a zero mean, which act as \emph{shrinkage}
+or \emph{ARD priors} that favour values close to zero~\citep{mackay1995probable,psorakis2011overlapping}. 
+Those components that are not required to explain the data will have posterior
+expectations and expected scales $1/s^{(v)}$ and $1/s^{(w)}$ approaching zero.
+Therefore, due to our choice of prior, it is not necessary to optimise the value
+of $C$, providing a sufficiently large number is chosen. 
+
+The form of Equation \ref{eq:vw_plus_t} is also used in the 
 \emph{cross-task crowdsourcing} model of ~\citet{mo2013cross}, which 
 uses matrix factorisation to model annotator performance in different tasks.
-In their model, $\bs t$ corresponds to the difficulty of a task to all users.
+In their model, $\bs t$ corresponds to the objective difficulty of a task.
 However, unlike crowdGPPL, they do not use Gaussian processes to model the factors, 
 nor apply
 the approach to preference learning.
+A similar model for preference learning is proposed by \citet{houlsby2012collaborative},
+but this does not include a consensus, and the values in $\bs v_c$ directly correspond
+to pairs, rather than individual items, which means we cannot easily infer the
+ranking function over items.
+Their model also omits the scale parameters for the
+GPs that are used to encourage shrinkage when $C$ is larger than required.
  
 We combine the matrix factorization method with the preference likelihood of Equation \ref{eq:plphi}
 to obtain a joint preference model for multiple users, \emph{crowdGPPL}:
@@ -345,10 +360,3 @@ index $p$ refers to a tuple, $\{u_p, a_p, b_p \}$, which identifies the user and
 and $L_{\eta}$ is the prior covariance between user feature vectors computed
 using the kernel function $k_{\eta}$.
 
-Although the model assumes a fixed number of components, $C$,
-the GP priors over $\bs w_c$ and $\bs v_c$ have a zero mean, which act as \emph{shrinkage}
-or \emph{ARD priors} that favour values close to zero~\citep{mackay1995probable,psorakis2011overlapping}. 
-Those components that are not required to explain the data will have posterior
-expectations and expected scales $1/s^{(v)}$ and $1/s^{(w)}$ approaching zero.
-Therefore, due to our choice of prior, it is not necessary to optimise the value
-of $C$, providing a sufficiently large number is chosen. 
