@@ -240,19 +240,23 @@ class PersonalisedTestRunner(TestRunner):
             validx = self.method.find('_SS') + 3
             SS = int(self.method[validx:])
         else:
-            SS = 200
+            SS = 2000
+
+        # TODO: has it actually learned different values for each factor?
+        # If not, perhaps the initial y sample is too random, so it causes the factors to end up too similar?
+        # So could we avoid it by setting values of one for each factor for each worker, or do we need to start with one factor per worker?
 
         self.model = CollabPrefLearningSVI(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose,
                                            nfactors=F, rate_ls=1.0 / np.mean(self.ls_initial),
                                            use_common_mean_t=common_mean, max_update_size=SS, use_lb=True,
                                            shape_s0=shape_s0, rate_s0=rate_s0,
-                                           shape_st0=rate_s0, rate_st0=shape_s0,
-                                           shape_sy0=shape_s0, rate_sy0=rate_s0,
+                                           shape_st0=shape_s0, rate_st0=rate_s0,
+                                           shape_sy0=1e10, rate_sy0=1e10,
                                            ninducing=M, forgetting_rate=0.9,
                                            delay=delay,
                                            exhaustive_train_count=1)
 
-        self.model.max_iter = 500 # same as for single user GPPL
+        self.model.max_iter = 200 # same as for single user GPPL
         self.model.max_Kw_size = max_Kw_size
 
         zero_centered_prefs = np.array(self.prefs_train, dtype=float) - 1
