@@ -2,7 +2,8 @@
 
 In the single user case, the goal is to infer the posterior distribution over the utilities of test items, $\bs f^*$, 
 given a set of pairwise training labels, $\bs y$. In the multi-user case, we aim to find the posterior over the matrix
-$\bs F^*=\bs V^{*T} \bs W^*$ of utilities for test items and test users.
+$\bs F^*=\bs V^{*T} \bs W^*$ of utilities for test items and test users,
+and the posterior over consensus utilities for test items, $\bs t^*$.
 The non-Gaussian likelihood makes exact inference intractable, hence previous work has used
  the Laplace approximation for the single user case~\citep{chu2005preference}
 or a combination of expectation propagation (EP) with variational Bayes (VB) for a 

@@ -87,6 +87,11 @@ def expec_output_scale(shape_s0, rate_s0, N, invK, f_mean, m, invK_f_cov=None, f
             invK_f_cov = invK.dot(f_cov)
 
     if invK.ndim == 1:
+        if not np.isscalar(m):
+            m = m.flatten()
+        if not np.isscalar(f_mean):
+            f_mean = f_mean.flatten()
+
         rate_s = rate_s0 + 0.5 * np.sum(invK_f_cov + invK * (f_mean - m)**2 )
     else:
         invK_expecFF = invK_f_cov + invK.dot((f_mean - m).dot(f_mean.T - m.T))

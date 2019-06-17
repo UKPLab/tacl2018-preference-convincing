@@ -268,21 +268,27 @@ and $\theta$ are kernel hyperparameters.
 %users' preferences, 
 We also assume that $\bs t = \{t(\bs {x}_1),...,t(\bs {x}_N)\}$
 contains evaluations of a consensus utility function over item features,
-$t\sim \mathcal{GP}(\bs 0, k_{\theta} /s^{(t)})$, which is shared across all users.
-Similarly, each row $\bs w_c=\{w_c(\bs u_1),...,w_c(\bs u_U)\}$ 
-of $\bs W$ contains evaluations of a latent function,
-$w_c \sim \mathcal{GP}(\bs 0, k_{\eta})$,
+$t\sim \mathcal{GP}(\bs 0, k_{\theta} /s^{(t)})$, which is shared across all users,
+with inverse scale $s^{(t)}$.
+Similarly, each row of $\bs W$, 
+$\bs w_c=\{w_c(\bs u_1),...,w_c(\bs u_U)\}$,
+ contains evaluations of a latent function,
+$w_c \sim \mathcal{GP}(\bs 0, k_{\eta}/s_c^{(w)})$,
 of user features, $\bs u_j$, 
-with kernel hyperparameters $\eta$.
+with inverse scale $s_c^{(w)}$
+and kernel hyperparameters $\eta$.
 Therefore, the utilities in $\bs F$ are evaluations of a joint
 preference function, $f$, which is a weighted sum over the latent functions:
 \begin{flalign}
   f(\bs x_a, \bs u_j) = \sum_{c=1}^C  v_c(\bs x_a) w_c(\bs u_j) + t(\bs x_a),
 \end{flalign}
 where $\bs u_j$ are the features of user $j$ and $\bs x_a$ are the features of item $a$.
-This model therefore assumes that items have an underlying consensus utility,
-given by $t(\bs x_a)$,
-and that individual user preferences then deviate from the consensus according
+
+CrowdGPPL therefore combines latent features of items and
+users -- represented by the latent components -- with the
+utilities of the items according to an underlying consensus across users.
+Given the consensus utility for item $a$, $t(\bs x_a)$,
+the individual preferences of user $j$ then deviate from the consensus according
 to $\sum_{c=1}^C  v_c(\bs x_a) w_c(\bs u_j)$. 
 Hence, when inferring the consensus utilities, we can subtract the effect of individual
 biases. The consensus can also help 
@@ -302,16 +308,14 @@ taking into account any objective quality or widespread appeal that an item may 
 % joint distribution
 % notes about problems with inference.
 
-This equation takes a similar form to the 
-\emph{cross-task crowdsourcing} model of ~\citet{mo2013cross}.
-Their approach uses matrix factorisation to model annotator performance in different tasks:
- performance is a function of latent task features, latent annotator features, plus the annotator's overall performance. These correspond to the user components,
- item components, and consensus utilities in crowdGPPL. The model differs, however,
- in that it does not assume 
-
-\todo{Page 7, equation (5): you might want to cite precedence to this form of equation
-e.g. K. Mo, E. Zhong, and Q. Yang. Cross-task crowdsourcing. In Proceedings of the 19th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, KDD '13, pages 677-685, New York, NY, USA, 2013. ACM. ISBN 978-1-4503-2174-7. doi: 10.1145/2487575.2487593. URL http://doi.acm.org/10.1145/2487575.2487593.}
-
+This form of equation is also used in the 
+\emph{cross-task crowdsourcing} model of ~\citet{mo2013cross}, which 
+uses matrix factorisation to model annotator performance in different tasks.
+In their model, $\bs t$ corresponds to the difficulty of a task to all users.
+However, unlike crowdGPPL, they do not use Gaussian processes to model the factors, 
+nor apply
+the approach to preference learning.
+ 
 We combine the matrix factorization method with the preference likelihood of Equation \ref{eq:plphi}
 to obtain a joint preference model for multiple users, \emph{crowdGPPL}:
 %represent a consensus between users,
@@ -319,13 +323,19 @@ to obtain a joint preference model for multiple users, \emph{crowdGPPL}:
 %Hence, $\bs t$ can model the underlying ground truth or consensus in crowdsourcing scenarios, or when using
 %multiple label sources to learn preferences for one individual.
 \begin{flalign}
-p\left( \bs{y}, \bs V, \bs W, \bs t, s_1, ..., s^{(v)}_c, s^{(t)} | k_{\theta}, k_{\eta}, \alpha_0, \beta_0 \right) 
+p\left( \bs{y}, \bs V, \bs W, \bs t, s^{(v)}_1, .., s^{(v)}_C, s^{(w)}_1, .., s^{(w)}_C,
+s^{(t)} | k_{\theta}, k_{\eta}, \alpha_0^{(t)}, \beta_0^{(t)},
+\alpha_0^{(v)}, \beta_0^{(v)}, \alpha_0^{(w)}, \beta_0^{(w)} \right) 
+ && \nonumber \\ 
 = \prod_{p=1}^P \Phi\left( z_p \right) 
 \mathcal{N}(\bs t; \bs 0, \bs K_{\theta} /s^{(t)})
- && \nonumber \\ 
-\mathcal{G}({s^{(t)}}; \alpha_0, \beta_0)\prod_{c=1}^C \left\{
-\mathcal{N}(\bs v_c; \bs 0, \bs K_{\theta} /s^{(v)}_c) 
-\mathcal{N}(\bs w_c; \bs 0, \bs L_{\eta}/s^{(w)}_c) \mathcal{G}(s^{(v)}_c; \alpha_0, \beta_0) \right\}, 
+\mathcal{G}({s^{(t)}}; \alpha_0^{(t)}, \beta_0^{(t)})
+\prod_{c=1}^C \left\{
+\mathcal{N}(\bs v_c; \bs 0, \bs K_{\theta} /s^{(v)}_c)
+\right.
+ && \nonumber \\  
+\left.
+\mathcal{N}(\bs w_c; \bs 0, \bs L_{\eta}/s^{(w)}_c) \mathcal{G}(s^{(v)}_c; \alpha_0^{(v)}, \beta_0^{(v)})\mathcal{G}(s^{(w)}_c; \alpha_0^{(w)}, \beta_0^{(w)}) \right\}, 
 \label{eq:joint_crowd}
 \end{flalign}
 where 
@@ -334,9 +344,11 @@ $z_p = \bs v_{.,a_p}^T \bs{w}_{.,u_p} + t_{a_p} - \bs v_{.,b_p}^T \bs{w}_{.,u_p}
 index $p$ refers to a tuple, $\{u_p, a_p, b_p \}$, which identifies the user and a pair of items,
 and $L_{\eta}$ is the prior covariance between user feature vectors computed
 using the kernel function $k_{\eta}$.
+
 Although the model assumes a fixed number of components, $C$,
-unnecessary components have no effect if $\bs v_c$ or $\bs w_c$ contain only zeroes.
-By setting the prior over $s^{(v)}_c$ or $s^{(w)}_c$ to favour large values,
- $\bs v_c$ or $\bs w_c$ have a higher probability of being close to zero,
- hence the posterior will avoid using any components 
- that are not required to model the data.
+the GP priors over $\bs w_c$ and $\bs v_c$ have a zero mean, which act as \emph{shrinkage}
+or \emph{ARD priors} that favour values close to zero~\citep{mackay1995probable,psorakis2011overlapping}. 
+Those components that are not required to explain the data will have posterior
+expectations and expected scales $1/s^{(v)}$ and $1/s^{(w)}$ approaching zero.
+Therefore, due to our choice of prior, it is not necessary to optimise the value
+of $C$, providing a sufficiently large number is chosen. 

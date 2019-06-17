@@ -276,7 +276,7 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
 
     model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
                                   shape_st0=shape_s0, rate_st0=rate_s0,
-                                  shape_sy0=1e2, rate_sy0=1e2, ls=None,
+                                  shape_sy0=1, rate_sy0=1, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                   use_common_mean_t=True, delay=delay)
