@@ -285,7 +285,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.y_u[:self.y_ninducing, :] = np.eye(self.y_ninducing)
                 self.y_u += np.random.rand(*self.y_u.shape) * 1e-6
             else:
-                self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))**2
+                self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))
                 # self.y_u = mvn.rvs(np.zeros(self.y_ninducing), self.Ky_mm, self.Nfactors) ** 2
 
             self.yinvSm = np.zeros((self.y_ninducing, self.Nfactors))
@@ -702,8 +702,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             max_iter_G = 1
         else:
             max_iter_G = self.max_iter_G
-            self.prev_winvS = self.winvS.copy()
-            self.prev_winvSm = self.winvSm.copy()
+
+        self.prev_winvS = self.winvS.copy()
+        self.prev_winvSm = self.winvSm.copy()
 
         rho_i = (self.vb_iter + self.delay) ** (-self.forgetting_rate)
         w_i = self.nobs / float(self.update_size)
@@ -790,8 +791,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             max_iter_G = 1
         else:
             max_iter_G = self.max_iter_G
-            self.prev_yinvSm = self.yinvSm.copy()
-            self.prev_yinvS = self.yinvS.copy()
+
+        self.prev_yinvSm = self.yinvSm.copy()
+        self.prev_yinvS = self.yinvS.copy()
 
         rho_i = (self.vb_iter + self.delay) ** (-self.forgetting_rate)
         w_i = np.sum(self.nobs) / float(self.update_size)

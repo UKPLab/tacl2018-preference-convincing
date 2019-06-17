@@ -271,10 +271,9 @@ contains evaluations of a consensus utility function over item features,
 $t\sim \mathcal{GP}(\bs 0, k_{\theta} /s^{(t)})$, which is shared across all users.
 Similarly, each row $\bs w_c=\{w_c(\bs u_1),...,w_c(\bs u_U)\}$ 
 of $\bs W$ contains evaluations of a latent function,
-$w_c \sim \mathcal{GP}(\bs 0, k_{\eta} / s^{(w)}_c)$,
+$w_c \sim \mathcal{GP}(\bs 0, k_{\eta})$,
 of user features, $\bs u_j$, 
-with inverse scale $s^{(w)}_c$ 
-and kernel hyperparameters $\eta$.
+with kernel hyperparameters $\eta$.
 Therefore, the utilities in $\bs F$ are evaluations of a joint
 preference function, $f$, which is a weighted sum over the latent functions:
 \begin{flalign}
