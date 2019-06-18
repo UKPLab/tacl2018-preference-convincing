@@ -1,3 +1,26 @@
+\section{Mathematical Notation}
+
+\begin{table}[h!]
+ \begin{tabular}{ll}
+ \toprule 
+ Symbol & Meaning \\
+ \midrule 
+ $y(a,b)$ & a binary label indicating whether item $a$ is preferred to item $b$ \\
+ $y_p$ & the $p$th pairwise label in a set of observations \\
+ $\bs y$ & the set of observed values of pairwise labels \\
+ $\bs x_a$ & the features of item a (a numerical vector) \\
+ $\bs x$ & the features of all items in the training set \\
+ $\bs x^*$ & the features of all items in the test set \\
+ $f$ & latent preference function over items \\
+ $\bs f$ & values of the latent preference function for a given set of items \\
+ $\hat{\bs f}$ & expected values of $\bs f$ \\
+ $s$ & an inverse function scale \\
+ \\
+ \bottomrule
+ \end{tabular}
+ \caption{Table of symbols used to represent variables in this paper.}
+\end{table}
+
 \section{Deriving the Variational Lower Bound for GPPL}
 \label{sec:vb_eqns}
 
@@ -173,6 +196,51 @@ where the subscripts $\bs a = \{ a_p \forall p \in P_i \}$
 and  $\bs b = \{b_p \forall p \in P_i \}$ are lists of indices to the first and 
 second items in the pairs, respectively, and $\bs A_{w,i} = \bs L_{im} \bs L_{mm}^{-1}$.
 
+
+\begin{algorithm}[h]
+ \KwIn{ Pairwise labels, $\bs y$, training item features, $\bs x$, training user features $\bs u$, 
+ test item features $\bs x^*$, test user features $\bs u^*$}
+ \nl Compute kernel matrices $\bs K$, $\bs K_{mm}$ and $\bs K_{nm}$ given $\bs x$\;
+ \nl Compute kernel matrices $\bs L$, $\bs L_{mm}$ and $\bs L_{nm}$ given $\bs u$\;
+ \nl Initialise $\mathbb{E}\left[s^{(t)}\right]$, $\mathbb{E}\left[s^{(v)}_c\right]\forall c$, 
+ $\mathbb{E}\left[s^{(w)}_c\right]\forall c$, $\mathbb{E}[\bs V]$, $\hat{\bs V}_m$,
+ $\mathbb{E}[\bs W]$, $\hat{\bs W}_m$,
+  $\mathbb{E}[\bs t]$ and $\hat{\bs t}_m$ 
+  to prior means\;
+ \nl Initialise $\bs S_{v,c}\forall c$ and $\bs S_t$ to prior covariance $\bs K_{mm}$,
+  $\bs S_{w,c}\forall c$ to prior covariance $\bs L_{mm}$\;
+ \While{$\mathcal{L}$ not converged}
+ {
+ \nl Select random sample, $\bs P_i$, of $P$ observations
+ \While{$\bs G_i$ not converged}
+  {
+  \nl Compute $\bs G_i$ given $\mathbb{E}[\bs F_i]$ \;
+  \nl Compute $\hat{\bs t}_{m,i}$ and $\bs S_{i}^{(t)}$ \;
+  \For{c in 1,...,C}
+  {
+    \nl Update $\mathbb{E}[\bs F_i]$ \;
+    \nl Compute $\hat{\bs v}_{m,c,i}$ and $\bs S_{i,c}^{(v)}$ \;
+    \nl Update $q\left(s^{(v)}_c\right)$, compute $\mathbb{E}\left[s^{(v)}_c\right]$ and 
+    $\mathbb{E}\left[\ln s^{(v)}_c\right]$\; 
+    \nl Update $\mathbb{E}[\bs F_i]$ \;
+    \nl Compute $\hat{\bs W}_{m,c,i}$ and $\bs \Sigma_{i,c}$ \;    
+    \nl Update $q\left(s^{(w)}_c\right)$, compute $\mathbb{E}\left[s^{(w)}_c\right]$ 
+    and $\mathbb{E}\left[\ln s^{(w)}_c\right]$\;
+  }
+  \nl Update $\mathbb{E}[\bs F_i]$ \;
+ }
+ \nl Update $q\left(s^{(t)}\right)$, compute $\mathbb{E}\left[s^{(t)}\right]$ and
+ $\mathbb{E}\left[\ln s^{(t)}\right]$ \;
+ }
+\nl Compute kernel matrices for test items, $\bs K_{**}$ and $\bs K_{*m}$, given $\bs x^*$ \;
+\nl Compute kernel matrices for test users, $\bs L_{**}$ and $\bs L_{*m}$, given $\bs u^*$ \;
+\nl Use converged values of $\mathbb{E}[\bs F]$ and $\hat{\bs F}_m$ to estimate
+posterior over $\bs F^*$ at test points \;
+\KwOut{ Posterior mean of the test values, $\mathbb{E}[\bs F^*]$ and covariance, $\bs C^*$ }
+\vspace{0.5cm}
+\caption{The SVI algorithm for crowdGPPL.}
+\label{al:crowdgppl}
+\end{algorithm}
 
 \section{Predictions with CrowdGPPL}
 \label{sec:predictions}

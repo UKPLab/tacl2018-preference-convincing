@@ -728,6 +728,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 scaling_f = self.y[f:f+1, self.y_idx_i].T.dot(self.y[f:f+1, self.y_idx_i]) + \
                             self.y_cov_i[f][self.uy_idx_i, :][:, self.uy_idx_i]
 
+                # TODO we don't actually need to know the off-diagonal values of y_cov_i[f] -- can we cut out that computational cost.
+
                 Sigma_w_f = covpair.dot(invQGT.dot(self.G) * scaling_f).dot(covpair.T)
 
                 # need to get invS for current iteration and merge using SVI weighted sum

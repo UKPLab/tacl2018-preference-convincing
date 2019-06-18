@@ -4,7 +4,7 @@
 \centering
 \small
  \setlength{\tabcolsep}{4pt}
-\begin{tabular}{p{1.8cm} p{1cm} p{1cm} l@{\hskip 0.4cm} l@{\hskip 0.5cm} l l@{\hskip 0.5cm} l l }
+\begin{tabular}{p{1.8cm} l l l@{\hskip 0.4cm} l@{\hskip 0.5cm} l l@{\hskip 0.5cm} l l }
 \toprule
 Dataset & \#folds/ & \#users & \#items & train & \multicolumn{2}{l}{test} & \multicolumn{2}{l}{\#features} \\
               & samples &              &               & \#pairs  & \#pairs & \#scores          & items & users \\
@@ -20,8 +20,12 @@ Sushi B & 25 & 5000 & 100 & 50000 & 5000 & 500000 &  18 & 123 \\
 UKPConvArg-CrowdSample & 32 & 1442 & 1052 & 16398 & 529 & 33 & 32310 & 0
 \\ \bottomrule
 \end{tabular}
-\caption{Summary of datasets showing mean counts per subsample or per fold. For the simulation datasets, we generate the subsamples of data independently, for Sushi we select subsamples independently from the dataset.  
-UKPConvArgCrowdSample is divided into folds, where the test data in each fold corresponds to a single topic and stance. The numbers of features are given after categorical labels have been converted to one-hot encoding, counting
+\caption{Summary of datasets showing counts per subsample. 
+For simulations, we generate the subsamples of data independently, 
+for Sushi we select subsamples independently from the dataset.  
+Values for UKPConvArgCrowdSample are means per fold, 
+where the test data in each fold corresponds to a single topic and stance. 
+Numbers of features are given after categorical labels have been converted to one-hot encoding, counting
 each category as a separate feature.
 }
 \label{tab:datasets}

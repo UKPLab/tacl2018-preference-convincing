@@ -331,21 +331,19 @@ $\bs K_{*m}$ is the covariance between test and inducing items.
 
 We now extend the SVI method to the crowd preference learning model proposed in
 Section \ref{sec:crowd_model}.
-To begin with, we extend the variational posterior in Equation \ref{eq:svi_approx}
-to approximate the crowd model defined in Equation \ref{eq:joint_crowd}:
+To begin with, we extend the variational posterior for GPPL (Equation \ref{eq:svi_approx})
+to the crowdGPPL model defined in Equation \ref{eq:joint_crowd}:
 \begin{flalign}
-& p( \bs V, \bs V_m, \bs W, \bs W_m, \bs t, \bs t_m, s_1, ..., s^{(v)}_c, s^{(t)} | \bs y, \bs x, \bs x_m, \bs u, \bs u_m, k, \alpha_0, \beta_0 ) & \\
-& 
-\approx 
-q(\bs t) q(\bs t_m)
-\prod_{c=1}^{C} q(\bs v_{c})q(\bs w_c)q(\bs v_{c,m})q(\bs w_{c,m})
-q(s^{(v)}_c)q(s^{(t)})
-= q(\bs F) q(s^{(t)}) \prod_{c=1}^C q(s^{(v)}_c), & \nonumber 
+& p( \bs V, \bs V_m, \bs W, \bs W_m, \bs t, \bs t_m, s^{(v)}_1, .., s^{(v)}_C,
+s^{(w)}_1, .., s^{(w)}_C, s^{(t)} | \bs y, \bs x, \bs x_m, \bs u, \bs u_m, k, \alpha_0, \beta_0 ) 
+& \nonumber \\
+& \approx q(\bs t) q(\bs t_m)q\left(s^{(t)}\right)\prod_{c=1}^{C} q(\bs v_{c})q(\bs w_c)q(\bs v_{c,m})q(\bs w_{c,m})
+q\left(s^{(v)}_c\right)q\left(s^{(w)}_c\right) & %\nonumber \\
+%& = q(\bs F) q(s^{(t)}) \prod_{c=1}^C q(s^{(v)}_c), &
 \end{flalign}
-where $\bs u_m$ are the feature vectors of inducing users. By updating 
-each of the $q$ factors in turn,
-the SVI procedure optimizes the lower bound on the marginal likelihood 
-(see also Equation \ref{eq:lowerbound_crowd_full} in the Appendix):
+where $\bs u_m$ are the feature vectors of inducing users and the variational $q$ factors are defined below.
+SVI can then be used to optimize the lower bound on the marginal likelihood 
+(see also Equation \ref{eq:lowerbound_crowd_full} in the Appendix), given by:
 \begin{flalign}
 \mathcal{L}_{cr} & = 
 \mathbb{E}_{q(\bs F)}%(\bs t, \bs t_m, \bs V, \bs V_m, \bs W, \bs W_m, s_1,...,s^{(v)}_c,s^{(t)})
@@ -359,48 +357,49 @@ the SVI procedure optimizes the lower bound on the marginal likelihood
   - \ln q(\bs w_{m,c} ) ] \bigg\} . & 
   \label{eq:lowerbound_crowd}
 \end{flalign}
-The algorithm follows the same pattern as Algorithm \ref{al:singleuser}, computing means and covariances
-for  $\bs V_m$, $\bs W_m$ and $\bs T_m$ instead of $\bs f_m$.
-%This approximation factorizes the joint distribution between the latent item factors, $\bs V$, the latent user factors, $\bs W$, and the common means, $\bs t$. 
-%but does not requiring factorization across the latent dimensions $\bs w_1,...,\bs w_C$ and $\bs v_1,...,\bs v_C$.
-The variational factor for the inducing item factors is:
-%TODO make the vectors all lower case for V_c and W_c
-%TODO do something to make sure all the block diags are properly indiciated including A_v... but actually I think they are useless because the off-diagonal blocks only affect the collapsed posterior covariance and are never used in computing any other variables.
-%TODO intialization of the factors
-%TODO put definition of f in somewhere in the model section 
-%TODO big Sigma is variance of W because it's different...
-%TODO why is the scaling by W nice and simple without off-diagonals, but scaling by V is not? I think that when Q is diagonal, off-diagonals in any scaling factors are irrelevant.
+The algorithm (detailed in Algorithm \ref{al:crowdgppl} in Appendix)
+follows the same pattern as Algorithm \ref{al:singleuser}, 
+updating each of the $q$ factors in turn by computing means and covariances
+for  $\bs V_m$, $\bs W_m$ and $\bs t_m$ instead of $\bs f_m$.
+
+The variational factor for the $c$th inducing item component is:
 \begin{flalign}
-\ln q(\bs v_{m,c}) = \;\;& % \mathbb{E}_{q(\bs F)}\left[ doesn't need this because it's already implicit in tilde Phi z
+\ln q(\bs v_{m,c}) = \;\;& 
 \ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right) % \right] 
  + \ln\mathcal{N}\left(\bs v_{m,c}; \bs 0, \bs K_{mm}/ \mathbb{E}[s^{(v)}_c]\right) 
 + \textrm{const} & \nonumber \\
 % are the dimensions collapsed to a single MVN?
-= \;&  \ln \mathcal{N}(\bs v_{m,c}; \hat{\bs v}_{m,c}, \bs S_{v,c}), &
+= \;&  \ln \mathcal{N}(\bs v_{m,c}; \hat{\bs v}_{m,c}, \bs S_c^{(v)}), &
 \end{flalign}
-where the posterior mean $\hat{\bs v}_{m,c}$ and covariance $\bs S_{v,c}$ are computed using 
+where the posterior mean $\hat{\bs v}_{m,c}$ and covariance $\bs S_c^{(v)}$ are computed using 
 update equations of the same form as those of the single user GPPL in 
 Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}.
-For reasons of space, we provide the complete equations for $\hat{\bs v}_{m,c}$ and $\bs S_{v,c}$ in 
+The noise precision, $\bs Q^{-1}$, in Equation \ref{eq:S_stochastic} is scaled by 
+expectation terms over $\bs w_{m,c}$,
+and $\hat{\bs f}_{m,i}$ is replaced by $\hat{\bs v}_{m,c,i}$.
+For reasons of space, we provide the complete equations for $\hat{\bs v}_{m,c}$ and $\bs S_c^{(v)}$ in 
 Appendix \ref{sec:post_params}, Equations \ref{eq:Sv} and \ref{eq:hatv}.
-The variational component for the inducing points of the common item mean follows a similar pattern:
+
+The factor for the inducing points of $\bs t$ follows a similar pattern to $\bs v_{m,c}$:
 \begin{flalign}
 \ln q(\bs t_m) = \;\;& %\mathbb{E}_{q(\bs F)}[
 \ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right) %] 
 + \ln\mathcal{N}(\bs t_m; \bs 0, \bs K_{mm}/\mathbb{E}[s^{(t)}])
 + \textrm{const} & \nonumber \\
-= \;\;& \ln \mathcal{N}\left( \bs t_m; \hat{\bs t}_{m}, \bs s^{(t)} \right), &
+= \;\;& \ln \mathcal{N}\left( \bs t_m; \hat{\bs t}_{m}, \bs S^{(t)} \right), &
 \end{flalign}
-where again, the posterior mean $\hat{\bs t}$ and covariance $\bs S_{t}$ use similar updates to Equation
-Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}, and their full definitions
-are given in Appendix \ref{sec:post_params}, Equations \ref{eq:St} and \ref{eq:hatt}.
+where the posterior mean $\hat{\bs t}$ and covariance $\bs S^{(t)}$ uses
+the same updates Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}, 
+except $\hat{\bs f}_{m,i}$ is replaced by $\hat{\bs t}_{m,i}$ 
+(see also Equations \ref{eq:St} and \ref{eq:hatt}).
+
 Finally, %require a different linearization matrix, $\bs J \in P \times U$, containing partial derivatives 
 %of the pairwise likelihood with respect to $\hat{w}_c$. Its elements are given by:
 %\begin{flalign}
 %J_{p,j} = \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p]) (2y_p - 1) [u_p = j] % needs to be added or subtracted depending on a or b
 %\end{flalign} 
 %now multiply by V. What about covariances between v?
-the variational distribution for the inducing users factors is:% then as follows:
+the variational distribution for each inducing users component is:% then as follows:
 \begin{flalign}
 \ln q(\bs w_{m,c}) = \;\;& %\mathbb{E}_{q(\bs F)}\left[
 \ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right) %\right] 
@@ -409,11 +408,16 @@ the variational distribution for the inducing users factors is:% then as follows
 = \;\;& \ln \mathcal{N}\left( \bs w_{m,c}; \hat{\bs w}_{m,c}, \bs \Sigma_c \right), & 
 \end{flalign}
 where $\hat{\bs w}_c$ and $\bs \Sigma_{c}$ also follow the pattern of
-Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}, and their full definitions
+Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic},
+with the noise precision, $\bs Q^{-1}$, scaled by expectations terms involving 
+$\bs w_{c,m}$,
+ and $\hat{\bs f}_{m,i}$ replaced by $\hat{\bs w}_{m,c,i}$.
+The full definitions
 are given in Appendix \ref{sec:post_params}, Equations \ref{eq:St} and \ref{eq:hatt}.
-The expectations for the inverse scales, $s_1,...,s^{(v)}_c$ and $s^{(t)}$, can be 
-computed using Equation \ref{eq:qs} by
-substituting in the corresponding terms for each $\bs v_c$ or $\bs t$ instead of $\bs f$. 
+
+The expectations for the inverse scales, $s^{(v)}_1,..,s^{(v)}_c$, $s^{(w)}_1,..,s^{(w)}_c$
+ and $s^{(t)}$ can be computed using Equation \ref{eq:qs} by
+substituting in the corresponding terms for each $\bs v_c$, $\bs w_c$ or $\bs t$ instead of $\bs f$. 
 % The equations for the means and covariances 
 % can be adapted for stochastic updating by applying weighted sums over
 % the stochastic update and the previous values in the 
@@ -430,7 +434,6 @@ substituting in the corresponding terms for each $\bs v_c$ or $\bs t$ instead of
 % \ln q(\bs W) & = \sum_{c=1}^C \ln \mathcal{N}\left( \bs w_c; \bs A_w \hat{\bs w}_{m,c}, \bs L_{} + \bs A_w (\bs\Sigma - \bs L_{mm}/s^{(w)}_c) \bs A_w \right). &
 % \label{eq:qw}
 % \end{flalign}
-\todo{shouldn't we state the whole algorithm as in GPPL?}
 As with GPPL, the stochastic updates are amenable to parallel computation within one iteration 
 of the variational inference algorithm,
  by performing computations for mini-batches of training data in parallel. 
@@ -440,12 +443,12 @@ and the covariance $\bs \Lambda_u^*$ for each user, $u$, in the test set:
 \begin{flalign} \label{eq:predict_crowd}
 &\bs F^* = \hat{\bs t}^* + \sum_{c=1}^C \hat{\bs v}_{c}^{*T} \hat{\bs w}_{c}^*, \hspace{1cm} \bs \Lambda_u^* = \bs C_{t}^* + \sum_{c=1}^C \omega_{c,u}^* \bs C_{v,c}^* + \hat{w}_{c,u}^2  \bs C_{v,c}^*  +\omega_{c,u}^* \hat{\bs v}_{c}\hat{\bs v}_{c}^T, &
 \end{flalign}
-where $\hat{\bs t}^*$, $\hat{\bs v}_{c}^*$ and $\hat{\bs w}_{c}^*$ are posterior means of the predictions,
-$\bs C_{t}^*$ and $\bs C_{v,c}^*$ are posterior item covariances of the predictions,
-and $\omega_{c,u}^*$ is the posterior variance for the user components for the predicted users. These
+where $\hat{\bs t}^*$, $\hat{\bs v}_{c}^*$ and $\hat{\bs w}_{c}^*$ are posterior test means,
+$\bs C_{t}^*$ and $\bs C_{v,c}^*$ are posterior covariances of the test items,
+and $\omega_{c,u}^*$ is the posterior variance for the user components for the test users. These
 terms are defined in Appendix \ref{sec:predictions}, Equations \ref{eq:tstar} to \ref{eq:omegastar}.
-The mean $\bs F^*$ and covariances $\Lambda^*_u$ can be inserted into Equations \ref{eq:predict_z} and \ref{eq:plphi} to predict pairwise labels.
-In practice, the full covariance terms are needed only for Equations \ref{eq:predict_z}, so need only be computed
+The mean $\bs F^*$ and covariances $\Lambda^*_u$ can be inserted into Equation \ref{eq:plphi} to predict pairwise labels.
+In practice, the full covariance terms are needed only for Equation \ref{eq:plphi}, so need only be computed
 between items for which we wish to predict pairwise labels. %Hence, the covariance for a large test set need not be computed at once.
 
 %In this section, we proposed an SVI scheme for GPPL and crowdGPPL, 

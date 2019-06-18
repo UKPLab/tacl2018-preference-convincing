@@ -256,7 +256,7 @@ class PersonalisedTestRunner(TestRunner):
                                            delay=delay,
                                            exhaustive_train_count=1)
 
-        self.model.max_iter = 500 # same as for single user GPPL
+        self.model.max_iter = 200 # same as for single user GPPL
         self.model.max_Kw_size = max_Kw_size
 
         zero_centered_prefs = np.array(self.prefs_train, dtype=float) - 1
