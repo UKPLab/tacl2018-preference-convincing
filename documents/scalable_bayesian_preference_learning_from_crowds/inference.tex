@@ -89,23 +89,50 @@ p(\bs y | \bs f) = \prod_{p=1}^P p(y_p | z_p)
 = \prod_{p=1}^P \Phi(z_p)
 %= \mathbb{E}\left[\prod_{p=1}^P \Phi(z_p)\right] = \prod_{p=1}^P \Phi(\hat{z}_p) 
 %\approx \mathcal{N}(\bs y; \Phi(\hat{\bs z}), \bs Q),
-\approx \mathcal{N}(\bs y; \Phi(\bs z), \bs Q),
+\approx \prod_{p=1}^P \mathcal{N}(y_p; \Phi(z_p), Q_{p,p}) = \mathcal{N}(\bs y; \Phi(\bs z), \bs Q),
 \label{eq:likelihood_approx}
 \end{flalign}
-where $\bs Q$ is a diagonal noise covariance matrix
-%and $\hat{\bs z}=\{\hat{z}_1, ..., \hat{z}_P\}$, and $\hat{z}_p$ is defined by 
-%Equation \ref{eq:predict_z}.
-with diagonal elements
-$Q_{p,p} = \Phi(z_p)(1 - \Phi(z_p))$ estimated
-by moment matching with the variance of the Bernoulli distribution over $y_p$ 
-defined by $\Phi(z_p)$.
- 
- %why we marganalising f? Do we introduce variational approx here?
-Marginalising $\bs f$ gives:
+where $\bs Q$ is a diagonal noise covariance matrix.
+Since each $\Phi(z_p)$ term defines a Bernoulli distribution over $y_p$,
+we could try to estimate the diagonals of $\bs Q$ as
+by moment matching with the variance of these Bernoulli distributions
+to give $Q_{p,p} = \Phi(z_p)(1 - \Phi(z_p))$.
+However, this means that the variance of the approximate likelihood
+depends on $\bs z$ and therefore on $p(\bs f)$,
+which would make the posterior intractable.
+
+Instead, we estimate the variance of the Bernoulli distribution 
+using a local approximation as follows.
+First, consider that the conjugate prior for the Bernoulli distribution 
+
+\begin{flalign}
+p(\bs f | \bs y) %\propto p(\bs y | \bs f)\mathcal{N}(\bs f; \bs 0, \bs K/s)
+\approx \frac{ \mathcal{N}(\bs y; \Phi(\bs z), \bs Q)\mathcal{N}(\bs f; \bs 0, \bs K/s) }{
+\int \mathcal{N}(\bs y; \Phi(\bs z), \bs Q)\mathcal{N}(\bs f'; \bs 0, \bs K/s) df'}
+\end{flalign}
+
+
+
+
+The posterior distribution over $\bs f$ given $\bs y$ therefore requires us
+to marginalise $\bs f$ itself:
+
+
+
+
+
+To resolve this, consider that the conjugate prior for the Bernoulli is a beta distribution,
+
+
+
+we estimate each variance, $\bs Q_{p,p}$ using a local approximation,
+rather than from $p(\bs f)$
+
+
+
 \begin{flalign}
 p(\bs y) & = \mathbb{E}_{\bs f}[\mathcal{N}(\bs y; \Phi(\bs z), \bs Q)] = \mathcal{N}(\bs y; \Phi(\hat{z}), \tilde{Q} ) & 
 \end{flalign}
-The conjugate prior for the Bernoulli is a beta distribution,
 we moment match the diagonal entries of $\bs Q$ to the expected variance of a bernoulli distribution as follows:
 \begin{flalign}
 \tilde{Q}_{p,p} & = \mathbb{E}_{\bs f}[\Phi(z_p)(1 - \Phi(z_p))] 
