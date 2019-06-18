@@ -17,8 +17,10 @@ For crowdGPPL, the true posterior is multi-modal, since the latent factors can b
 affecting $\bs F$, causing a \emph{non-identifiability problem}.
 EP would average these modes and produce uninformative predictions over $\bs F$, so
 \citet{houlsby2012collaborative} incorporate a VB step that approximates a single mode.
-A drawback of EP is that unlike VB, convergence is not guaranteed~\citep{minka2001expectation}.
-\todo{Page 8, line 12: VB is only guaranteed to converge for conjugate distributions.}
+A drawback of EP is that convergence is not guaranteed,
+whereas VB will always converge when distributions are conjugate 
+~\citep{minka2001expectation}.
+\todo{Do we actually state the complexity of our approach anywhere?}
 %do they also linearise in the same way? -- both linearise. But EP uses a joint over y and f as its approximation to p(y|f), then optimises the parameters iteratively. It's not guaranteed to converge. Variational EGP instead approximates
 % p(y|f) directly with the best fit Gaussian. It's not clear whether this could be updated iteratively but it doesn't
 % seem to work if done simultaneously with the other variables we need to learn (the linearisation), 
@@ -26,8 +28,6 @@ A drawback of EP is that unlike VB, convergence is not guaranteed~\citep{minka20
 % Possibly because Q does not change incrementally. So it's
 % possible that an outer loop could be used.
 
-\todo{Page 8, second paragraph: you criticise GFITC for not being decentralisable.  It is
-not clear to me that crowdGPPL is decentralisable.  }
 %TODO: remove redundancy with the related work section. Consider whether this should actually be in a background section. NM^2 is limiting, not just the other costs. The other costs NP etc come into play in this pairwise model only.
 Exact inference for a Gaussian process has computational complexity $\mathcal{O}(N^3)$ 
 and memory complexity $\mathcal{O}(N^2)$, where $N$ is the number of data points.
@@ -38,46 +38,77 @@ and the memory complexity to $\mathcal{O}(NM)$.
 These points must be selected to give a good approximation
 using either heuristics or by optimizing their positions to maximize the approximate
 marginal likelihood. 
-The sparse approximation used by \citet{houlsby2012collaborative} for the collaborative GP 
-is the \emph{generalized fully independent training conditional} (GFITC)~\citep{NIPS2007_3351}, 
+
+One such sparse approximation is the \emph{generalized fully independent training conditional} (GFITC)~\citep{NIPS2007_3351}, 
+used by \citet{houlsby2012collaborative} for the collaborative GP,
 which generalizes the fully independent training conditional 
 (FITC)~\cite{snelson2006sparse} method to non-Gaussian likelihoods.
 FITC assumes that each training and test point is independent of all other points
 given the function values at the inducing points.
-This works for 
+However, this may be less appropriate for the pairwise likelihood (Equation \ref{eq:plphi})
+because it ignores the covariance between the utilities of the items in the training
+pairs.
+In practice, memory costs that grow linearly with $\mathcal{O}(N)$
+start to become a problem with more than a few thousands points,
+which prohibits the use of GFITC in many large datasets. 
+It is also unclear how to apply distributed computation to GFITC to tackle the growing
+computational costs~\citep{hensman2015scalable}.
 
-In practice, GFITC is unsuitable for datasets with more than a few thousands points,
-as the computational and memory costs cannot be constrained
-and GFITC is not amenable to distributed computation~\citep{hensman2015scalable}.  
-%In contrast to crowdGPPL, \citet{houlsby2012collaborative} place GPs over the space of pairs rather than items,
-%which is typically much larger, meaning that $\mathcal{O}(PM^2 + UM^2)$ computational and $\mathcal{O}(PM + UM)$
-%memory costs dominate. 
-We derive a more scalable approach for GPPL and crowdGPPL using
+We now derive a more scalable approach for GPPL and crowdGPPL using
 stochastic variational inference (SVI), an iterative scheme that limits the computational and memory costs at
-each iteration~\citep{hoffman2013stochastic}.
-% how does hensman 2015 optimize inducing points? This is one selling point of SVI. 
-% Advantages of VB:  Nickisch 2008 got poorer results for VB methods they tried than EP. But our method may be different?, Seeger 2000
-First, we define an approximate likelihood that enables the SVI method.
-%then derive the SVI method for single user GPPL. update equations for the iterative algorithm to optimize
-%the approximation. We begin with single user GPPL then extend this to crowdGPPL. 
+each iteration~\citep{hoffman2013stochastic}
+and allows training data to be split into mini-batches for parallel processing,
+as we explain below.
+First, we define a suitable likelihood approximation to enable the use of SVI.
 
 \subsection{Approximate Pairwise Likelihood}
 
-\todo{ got really confused by Section 4.1.  In equation (7), p(y|f) is a product of the cdfs.  Where does the expectation come from just after the first equal sign? The second equal sign in (7) should be an approximation.  In equation (7), Q is (approximately) the covariance of y conditioned on f and yet, in equation (8), Q is determined by the expectation over f.  Can you please check this section and provide some further explanation.}
+\todo{ 
+%got really confused by Section 4.1.  In equation (7), p(y|f) is a product of the cdfs.  
+%that is correct.
+
+%Where does the expectation come from just after the first equal sign? 
+%fuck knows. I think that doesn't belong here, but should be stated later (it's already in eq 10, is that all we need?)
+
+%The second equal sign in (7) should be an approximation.  
+% I think what is missing is an approx after the first expectation, then the same thing with the expectation just inside the product. But why it here at all?
+
+In equation (7), Q is (approximately) the covariance of y conditioned on f and yet, in equation (8), Q is determined by the expectation over f.  
+% Need to explain: the variance of the beta is a function of its mean and the number of observations. So we to estimate this variance, we need to know the mean of f!
+% But i think eq 9 is somehow not quite right.
+
+Can you please check this section and provide some further explanation.}
 \todo{There are many approximations in Sec 4.1 in order to make a tractable inference. It is not clear after so many approximations, eq (7), eq (8), eq (9), eq (11)... , the resultant objective may be very far away from the original one. The properties from GP may not be effective. There is no study to check the gap.}
-To obtain a tracatable approximate posterior, we begin by approximating 
-the expected preference likelihood (Equation \ref{eq:plphi}) with a Gaussian:
+The preference likelihood in Equation \ref{eq:plphi} 
+is not conjugate with the Gaussian process, which makes the exact posterior intractable.
+We therefore
+approximate the preference likelihood with a Gaussian:
+%This avoids the need for quadrature methods, as in \cite{hensman2015scalable} or ...
 \begin{flalign}
-p(\bs y | \bs f) = \mathbb{E}\left[\prod_{p=1}^P \Phi(z_p)\right] = \prod_{p=1}^P \Phi(\hat{z}_p) \approx \mathcal{N}(\bs y; \Phi(\hat{\bs z}), \bs Q),
+p(\bs y | \bs f) = \prod_{p=1}^P p(y_p | z_p)
+= \prod_{p=1}^P \Phi(z_p)
+%= \mathbb{E}\left[\prod_{p=1}^P \Phi(z_p)\right] = \prod_{p=1}^P \Phi(\hat{z}_p) 
+%\approx \mathcal{N}(\bs y; \Phi(\hat{\bs z}), \bs Q),
+\approx \mathcal{N}(\bs y; \Phi(\bs z), \bs Q),
 \label{eq:likelihood_approx}
 \end{flalign}
 where $\bs Q$ is a diagonal noise covariance matrix
-and $\hat{\bs z}=\{\hat{z}_1, ..., \hat{z}_P\}$, and $\hat{z}_p$ is defined by 
-Equation \ref{eq:predict_z}.
-Since $\Phi(\hat{z}_p)$ defines a bernoulli distribution, for which the conjugate prior is a beta distribution,
+%and $\hat{\bs z}=\{\hat{z}_1, ..., \hat{z}_P\}$, and $\hat{z}_p$ is defined by 
+%Equation \ref{eq:predict_z}.
+with diagonal elements
+$Q_{p,p} = \Phi(z_p)(1 - \Phi(z_p))$ estimated
+by moment matching with the variance of the Bernoulli distribution over $y_p$ 
+defined by $\Phi(z_p)$.
+ 
+ %why we marganalising f? Do we introduce variational approx here?
+Marginalising $\bs f$ gives:
+\begin{flalign}
+p(\bs y) & = \mathbb{E}_{\bs f}[\mathcal{N}(\bs y; \Phi(\bs z), \bs Q)] = \mathcal{N}(\bs y; \Phi(\hat{z}), \tilde{Q} ) & 
+\end{flalign}
+The conjugate prior for the Bernoulli is a beta distribution,
 we moment match the diagonal entries of $\bs Q$ to the expected variance of a bernoulli distribution as follows:
 \begin{flalign}
-Q_{p,p} & = \mathbb{E}_{f}[\Phi(z_p)(1 - \Phi(z_p))] 
+\tilde{Q}_{p,p} & = \mathbb{E}_{\bs f}[\Phi(z_p)(1 - \Phi(z_p))] 
 %= \mathbb{E}_{\bs f}[\Phi(z_p)] - \mathbb{E}_{\bs f}[\Phi(z_p)]^2 - \mathbb{V}_{\bs f}[\Phi(z_p)], 
  \approx \frac{ (y_p + \gamma)(1-y_p + \lambda) }{ (\gamma + \lambda + 1)} - \frac{ (y_p + \gamma)(1-y_p + \lambda) }{ (\gamma + \lambda + 1)^2(\gamma + \lambda + 2)}, &
 \end{flalign}
@@ -129,9 +160,6 @@ We can now use the approximate likelihood to derive equations for SVI.% stochast
 
 \subsection{SVI for Single User GPPL}
 
-%TODO can we ommit the f from the posterior here?
-\todo{Page 9, Section 4.2: Please state up front that you are proposing a mean-field
-variational approximation in equation (11).  This will then justify why E[s] appears in equation (13). }
 We introduce a sparse approximation to the Gaussian process that allows
 us to limit the size of the covariance matrices we need to work with.
 % that needs to be inverted,
@@ -145,17 +173,18 @@ and covariance between the observed and inducing items, $\bs K_{nm}$.
 % and thereby reduce the number of data points we have to perform costly operations % over.
 %We modify the variational approximation in Equation \ref{eq:vb_approx} to introduce the inducing points 
 For clarity, we omit $\theta$ from this point on.
-We assume an approximation to the posterior over the inducing and training items
+We assume a \emph{mean-field} approximation to the posterior over the inducing and training items
 that factorises between different sets of latent variables:
 \begin{flalign}
 p(\bs f, \bs f_m, s | \bs y, \bs x, \bs x_m, k_{\theta}, \alpha_0, \beta_0) &\approx q(\bs f, \bs f_m, s) = q(s)q(\bs f)q(\bs f_m), \label{eq:svi_approx} &&
 \end{flalign}
 where are $q(.)$ are \emph{variational factors}, which we define below. 
-Each factor for a subset of latent variables, $\bs z$, takes the form $\ln q(\bs z) = \mathbb{E}_{\not \bs z}[\ln p(\bs z, \bs x, \bs y)]$, that is, the expectation with respect
+As we apply mean-field variational inference, 
+each factor for a subset of latent variables, $\bs z$, takes the form $\ln q(\bs z) = \mathbb{E}_{\not \bs z}[\ln p(\bs z, \bs x, \bs y)]$, that is, the expectation with respect
 to all other latent variables, $\not \bs z$, of the log joint distribution
 of the observations and the current subset of latent variables, $\bs z$.
 
-We marginalize $\bs f$ to obtain the factor for $\bs f_m$:
+We marginalize $\bs f$ to obtain the factor for $\bs f_m$, taking expectations with respect to $s$:
 \begin{flalign}
 \ln q(\bs f_m) &= \ln \mathcal{N}\left(\bs y; \tilde{\Phi}(\bs z), \bs Q\right)
 + \ln\mathcal{N}\left(\bs f_m; \bs 0, \bs K_{mm}/\mathbb{E}\left[s\right]\right)  + \textrm{const}, & \nonumber \\
@@ -284,12 +313,17 @@ $\mathbb{E}[s] = \frac{\alpha}{\beta}$.
 posterior over $\bs f^*$ at test points \;
 \KwOut{ Posterior mean of the test values, $\mathbb{E}[\bs f^*]$ and covariance, $\bs C^*$ }
 \vspace{0.5cm}
-\caption{The SVI algorithm for preference learning with a single user.}
+\caption{The SVI algorithm for GPPL: preference learning with a single user.}
 \label{al:singleuser}
 \end{algorithm}
 The complete SVI algorithm is summarized in Algorithm \ref{al:singleuser}.
 The use of an inner loop to learn $\bs G_i$ avoids the need to store the complete matrix, 
 $\bs G$.
+It is possible to distribute computation in lines 3-6 by selecting multiple random samples
+to be processed in parallel. Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}
+then simply take a sum over the values of $\bs S^{-1}_i$ and $\bs S^{-1}_i\hat{\bs f}_{m,i}$
+computed in each parallel thread, weighted by the amount of data in each thread.
+
 The inferred distribution over the inducing points can be used 
 for predicting the values of test items, $f(\bs x^*)$:
 \begin{flalign}
@@ -407,6 +441,10 @@ substituting in the corresponding terms for each $\bs v_c$ or $\bs t$ instead of
 % \ln q(\bs W) & = \sum_{c=1}^C \ln \mathcal{N}\left( \bs w_c; \bs A_w \hat{\bs w}_{m,c}, \bs L_{} + \bs A_w (\bs\Sigma - \bs L_{mm}/s^{(w)}_c) \bs A_w \right). &
 % \label{eq:qw}
 % \end{flalign}
+\todo{shouldn't we state the whole algorithm as in GPPL?}
+As with GPPL, the stochastic updates are amenable to parallel computation within one iteration 
+of the variational inference algorithm,
+ by performing computations for mini-batches of training data in parallel. 
 
 Predictions for crowdGPPL can be made by computing the posterior mean utilities, $\bs F^*$, 
 and the covariance $\bs \Lambda_u^*$ for each user, $u$, in the test set:
