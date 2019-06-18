@@ -256,7 +256,7 @@ class PersonalisedTestRunner(TestRunner):
                                            delay=delay,
                                            exhaustive_train_count=1)
 
-        self.model.max_iter = 200 # same as for single user GPPL
+        self.model.max_iter = 500 # same as for single user GPPL
         self.model.max_Kw_size = max_Kw_size
 
         zero_centered_prefs = np.array(self.prefs_train, dtype=float) - 1
@@ -400,7 +400,7 @@ if __name__ == '__main__':
     runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
                                     dataset_increment)
 
-    max_fold = 5
+    max_fold = 32
 
     # PERSONALISED PREDICTION
     if test_to_run == 0:

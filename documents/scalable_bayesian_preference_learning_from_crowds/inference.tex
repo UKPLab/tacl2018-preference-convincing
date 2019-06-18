@@ -61,92 +61,67 @@ and allows training data to be split into mini-batches for parallel processing,
 as we explain below.
 First, we define a suitable likelihood approximation to enable the use of SVI.
 
-\subsection{Approximate Pairwise Likelihood}
+\subsection{Approximating the Posterior with a Pairwise Likelihood}
 
-\todo{ 
-%got really confused by Section 4.1.  In equation (7), p(y|f) is a product of the cdfs.  
-%that is correct.
-
-%Where does the expectation come from just after the first equal sign? 
-%fuck knows. I think that doesn't belong here, but should be stated later (it's already in eq 10, is that all we need?)
-
-%The second equal sign in (7) should be an approximation.  
-% I think what is missing is an approx after the first expectation, then the same thing with the expectation just inside the product. But why it here at all?
-
-In equation (7), Q is (approximately) the covariance of y conditioned on f and yet, in equation (8), Q is determined by the expectation over f.  
-% Need to explain: the variance of the beta is a function of its mean and the number of observations. So we to estimate this variance, we need to know the mean of f!
-% But i think eq 9 is somehow not quite right.
-
-Can you please check this section and provide some further explanation.}
-\todo{There are many approximations in Sec 4.1 in order to make a tractable inference. It is not clear after so many approximations, eq (7), eq (8), eq (9), eq (11)... , the resultant objective may be very far away from the original one. The properties from GP may not be effective. There is no study to check the gap.}
 The preference likelihood in Equation \ref{eq:plphi} 
-is not conjugate with the Gaussian process, which makes the exact posterior intractable.
-We therefore
+is not conjugate with the Gaussian process, which means there is no analytic expression for
+the exact posterior.
+For single-user GPPL, we therefore
 approximate the preference likelihood with a Gaussian:
 %This avoids the need for quadrature methods, as in \cite{hensman2015scalable} or ...
 \begin{flalign}
-p(\bs y | \bs f) = \prod_{p=1}^P p(y_p | z_p)
-= \prod_{p=1}^P \Phi(z_p)
+p(\bs f | \bs y, s) & \propto \prod_{p=1}^P p(y_p | z_p) p(\bs f | \bs K, s)
+= \prod_{p=1}^P \Phi(z_p) \mathcal{N}(\bs f; \bs 0, \bs K/s)
 %= \mathbb{E}\left[\prod_{p=1}^P \Phi(z_p)\right] = \prod_{p=1}^P \Phi(\hat{z}_p) 
 %\approx \mathcal{N}(\bs y; \Phi(\hat{\bs z}), \bs Q),
-\approx \prod_{p=1}^P \mathcal{N}(y_p; \Phi(z_p), Q_{p,p}) = \mathcal{N}(\bs y; \Phi(\bs z), \bs Q),
-\label{eq:likelihood_approx}
+& \\
+& \approx \prod_{p=1}^P \mathcal{N}(y_p; \Phi(z_p), Q_{p,p}) \mathcal{N}(\bs f; \bs 0, \bs K/s)
+ = \mathcal{N}(\bs y; \Phi(\bs z), \bs Q) \mathcal{N}(\bs f; \bs 0, \bs K/s), &\nonumber 
 \end{flalign}
 where $\bs Q$ is a diagonal noise covariance matrix.
+For crowdGPPL, we use the same approximation to the likelihood, but
+replace $\bs f$ with $\bs F$ throughout this section.
+%There are two problems with this approximation so far:
+%firstly, $\Phi(\bs z)$ is a nonlinear function of $\bs f$,
+%which makes the posterior intractable:
+%\begin{flalign}
+%p(\bs f | \bs y) %\propto p(\bs y | \bs f)\mathcal{N}(\bs f; \bs 0, \bs K/s)
+%\approx \frac{ \mathcal{N}(\bs y; \Phi(\bs z), \bs Q)\mathcal{N}(\bs f; \bs 0, \bs K/s) }{
+%\int \mathcal{N}(\bs y; \Phi(\bs z), \bs Q)\mathcal{N}(\bs f'; \bs 0, \bs K/s) df'}
+%\end{flalign}
+%Secondly, we need to estimate the diagonal variance terms in $\bs Q$.
+
 Since each $\Phi(z_p)$ term defines a Bernoulli distribution over $y_p$,
-we could try to estimate the diagonals of $\bs Q$ as
-by moment matching with the variance of these Bernoulli distributions
+we estimate the diagonals of $\bs Q$ 
+by moment matching the variance of the Bernoulli distributions
 to give $Q_{p,p} = \Phi(z_p)(1 - \Phi(z_p))$.
 However, this means that the variance of the approximate likelihood
-depends on $\bs z$ and therefore on $p(\bs f)$,
-which would make the posterior intractable.
-
-Instead, we estimate the variance of the Bernoulli distribution 
-using a local approximation as follows.
-First, consider that the conjugate prior for the Bernoulli distribution 
-
+depends on $\bs z$ and therefore on $\bs f$,
+which means the posterior remains intractable.
+We resolve this by approximating $Q_{p,p}$ 
+independently for each pairwise label, $p$,
+thereby replacing intractable expectations with respect to $p(\bs f|\bs y)$
+with simple updates to the parameters of the conjugate priors over each $\Phi(z_p)$.
+The conjugate prior for the Bernoulli distribution with parameter $\Phi(z_p)$  
+is a beta distribution with parameters $\gamma$ and $\lambda$.
+We find $\gamma$ and $\lambda$ by 
+matching the moments of the beta distribution to the mean and variance of the prior defined by the Gaussian process, 
+$p(\Phi(z_p) | \bs K_{\theta}, \alpha_0, \beta_0)$,  
+found using numerical integration. 
+Assuming a beta prior over $\Phi(z_p)$ means that $y_p$ has a beta-Bernoulli
+distribution. Given the observed label $y_p$, we use
+the variance of the posterior beta-Bernoulli to estimate the diagonal variance terms in $\bs Q$ as:
 \begin{flalign}
-p(\bs f | \bs y) %\propto p(\bs y | \bs f)\mathcal{N}(\bs f; \bs 0, \bs K/s)
-\approx \frac{ \mathcal{N}(\bs y; \Phi(\bs z), \bs Q)\mathcal{N}(\bs f; \bs 0, \bs K/s) }{
-\int \mathcal{N}(\bs y; \Phi(\bs z), \bs Q)\mathcal{N}(\bs f'; \bs 0, \bs K/s) df'}
+Q_{p,p} & \approx \frac{ (\gamma + y_p)(\lambda + 1 - y_p) }{\gamma + \lambda + 1}.
 \end{flalign}
+This approximation has previously given good empirical performance when used
+for Gaussian process classification~\citep{reece2011determining,simpson2017bayesian} and 
+classification using extended Kalman filters~\citep{lee2010sequential,lowne2010sequential}. 
 
-
-
-
-The posterior distribution over $\bs f$ given $\bs y$ therefore requires us
-to marginalise $\bs f$ itself:
-
-
-
-
-
-To resolve this, consider that the conjugate prior for the Bernoulli is a beta distribution,
-
-
-
-we estimate each variance, $\bs Q_{p,p}$ using a local approximation,
-rather than from $p(\bs f)$
-
-
-
-\begin{flalign}
-p(\bs y) & = \mathbb{E}_{\bs f}[\mathcal{N}(\bs y; \Phi(\bs z), \bs Q)] = \mathcal{N}(\bs y; \Phi(\hat{z}), \tilde{Q} ) & 
-\end{flalign}
-we moment match the diagonal entries of $\bs Q$ to the expected variance of a bernoulli distribution as follows:
-\begin{flalign}
-\tilde{Q}_{p,p} & = \mathbb{E}_{\bs f}[\Phi(z_p)(1 - \Phi(z_p))] 
-%= \mathbb{E}_{\bs f}[\Phi(z_p)] - \mathbb{E}_{\bs f}[\Phi(z_p)]^2 - \mathbb{V}_{\bs f}[\Phi(z_p)], 
- \approx \frac{ (y_p + \gamma)(1-y_p + \lambda) }{ (\gamma + \lambda + 1)} - \frac{ (y_p + \gamma)(1-y_p + \lambda) }{ (\gamma + \lambda + 1)^2(\gamma + \lambda + 2)}, &
-\end{flalign}
-where $\gamma$ and $\lambda$ are parameters of a beta distribution with the same variance as the prior,
-$p(\Phi(z_p) | \bs K_{\theta}, \alpha_0, \beta_0)$, and are estimated using numerical integration.
-%Setting $\bs Q$ in this way matches the moments of the true likelihood, $\Phi(z_p)$,
-%to those of the Gaussian approximation.
-
-Unfortunately, the nonlinear term, $\Phi(\bs z)$ means that the posterior is still intractable, 
-so we linearize $\Phi(\bs z)$ by taking its first-order Taylor series expansion
-about the expectation of $\bs f$ for GPPL (for crowdGPPL, replace $\bs f$ with $\bs F$ in the following):
+Unfortunately, the nonlinear term $\Phi(\bs z)$ means that the posterior is still intractable, 
+so we replace $\Phi(\bs z)$ with a linear function of $\bs f$ by taking
+the first-order Taylor series expansion of $\Phi(\bs z)$ 
+about the expectation of $\bs f$:
 \begin{flalign}
 \Phi(\bs z) &\approx \tilde{\Phi}(\bs z) = \bs G (\bs f-\mathbb{E}[\bs f]) + \Phi(\hat{\bs z}), \\
 G_{p,i} &= \Phi(\mathbb{E}[z_p])(1 - \Phi(\hat{z}_p)) (2y_p - 1)( [i = a_p] - [i = b_p]) 
@@ -154,45 +129,46 @@ G_{p,i} &= \Phi(\mathbb{E}[z_p])(1 - \Phi(\hat{z}_p)) (2y_p - 1)( [i = a_p] - [i
 where $\bs G$ is a matrix containing elements $G_{p,i}$, which are the
 partial derivatives of the pairwise likelihood with respect to each of 
 the latent function values, $\bs f$.
-This creates a circular dependency between the posterior mean of $\bs f$ and $\bs G$, %the linearization terms in the likelihood,
-which can be estimated iteratively using variational inference~\citep{steinberg2014extended},
-as we describe below.
-Linearization makes the approximate likelihood conjugate to the prior, $\mathcal{N}(\bs f; \bs 0, \bs K_{\theta}/s)$,
-so that the approximate posterior over $\bs f$ is also Gaussian. 
-%We now use our likelihood approximation to define an approximate
-%posterior over all variables for GPPL:
-%use variational inference to estimate the marginal over $\bs f$,
-%by optimizing an approximate posterior over all latent variables:
-%\begin{flalign}
-%p(\bs f, s | \bs y, \bs x, k_{\theta}, & \alpha_0, \beta_0) \approx q(s)q(\bs f), & \nonumber \\
-%\textrm{where } \ln q(s) & = \mathbb{E}_{\bs f}[\ln p(s | \bs f, \alpha_0, \beta_0)] & \nonumber \\
-%& = \ln \mathcal{N}(\mathbb{E}[\bs f]; \bs 0, \bs K_{\theta}/s) + \ln \mathcal{G}(s; \alpha_0, \beta_0) + \textrm{const}, & \nonumber \\
-%\ln q(\bs f) & = \mathbb{E}_{s}[\ln p(\bs f | k_{\theta}, s, \bs x, \bs y) ] & \nonumber \\
-%& = \ln \mathcal{N}(\bs y; \tilde{\Phi}(\bs z), \bs Q) + \ln \mathcal{N}(\bs f; \bs 0, \bs K_{\theta}/\mathbb{E}[s]) + \textrm{const}. &
-%\label{eq:vb_approx}
-%\end{flalign}
-%don't some of the expectations over s simplify out?
-%Since the Gamma is conjugate to $s$, $q(s)$ is also a Gamma distribution. 
-%Likewise, the mean of the Gaussian likelihood approximation is
-%a linear function of $\bs f$, 
-%which has a multivariate Gaussian prior, hence
-%$q(\bs f)$ is also a multivariate Gaussian.
-The Gaussian likelihood approximation and linearization
-also appear in GP inference methods based on expectation propagation~\citep{rasmussen_gaussian_2006} 
-and the extended Kalman filter~\citep{reece2011determining,steinberg2014extended}.
-%However, neither these methods nor our approximation in Equation \ref{eq:vb_approx}
-%make inference sufficiently scalable, as they all require
-%inversion of an $N \times N$ matrix and further computations involving $N \times P$ and $P \times P$ matrices.
-We can now use the approximate likelihood to derive equations for SVI.% stochastic variational inference (SVI).
+This creates a circular dependency between the posterior mean of $\bs f$,
+which is needed to compute $\hat{\bs z}$, and $\bs G$. %the linearization terms in the likelihood,
+These terms
+can be estimated using a variational inference procedure
+that iterates between updating $\bs f$ and $\bs G$~\citep{steinberg2014extended},
+and is described in more detail below.
+
+The complete approximate posterior for GPPL is now as follows:
+\begin{flalign}
+p(\bs f | \bs y, s) & 
+\approx \frac{1}{Z}
+\mathcal{N}(\bs y; \bs G (\bs f-\mathbb{E}[\bs f]) + \Phi(\hat{\bs z}), \bs Q) \mathcal{N}(\bs f; \bs 0, \bs K/s) = \mathcal{N}(\bs f; \hat{\bs f}, \bs C), &
+\label{eq:likelihood_approx} 
+\end{flalign}
+where $Z$ is a normalisation constant.
+Linearisation means that our approximate likelihood is now conjugate to the prior,
+so the approximate posterior is also Gaussian. 
+%TODO any other variant in Nickish that uses linearization? Can we cite nickisch to say that linearization is good, m'kay?
+%TODO show the posterior without further SVI approximations?
+Gaussian approximations to the posterior have shown strong empirical results for tasks 
+such as classification~\citep{nickisch2008approximations}, including the 
+expectation propagation method~\citep{rasmussen_gaussian_2006}.
+Linearisation using a Taylor expansion has also been widely tested
+in the extended Kalman filter~\citep{haykin2001kalman},
+as well as applied previously to Gaussian processes with non-Gaussian likelihoods~\citep{steinberg2014extended,bonilla2016extended}.
+Given our approximate posterior, we can now derive an efficient inference scheme using SVI.
 
 \subsection{SVI for Single User GPPL}
 
-We introduce a sparse approximation to the Gaussian process that allows
+%TODO what's going on here? First, we need to learn s. Second, we need a more efficient way to learn
+% f without inverting K and without using all observations at once.
+Our linear approximation in the previous section permits
+iterative approximate inference for GPPL given $s$. However, computing the posterior covariance and mean requires inverting
+$\bs K$, which has computational cost $\mathcal{O}(N^3)$,
+and taking an expectation with respect to $s$, which remains intractable. 
+We address these problems using stochastic variational inference (SVI).
+First,
+we introduce a sparse approximation to the Gaussian process that allows
 us to limit the size of the covariance matrices we need to work with.
-% that needs to be inverted,
-%and permit stochastic inference methods that consider only a subset of the $P$ observations at each iteration
-%~\citep{hensman2013gaussian,hensman2015scalable}. 
-To do this, we introduce a set of $M \ll N$ \emph{inducing} items with inputs 
+This sparse approximation introduces a set of $M \ll N$ \emph{inducing} items with inputs 
 $\bs x_m$,
 utilities $\bs f_m$, covariance $\bs K_{mm}$,
 and covariance between the observed and inducing items, $\bs K_{nm}$.
@@ -200,18 +176,19 @@ and covariance between the observed and inducing items, $\bs K_{nm}$.
 % and thereby reduce the number of data points we have to perform costly operations % over.
 %We modify the variational approximation in Equation \ref{eq:vb_approx} to introduce the inducing points 
 For clarity, we omit $\theta$ from this point on.
-We assume a \emph{mean-field} approximation to the posterior over the inducing and training items
+We now assume a \emph{mean-field} approximation to the posterior over the inducing and training items
 that factorises between different sets of latent variables:
 \begin{flalign}
 p(\bs f, \bs f_m, s | \bs y, \bs x, \bs x_m, k_{\theta}, \alpha_0, \beta_0) &\approx q(\bs f, \bs f_m, s) = q(s)q(\bs f)q(\bs f_m), \label{eq:svi_approx} &&
 \end{flalign}
-where are $q(.)$ are \emph{variational factors}, which we define below. 
-As we apply mean-field variational inference, 
-each factor for a subset of latent variables, $\bs z$, takes the form $\ln q(\bs z) = \mathbb{E}_{\not \bs z}[\ln p(\bs z, \bs x, \bs y)]$, that is, the expectation with respect
+where $q(.)$ are \emph{variational factors}, which we define below. 
+Each factor corresponds to a subset of latent variables, $\bs z$, and
+takes the form $\ln q(\bs z) = \mathbb{E}_{\not \bs z}[\ln p(\bs z, \bs x, \bs y)]$.
+That is, the expectation with respect
 to all other latent variables, $\not \bs z$, of the log joint distribution
 of the observations and the current subset of latent variables, $\bs z$.
 
-We marginalize $\bs f$ to obtain the factor for $\bs f_m$, taking expectations with respect to $s$:
+To obtain the factor for $\bs f_m$, we marginalise $\bs f$ and take expectations with respect to $q(s)$:
 \begin{flalign}
 \ln q(\bs f_m) &= \ln \mathcal{N}\left(\bs y; \tilde{\Phi}(\bs z), \bs Q\right)
 + \ln\mathcal{N}\left(\bs f_m; \bs 0, \bs K_{mm}/\mathbb{E}\left[s\right]\right)  + \textrm{const}, & \nonumber \\
@@ -233,52 +210,31 @@ The factor $q(s)$ is also modified to depend on the inducing points:
 \end{flalign}
 where $\alpha= \alpha_0 + \frac{M}{2}$ and $\beta = \beta_0 + \frac{
 \textrm{tr}(\bs K^{-1}_{mm}(S + \hat{\bs f}_m \hat{\bs f}_m^T))}{2}$.
-%None of the other factors depend on $\ln q(\bs f)$,
-%so it need not be computed unless required for prediction.
+The expected value is  
+$\mathbb{E}[s] = \frac{\alpha}{\beta}$.
 
-%once the other factors have already been estimated, as explained in the next subsection.
-
-%Since the inducing points stand in for the observed locations,
-%their choice affects the quality of our approximation. 
-The location of inducing points can be learned
-as part of the variational inference procedure ~\citep{hensman2015scalable},
-or by optimizing a bound on the log marginal likelihood.
-However, the former breaks the convergence guarantees, and both approaches
-may add substantial computational cost. 
-We find that we are able to obtain good performance by choosing inducing points up-front using K-means++~\citep{arthur2007k} with $K=M$ to  
-cluster the feature vectors, 
-then taking the cluster centers as inducing points that represent the spread of observations across feature space.
-%Compared to standard K-means, K-means++ introduces a new method 
-%for choosing the initial cluster seeds that
-%provides theoretical bounds on the error function. In practice, this 
-%reduces the number of poor-quality clusterings.
-
-
-%\subsection{SVI for Single-User Preference Learning}
-
-%The approximate posterior can now be optimized using stochastic variational inference (SVI),
-%which uses a series of stochastic updates involving different subsets of the observations.
-%Variational inference 
-We can apply variational inference to iteratively reduce the KL-divergence between our approximate posterior
+We apply variational inference to iteratively reduce the KL-divergence between our approximate posterior
 %$q(s)q(\bs f)q(\bs f_m)$
-and the true posterior (both stated in Equation \ref{eq:svi_approx}) %, $p(s, \bs f, \bs f_m | \bs K, \alpha_0, \beta_0, \bs y)$,
-by maximizing a lower bound, $\mathcal{L}$, on the log marginal likelihood (see also the detailed equations in Appendix \ref{sec:vb_eqns}):
+and the true posterior (Equation \ref{eq:svi_approx}) %, $p(s, \bs f, \bs f_m | \bs K, \alpha_0, \beta_0, \bs y)$,
+by maximizing a lower bound, $\mathcal{L}$, on the log marginal likelihood (see also the detailed equations in Appendix \ref{sec:vb_eqns}), which is given by:
 %(see also Equation \ref{eq:full_L_singleuser} in the Appendix):%, $\ln p(\bs y | \bs K, \alpha_0, \beta_0)$ :
 \begin{flalign}
-\ln p(\bs y | \bs K, \alpha_0, \beta_0) = \textrm{KL}(q(\bs f, \bs f_m, s)  || p(\bs f, \bs f_m, s | \bs y, \bs K, \alpha_0, \beta_0)) 
-+ \mathcal{L} &&\label{eq:lowerbound}
+&\ln p(\bs y | \bs K, \alpha_0, \beta_0) = \textrm{KL}(q(\bs f, \bs f_m, s)  || p(\bs f, \bs f_m, s | \bs y, \bs K, \alpha_0, \beta_0)) 
++ \mathcal{L} & \label{eq:lowerbound}
 \\
 %\end{flalign}
 %Taking expectations with respect to the variational $q$ distributions, $\mathcal{L}$ is:
 %\begin{flalign}
-\mathcal{L} = \mathbb{E}_{q(\bs f)}[\ln p(\bs y | \bs f)]
+&\mathcal{L} = \mathbb{E}_{q(\bs f)}[\ln p(\bs y | \bs f)]
 + \mathbb{E}_{q(\bs f_m, s))}[\ln p(\bs f_m, s | \bs K, 
-\alpha_0, \beta_0) -\ln q(\bs f_m) - \ln & q(s) ]. && \nonumber
+\alpha_0, \beta_0) -\ln q(\bs f_m) - \ln q(s) ]. & \nonumber
 \end{flalign}
 %         invK_mm_expecFF = self.invK_mm.dot(self.uS + self.um_minus_mu0.dot(self.um_minus_mu0.T))
 %         self.rate_s = self.rate_s0 + 0.5 * np.trace(invK_mm_expecFF)
-We optimize $\mathcal{L}$ by initializing the $q$ factors randomly, then
-updating each one in turn, taking expectations with respect to the other factors. 
+To optimize $\mathcal{L}$,
+we initialize the $q$ factors randomly, then
+update each one in turn, taking expectations with respect to the other factors. 
+
 The only term in $\mathcal{L}$ that refers to the observations, $\bs y$, 
 is a sum of $P$ terms, each of which refers to one observation only.
 This means that $\mathcal{L}$ can be maximized iteratively by considering a random subset of 
@@ -314,11 +270,9 @@ where
 $\rho_i=(i + \epsilon)^{-r}$ is a mixing coefficient that controls the update rate,
 $\pi_i = \frac{P}{|P_i|}$ weights each update according to sample size,
  $\epsilon$ is a delay hyperparameter and $r$ is a forgetting rate~\citep{hoffman2013stochastic}.
-For the inverse scale, %, $s$, %can also be learned as part of the SVI procedure. Its variational factor,
-$q(s)$ is updated using Equation \ref{eq:qs}, then its expected value is computed as %has the following update equations:
-$\mathbb{E}[s] = \frac{\alpha}{\beta}$.
 
-\begin{algorithm}[t]
+The complete SVI algorithm is summarized in Algorithm \ref{al:singleuser}.
+\begin{algorithm}[h]
  \KwIn{ Pairwise labels, $\bs y$, training item features, $\bs x$, 
  test item features $\bs x^*$}
  \nl Compute kernel matrices $\bs K$, $\bs K_{mm}$ and $\bs K_{nm}$ given $\bs x$
@@ -343,16 +297,24 @@ posterior over $\bs f^*$ at test points \;
 \caption{The SVI algorithm for GPPL: preference learning with a single user.}
 \label{al:singleuser}
 \end{algorithm}
-The complete SVI algorithm is summarized in Algorithm \ref{al:singleuser}.
-The use of an inner loop to learn $\bs G_i$ avoids the need to store the complete matrix, 
+Using an inner loop to learn $\bs G_i$ avoids the need to store the complete matrix, 
 $\bs G$.
 It is possible to distribute computation in lines 3-6 by selecting multiple random samples
 to be processed in parallel. Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}
 then simply take a sum over the values of $\bs S^{-1}_i$ and $\bs S^{-1}_i\hat{\bs f}_{m,i}$
 computed in each parallel thread, weighted by the amount of data in each thread.
 
+Inducing point locations can be learned
+as part of the variational inference procedure ~\citep{hensman2015scalable},
+or by optimizing a bound on the log marginal likelihood.
+However, the former breaks the convergence guarantees, and both approaches
+may add substantial computational cost. 
+We find that we are able to obtain good performance by choosing inducing points up-front using K-means++ ~\citep{arthur2007k} with $M$ clusters to  
+cluster the feature vectors, 
+then taking the cluster centres as inducing points that represent the spread of observations across feature space.
+
 The inferred distribution over the inducing points can be used 
-for predicting the values of test items, $f(\bs x^*)$:
+to estimate the posteriors of test items, $f(\bs x^*)$, according to:
 \begin{flalign}
 \bs f^* \! \! &= \bs K_{*m} \bs K_{mm}^{-1} \hat{\bs f}_m, &
 \bs C^* \! \! = \bs K_{**} + \bs K_{*m} \bs K_{mm}^{-1} (\bs S - \bs K_{mm} / \mathbb{E}[s] ) \bs K_{*m}^T \bs K_{mm}^{-1},
