@@ -1,5 +1,3 @@
-\todo{ add in table of notations (maybe in the appendix)}
-
 \section{Bayesian Preference Learning for Crowds}\label{sec:model}
 
 %%%% Notes
@@ -42,14 +40,7 @@
 % -- maybe save this for future work? Or add a few lines if we can make it fit with the theme of the paper.
 % -- another is to replace the fixed number of clusters with a CRP, then the whole thing can be nonparameteric preference learning with crowds.
 
-%\subsection{Modeling Pairwise Preferences}
-
-% Include the case for one user -- preferences may depend on a number of observed features.
-
-%TODO items or instances?
-%TODO prefer the use of 'utility' to 'value' since there is some uncertainty (the evaluations by the users can flip at random)
-
-% this should be introduced in section 1. \citep{handleycomparative} -- compares BT with TM models
+\todo{this should be introduced in section 1. \citep{handleycomparative} -- compares BT with TM models}
 For a pair of items, $a$ and $b$, 
 $a \succ b$ indicates that $a$ is preferred to $b$.  
 % %\begin{equation}
@@ -114,6 +105,7 @@ Integrating out the unknown values of $\delta_a$ and $\delta_b$ gives:
 where $z = \frac{f(\bs x_a) - f(\bs x_b)}{\sqrt{2\sigma^2}}$,
 and $\Phi$ is the cumulative distribution function of the standard normal distribution,
 meaning that $\Phi(z)$ is a probit likelihood. 
+Please note that a full list of symbols is provided for reference in Appendix $\ref{sec:not}$.
 
 In practice, $f(\bs x_a)$ and $f(\bs x_b)$ must be inferred from
 pairwise training labels, $\bs y$,
@@ -159,7 +151,7 @@ and the \emph{Mat\'ern}~\citep{rasmussen_gaussian_2006},
 which both make minimal assumptions and are effective in a wide range of tasks. 
 These functions assign higher covariance to items with similar feature values.
 We use the kernel function $k_{\theta}$ to compute a covariance matrix $K_{\theta}$,
-between a set of $N$ observed items with features $\{ \bs x_1, ..., \bs x_N \}$.
+between a set of $N$ observed items with features $\bs X = \{ \bs x_1, ..., \bs x_N \}$.
 
 The model extends the original definition of
 \emph{Gaussian process preference learning (GPPL)}~\citep{chu2005preference},
@@ -178,7 +170,7 @@ where %the $p$th label,
 $y_p=y(a_p, b_p)$ is the preference label for items $a_p$ and $b_p$, % refers to items $\{ a_p, b_p \}$.
 we can write the joint distribution over all variables as follows:
 \begin{flalign}
-p\left( \bs{y}, \bs f, s | k_{\theta}, \alpha_0, \beta_0 \right) 
+p\left( \bs{y}, \bs f, s | k_{\theta}, \bs X, \alpha_0, \beta_0 \right) 
 =  \prod_{p=1}^P p( y_p | \bs f ) 
 \mathcal{N}(\bs f; \bs 0, \bs K_{\theta}/s) \mathcal{G}(s; \alpha_0, \beta_0) %\nonumber \\
 %=  \prod_{p=1}^P \Phi\left( z_p \right) 
@@ -338,25 +330,26 @@ to obtain a joint preference model for multiple users, \emph{crowdGPPL}:
 %Hence, $\bs t$ can model the underlying ground truth or consensus in crowdsourcing scenarios, or when using
 %multiple label sources to learn preferences for one individual.
 \begin{flalign}
-p\left( \bs{y}, \bs V, \bs W, \bs t, s^{(v)}_1, .., s^{(v)}_C, s^{(w)}_1, .., s^{(w)}_C,
-s^{(t)} | k_{\theta}, k_{\eta}, \alpha_0^{(t)}, \beta_0^{(t)},
-\alpha_0^{(v)}, \beta_0^{(v)}, \alpha_0^{(w)}, \beta_0^{(w)} \right) 
- && \nonumber \\ 
-= \prod_{p=1}^P \Phi\left( z_p \right) 
+&p\left( \bs{y}, \bs V, \bs W, \bs t, s^{(v)}_1 \!\!, .., s^{(v)}_C\!\!, s^{(w)}_1\!\!, .., s^{(w)}_C\!\!, s^{(t)} 
+| k_{\theta}, \bs X, k_{\eta}, \bs U, \alpha_0^{(t)}\!\!, \beta_0^{(t)}\!\!,
+\alpha_0^{(v)}\!\!, \beta_0^{(v)}\!\!, \alpha_0^{(w)}\!\!, \beta_0^{(w)} \right) 
+ & \nonumber \\ 
+& = \prod_{p=1}^P \Phi\left( z_p \right) 
 \mathcal{N}(\bs t; \bs 0, \bs K_{\theta} /s^{(t)})
 \mathcal{G}({s^{(t)}}; \alpha_0^{(t)}, \beta_0^{(t)})
 \prod_{c=1}^C \left\{
 \mathcal{N}(\bs v_c; \bs 0, \bs K_{\theta} /s^{(v)}_c)
 \right.
- && \nonumber \\  
-\left.
-\mathcal{N}(\bs w_c; \bs 0, \bs L_{\eta}/s^{(w)}_c) \mathcal{G}(s^{(v)}_c; \alpha_0^{(v)}, \beta_0^{(v)})\mathcal{G}(s^{(w)}_c; \alpha_0^{(w)}, \beta_0^{(w)}) \right\}, 
+ & \nonumber \\  
+&\left.
+\mathcal{N}(\bs w_c; \bs 0, \bs L_{\eta}/s^{(w)}_c) \mathcal{G}(s^{(v)}_c; \alpha_0^{(v)}, \beta_0^{(v)})\mathcal{G}(s^{(w)}_c; \alpha_0^{(w)}, \beta_0^{(w)}) \right\}, &
 \label{eq:joint_crowd}
 \end{flalign}
 where 
 $z_p = \bs v_{.,a_p}^T \bs{w}_{.,u_p} + t_{a_p} - \bs v_{.,b_p}^T \bs{w}_{.,u_p} - t_{b_p}$,
  $s^{(t)}$ is the inverse scale of $t$,
 index $p$ refers to a tuple, $\{u_p, a_p, b_p \}$, which identifies the user and a pair of items,
+$\bs U$ is the set of all feature vectors for all users,
 and $L_{\eta}$ is the prior covariance between user feature vectors computed
 using the kernel function $k_{\eta}$.
 

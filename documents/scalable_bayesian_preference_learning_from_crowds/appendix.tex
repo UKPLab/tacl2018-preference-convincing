@@ -1,25 +1,3 @@
-\section{Mathematical Notation}
-
-\begin{table}[h!]
- \begin{tabular}{ll}
- \toprule 
- Symbol & Meaning \\
- \midrule 
- $y(a,b)$ & a binary label indicating whether item $a$ is preferred to item $b$ \\
- $y_p$ & the $p$th pairwise label in a set of observations \\
- $\bs y$ & the set of observed values of pairwise labels \\
- $\bs x_a$ & the features of item a (a numerical vector) \\
- $\bs x$ & the features of all items in the training set \\
- $\bs x^*$ & the features of all items in the test set \\
- $f$ & latent preference function over items \\
- $\bs f$ & values of the latent preference function for a given set of items \\
- $\hat{\bs f}$ & expected values of $\bs f$ \\
- $s$ & an inverse function scale \\
- \\
- \bottomrule
- \end{tabular}
- \caption{Table of symbols used to represent variables in this paper.}
-\end{table}
 
 \section{Deriving the Variational Lower Bound for GPPL}
 \label{sec:vb_eqns}
@@ -402,3 +380,109 @@ users.
 % then proposes a new candidate value of $l_d$.
 % The process repeats until the optimizer converges or reaches a maximum number 
 % of iterations, and returns the value of $l_d$ that maximized $\mathcal{L}$.
+
+\section{Mathematical Notation}
+\label{sec:not}
+
+\begin{table}[h!]
+ \begin{tabularx}{\columnwidth}{p{1.7cm} X }
+ \toprule 
+ Symbol & Meaning \\
+ \midrule 
+ \multicolumn{2}{l}{\textbf{General symbols used with multiple variables}} \\
+ $\hat{}$ & an expectation over a variable \\
+ $\tilde{}$ & an approximation to the variable \\
+ upper case, bold letter & a matrix \\
+ lower case, bold letter & a vector \\
+ lower case, normal letter & a function or scalar \\
+ * & indicates that the variable refers to the test set, rather than the training set \\
+  \multicolumn{2}{l}{\textbf{Pairwise preference labels}} \\
+ $y(a,b)$ & a binary label indicating whether item $a$ is preferred to item $b$ \\
+ $y_p$ & the $p$th pairwise label in a set of observations \\
+ $\bs y$ & the set of observed values of pairwise labels \\
+ $\Phi$ & cumulative density function of the standard Gaussian (normal) distribution \\
+ $\bs x_a$ & the features of item a (a numerical vector) \\
+ $\bs X$ & the features of all items in the training set \\
+ $N$ & number of items in the training set \\
+ $P$ & number of pairwise labels in the training set \\
+ $\bs x^*$ & the features of all items in the test set \\
+ $\delta_a$ & observation noise in the utility of item $a$ \\
+ $\sigma^2$ & variance of the observation noise in the utilities \\
+ $z_p$ & the difference in utilities of items in pair $p$, normalised by its total variance \\
+ $\bs z$ & set of $z_p$ values for training pairs \\ 
+  \bottomrule
+ \end{tabularx}
+ \caption{Table of symbols used to represent variables in this paper (continued on next page
+ in Table \ref{tab:sym2}).}
+ \label{tab:sym1}
+\end{table}
+\begin{table}
+ \begin{tabularx}{\columnwidth}{p{1.7cm} X }
+ \toprule 
+ Symbol & Meaning \\
+ \midrule 
+\multicolumn{2}{l}{\textbf{GPPL (some terms also appear in crowdGPPL)}} \\
+ $f$ & latent utility function over items in single-user GPPL \\
+ $\bs f$ & utilities, i.e., values of the latent utility function for a given set of items \\
+ $\bs C$ & posterior covariance in $\bs f$ \\
+ $s$ & an inverse function scale; in crowdGPPL, superscripts indicate which function this variable scales \\
+ $k$ & kernel function \\
+ $\theta$ & kernel hyperparameters for the items \\
+ $\bs K$ & prior covariance matrix over items \\
+ $\alpha_0$ & shape hyperparameter of the inverse function scale prior \\
+ $\beta_0$ & scale hyperparameters of the inverse function scale prior \\
+ \multicolumn{2}{l}{\textbf{CrowdGPPL}} \\
+ $\bs F$ & matrix of utilities, where rows correspond to items and columns to users \\
+ $\bs t$ & consensus utilities \\
+ $C$ & number of latent components \\
+ $c$ & index of a component \\
+ $\bs V$ & matrix of latent item components, where rows correspond to components \\
+ $\bs v_c$ & a row of $\bs V$ for the $c$th component \\
+ $\bs W$ & matrix of latent user components, where rows correspond to components \\
+ $\bs w_c$ & a row of $\bs W$ for the $c$th component \\ 
+ $\bs \omega_c$ & posterior variance for the $c$th user component \\
+ $\eta$ & kernel hyperparameters for the users \\
+ $\bs L$ & prior covariance matrix over users \\
+ $\bs u_j$ & user features for user $j$ \\
+ $U$ & number of users in the training set \\
+ $\bs U$ & matrix of features for all users in the training set \\ 
+ \multicolumn{2}{l}{\textbf{Probability distributions}} \\
+ $\mathcal{N}$ & (multivariate) Gaussian or normal distribution \\
+ $\mathcal{G}$ & Gamma distribution \\
+% \bottomrule
+% \end{tabularx}
+% \caption{Table of symbols used to represent variables in this paper (continued on next page
+% in Table \ref{tab:sym2}).}
+% \label{tab:sym1}
+%\end{table}
+%\begin{table}
+% \begin{tabularx}{\columnwidth}{p{1.7cm} X }
+% \toprule 
+% Symbol & Meaning \\
+% \midrule 
+ \multicolumn{2}{l}{\textbf{Stochastic Variational Inference (SVI) }} \\
+ $M$ & number of inducing items \\
+ $\bs Q$ & estimated observation noise variance for the approximate posterior \\
+ $\gamma, \lambda$ & estimated hyperparameters of a Beta prior distribution over $\Phi(z_p)$ \\
+ $i$ & iteration counter for stochastic variational inference \\
+ $\bs f_m$ & utilities of inducing items \\
+ $\bs K_{mm}$ & prior covariance of the inducing items \\
+ $\bs K_{nm}$ & prior covariance between training and inducing items \\
+ $\bs S$ & posterior covariance of the inducing items; in crowdGPPL, a superscript and subscript 
+ indicate which variable this is the posterior covariance for \\
+ $\bs \Sigma$ & posterior covariance over the latent user components \\
+ $\bs A$ & $\bs K_{nm} \bs K_{mm}^{-1}$ \\
+ $\bs G$ & linearisation term used to approximate the likelihood \\
+ $a$ & posterior shape parameter for the Gamma distribution over $s$ \\
+ $b$ & posterior scale parameter for the Gamma distribution over $s$ \\
+ $\rho_i$ & a mixing coefficient, i.e., a weight given to the $i$th update when combining with current values of variational
+ parameters \\
+ $\epsilon$ & delay \\
+ $r$ & forgetting rate \\
+ $\pi_i$ & weight given to the update at the $i$th iteration using a subsample of the data \\
+ $|P_i|$ & number of pairwise labels in the $i$th iteration subsample \\
+ \bottomrule
+ \end{tabularx}
+ \caption{Table of symbols used to represent variables in this paper (continued from Table \ref{tab:sym1} on previous page).}
+ \label{tab:sym2}
+\end{table}

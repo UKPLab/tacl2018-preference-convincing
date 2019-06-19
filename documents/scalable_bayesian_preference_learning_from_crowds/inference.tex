@@ -169,7 +169,7 @@ First,
 we introduce a sparse approximation to the Gaussian process that allows
 us to limit the size of the covariance matrices we need to work with.
 This sparse approximation introduces a set of $M \ll N$ \emph{inducing} items with inputs 
-$\bs x_m$,
+$\bs X_m$,
 utilities $\bs f_m$, covariance $\bs K_{mm}$,
 and covariance between the observed and inducing items, $\bs K_{nm}$.
 % The inducing points act as proxies for the observed points during inference,
@@ -179,7 +179,7 @@ For clarity, we omit $\theta$ from this point on.
 We now assume a \emph{mean-field} approximation to the posterior over the inducing and training items
 that factorises between different sets of latent variables:
 \begin{flalign}
-p(\bs f, \bs f_m, s | \bs y, \bs x, \bs x_m, k_{\theta}, \alpha_0, \beta_0) &\approx q(\bs f, \bs f_m, s) = q(s)q(\bs f)q(\bs f_m), \label{eq:svi_approx} &&
+p(\bs f, \bs f_m, s | \bs y, \bs X, \bs X_m, k_{\theta}, \alpha_0, \beta_0) &\approx q(\bs f, \bs f_m, s) = q(s)q(\bs f)q(\bs f_m), \label{eq:svi_approx} &&
 \end{flalign}
 where $q(.)$ are \emph{variational factors}, which we define below. 
 Each factor corresponds to a subset of latent variables, $\bs z$, and
@@ -335,13 +335,13 @@ To begin with, we extend the variational posterior for GPPL (Equation \ref{eq:sv
 to the crowdGPPL model defined in Equation \ref{eq:joint_crowd}:
 \begin{flalign}
 & p( \bs V, \bs V_m, \bs W, \bs W_m, \bs t, \bs t_m, s^{(v)}_1, .., s^{(v)}_C,
-s^{(w)}_1, .., s^{(w)}_C, s^{(t)} | \bs y, \bs x, \bs x_m, \bs u, \bs u_m, k, \alpha_0, \beta_0 ) 
+s^{(w)}_1, .., s^{(w)}_C, s^{(t)} | \bs y, \bs X, \bs X_m, \bs U, \bs U_m, k, \alpha_0, \beta_0 ) 
 & \nonumber \\
 & \approx q(\bs t) q(\bs t_m)q\left(s^{(t)}\right)\prod_{c=1}^{C} q(\bs v_{c})q(\bs w_c)q(\bs v_{c,m})q(\bs w_{c,m})
 q\left(s^{(v)}_c\right)q\left(s^{(w)}_c\right) & %\nonumber \\
 %& = q(\bs F) q(s^{(t)}) \prod_{c=1}^C q(s^{(v)}_c), &
 \end{flalign}
-where $\bs u_m$ are the feature vectors of inducing users and the variational $q$ factors are defined below.
+where $\bs U_m$ are the feature vectors of inducing users and the variational $q$ factors are defined below.
 SVI can then be used to optimize the lower bound on the marginal likelihood 
 (see also Equation \ref{eq:lowerbound_crowd_full} in the Appendix), given by:
 \begin{flalign}

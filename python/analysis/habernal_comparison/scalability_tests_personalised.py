@@ -82,9 +82,9 @@ if __name__ == '__main__':
         datasets = ['UKPConvArgCrowdSample_evalMACE']
         methods = [
             #'SinglePrefGP_noOpt_weaksprior_M0',
-            #'SinglePrefGP_noOpt_weaksprior_M100',
+            'SinglePrefGP_noOpt_weaksprior_M100',
             #'PersPrefGP_noOpt_weaksprior_commonmean_M0',
-            'PersPrefGP_noOpt_weaksprior_commonmean_M100_F5',
+            #'PersPrefGP_noOpt_weaksprior_commonmean_M100_F5',
                    #'BI-LSTM'#'SVM', 'BI-LSTM'
             ] # M0 will mean no SVI
         feature_types = ['embeddings']
