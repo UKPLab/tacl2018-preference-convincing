@@ -95,6 +95,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         self.forgetting_rate = forgetting_rate
         self.delay = delay
 
+        self.factors_with_features = None
+
         self.conv_threshold_G = 1e-5
 
         self.t_mu0 = mu0
@@ -209,17 +211,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             # self.yinvS = np.zeros((self.Nfactors, self.y_ninducing))
             self.yinvS = np.array([self.invKy_mm*sy[f] for f in range(self.Nfactors)])
 
-            if self.y_ninducing <= self.Nfactors:
-                # give each person a factor of their own, with a little random noise so that identical users will
-                # eventually get clustered into the same set of factors.
-                self.y_u = np.zeros((self.Nfactors, self.y_ninducing))
-                self.y_u[:self.y_ninducing, :] = np.eye(self.y_ninducing)
-                self.y_u += np.random.rand(*self.y_u.shape) * 1e-6
-            else:
-                # positive values
-                self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))**2
+            self.y_u = [norm.rvs(0, 1, self.y_ninducing)**2 if f in self.factors_with_features
+                            else norm.rvs(0, 1, self.Npeople)**2 for f in range(self.Nfactors)]
 
-            self.yinvSm = np.zeros((self.y_ninducing, self.Nfactors))
+            self.yinvSm = np.zeros((self.Nfactors, self.y_ninducing))
             #self.yinvSm = np.concatenate([(self.yinvS[f] * (self.y_u[f]))[:, None] for f in range(self.Nfactors)], axis=1)
 
         else:
@@ -230,7 +225,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             # when the observed person features are only weakly informative, we can still use the local observations to
             # make predictions and don't rely on the inducing points. The same could be done for the items but has
             # not yet been implemented.
-            self.use_local_obs_posterior_y = True
+            #self.use_local_obs_posterior_y = True
 
             if self.y_ninducing >= self.Npeople:
                 self.y_ninducing = self.Npeople
@@ -273,22 +268,22 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
             # posterior covariance
             #self.yS = np.zeros((self.Nfactors, self.y_ninducing, self.y_ninducing))
-            self.yS = np.array([self.Ky_mm/sy[f] for f in range(self.Nfactors)])
+
+            if self.factors_with_features is None:
+                self.factors_with_features = np.arange(self.Nfactors)
+
+            self.yS = np.array([self.Ky_mm/sy[f] if f in self.factors_with_features
+                                else np.ones(self.Npeople)/sy[f] for f in range(self.Nfactors)])
             # self.yinvS = np.zeros((self.Nfactors, self.y_ninducing, self.y_ninducing))
-            self.yinvS = np.array([self.invKy_mm*sy[f] for f in range(self.Nfactors)])
+            self.yinvS = np.array([self.invKy_mm*sy[f]  if f in self.factors_with_features
+                                else np.ones(self.Npeople)/sy[f] for f in range(self.Nfactors)])
 
-            # posterior means
-            if self.y_ninducing <= self.Nfactors:
-                # give each person a factor of their own, with a little random noise so that identical users will
-                # eventually get clustered into the same set of factors.
-                self.y_u = np.zeros((self.Nfactors, self.y_ninducing))
-                self.y_u[:self.y_ninducing, :] = np.eye(self.y_ninducing)
-                self.y_u += np.random.rand(*self.y_u.shape) * 1e-6
-            else:
-                self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))
-                # self.y_u = mvn.rvs(np.zeros(self.y_ninducing), self.Ky_mm, self.Nfactors) ** 2
+            self.y_u = [norm.rvs(0, 1, self.y_ninducing) if f in self.factors_with_features
+                                else norm.rvs(0, 1, self.Npeople) for f in range(self.Nfactors)]
 
-            self.yinvSm = np.zeros((self.y_ninducing, self.Nfactors))
+
+            self.yinvSm = [np.ones(self.y_ninducing) if f in self.factors_with_features else
+                np.ones(self.Npeople) for f in range(self.Nfactors)]
             #self.yinvSm = np.concatenate([self.yinvS[f].dot(self.y_u[f:f+1].T) for f in range(self.Nfactors)], axis=1)
 
         self.prev_yinvSm = self.yinvSm.copy()
@@ -545,7 +540,12 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.y = self.y_u
             return
         else:
-            self.y = self.Ky_nm.dot(self.invKy_mm).dot(self.y_u.T).T
+            self.y = np.zeros((self.Nfactors, self.Npeople))
+            for f in range(self.Nfactors):
+                if f in self.factors_with_features:
+                    self.y[f] = self.Ky_nm.dot(self.invKy_mm).dot(self.y_u[f])
+                else:
+                    self.y[f] = self.y_u[f]
 
         # save for later
         batchsize = 500
@@ -802,8 +802,12 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         if self.person_features is not None:
             covpair = self.invKy_mm.dot(self.Ky_nm[self.y_idx_i].T)
+
+            if self.factors_with_features is not None:
+                covpair_ones = np.eye(self.Npeople)[self.y_idx_i, :].T
+
         else:
-            covpair = np.eye(self.Npeople)[self.y_idx_i, :].T
+            covpair_ones = np.eye(self.Npeople)[self.y_idx_i, :].T
 
         if self.verbose:
             logging.debug('_expec_y: starting update.')
@@ -823,16 +827,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
                 scaling_f = self.w[self.w_idx_i, f:f+1].dot(self.w[self.w_idx_i, f:f+1].T) \
                             + self.w_cov_i[f][self.uw_idx_i, :][:, self.uw_idx_i]
-                Sigma_y_f =  covpair.dot(scaling_f * invQG.dot(self.G)).dot(covpair.T)
-
-                # need to get invS for current iteration and merge using SVI weighted sum
-                if self.person_features is not None:
-                    self.yinvS[f] = (1-rho_i) * self.prev_yinvS[f] + rho_i * (self.shape_sy[f] / self.rate_sy[f] *
-                                                                              self.invKy_mm + w_i * Sigma_y_f)
-                else:
-                    Sigma_y_f = np.diag(Sigma_y_f)
-                    self.yinvS[f] = (1-rho_i) * self.prev_yinvS[f] + rho_i * (self.shape_sy[f] / self.rate_sy[f]
-                                                                                + w_i * Sigma_y_f)
 
                 z0 = pref_likelihood(self.obs_f, v=self.pref_v[self.data_obs_idx_i], u=self.pref_u[self.data_obs_idx_i]) \
                      - self.G.dot(self.w[self.w_idx_i, f:f+1] * self.y[f:f+1, self.y_idx_i].T)  # P x NU_i
@@ -840,23 +834,38 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 invQ_f = (self.w[self.w_idx_i, f:f+1] * self.G.T / self.Q[None, self.data_obs_idx_i]).dot(
                     self.z[self.data_obs_idx_i] - z0)
 
-                x = covpair.dot(invQ_f)
+                # need to get invS for current iteration and merge using SVI weighted sum
+                if self.person_features is not None and f in self.factors_with_features:
+                    Sigma_y_f = covpair.dot(scaling_f * invQG.dot(self.G)).dot(covpair.T)
 
-                # need to get x for current iteration and merge using SVI weighted sum
-                self.yinvSm[:, f] = (1-rho_i) * self.prev_yinvSm[:, f] + rho_i * w_i * x.flatten()
+                    self.yinvS[f] = (1-rho_i) * self.prev_yinvS[f] + rho_i * (self.shape_sy[f] / self.rate_sy[f] *
+                                                                              self.invKy_mm + w_i * Sigma_y_f)
 
-                if self.person_features is None:
-                    self.yS[f] = 1.0 / self.yinvS[f]
-                    self.y_u[f] = (self.yS[f].T * self.yinvSm[:, f]).T
-                    self.y[f] = self.y_u[f]
-                else:
+                    x = covpair.dot(invQ_f)
+
+                    self.yinvSm[f] = (1-rho_i) * self.prev_yinvSm[f] + rho_i * w_i * x.flatten()
+
                     self.yS[f] = np.linalg.inv(self.yinvS[f])
-                    self.y_u[f] = self.yS[f].dot(self.yinvSm[:, f])
+                    self.y_u[f] = self.yS[f].dot(self.yinvSm[f])
 
                     yf, _ = inducing_to_observation_moments(self.Ky_mm / self.shape_sy[f] * self.rate_sy[f],
-                                                            self.invKy_mm, self.Ky_nm, self.y_u[f:f + 1, :].T, 0)
+                                                            self.invKy_mm, self.Ky_nm, self.y_u[f][:, None], 0)
 
                     self.y[f:f + 1] = yf.T
+                else:
+                    Sigma_y_f = covpair_ones.dot(scaling_f * invQG.dot(self.G)).dot(covpair_ones.T)
+
+                    Sigma_y_f = np.diag(Sigma_y_f)
+                    self.yinvS[f] = (1-rho_i) * self.prev_yinvS[f] + rho_i * (self.shape_sy[f] / self.rate_sy[f]
+                                                                                + w_i * Sigma_y_f)
+
+                    x = covpair_ones.dot(invQ_f)
+
+                    self.yinvSm[f] = (1-rho_i) * self.prev_yinvSm[f] + rho_i * w_i * x.flatten()
+
+                    self.yS[f] = 1.0 / self.yinvS[f]
+                    self.y_u[f] = (self.yS[f].T * self.yinvSm[f]).T
+                    self.y[f] = self.y_u[f]
 
                 self.obs_f = (self.w.dot(self.y) + self.t).T.reshape(self.N * self.Npeople, 1)
 
@@ -874,9 +883,12 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 break
 
         for f in range(self.Nfactors):
-            self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.y_ninducing,
-                   self.invKy_mm, self.y_u[f:f + 1, :], np.zeros((self.y_ninducing, 1)), f_cov=self.yS[f])
-
+            if self.person_features is not None and f in self.factors_with_features:
+                self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.y_ninducing,
+                   self.invKy_mm, self.y_u[f][None, :], np.zeros((self.y_ninducing, 1)), f_cov=self.yS[f])
+            else:
+                self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.Npeople,
+                   np.ones(self.Npeople), self.y_u[f][None, :], np.zeros((self.Npeople, 1)), f_cov=self.yS[f])
 
     def _update_sample_idxs(self, data_obs_idx_i=None, compute_y_var=True):
         # do this in first iteration
@@ -945,7 +957,11 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             sy = self.shape_sy / self.rate_sy
 
             for f in range(self.Nfactors):
-                self.y_cov_i[f] = Ky_i / sy[f] + covpair.dot(self.yS[f] - self.Ky_mm / sy[f]).dot(covpair.T)
+                if f in self.factors_with_features:
+                    self.y_cov_i[f] = Ky_i / sy[f] + covpair.dot(self.yS[f] - self.Ky_mm / sy[f]).dot(covpair.T)
+                else:
+                    self.y_cov_i[f] = np.diag(self.yS[f][self.uy_i])
+
         else:
             for f in range(self.Nfactors):
                 self.y_cov_i[f] = np.diag(self.yS[f][self.uy_i])
@@ -1006,9 +1022,12 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             logpt = 0
             logqt = 0
 
-        logpy = np.sum([expec_pdf_gaussian(self.Ky_mm, self.invKy_mm, 0, self.y_ninducing, sy[f],
-                                   self.y_u[f:f+1, :].T, 0, self.yS[f], 0) for f in range(self.Nfactors)])
-        logqy = np.sum([expec_q_gaussian(self.yS[f], self.y_ninducing * self.Nfactors) for f in range(self.Nfactors)])
+        logpy = np.sum([expec_pdf_gaussian(self.Ky_mm if f in self.factors_with_features else np.ones(self.Npeople),
+                                           self.invKy_mm if f in self.factors_with_features else np.ones(self.Npeople),
+                                           0, self.y_ninducing, sy[f], self.y_u[f][:, None], 0, self.yS[f], 0)
+                        for f in range(self.Nfactors)])
+        logqy = np.sum([expec_q_gaussian(self.yS[f], (self.y_ninducing if f in self.factors_with_features
+                                  else self.Npeople) * self.Nfactors) for f in range(self.Nfactors)])
 
         logps_w = 0
         logqs_w = 0
@@ -1179,8 +1198,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             return self.yS
 
         v = np.array([inducing_to_observation_moments(self.Ky_mm / self.shape_sy[f] * self.rate_sy[f],
-                          self.invKy_mm, self.Ky_nm, self.y_u[f:f+1, :].T, 0, S=self.yS[f],
+                          self.invKy_mm, self.Ky_nm, self.y_u[f][:, None], 0, S=self.yS[f],
                           Ks_nn=self.rate_sy[f] / self.shape_sy[f])[1]
+                      if f in self.factors_with_features else self.yS[f]
                       for f in range(self.Nfactors)])
         return v
 
@@ -1277,6 +1297,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             Ky = self.Ky_nm
             Ky_starstar = self.Ky_nm.dot(self.invKy_mm).dot(self.Ky_nm.T)
             Npeople = self.person_features.shape[0]
+
         else:
             if self.verbose:
                 logging.debug('Computing Ky_nm in predict_y')
@@ -1288,13 +1309,18 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         covpair = Ky.dot(self.invKy_mm)
 
-        y_out = Ky.dot(self.invKy_mm).dot(self.y_u.T).T
+        y_out = np.zeros((self.Nfactors, Npeople))
+        for f in range(self.Nfactors):
+            y_out[f] = Ky.dot(self.invKy_mm).dot(self.y_u[f])
 
         if return_cov:
-            cov_y = np.zeros((self.Nfactors, Npeople, Npeople))
+            cov_y = []  # np.zeros((self.Nfactors, Npeople, Npeople))
             for f in range(self.Nfactors):
-                cov_y[f] = Ky_starstar * self.rate_sy[f] / self.shape_sy[f] \
-                       + covpair.dot(self.yS[f] - self.Ky_mm / self.shape_sy[f] * self.rate_sy[f]).dot(covpair.T)
+                if f in self.factors_with_features:
+                    cov_y.append( Ky_starstar * self.rate_sy[f] / self.shape_sy[f] \
+                       + covpair.dot(self.yS[f] - self.Ky_mm / self.shape_sy[f] * self.rate_sy[f]).dot(covpair.T) )
+                else:
+                    cov_y[f].append(self.yS[f])
         else:
             cov_y = None
 

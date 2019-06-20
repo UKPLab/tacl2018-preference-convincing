@@ -120,6 +120,8 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                   use_common_mean_t=use_common_mean, delay=delay)
 
+    model.factors_with_features = np.arange(Nfactors/2)
+    model.use_local_obs_posterior_y = False
     model.max_Kw_size = max_Kw_size
     model.max_iter = 200
     model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, ufeats, optimize, use_median_ls=True)
@@ -821,9 +823,9 @@ if __name__ == '__main__':
 
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
-                   #'crowd-GPPL',
+                   'crowd-GPPL',
                    # 'crowd-GPPL-noInduc',
-                   'crowd-GPPL\\u',
+                   # 'crowd-GPPL\\u',
                    # 'crowd-BMF',
                    # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
                    # 'GPPL-pooled',
@@ -862,9 +864,9 @@ if __name__ == '__main__':
 
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
-                   #'crowd-GPPL',
+                   'crowd-GPPL',
                    #'crowd-GPPL-noInduc',
-                   'crowd-GPPL\\u',
+                   #'crowd-GPPL\\u',
                    #'crowd-BMF',
                    #'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
                    #'GPPL-pooled',
@@ -968,8 +970,8 @@ if __name__ == '__main__':
 
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
-                   #'crowd-GPPL',
-                   'crowd-GPPL\\u',
+                   'crowd-GPPL',
+                   #'crowd-GPPL\\u',
                    #'crowd-BMF',
                    #'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
                    #'GPPL-pooled',

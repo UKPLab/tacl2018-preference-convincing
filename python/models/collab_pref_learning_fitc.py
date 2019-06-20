@@ -246,18 +246,18 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
                 x = covpair.dot(invQ_f)
 
                 # need to get x for current iteration and merge using SVI weighted sum
-                self.yinvSm[:, f] = (1-rho_i) * self.prev_yinvSm[:, f] + rho_i * w_i * x.flatten()
+                self.yinvSm[f] = (1-rho_i) * self.prev_yinvSm[f] + rho_i * w_i * x.flatten()
 
                 if self.person_features is None:
                     self.yS[f] = 1.0 / self.yinvS[f]
-                    self.y_u[f] = (self.yS[f].T * self.yinvSm[:, f]).T
+                    self.y_u[f] = (self.yS[f].T * self.yinvSm[f]).T
                     self.y[f] = self.y_u[f]
                 else:
                     self.yS[f] = np.linalg.inv(self.yinvS[f])
-                    self.y_u[f] = self.yS[f].dot(self.yinvSm[:, f])
+                    self.y_u[f] = self.yS[f].dot(self.yinvSm[f])
 
                     yf, _ = inducing_to_observation_moments(self.Ky_mm / self.shape_sy[f] * self.rate_sy[f],
-                                                            self.invKy_mm, self.Ky_nm, self.y_u[f:f + 1, :].T, 0)
+                                                            self.invKy_mm, self.Ky_nm, self.y_u[f][:, None], 0)
 
                     self.y[f:f + 1] = yf.T
 
@@ -282,5 +282,4 @@ class CollabPrefLearningFITC(CollabPrefLearningSVI):
 
         for f in range(self.Nfactors):
             self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.y_ninducing,
-                                                                   self.invKy_mm, self.y_u[f:f + 1, :], np.zeros((self.y_ninducing, 1)),
-                                                                   f_cov=self.yS[f])
+                       self.invKy_mm, self.y_u[f][None, :], np.zeros((self.y_ninducing, 1)), f_cov=self.yS[f])
