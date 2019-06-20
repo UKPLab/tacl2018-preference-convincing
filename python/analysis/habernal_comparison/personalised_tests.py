@@ -470,7 +470,7 @@ if __name__ == '__main__':
             ]
         runner.datasets = ['UKPConvArgCrowdSample']
         runner.methods = methods
-        runner.run_test_set(min_no_folds=6, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
+        runner.run_test_set(min_no_folds=0, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
 
     elif test_to_run == 9: # commented so we run both tests with cBT
         methods = [

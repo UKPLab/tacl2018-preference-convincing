@@ -30,7 +30,7 @@ if __name__ == '__main__':
     expt_settings['folds'] = None
     expt_settings['foldorderfile'] = None
     data_root_dir = "./data/"
-    resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
+    resultsfile_template = 'habernal_%s_%s_%s_%s_di%.2f'
 
     expt_settings['dataset'] = 'UKPConvArgCrowdSample_evalMACE'
 
@@ -118,7 +118,7 @@ if __name__ == '__main__':
                     continue
 
                 gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, \
-                                            pred_tr_prob, postprocced = get_fold_data(data_f, f, expt_settings)
+                            pred_tr_prob, pred_tr_rank, postprocced = get_fold_data(data_f, f, expt_settings)
 
                 acc_m[f] = accuracy_score(gold_disc[gold_disc!=1], pred_disc[gold_disc!=1])
                 runtimes_m[f] = data_f[6]
@@ -203,7 +203,7 @@ if __name__ == '__main__':
                     fold = fold[1:-1]
                 expt_settings['fold_order'][f] = fold
 
-                gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, \
+                gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, pred_tr_rank, \
                                             pred_tr_prob, postprocced = get_fold_data(data_f, f, expt_settings)
 
                 acc_m[f] = accuracy_score(gold_disc[gold_disc!=1], pred_disc[gold_disc!=1])
@@ -359,7 +359,9 @@ if __name__ == '__main__':
                 runtimes_N_lq[m, n] = np.percentile(runtimes_m, 25)
                 runtimes_N_uq[m, n] = np.percentile(runtimes_m, 75)
 
-        fig3, ax3 = plt.subplots(figsize=(4, 2.5))
+        fig3, ax3 = plt.subplots(figsize=(3, 2.6))
+
+        Nvals = np.array(Nvals) / 1000
 
         ax3.plot(Nvals, runtimes_N[0], label='GPPL M=100', marker='o', color='blue', linewidth=2, linestyle='-.',
                  markersize=8)
@@ -367,17 +369,17 @@ if __name__ == '__main__':
         ax3.fill_between(Nvals, runtimes_N_lq[0], runtimes_N_uq[0], alpha=0.2, edgecolor='blue',
                          facecolor='blue')
 
-        ax3.plot(Nvals, runtimes_N[1], label='Crowd-GPPL M=100', marker='<', color='green', linestyle='-.',
+        ax3.plot(Nvals, runtimes_N[1], label='crowdGPPL M=100', marker='<', color='green', linestyle='-.',
                  linewidth=2, markersize=8)
 
         ax3.fill_between(Nvals, runtimes_N_lq[1], runtimes_N_uq[1], alpha=0.2, edgecolor='green',
                          facecolor='green')
 
-        ax3.set_xlabel('No. pairwise training labels')
+        ax3.set_xlabel('1000 pairwise training labels')
         ax3.set_ylabel('Runtime (s)')
         ax3.yaxis.grid('on')
-        #ax3.set_ylim(-5, 205)
-        plt.legend(loc='best')
+        ax3.set_ylim(-5, 600)
+        #plt.legend(loc='best')
 
         plt.tight_layout()
         plt.savefig(figure_save_path + '/num_pairs.pdf')
@@ -395,7 +397,7 @@ if __name__ == '__main__':
         runtimes_N_uq = np.zeros((len(methods), len(Nvals)))
 
         for n, N in enumerate(Nvals):
-            foldername = 'p2_%i/' % N
+            foldername = 'p3_%i/' % N
 
             for m, expt_settings['method'] in enumerate(methods):
                 print("Processing method %s" % expt_settings['method'])
@@ -450,7 +452,7 @@ if __name__ == '__main__':
                 runtimes_N_lq[m, n] = np.percentile(runtimes_m, 25)
                 runtimes_N_uq[m, n] = np.percentile(runtimes_m, 75)
 
-        fig3, ax3 = plt.subplots(figsize=(4, 2.5))
+        fig3, ax3 = plt.subplots(figsize=(3, 2.6))
 
         ax3.plot(Nvals, runtimes_N[0], label='GPPL M=100', marker='o', color='blue', linewidth=2, linestyle='-.',
                  markersize=8)
@@ -458,7 +460,7 @@ if __name__ == '__main__':
         ax3.fill_between(Nvals, runtimes_N_lq[0], runtimes_N_uq[0], alpha=0.2, edgecolor='blue',
                          facecolor='blue')
 
-        ax3.plot(Nvals, runtimes_N[1], label='Crowd-GPPL M=100', marker='<', color='green', linestyle='-.',
+        ax3.plot(Nvals, runtimes_N[1], label='crowdGPPL M=100', marker='<', color='green', linestyle='-.',
                  linewidth=2, markersize=8)
 
         ax3.fill_between(Nvals, runtimes_N_lq[1], runtimes_N_uq[1], alpha=0.2, edgecolor='green',
@@ -467,7 +469,7 @@ if __name__ == '__main__':
         ax3.set_xlabel('No. arguments in training set')
         ax3.set_ylabel('Runtime (s)')
         ax3.yaxis.grid('on')
-        # ax3.set_ylim(-5, 205)
+        ax3.set_ylim(-5, 600)
         plt.legend(loc='best')
 
         plt.tight_layout()
@@ -553,12 +555,12 @@ if __name__ == '__main__':
                        clip_on=False, linewidth=2, markersize=8)
         h3, = plt.plot(x_dims, runtimes_dims[0], label='GPPL', marker='o', color='blue',
                        clip_on=False, linewidth=2, markersize=8)
-        h4, = plt.plot(x_dims, runtimes_dims[1], label='Crowd-GPPL', marker='<', color='green',
+        h4, = plt.plot(x_dims, runtimes_dims[1], label='crowdGPPL', marker='<', color='green',
                        clip_on=False, linewidth=2, markersize=8)
 
         plt.xlim(0.9, 4.1)
         plt.xlabel('No. Features')
-        ax4.legend(handles=[h3, h4, h1, h2], labels=['GPPL', 'Crowd-GPPL', 'SVM', 'BiLSTM'],
+        ax4.legend(handles=[h3, h4, h1, h2], labels=['GPPL', 'crowdGPPL', 'SVM', 'BiLSTM'],
                    loc=(0.15, 0.6))
         ax4.yaxis.grid('on')
 

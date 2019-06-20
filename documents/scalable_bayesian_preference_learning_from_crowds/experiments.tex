@@ -655,17 +655,17 @@ Increasing the number of pairwise labels, $P$, above 1000, however, does not vis
 % SCALABILITY ----------------------------------------------------------
 \begin{figure}
 \captionsetup{justification=centering}
-\subfloat[Accuracy and runtime with varying $M$]{
+\subfloat[Varying $M$, using the complete training set]{
 \label{fig:M}
- \includegraphics[clip=true,trim=10 0 0 0,width=.38\columnwidth]{num_inducing_32310_features}
+ \includegraphics[clip=true,trim=10 0 0 0,width=.40\columnwidth]{num_inducing_32310_features}
 }
 \subfloat[Varying number of items, $N$.]{
 \label{fig:Ntr}
-\includegraphics[clip=true,trim=10 0 10 0,width=.32\columnwidth]{num_arguments}
+\includegraphics[clip=true,trim=10 0 10 0,width=.314\columnwidth]{num_arguments}
 }
 \subfloat[Varying no. pairwise training labels, $P$. ]{
 \label{fig:Npairs}
-\includegraphics[clip=true,trim=50 0 10 0,width=.27\columnwidth]{num_pairs}
+\includegraphics[clip=true,trim=43.5 0 10 0,width=.26\columnwidth]{num_pairs}
 }
 \caption{
     Runtimes for training+prediction of consensus function 
