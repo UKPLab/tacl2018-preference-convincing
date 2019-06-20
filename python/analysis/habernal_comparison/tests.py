@@ -418,12 +418,12 @@ class TestRunner:
             tr_proba = None
         
         if self.a_rank_test is not None:
-            predicted_f, _ = self.model.predict_f(self.items_feat, self.a_rank_test)
+            predicted_f, _ = self.model.predict_f(None, self.a_rank_test)
         else:
             predicted_f = None
 
         if self.a_rank_train is not None:
-            tr_f, _ = self.model.predict_f(self.items_feat, self.a_rank_train)
+            tr_f, _ = self.model.predict_f(None, self.a_rank_train)
         else:
             tr_f = None
 
@@ -1111,20 +1111,57 @@ class TestRunner:
 
                 if predicted_f is not None and predicted_f.size == scores_rank_test.size:
                     # print out the pearson correlation
-                    tau, _ = kendalltau(scores_rank_test, predicted_f.flatten())
+
+                    tau = []
+                    tau_40 = []
+                    for upeep in np.unique(person_rank_test):
+                        idxs = person_rank_test == upeep
+
+                        tau_p, _ = kendalltau(scores_rank_test, predicted_f.flatten())
+
+                        tau.append(tau_p)
+
+                        if np.sum(idxs) >= 40:
+                            tau_40.append(tau_p)
+
+                    tau = np.mean(tau)
+                    tau_40 = np.mean(tau_40)
+
                     print("Kendall's tau for fold = %f" % tau)
+                    print("For worker IDs with at least 40 annotations: Kendall's tau for fold = %f" % tau_40)
+
                   
                 if tr_proba is not None:
                     tr_acc = np.sum(gold_train[gold_train != 1] == 2 * np.round(tr_proba).flatten()[gold_train != 1]
                             ) / float(np.sum(gold_train != 1))
 
                     tr_cee = log_loss(gold_train[gold_train != 1]==2, tr_proba[gold_train != 1])
-                    tr_tau, _ = kendalltau(scores_rank_train, tr_f)
 
                     print("Unseen data in the training fold, accuracy for fold = %f" % tr_acc )
                 else:
                     tr_acc = 0
                     tr_cee = 0
+
+                if tr_f is not None:
+                    tr_tau = []
+                    tr_tau_40 = []
+                    for upeep in np.unique(person_rank_train):
+                        idxs = person_rank_train == upeep
+
+                        tau_p, _ = kendalltau(scores_rank_train, tr_f.flatten())
+
+                        tr_tau.append(tau_p)
+
+                        if np.sum(idxs) >= 40:
+                            tr_tau_40.append(tau_p)
+
+                    tr_tau = np.mean(tr_tau)
+                    tr_tau_40 = np.mean(tr_tau_40)
+
+                    print("(training set) Kendall's tau for fold = %f" % tr_tau)
+                    print("(training set) For worker IDs with at least 40 annotations: Kendall's tau for fold = %f" % tr_tau_40)
+
+                else:
                     tr_tau = 0
 
 
@@ -1180,8 +1217,8 @@ class TestRunner:
                 except:
                     metrics = []
 
-                metrics.append([acc, CEE, tau, tr_acc, tr_cee, tr_tau])
-                metric_names = ['acc', 'CEE', 'tau', 'tr_acc', 'tr_CEE', 'tr_tau']
+                metrics.append([acc, CEE, tau, tau_40, tr_acc, tr_cee, tr_tau, tr_tau_40])
+                metric_names = ['acc', 'CEE', 'tau', 'tau_40', 'tr_acc', 'tr_CEE', 'tr_tau', 'tr_tau_40']
                 pd.DataFrame(metrics, columns=metric_names).to_csv(results_file, index=False)
 
 

@@ -180,13 +180,13 @@ class PersonalisedTestRunner(TestRunner):
                                     ninducing=M, max_update_size=SS, kernel_combination=kernel_combination,
                                     forgetting_rate=0.7,
                                     delay=1.0)
-        self.model.max_iter_VB = 200
+        self.model.max_iter_VB = 2  #00
         new_items_feat = self.items_feat  # pass only when initialising
 
         print("no. features: %i" % new_items_feat.shape[1])
         self.model.fit(self.items_feat, self.crowdBT_s, obs_noise=self.crowdBT_sigma ** 2)
 
-        predicted_f, _ = self.model.predict_f(self.items_feat)  #self.model.obs_f
+        predicted_f, _ = self.model.predict_f()  #self.model.obs_f
 
         balance = 0
         proba = np.exp(predicted_f[self.a1_test]) / (
