@@ -307,7 +307,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.invKv = np.linalg.inv(self.Kv)
 
             self.w_u = np.concatenate((self.w_u, self.V), axis=1)
-            self.y_u = np.concatenate((self.y_u, np.ones((self.Npeople, self.Npeople))), axis=0)
+            self.y_u = np.concatenate((self.y_u, np.eye(self.Npeople)), axis=0)
 
         # moments of distributions over inducing points for convenience
         # posterior covariance

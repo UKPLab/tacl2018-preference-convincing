@@ -335,11 +335,11 @@ Method & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ \\
 %\multicolumn{13}{|l|}{\textit{crowdGPPL}} \\
 crowdGPPL & \textbf{.71} & \textbf{.56} & .48 %& 38%
 & .84 & .33 & .79 %& 21
-& . & . & .%& 4724 \\
-\\
+& . & . & .  %& 4724 \\
+ \\
 crowdGPPL $\backslash $inducing & .70 & .60 & .45 %& 51 %(14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
 % new results 02.04
-& . & . & . %& 39
+& .84 & .34 & .78 %& 39
 & - & - & - 
 \\
 crowdGPPL $\backslash u$ & .70 & .58 & .46 &  %9  &%(24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
@@ -499,7 +499,7 @@ Overall, the current version of this manuscript is not sufficient for machine le
  % .78 & .51 & .52 & .72 & .56 & .33
  %GPPL opt. & .76 & .51 & .47 & .70 & .58 &  .30 \\
  crowdGPPL %medi. 
- & \textbf{.78} & \textbf{.50} & \textbf{.53} & \textbf{ .73} & .61 & \textbf{.33} & \textbf{.74} & .59 & \textbf{.29}  \\ %.71 & .59 & .32 \\ % now showing workers with > 40 training examples
+ & \textbf{.78} & \textbf{.50} & \textbf{.53} & \textbf{.73} & .61 & \textbf{.33} & \textbf{.74} & .59 & \textbf{.29}  \\ %.71 & .59 & .32 \\ % now showing workers with > 40 training examples
  % new values since Q and various minor bugfixes (Qfix1): 
  % .77 & .67 & .52 & .72 & .60 & .33 \\
  % Qfix3 (nothing changed; main problem is CEE on consensus -- try tuning st separately from sw hyperparameters):
@@ -669,8 +669,8 @@ Increasing the number of pairwise labels, $P$, above 1000, however, does not vis
 \includegraphics[clip=true,trim=43.5 0 10 0,width=.26\columnwidth]{num_pairs}
 }
 \caption{
-    Runtimes for training+prediction of consensus function 
-    on UKPConvArgCrowdSample. 300 GloVe features. Means over 15 runs. CrowdGPPL with 5 components.
+    Wall-clock times for training+prediction of consensus function 
+    on UKPConvArgCrowdSample. 300 GloVe features. Means over 32 runs. CrowdGPPL with 5 components.
 }
 \end{figure}
 
