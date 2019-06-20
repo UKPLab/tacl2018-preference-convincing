@@ -825,6 +825,7 @@ if __name__ == '__main__':
         methods = [
                    'crowd-GPPL',
                    # 'crowd-GPPL-noInduc',
+
                    # 'crowd-GPPL\\u',
                    # 'crowd-BMF',
                    # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)

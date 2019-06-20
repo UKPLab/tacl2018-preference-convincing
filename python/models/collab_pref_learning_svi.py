@@ -211,8 +211,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             # self.yinvS = np.zeros((self.Nfactors, self.y_ninducing))
             self.yinvS = np.array([self.invKy_mm*sy[f] for f in range(self.Nfactors)])
 
-            self.y_u = [norm.rvs(0, 1, self.y_ninducing)**2 if f in self.factors_with_features
-                            else norm.rvs(0, 1, self.Npeople)**2 for f in range(self.Nfactors)]
+            self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))**2
 
             self.yinvSm = np.zeros((self.Nfactors, self.y_ninducing))
             #self.yinvSm = np.concatenate([(self.yinvS[f] * (self.y_u[f]))[:, None] for f in range(self.Nfactors)], axis=1)
@@ -1022,12 +1021,19 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             logpt = 0
             logqt = 0
 
-        logpy = np.sum([expec_pdf_gaussian(self.Ky_mm if f in self.factors_with_features else np.ones(self.Npeople),
+        if self.person_features is not None:
+            logpy = np.sum([expec_pdf_gaussian(self.Ky_mm if f in self.factors_with_features else np.ones(self.Npeople),
                                            self.invKy_mm if f in self.factors_with_features else np.ones(self.Npeople),
                                            0, self.y_ninducing, sy[f], self.y_u[f][:, None], 0, self.yS[f], 0)
                         for f in range(self.Nfactors)])
-        logqy = np.sum([expec_q_gaussian(self.yS[f], (self.y_ninducing if f in self.factors_with_features
+            logqy = np.sum([expec_q_gaussian(self.yS[f], (self.y_ninducing if f in self.factors_with_features
                                   else self.Npeople) * self.Nfactors) for f in range(self.Nfactors)])
+        else:
+            logpy = np.sum([expec_pdf_gaussian(self.Ky_mm, self.invKy_mm,
+                                           0, self.y_ninducing, sy[f], self.y_u[f][:, None], 0, self.yS[f], 0)
+                        for f in range(self.Nfactors)])
+            logqy = np.sum([expec_q_gaussian(self.yS[f], self.y_ninducing * self.Nfactors) for f in range(self.Nfactors)])
+
 
         logps_w = 0
         logqs_w = 0

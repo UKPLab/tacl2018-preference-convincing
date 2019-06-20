@@ -23,7 +23,7 @@ module load intel python/3.6.8
 
 ### personalised
 ### crowdBT
-OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/personalised_tests.py 8
+#OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/personalised_tests.py 8 0 10
 #
 ## crowdGPPL consensus
 #OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/personalised_tests.py 1
@@ -31,4 +31,4 @@ OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/personalised_test
 #OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/personalised_tests.py 0
 #
 ## GPPL consensus
-#OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/personalised_tests.py 7
+OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/personalised_tests.py 6 0 10

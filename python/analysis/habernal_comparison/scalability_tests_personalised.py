@@ -34,7 +34,7 @@ if __name__ == '__main__':
                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M400',
                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M500',
                 ]
-        feature_types = ['both', 'embeddings']
+        feature_types = ['both'] #, 'embeddings']
         embeddings_types = ['word_mean']
 
         runner = TestRunner('p3', datasets, feature_types, embeddings_types, methods,

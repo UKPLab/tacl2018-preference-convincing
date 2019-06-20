@@ -418,12 +418,12 @@ class TestRunner:
             tr_proba = None
         
         if self.a_rank_test is not None:
-            predicted_f, _ = self.model.predict_f(None, self.a_rank_test)
+            predicted_f, _ = self.model.predict_f(self.items_feat, self.a_rank_test)
         else:
             predicted_f = None
 
         if self.a_rank_train is not None:
-            tr_f, _ = self.model.predict_f(None, self.a_rank_train)
+            tr_f, _ = self.model.predict_f(self.items_feat, self.a_rank_train)
         else:
             tr_f = None
 

@@ -186,7 +186,7 @@ class PersonalisedTestRunner(TestRunner):
         print("no. features: %i" % new_items_feat.shape[1])
         self.model.fit(self.items_feat, self.crowdBT_s, obs_noise=self.crowdBT_sigma ** 2)
 
-        predicted_f, _ = self.model.predict_f()  #self.model.obs_f
+        predicted_f, _ = self.model.predict_f(self.items_feat)  #self.model.obs_f
 
         balance = 0
         proba = np.exp(predicted_f[self.a1_test]) / (
