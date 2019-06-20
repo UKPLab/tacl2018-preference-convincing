@@ -125,11 +125,11 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
 
     def _init_covariance(self):
-        self.shape_sw = np.zeros(self.Nfactors + self.Npeople if self.personal_component else 0) + self.shape_sw0
-        self.rate_sw = np.zeros(self.Nfactors + self.Npeople if self.personal_component else 0 ) + self.rate_sw0
+        self.shape_sw = np.zeros(self.Nfactors + (self.Npeople if self.personal_component else 0) ) + self.shape_sw0
+        self.rate_sw = np.zeros(self.Nfactors + (self.Npeople if self.personal_component else 0) ) + self.rate_sw0
 
-        self.shape_sy = np.zeros(self.Nfactors + self.Npeople if self.personal_component else 0 ) + self.shape_sy0
-        self.rate_sy = np.zeros(self.Nfactors + self.Npeople if self.personal_component else 0 ) + self.rate_sy0
+        self.shape_sy = np.zeros(self.Nfactors + (self.Npeople if self.personal_component else 0) ) + self.shape_sy0
+        self.rate_sy = np.zeros(self.Nfactors + (self.Npeople if self.personal_component else 0) ) + self.rate_sy0
 
     def _choose_inducing_points(self):
         # choose a set of inducing points -- for testing we can set these to the same as the observation points.
@@ -200,13 +200,13 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
             # posterior covariance
             #self.yS = np.zeros((self.Nfactors, self.y_ninducing))
-            self.yS = np.array([self.Ky_mm/sy[f] for f in range(self.Nfactors + self.Npeople if self.personal_component else 0 )])
+            self.yS = np.array([self.Ky_mm/sy[f] for f in range(self.Nfactors + (self.Npeople if self.personal_component else 0) )])
             # self.yinvS = np.zeros((self.Nfactors, self.y_ninducing))
-            self.yinvS = np.array([self.invKy_mm*sy[f] for f in range(self.Nfactors + self.Npeople if self.personal_component else 0 )])
+            self.yinvS = np.array([self.invKy_mm*sy[f] for f in range(self.Nfactors + (self.Npeople if self.personal_component else 0) )])
 
             self.y_u = norm.rvs(0, 1, (self.Nfactors, self.y_ninducing))**2
 
-            self.yinvSm = np.zeros((self.Nfactors + self.Npeople if self.personal_component else 0 , self.y_ninducing))
+            self.yinvSm = np.zeros((self.Nfactors + (self.Npeople if self.personal_component else 0) , self.y_ninducing))
             #self.yinvSm = np.concatenate([(self.yinvS[f] * (self.y_u[f]))[:, None] for f in range(self.Nfactors)], axis=1)
 
         else:
@@ -264,18 +264,18 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             if self.factors_with_features is None:
                 self.factors_with_features = np.arange(self.Nfactors)
 
-            self.yS = np.array([self.Ky_mm/sy[f] if f in self.factors_with_features
-                                else np.ones(self.Npeople)/sy[f] for f in range(self.Nfactors + self.Npeople if self.personal_component else 0 )])
+            self.yS = [self.Ky_mm/sy[f] if f in self.factors_with_features
+                                else np.ones(self.Npeople)/sy[f] for f in range(self.Nfactors + (self.Npeople if self.personal_component else 0) )]
             # self.yinvS = np.zeros((self.Nfactors, self.y_ninducing, self.y_ninducing))
-            self.yinvS = np.array([self.invKy_mm*sy[f]  if f in self.factors_with_features
-                                else np.ones(self.Npeople)/sy[f] for f in range(self.Nfactors + self.Npeople if self.personal_component else 0 )])
+            self.yinvS = [self.invKy_mm*sy[f]  if f in self.factors_with_features
+                                else np.ones(self.Npeople)/sy[f] for f in range(self.Nfactors + (self.Npeople if self.personal_component else 0) )]
 
             self.y_u = [norm.rvs(0, 1, self.y_ninducing) if f in self.factors_with_features
-                                else norm.rvs(0, 1, self.Npeople) for f in range(self.Nfactors + self.Npeople if self.personal_component else 0 )]
+                                else norm.rvs(0, 1, self.Npeople) for f in range(self.Nfactors + (self.Npeople if self.personal_component else 0) )]
 
 
             self.yinvSm = [np.ones(self.y_ninducing) if f in self.factors_with_features else
-                np.ones(self.Npeople) for f in range(self.Nfactors + self.Npeople if self.personal_component else 0 )]
+                np.ones(self.Npeople) for f in range(self.Nfactors + (self.Npeople if self.personal_component else 0) )]
             #self.yinvSm = np.concatenate([self.yinvS[f].dot(self.y_u[f:f+1].T) for f in range(self.Nfactors)], axis=1)
 
         self.prev_yinvSm = self.yinvSm.copy()
@@ -1016,7 +1016,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 if f in self.factors_with_features:
                     self.y_cov_i[f] = 1.0 / sy[f] + np.sum(covpair.dot(self.yS[f] - self.Ky_mm/sy[f]) * covpair, axis=1)
                 else:
-                    self.y_cov_i[f] = self.yS[f][self.uy_i]
+                    self.y_cov_i[f] = self.yS[f]
 
         else:
             for f in range(self.Nfactors):

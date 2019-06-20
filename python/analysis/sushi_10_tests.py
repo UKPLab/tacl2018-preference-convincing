@@ -305,8 +305,8 @@ def run_khan(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_t
         Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                  shape_st0=shape_s0, rate_st0=rate_s0,
-                                  shape_sy0=1e2, rate_sy0=1e2, ls=None,
+                                  shape_st0=1e10, rate_st0=1e10,
+                                  shape_sy0=1e10, rate_sy0=1e10, ls=None,
                                   nfactors=Nfactors, ninducing=np.max([ifeats.shape[0], ufeats.shape[0]]),
                                   max_update_size=50000, # use all pairs
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True, kernel_func='diagonal',
@@ -855,9 +855,8 @@ if __name__ == '__main__':
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
                    'khan',
-                   #'crowd-GPPL',
-                   'crowd-GPPL-noInduc',
-
+                   # 'crowd-GPPL',
+                   # 'crowd-GPPL-noInduc',
                    # 'crowd-GPPL\\u',
                    # 'crowd-BMF',
                    # 'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
@@ -899,7 +898,7 @@ if __name__ == '__main__':
         methods = [
                    'khan',
                    #'crowd-GPPL',
-                   'crowd-GPPL-noInduc',
+                   # 'crowd-GPPL-noInduc',
                    # 'crowd-GPPL\\u',
                    #'crowd-BMF',
                    #'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
