@@ -24,7 +24,6 @@ if __name__ == '__main__':
 
     expt_root_dir = 'D05-%i_P%i' % (lsm, npairs)
 
-    resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
     min_fold_no = 0
     max_fold_no = 32
 
@@ -170,7 +169,7 @@ if __name__ == '__main__':
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
             = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
                               min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir,
-                              compute_tr_performance=eval_training_set)
+                              split_by_person=True, compute_tr_performance=eval_training_set)
 
         print("Completed compute metrics")
 

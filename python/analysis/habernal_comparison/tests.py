@@ -1117,7 +1117,7 @@ class TestRunner:
                     for upeep in np.unique(person_rank_test):
                         idxs = person_rank_test == upeep
 
-                        tau_p, _ = kendalltau(scores_rank_test, predicted_f.flatten())
+                        tau_p, _ = kendalltau(scores_rank_test[idxs], predicted_f.flatten()[idxs])
 
                         tau.append(tau_p)
 
@@ -1148,7 +1148,7 @@ class TestRunner:
                     for upeep in np.unique(person_rank_train):
                         idxs = person_rank_train == upeep
 
-                        tau_p, _ = kendalltau(scores_rank_train, tr_f.flatten())
+                        tau_p, _ = kendalltau(scores_rank_train[idxs], tr_f.flatten()[idxs])
 
                         tr_tau.append(tau_p)
 
