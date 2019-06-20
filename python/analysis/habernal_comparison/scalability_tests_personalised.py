@@ -82,35 +82,35 @@ if __name__ == '__main__':
         datasets = ['UKPConvArgCrowdSample_evalMACE']
         methods = [
             #'SinglePrefGP_noOpt_weaksprior_M0',
-            'SinglePrefGP_noOpt_weaksprior_M100',
+            #'SinglePrefGP_noOpt_weaksprior_M100',
             #'PersPrefGP_noOpt_weaksprior_commonmean_M0',
-            #'PersPrefGP_noOpt_weaksprior_commonmean_M100_F5',
+            'PersPrefGP_noOpt_weaksprior_commonmean_M100_F5',
                    #'BI-LSTM'#'SVM', 'BI-LSTM'
             ] # M0 will mean no SVI
         feature_types = ['embeddings']
         embeddings_types = ['word_mean']
 
-        runner = TestRunner('p3_50', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p4_50', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0, subsample_tr=50)
 
-        runner = TestRunner('p3_100', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p4_100', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0, subsample_tr=100)
 
-        runner = TestRunner('p3_200', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p4_200', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0, subsample_tr=200)
 
-        runner = TestRunner('p3_300', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p4_300', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0, subsample_tr=300)
 
-        runner = TestRunner('p3_400', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p4_400', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0, subsample_tr=400)
 
-        runner = TestRunner('p3_500', datasets, feature_types, embeddings_types, methods,
+        runner = TestRunner('p4_500', datasets, feature_types, embeddings_types, methods,
                                 dataset_increment)
         runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0, subsample_tr=500)
 
