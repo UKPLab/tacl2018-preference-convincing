@@ -333,23 +333,23 @@ for each dataset.
 Method & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ \\
 \midrule
 %\multicolumn{13}{|l|}{\textit{crowdGPPL}} \\
-crowdGPPL & .68 & .03 & .39 %& 38%
-& .81 & .39 & .66 %& 21
-& .73 & .57 & .47 %& 4724 \\
+crowdGPPL & \textbf{.71} & \textbf{.56} & .48 %& 38%
+& .84 & .33 & .79 %& 21
+& . & . & .%& 4724 \\
 \\
-crowdGPPL $\backslash $inducing & .70 & \textbf{.57} & .46 %& 51 %(14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
+crowdGPPL $\backslash $inducing & . & . & . %& 51 %(14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
 % new results 02.04
-& .84 & .33 & .79 %& 39
+& . & . & . %& 39
 & - & - & - 
 \\
 crowdGPPL $\backslash u$ & .70 & .58 & .46 &  %9  &%(24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
 % new results 02.04:
-\textbf{.85} & \textbf{.31} & \textbf{.81} %& 21
+\textbf{.85} & \textbf{.31} & \textbf{.80} %& 21
 & .78 &\textbf{.57} & .49 %& 3788 
 \\
-crowdGPPL $\backslash u, C=50$ & .70 & .58 & .46 & .84 & .32 & .80 & 
-\\
-crowdGPPL $\backslash u \backslash x$ & \textbf{.71} & \textbf{.57} & \textbf{.49} & % 5 & %(3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
+%crowdGPPL $\backslash u, C=50$ & .70 & .58 & .46 & .84 & .32 & .80 & 
+%\\
+crowdGPPL $\backslash u \backslash x$ & \textbf{.71} & .57 & \textbf{.49} & % 5 & %(3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
 %new results 02.04: 
 \textbf{.85} & .33 & .80 % & 14
 & .77 & .58 & .48 % & 3363
@@ -468,21 +468,21 @@ Overall, the current version of this manuscript is not sufficient for machine le
  \centering
  \small
  \setlength{\tabcolsep}{4pt}
-\subfloat[8000 training pairs per fold]{
-\begin{tabular}{ l l l l@{\hskip 1.0cm} l l l@{\hskip 1.0cm} l l l}
-\hline
- & \multicolumn{3}{l}{Consensus} & 
- \multicolumn{3}{l}{Personal: all workers} &\multicolumn{3}{l}{$>$40 training pairs} \\
- Method & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ \\ 
-  \midrule
- GPPL 
-  &  & & & & & & & & \\  
- crowdGPPL 
- & & & & & & & & &  \\  
- crowdBT-GP & .70 & .57 & .36 & & & 
- \\\hline
-\end{tabular}} \\
-\subfloat[All training data ($>$16,000 training pairs per fold)]{
+%\subfloat[8000 training pairs per fold]{
+%\begin{tabular}{ l l l l@{\hskip 1.0cm} l l l@{\hskip 1.0cm} l l l}
+%\hline
+% & \multicolumn{3}{l}{Consensus} & 
+% \multicolumn{3}{l}{Personal: all workers} &\multicolumn{3}{l}{$>$40 training pairs} \\
+% Method & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ \\ 
+%  \midrule
+% GPPL 
+%  &  & & & & & & & & \\  
+% crowdGPPL 
+% & & & & & & & & &  \\  
+% crowdBT-GP & .70 & .57 & .36 & & & 
+% \\\hline
+%\end{tabular}} \\
+%\subfloat[All training data ($>$16,000 training pairs per fold)]{
 \begin{tabular}{ l l l l@{\hskip 1.0cm} l l l@{\hskip 1.0cm} l l l}
 \hline
  & \multicolumn{3}{l}{Consensus} & 
@@ -499,7 +499,7 @@ Overall, the current version of this manuscript is not sufficient for machine le
  % .78 & .51 & .52 & .72 & .56 & .33
  %GPPL opt. & .76 & .51 & .47 & .70 & .58 &  .30 \\
  crowdGPPL %medi. 
- & .78 & .50 & .53 & .73 & .61 & .33 & .74 & .59 & .29  \\ %.71 & .59 & .32 \\ % now showing workers with > 40 training examples
+ & \textbf{.78} & \textbf{.50} & \textbf{.53} & \textbf{ .73} & .61 & \textbf{.33} & \textbf{.74} & .59 & \textbf{.29}  \\ %.71 & .59 & .32 \\ % now showing workers with > 40 training examples
  % new values since Q and various minor bugfixes (Qfix1): 
  % .77 & .67 & .52 & .72 & .60 & .33 \\
  % Qfix3 (nothing changed; main problem is CEE on consensus -- try tuning st separately from sw hyperparameters):
@@ -507,9 +507,10 @@ Overall, the current version of this manuscript is not sufficient for machine le
  %crowdGPPL opt. & .78 & .48 & .50 & .69 & .59 & .29
  %PL+ SVR & .75 & .55 & \textbf{.40} & .75 & & .40 \\
  %GPC & .73 & .53 & - & .68 & .59 & - \\
- crowdBT-GP & .77 & .52 & .50 & .71 & .60 & 
- \\\hline
-\end{tabular}}
+ crowdBT-GP & .77 & .52 & .50 & .69 & \textbf{.58} & .30 & .70 & \textbf{.57} & .24
+ \\ \bottomrule
+\end{tabular}
+%}
 \caption{UKPConvArgCrowdSample,  using ling+GloVe features: predicting consensus values, personal preferences for all workers,
 and personal preferences for workers who had $>$40 pairs in the training set.
 Classification accuracy (\emph{Acc}) and cross entropy error (or log-loss, \emph{CEE}) evaluate

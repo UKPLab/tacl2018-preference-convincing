@@ -78,7 +78,9 @@ def diagonal_from_raw_vals(vals, ls, vals2=None, operator='*', vector=False):
     if vector:
         K = np.zeros(vals.shape[0], dtype=float)
         for i in range(vals.shape[0]):
-            K[i] = float((vals[i] == vals2[i]))
+            K[i] = float(np.all(vals[i] == vals2[i]))
+
+        return K
 
     K = np.zeros((vals.shape[0], vals2.shape[0]), dtype=float)
     for i in range(vals.shape[0]):

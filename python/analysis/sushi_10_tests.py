@@ -278,7 +278,7 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
 
     model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
                                   shape_st0=shape_s0, rate_st0=rate_s0,
-                                  shape_sy0=1, rate_sy0=1, ls=None,
+                                  shape_sy0=1e2, rate_sy0=1e2, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                   use_common_mean_t=True, delay=delay)
@@ -296,6 +296,34 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
     # return predictions of preference scores for training users, new testing users, and pairwise testing labels
     return fpred, rho_pred, fpred_un, rho_pred_un
 
+
+def run_khan(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test,
+                             u_un, i1_un, i2_un, ufeats_un):
+
+    Nfactors = ufeats.shape[0]
+    if Nfactors > max_facs:
+        Nfactors = max_facs # this is the maximum
+
+    model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
+                                  shape_st0=shape_s0, rate_st0=rate_s0,
+                                  shape_sy0=1e2, rate_sy0=1e2, ls=None,
+                                  nfactors=Nfactors, ninducing=np.max([ifeats.shape[0], ufeats.shape[0]]),
+                                  max_update_size=50000, # use all pairs
+                                  forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True, kernel_func='diagonal',
+                                  use_common_mean_t=True, delay=delay, personal_component=True)
+
+    model.max_Kw_size = max_Kw_size
+    model.max_iter = 200
+    model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, optimize, use_median_ls=True)
+
+    fpred = model.predict_f(None, None)
+    rho_pred = model.predict(u_test, i1_test, i2_test, None, None)
+
+    fpred_un = model.predict_f(None, personids=np.arange(ufeats_un.shape[0]) + ufeats.shape[0])
+    rho_pred_un = model.predict(ufeats.shape[0] + np.zeros(len(u_un)), i1_un, i2_un, ifeats, None)
+
+    # return predictions of preference scores for training users, new testing users, and pairwise testing labels
+    return fpred, rho_pred, fpred_un, rho_pred_un
 
 def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, u_un, i1_un, i2_un, ufeats_un):
     Nfactors = ufeats.shape[0]
@@ -438,6 +466,9 @@ def train_test(method_name, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test
                               ufeats_un)
     elif method_name == 'crowd-GPPL\\u':
         return run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test,
+                                        u_un, i1_un, i2_un, ufeats_un)
+    elif method_name == 'khan':
+        return run_khan(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test,
                                         u_un, i1_un, i2_un, ufeats_un)
     elif method_name == 'crowd-BMF':
         return run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, u_un, i1_un, i2_un,
@@ -823,8 +854,9 @@ if __name__ == '__main__':
 
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
-                   'crowd-GPPL',
-                   # 'crowd-GPPL-noInduc',
+                   'khan',
+                   #'crowd-GPPL',
+                   'crowd-GPPL-noInduc',
 
                    # 'crowd-GPPL\\u',
                    # 'crowd-BMF',
@@ -865,9 +897,10 @@ if __name__ == '__main__':
 
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
-                   'crowd-GPPL',
-                   #'crowd-GPPL-noInduc',
-                   #'crowd-GPPL\\u',
+                   'khan',
+                   #'crowd-GPPL',
+                   'crowd-GPPL-noInduc',
+                   # 'crowd-GPPL\\u',
                    #'crowd-BMF',
                    #'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
                    #'GPPL-pooled',
@@ -957,7 +990,7 @@ if __name__ == '__main__':
 
         # SUSHI B, global parameters ------------------------------------------------------------------------------------
 
-        max_facs = 50
+        max_facs = 20
         shape_s0 = 1.0
         rate_s0 = 100.0  #0.1
         forgetting_rate = 0.9
@@ -971,8 +1004,9 @@ if __name__ == '__main__':
 
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
-                   'crowd-GPPL',
-                   #'crowd-GPPL\\u',
+                   'khan',
+                   #'crowd-GPPL',
+                   # 'crowd-GPPL\\u',
                    #'crowd-BMF',
                    #'crowd-GPPL-FITC\\u-noConsensus', # Like Houlsby CP (without user features)
                    #'GPPL-pooled',
