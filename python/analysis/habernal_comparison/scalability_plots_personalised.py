@@ -397,7 +397,7 @@ if __name__ == '__main__':
         runtimes_N_uq = np.zeros((len(methods), len(Nvals)))
 
         for n, N in enumerate(Nvals):
-            foldername = 'p3_%i/' % N
+            foldername = 'p4_%i/' % N
 
             for m, expt_settings['method'] in enumerate(methods):
                 print("Processing method %s" % expt_settings['method'])
@@ -469,7 +469,7 @@ if __name__ == '__main__':
         ax3.set_xlabel('No. arguments in training set')
         ax3.set_ylabel('Runtime (s)')
         ax3.yaxis.grid('on')
-        ax3.set_ylim(-5, 600)
+        ax3.set_ylim(-5, 200)
         plt.legend(loc='best')
 
         plt.tight_layout()
