@@ -745,15 +745,20 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             for f in range(self.Nfactors):
 
                 if self.personal_component and f >= self.Nfactors-self.Npeople:
-                    user = f - self.Nfactors
+
+                    user = f - self.Nfactors + self.Npeople
                     user_idxs = self.y_idx_i == user # only update the data points corresponding to the
                     # user who owns this factor
+
+                    if (np.mod(user, 100) == 0):
+                        logging.debug('Update personal factor %i' % user)
 
                     covpair_ones = np.eye(self.N)[:, self.w_idx_i[user_idxs]]
 
                     obs_idxs_f = self.personIDs[self.data_obs_idx_i] == user
                     user_obs = self.data_obs_idx_i[obs_idxs_f]
-                    Sigma_w_f = covpair_ones.dot(self.G.T / self.Q[None, user_obs]).dot(self.G).dot(covpair_ones.T)
+                    G = self.G[user_obs, :][:, self.w_idx_i[user_idxs]]
+                    Sigma_w_f = covpair_ones.dot(G.T / self.Q[None, user_obs]).dot(G).dot(covpair_ones.T)
 
                     # need to get invS for current iteration and merge using SVI weighted sum
                     self.winvS[f] = (1-rho_i) * self.prev_winvS[f] + rho_i * (self.invKv*self.shape_sw[f]
