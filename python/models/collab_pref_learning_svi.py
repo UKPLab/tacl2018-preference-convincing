@@ -304,6 +304,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             dists = pdist(self.obs_coords / self.ls, metric='euclidean')
             self.Kv = np.exp( -0.5 * dists**2 )
             self.Kv = squareform(self.Kv)
+            np.fill_diagonal(self.Kv, 1)
+
             self.invKv = np.linalg.inv(self.Kv)
 
             self.w_u = np.concatenate((self.w_u, self.V), axis=1)
