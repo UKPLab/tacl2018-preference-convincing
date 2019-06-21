@@ -307,7 +307,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.invKv = np.linalg.inv(self.Kv)
 
             self.w_u = np.concatenate((self.w_u, self.V), axis=1)
-            self.y_u = np.concatenate((self.y_u, np.ones((self.Npeople, self.Npeople))), axis=0)
+            self.y_u = np.concatenate((self.y_u, np.eye(self.Npeople)), axis=0)
 
         # moments of distributions over inducing points for convenience
         # posterior covariance
@@ -742,14 +742,18 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.G = self.G * (1-G_update_rate)  + self._compute_jacobian() * G_update_rate
 
             # we need to map from the real Npeople points to the inducing points.
-            invQGT = self.G.T/self.Q[None, self.data_obs_idx_i]
-
             for f in range(self.Nfactors):
 
                 if self.personal_component and f >= self.Nfactors-self.Npeople:
-                    covpair_ones = np.eye(self.N)[:, self.w_idx_i]
+                    user = f - self.Nfactors
+                    user_idxs = self.y_idx_i == user # only update the data points corresponding to the
+                    # user who owns this factor
 
-                    Sigma_w_f = covpair_ones.dot(self.G.T * (scaling_f/self.Q[None, self.data_obs_idx_i])).dot(self.G).dot(covpair_ones.T)
+                    covpair_ones = np.eye(self.N)[:, self.w_idx_i[user_idxs]]
+
+                    obs_idxs_f = self.personIDs[self.data_obs_idx_i] == user
+                    user_obs = self.data_obs_idx_i[obs_idxs_f]
+                    Sigma_w_f = covpair_ones.dot(self.G.T / self.Q[None, user_obs]).dot(self.G).dot(covpair_ones.T)
 
                     # need to get invS for current iteration and merge using SVI weighted sum
                     self.winvS[f] = (1-rho_i) * self.prev_winvS[f] + rho_i * (self.invKv*self.shape_sw[f]
@@ -822,20 +826,15 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         for f in range(self.Nfactors):
 
             if self.personal_component and f >= self.Nfactors - self.Npeople:
-                K_mm = self.Kv
-                Kw_i = self.Kv[self.uw_i, :][:, self.uw_i]
-                invK_mm = self.invKv
-            else:
-                K_mm = self.K_mm
-                invK_mm = self.invK_mm
+                break
 
-            self.w_cov_i[f] = Kw_i / sw[f] + covpair.dot(self.wS[f] - K_mm/sw[f]).dot(covpair.T)
+            self.w_cov_i[f] = Kw_i / sw[f] + covpair.dot(self.wS[f] - self.K_mm/sw[f]).dot(covpair.T)
 
             if not update_s:
                 continue
 
             self.shape_sw[f], self.rate_sw[f] = expec_output_scale(self.shape_sw0, self.rate_sw0, self.ninducing,
-               invK_mm, self.w_u[:, f:f + 1], np.zeros((self.ninducing, 1)), f_cov=self.wS[f])
+               self.invK_mm, self.w_u[:, f:f + 1], np.zeros((self.ninducing, 1)), f_cov=self.wS[f])
 
 
     def _expec_y(self, update_s=True, update_G=True):

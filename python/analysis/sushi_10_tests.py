@@ -305,7 +305,7 @@ def run_khan(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_t
         Nfactors = max_facs # this is the maximum
 
     model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                  shape_st0=1e10, rate_st0=1e10,
+                                  shape_st0=1, rate_st0=1e10, # khan model has no prior -- we mimic this with a very vague prior
                                   shape_sy0=1e10, rate_sy0=1e10, ls=None,
                                   nfactors=Nfactors, ninducing=np.max([ifeats.shape[0], ufeats.shape[0]]),
                                   max_update_size=50000, # use all pairs

@@ -128,100 +128,100 @@ if __name__ == '__main__':
 
             if len(acc_m):
                 acc_both[m] = np.mean(acc_m)
-                runtimes_both[m] = np.median(runtimes_m)
-                runtimes_both_lq[m] = np.percentile(runtimes_m, 25)
-                runtimes_both_uq[m] = np.percentile(runtimes_m, 75)
+                runtimes_both[m] = np.mean(runtimes_m)
+                runtimes_both_lq[m] = np.mean(runtimes_m) + np.std(runtimes_m)#np.percentile(runtimes_m, 25)
+                runtimes_both_uq[m] = np.mean(runtimes_m) - np.std(runtimes_m)#np.percentile(runtimes_m, 75)
 
                 if expt_settings['method'] in dims_methods:
                     m_dims = dims_methods == expt_settings['method']
                     runtimes_dims[m_dims, 3] = runtimes_both[m]
 
-        # Load the results for accuracy and runtime vs. no. inducing points with embeddings
-        expt_settings['feature_type'] = 'embeddings'
-
-        runtimes_emb = np.zeros(len(methods))
-        acc_emb = np.zeros(len(methods))
-
-        runtimes_emb_lq = np.zeros(len(methods))
-        runtimes_emb_uq = np.zeros(len(methods))
-
-        for m, expt_settings['method'] in enumerate(methods):
-            print("Processing method %s" % expt_settings['method'])
-
-            data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template,
-                                                  expt_settings, max_no_folds=max_no_folds, foldername=foldername)
-
-            acc_m = np.zeros(nFolds)
-            runtimes_m = np.zeros(nFolds)
-
-            for f in range(nFolds):
-                print("Processing fold %i" % f)
-                if expt_settings['fold_order'] is None: # fall back to the order on the current machine
-                    if expt_settings['folds'] is None:
-                        continue
-                    fold = list(expt_settings['folds'].keys())[f]
-                else:
-                    fold = expt_settings['fold_order'][f]
-                    if fold[-2] == "'" and fold[0] == "'":
-                        fold = fold[1:-2]
-                    elif fold[-1] == "'" and fold[0] == "'":
-                        fold = fold[1:-1]
-                    expt_settings['fold_order'][f] = fold
-
-                # look for new-style data in separate files for each fold. Prefer new-style if both are found.
-                foldfile = resultsdir + '/fold%i.pkl' % f
-                if os.path.isfile(foldfile):
-                    with open(foldfile, 'rb') as fh:
-                        data_f = pickle.load(fh, encoding='latin1')
-                else: # convert the old stuff to new stuff
-                    if data is None:
-                        min_folds = f+1
-                        print('Skipping fold with no data %i' % f)
-                        print("Skipping results for %s, %s, %s, %s" % (expt_settings['method'],
-                                                                       expt_settings['dataset'],
-                                                                       expt_settings['feature_type'],
-                                                                       expt_settings['embeddings_type']))
-                        print("Skipped filename was: %s, old-style results file would be %s" % (foldfile,
-                                                                                                resultsfile))
-                        continue
-
-                    if not os.path.isdir(resultsdir):
-                        os.mkdir(resultsdir)
-                    data_f = []
-                    for thing in data:
-                        if f in thing:
-                            data_f.append(thing[f])
-                        else:
-                            data_f.append(thing)
-                    with open(foldfile, 'wb') as fh:
-                        pickle.dump(data_f, fh)
-
-                fold = expt_settings['fold_order'][f]
-                if fold[-2] == "'" and fold[0] == "'":
-                    fold = fold[1:-2]
-                elif fold[-1] == "'" and fold[0] == "'":
-                    fold = fold[1:-1]
-                expt_settings['fold_order'][f] = fold
-
-                gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, pred_tr_rank, \
-                                            pred_tr_prob, postprocced = get_fold_data(data_f, f, expt_settings)
-
-                acc_m[f] = accuracy_score(gold_disc[gold_disc!=1], pred_disc[gold_disc!=1])
-                runtimes_m[f] = data_f[6]
-
-            acc_m = acc_m[acc_m>0]
-            runtimes_m = runtimes_m[runtimes_m>0]
-
-            if len(acc_m):
-                acc_emb[m] = np.mean(acc_m)
-
-                runtimes_emb[m] = np.median(runtimes_m)
-                runtimes_emb_lq[m] = np.percentile(runtimes_m, 25)
-                runtimes_emb_uq[m] = np.percentile(runtimes_m, 75)
-
-                if expt_settings['method'] in dims_methods:
-                    m_dims = dims_methods == expt_settings['method']
-                    runtimes_dims[m_dims, 1] = runtimes_emb[m]
+        # # Load the results for accuracy and runtime vs. no. inducing points with embeddings
+        # expt_settings['feature_type'] = 'embeddings'
+        #
+        # runtimes_emb = np.zeros(len(methods))
+        # acc_emb = np.zeros(len(methods))
+        #
+        # runtimes_emb_lq = np.zeros(len(methods))
+        # runtimes_emb_uq = np.zeros(len(methods))
+        #
+        # for m, expt_settings['method'] in enumerate(methods):
+        #     print("Processing method %s" % expt_settings['method'])
+        #
+        #     data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template,
+        #                                           expt_settings, max_no_folds=max_no_folds, foldername=foldername)
+        #
+        #     acc_m = np.zeros(nFolds)
+        #     runtimes_m = np.zeros(nFolds)
+        #
+        #     for f in range(nFolds):
+        #         print("Processing fold %i" % f)
+        #         if expt_settings['fold_order'] is None: # fall back to the order on the current machine
+        #             if expt_settings['folds'] is None:
+        #                 continue
+        #             fold = list(expt_settings['folds'].keys())[f]
+        #         else:
+        #             fold = expt_settings['fold_order'][f]
+        #             if fold[-2] == "'" and fold[0] == "'":
+        #                 fold = fold[1:-2]
+        #             elif fold[-1] == "'" and fold[0] == "'":
+        #                 fold = fold[1:-1]
+        #             expt_settings['fold_order'][f] = fold
+        #
+        #         # look for new-style data in separate files for each fold. Prefer new-style if both are found.
+        #         foldfile = resultsdir + '/fold%i.pkl' % f
+        #         if os.path.isfile(foldfile):
+        #             with open(foldfile, 'rb') as fh:
+        #                 data_f = pickle.load(fh, encoding='latin1')
+        #         else: # convert the old stuff to new stuff
+        #             if data is None:
+        #                 min_folds = f+1
+        #                 print('Skipping fold with no data %i' % f)
+        #                 print("Skipping results for %s, %s, %s, %s" % (expt_settings['method'],
+        #                                                                expt_settings['dataset'],
+        #                                                                expt_settings['feature_type'],
+        #                                                                expt_settings['embeddings_type']))
+        #                 print("Skipped filename was: %s, old-style results file would be %s" % (foldfile,
+        #                                                                                         resultsfile))
+        #                 continue
+        #
+        #             if not os.path.isdir(resultsdir):
+        #                 os.mkdir(resultsdir)
+        #             data_f = []
+        #             for thing in data:
+        #                 if f in thing:
+        #                     data_f.append(thing[f])
+        #                 else:
+        #                     data_f.append(thing)
+        #             with open(foldfile, 'wb') as fh:
+        #                 pickle.dump(data_f, fh)
+        #
+        #         fold = expt_settings['fold_order'][f]
+        #         if fold[-2] == "'" and fold[0] == "'":
+        #             fold = fold[1:-2]
+        #         elif fold[-1] == "'" and fold[0] == "'":
+        #             fold = fold[1:-1]
+        #         expt_settings['fold_order'][f] = fold
+        #
+        #         gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, pred_tr_rank, \
+        #                                     pred_tr_prob, postprocced = get_fold_data(data_f, f, expt_settings)
+        #
+        #         acc_m[f] = accuracy_score(gold_disc[gold_disc!=1], pred_disc[gold_disc!=1])
+        #         runtimes_m[f] = data_f[6]
+        #
+        #     acc_m = acc_m[acc_m>0]
+        #     runtimes_m = runtimes_m[runtimes_m>0]
+        #
+        #     if len(acc_m):
+        #         acc_emb[m] = np.mean(acc_m)
+        #
+        #         runtimes_emb[m] = np.median(runtimes_m)
+        #         runtimes_emb_lq[m] = np.percentile(runtimes_m, 25)
+        #         runtimes_emb_uq[m] = np.percentile(runtimes_m, 75)
+        #
+        #         if expt_settings['method'] in dims_methods:
+        #             m_dims = dims_methods == expt_settings['method']
+        #             runtimes_dims[m_dims, 1] = runtimes_emb[m]
         
     # First plot: M versus Runtime and Accuracy for 32310 features -----------------------------------------------------
 
@@ -235,7 +235,7 @@ if __name__ == '__main__':
                          facecolor='blue')
 
 
-        h2, = ax1.plot(x_gppl, runtimes_both[7:], color='green', marker='d', label='runtime, crowdGPPL',
+        h2, = ax1.plot(x_gppl, runtimes_both[7:], marker='<', color='green', linestyle='-.', label='runtime, crowdGPPL',
                        linewidth=2, markersize=8)
 
         ax1.fill_between(x_gppl, runtimes_both_lq[7:], runtimes_both_uq[7:], alpha=0.2, edgecolor='green',
@@ -254,44 +254,45 @@ if __name__ == '__main__':
         h4, = ax1_2.plot(x_gppl, acc_both[7:], color='black', linestyle='--', marker='>', label='acc., crowdGPPL',
                          linewidth=2, markersize=8)
 
-        #ax1_2.set_ylabel('Accuracy')
-        leg = plt.legend(handles=[h1, h2], loc='lower right')
+        ax1_2.set_ylabel('Accuracy')
+        plt.yticks([0.6, 0.65, 0.70, 0.75])
+        leg = plt.legend(loc='best')#handles=[h1, h2], loc='lower right')
 
         plt.tight_layout()
         plt.savefig(figure_save_path + '/num_inducing_32310_features.pdf')
 
         # Second plot: M versus runtime and accuracy for 300 features ------------------------------------------------------
 
-        fig1, ax2 = plt.subplots(figsize=(5,4))
-        h1, = ax2.plot(x_gppl, runtimes_emb[0:7], color='blue', marker='o', label='runtime, GPPL',
-                       linewidth=2, markersize=8)
-
-        ax2.fill_between(x_gppl, runtimes_emb_lq[0:7], runtimes_emb_uq[0:7], alpha=0.2, edgecolor='blue',
-                         facecolor='blue')
-
-        h2, = ax2.plot(x_gppl, runtimes_emb[7:], color='green', marker='d', label='runtime, crowdGPPL',
-                       linewidth=2, markersize=8)
-
-        ax2.fill_between(x_gppl, runtimes_emb_lq[0:7], runtimes_emb_uq[0:7], alpha=0.2, edgecolor='green',
-                         facecolor='green')
-
-        plt.xlabel('No. Inducing Points, M')
-        ax2.grid('on', axis='y')
-        #ax2.set_ylabel('Runtime (s)')
-        ax2.spines['left'].set_color('blue')
-        ax2.tick_params('y', colors='blue')
-        ax2.yaxis.label.set_color('blue')
-
-        ax2_2 = ax2.twinx()
-        h3, = ax2_2.plot(x_gppl, acc_emb[0:7], color='black', marker='x', label='acc., GPPL',
-                         linewidth=2, markersize=8)
-        h4, = ax2_2.plot(x_gppl, acc_emb[7:], color='black', linestyle='--', marker='>', label='acc., crowdGPPL',
-                         linewidth=2, markersize=8)
-        ax2_2.set_ylabel('Accuracy')
-        leg = plt.legend(handles=[h3, h4], loc='best')
-
-        plt.tight_layout()
-        plt.savefig(figure_save_path + '/num_inducing_300_features.pdf')
+        # fig1, ax2 = plt.subplots(figsize=(5,4))
+        # h1, = ax2.plot(x_gppl, runtimes_emb[0:7], color='blue', marker='o', label='runtime, GPPL',
+        #                linewidth=2, markersize=8)
+        #
+        # ax2.fill_between(x_gppl, runtimes_emb_lq[0:7], runtimes_emb_uq[0:7], alpha=0.2, edgecolor='blue',
+        #                  facecolor='blue')
+        #
+        # h2, = ax2.plot(x_gppl, runtimes_emb[7:], color='green', marker='d', label='runtime, crowdGPPL',
+        #                linewidth=2, markersize=8)
+        #
+        # ax2.fill_between(x_gppl, runtimes_emb_lq[0:7], runtimes_emb_uq[0:7], alpha=0.2, edgecolor='green',
+        #                  facecolor='green')
+        #
+        # plt.xlabel('No. Inducing Points, M')
+        # ax2.grid('on', axis='y')
+        # #ax2.set_ylabel('Runtime (s)')
+        # ax2.spines['left'].set_color('blue')
+        # ax2.tick_params('y', colors='blue')
+        # ax2.yaxis.label.set_color('blue')
+        #
+        # ax2_2 = ax2.twinx()
+        # h3, = ax2_2.plot(x_gppl, acc_emb[0:7], color='black', marker='x', label='acc., GPPL',
+        #                  linewidth=2, markersize=8)
+        # h4, = ax2_2.plot(x_gppl, acc_emb[7:], color='black', linestyle='--', marker='>', label='acc., crowdGPPL',
+        #                  linewidth=2, markersize=8)
+        # ax2_2.set_ylabel('Accuracy')
+        # leg = plt.legend(handles=[h3, h4], loc='best')
+        #
+        # plt.tight_layout()
+        # plt.savefig(figure_save_path + '/num_inducing_300_features.pdf')
 
     # Third plot: number of pairs, P, versus runtime (with Glove features) ---------------------------------------------
     if test_to_run == 2:
@@ -355,15 +356,15 @@ if __name__ == '__main__':
 
                     runtimes_m[f] = data_f[6]
 
-                runtimes_N[m, n] = np.median(runtimes_m)
-                runtimes_N_lq[m, n] = np.percentile(runtimes_m, 25)
-                runtimes_N_uq[m, n] = np.percentile(runtimes_m, 75)
+                runtimes_N[m, n] = np.mean(runtimes_m)
+                runtimes_N_lq[m, n] = np.mean(runtimes_m) - np.std(runtimes_m)  #  np.percentile(runtimes_m, 25)
+                runtimes_N_uq[m, n] = np.mean(runtimes_m) + np.std(runtimes_m)  #  np.percentile(runtimes_m, 75)
 
         fig3, ax3 = plt.subplots(figsize=(3, 2.6))
 
         Nvals = np.array(Nvals) / 1000
 
-        ax3.plot(Nvals, runtimes_N[0], label='GPPL M=100', marker='o', color='blue', linewidth=2, linestyle='-.',
+        ax3.plot(Nvals, runtimes_N[0], label='GPPL M=100', marker='o', color='blue', linewidth=2, linestyle='-',
                  markersize=8)
 
         ax3.fill_between(Nvals, runtimes_N_lq[0], runtimes_N_uq[0], alpha=0.2, edgecolor='blue',
@@ -448,13 +449,13 @@ if __name__ == '__main__':
 
                     runtimes_m[f] = data_f[6]
 
-                runtimes_N[m, n] = np.median(runtimes_m)
-                runtimes_N_lq[m, n] = np.percentile(runtimes_m, 25)
-                runtimes_N_uq[m, n] = np.percentile(runtimes_m, 75)
+                runtimes_N[m, n] = np.mean(runtimes_m)
+                runtimes_N_lq[m, n] = np.mean(runtimes_m) - np.std(runtimes_m)  #  np.percentile(runtimes_m, 25)
+                runtimes_N_uq[m, n] = np.mean(runtimes_m) + np.std(runtimes_m)  #  np.percentile(runtimes_m, 75)
 
         fig3, ax3 = plt.subplots(figsize=(3, 2.6))
 
-        ax3.plot(Nvals, runtimes_N[0], label='GPPL M=100', marker='o', color='blue', linewidth=2, linestyle='-.',
+        ax3.plot(Nvals, runtimes_N[0], label='GPPL M=100', marker='o', color='blue', linewidth=2, linestyle='-',
                  markersize=8)
 
         ax3.fill_between(Nvals, runtimes_N_lq[0], runtimes_N_uq[0], alpha=0.2, edgecolor='blue',
