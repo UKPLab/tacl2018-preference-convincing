@@ -308,7 +308,7 @@ def run_khan(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_t
                                   shape_st0=1, rate_st0=1, # khan model has no prior on mu_i or v_i -- we mimic this with a vague prior
                                   shape_sy0=1e10, rate_sy0=1e10, ls=None,
                                   nfactors=Nfactors, ninducing=np.max([ifeats.shape[0], ufeats.shape[0]]),
-                                  max_update_size=50000, # use all pairs
+                                  max_update_size=max_update_size, # use all pairs
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True, kernel_func='diagonal',
                                   use_common_mean_t=True, delay=delay, personal_component=True)
 
