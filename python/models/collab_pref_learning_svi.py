@@ -740,6 +740,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                     user = f - self.Nfactors + self.Npeople
                     user_idxs = self.y_idx_i == user # only update the data points corresponding to the
                     # user who owns this factor
+                    if np.sum(user_idxs) == 0:
+                        continue
 
                     if (np.mod(user, 100) == 0):
                         logging.debug('Update personal factor %i' % user)
@@ -753,6 +755,14 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                     # need to get invS for current iteration and merge using SVI weighted sum
                     self.winvS[f] = (1-rho_i) * self.prev_winvS[f] + rho_i * (self.invKv*self.shape_sw[f]
                                 / self.rate_sw[f] + w_i * Sigma_w_f)
+
+                    z0 = pref_likelihood(self.obs_f_flat, v=self.pref_v[self.data_obs_idx_i[user_obs]],
+                                         u=self.pref_u[self.data_obs_idx_i[user_obs]]) \
+                         - G.dot(self.w[self.w_idx_i[user_idxs], f:f + 1])  # P x NU_i
+
+                    invQ_f = (G.T / self.Q[None, self.data_obs_idx_i[user_obs]]).dot(self.z[self.data_obs_idx_i[user_obs]] - z0)
+
+                    x = covpair_ones.dot(invQ_f)
                 else:
                     # scale the precision by y
                     # scaling_f = self.y[f:f+1, self.y_idx_i].T.dot(self.y[f:f+1, self.y_idx_i]) + \
@@ -768,13 +778,13 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                     self.winvS[f] = (1-rho_i) * self.prev_winvS[f] + rho_i * (self.invK_mm*self.shape_sw[f]
                                 / self.rate_sw[f] + w_i * Sigma_w_f)
 
-                z0 = pref_likelihood(self.obs_f_flat, v=self.pref_v[self.data_obs_idx_i], u=self.pref_u[self.data_obs_idx_i]) \
-                     - self.G.dot(self.w[self.w_idx_i, f:f+1] * self.y[f:f+1, self.y_idx_i].T) # P x NU_i
+                    z0 = pref_likelihood(self.obs_f_flat, v=self.pref_v[self.data_obs_idx_i], u=self.pref_u[self.data_obs_idx_i]) \
+                         - self.G.dot(self.w[self.w_idx_i, f:f+1] * self.y[f:f+1, self.y_idx_i].T) # P x NU_i
 
-                invQ_f = (self.y[f:f+1, self.y_idx_i].T * self.G.T / self.Q[None, self.data_obs_idx_i]).dot(
-                    self.z[self.data_obs_idx_i] - z0)
+                    invQ_f = (self.y[f:f+1, self.y_idx_i].T * self.G.T / self.Q[None, self.data_obs_idx_i]).dot(
+                        self.z[self.data_obs_idx_i] - z0)
 
-                x = covpair.dot(invQ_f)
+                    x = covpair.dot(invQ_f)
 
                 # need to get x for current iteration and merge using SVI weighted sum
                 self.winvSm[:, f] = (1-rho_i) * self.prev_winvSm[:, f] + rho_i * w_i * x.flatten()
@@ -786,17 +796,22 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                     K_mm = self.Kv
                     K_nm = self.Kv
                     invK_mm = self.invKv
+                    self.obs_f[self.uw_i, f-self.Nfactors+self.Npeople] -= self.w[self.uw_i, f]
+
                 else:
                     K_mm = self.K_mm
                     K_nm = self.K_nm
                     invK_mm = self.invK_mm
+                    self.obs_f[self.uw_i, :] -= self.w[self.uw_i, f:f+1].dot(self.y[f:f+1])
 
-                self.obs_f[self.uw_i, :] -= self.w[self.uw_i, f].dot(self.y[f])
 
                 self.w[:, f:f+1], _ = inducing_to_observation_moments(K_mm / self.shape_sw[f] * self.rate_sw[f],
                                     invK_mm, K_nm, self.w_u[:, f:f+1], 0)
 
-                self.obs_f[self.uw_i, :] += self.w[self.uw_i, f].dot(self.y[f])
+                if self.personal_component and f >= self.Nfactors-self.Npeople:
+                    self.obs_f[self.uw_i, f-self.Nfactors+self.Npeople] += self.w[self.uw_i, f]
+                else:
+                    self.obs_f[self.uw_i, :] += self.w[self.uw_i, f:f+1].dot(self.y[f:f+1])
 
                 self.obs_f_flat = self.obs_f.T.reshape(self.N * self.Npeople, 1)
 
@@ -889,6 +904,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 invQ_f = (self.w[self.w_idx_i, f:f+1] * self.G.T / self.Q[None, self.data_obs_idx_i]).dot(
                     self.z[self.data_obs_idx_i] - z0)
 
+                self.obs_f[:, self.uy_i] -= self.w[:, f:f+1].dot(self.y[f:f+1, self.uy_i])
+
                 # need to get invS for current iteration and merge using SVI weighted sum
                 if self.person_features is not None and f in self.factors_with_features:
                     Sigma_y_f = covpair.dot(scaling_f * invQG.dot(self.G)).dot(covpair.T)
@@ -922,7 +939,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                     self.y_u[f] = (self.yS[f].T * self.yinvSm[f]).T
                     self.y[f] = self.y_u[f]
 
-                self.obs_f[:, self.uy_i] = (self.w.dot(self.y[:, self.uy_i]) + self.t)
+                self.obs_f[:, self.uy_i] += self.w[:, f:f+1].dot(self.y[f:f+1, self.uy_i])
                 self.obs_f_flat = self.obs_f.T.reshape(self.N * self.Npeople, 1)
 
             prev_diff_G = diff  # save last iteration's difference
@@ -943,7 +960,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         for f in range(self.Nfactors):
 
-            if self.personal_component and f > self.Nfactors-self.Npeople:
+            if self.personal_component and f >= self.Nfactors-self.Npeople:
                 break
 
             if self.person_features is not None and f in self.factors_with_features:
@@ -1093,8 +1110,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         else:
             logpy = np.sum([expec_pdf_gaussian(self.Ky_mm, self.invKy_mm,
                                            0, self.y_ninducing, sy[f], self.y_u[f][:, None], 0, self.yS[f], 0)
-                        for f in range(self.Nfactors)])
-            logqy = np.sum([expec_q_gaussian(self.yS[f], self.y_ninducing * self.Nfactors) for f in range(self.Nfactors)])
+                        for f in range(self.Nfactors if not self.personal_component else (self.Nfactors - self.Npeople))])
+            logqy = np.sum([expec_q_gaussian(self.yS[f], self.y_ninducing * self.Nfactors) for f in
+                            range(self.Nfactors if not self.personal_component else (self.Nfactors - self.Npeople))])
 
 
         logps_w = 0
