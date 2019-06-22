@@ -791,10 +791,13 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                     K_nm = self.K_nm
                     invK_mm = self.invK_mm
 
+                self.obs_f[self.uw_i, :] -= self.w[self.uw_i, f].dot(self.y[f])
+
                 self.w[:, f:f+1], _ = inducing_to_observation_moments(K_mm / self.shape_sw[f] * self.rate_sw[f],
                                     invK_mm, K_nm, self.w_u[:, f:f+1], 0)
 
-                self.obs_f[self.uw_i, :] = (self.w[self.uw_i, :].dot(self.y) + self.t[self.uw_i, :])
+                self.obs_f[self.uw_i, :] += self.w[self.uw_i, f].dot(self.y[f])
+
                 self.obs_f_flat = self.obs_f.T.reshape(self.N * self.Npeople, 1)
 
             prev_diff_G = diff  # save last iteration's diffhttps://www.theguardian.com/uk/commentisfreeerence
