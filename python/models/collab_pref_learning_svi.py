@@ -658,9 +658,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 self.G = self.G * (1-G_update_rate) + self._compute_jacobian() * G_update_rate
 
             # we need to map from the real Npeople points to the inducing points.
-            GinvQG = (self.G.T/self.Q[None, self.data_obs_idx_i]).dot(self.G)
-
-            self.Sigma_t = covpair.dot(GinvQG).dot(covpair.T)
+            KKG = covpair.dot(self.G.T)
+            self.Sigma_t = (KKG/self.Q[None, self.data_obs_idx_i]).dot(KKG.T)
 
             # need to get invS for current iteration and merge using SVI weighted sum
             self.tinvS = (1-rho_i) * self.prev_tinvS + rho_i * (self.invK_mm*self.shape_st/self.rate_st + w_i * self.Sigma_t)
@@ -758,7 +757,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                                  + self.y_cov_i[f][self.personIDs[self.data_obs_idx_i]])[None, :]
 
                     #Sigma_w_f = covpair.dot(invQGT.dot(self.G) * scaling_f).dot(covpair.T)
-                    Sigma_w_f = covpair.dot((self.G.T * (scaling_f/self.Q[None, self.data_obs_idx_i])).dot(self.G)).dot(covpair.T)
+                    KKG = covpair.dot(self.G.T)
+                    Sigma_w_f = (KKG * (scaling_f/self.Q[None, self.data_obs_idx_i])).dot(KKG.T)
 
                     # need to get invS for current iteration and merge using SVI weighted sum
                     self.winvS[f] = (1-rho_i) * self.prev_winvS[f] + rho_i * (self.invK_mm*self.shape_sw[f]
@@ -1005,9 +1005,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         if self.verbose:
             logging.debug('Computing y_cov_i')
 
-        self.y_cov_i = np.zeros((self.Nfactors, self.Npeople))
-
         if self.person_features is not None:
+            self.y_cov_i = np.zeros((self.Nfactors, self.Npeople))
+
             covpair = self.Ky_nm.dot(self.invKy_mm)
             sy = self.shape_sy / self.rate_sy
 
@@ -1018,8 +1018,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                     self.y_cov_i[f] = self.yS[f]
 
         else:
-            for f in range(self.Nfactors):
-                self.y_cov_i[f] = self.yS[f]
+            self.y_cov_i = self.yS
 
     def _update_sample(self):
         self._update_sample_idxs()
