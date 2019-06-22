@@ -560,6 +560,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         if self.person_features is None:
             self.y = self.y_u
+            self.wy = self._wy()
+
             return
         else:
             self.y = np.zeros((self.Nfactors, self.Npeople))
@@ -569,44 +571,25 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                 else:
                     self.y[f] = self.y_u[f]
 
-        # # save for later
-        # batchsize = 500
-        # nbatches = int(np.ceil(self.Npeople / float(batchsize) ))
-        #
-        # if self.Npeople > self.max_Kw_size:
-        #     self.Ky_file_tag = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-        #     if not os.path.exists('./tmp'):
-        #         os.mkdir('./tmp')
-        #     self.Ky = np.memmap('./tmp/Ky_%s.tmp' % self.Ky_file_tag, dtype=float, mode='w+', shape=(self.Npeople, self.Npeople))
-        # else:
-        #     self.Ky = np.zeros((self.Npeople, self.Npeople))
-        #
-        # for b in range(nbatches):
-        #
-        #     logging.debug('Computing Ky batch %i / %i' % (b, nbatches))
-        #
-        #     end1 = (b+1)*batchsize
-        #     if end1 > self.Npeople:
-        #         end1 = self.Npeople
-        #
-        #     for b2 in range(nbatches):
-        #
-        #         end2 = (b2+1)*batchsize
-        #         if end2 > self.Npeople:
-        #             end2 = self.Npeople
-        #
-        #         if self.person_features is not None:
-        #             self.Ky[b*batchsize:(b+1)*batchsize, :][:, b2*batchsize:(b2+1)*batchsize] = self.y_kernel_func(
-        #                 self.person_features[b*batchsize:end1, :], self.lsy, self.person_features[b2*batchsize:end2, :])
-        #         elif b == b2:
-        #             self.Ky[b*batchsize:(b+1)*batchsize, :][:, b2*batchsize:(b2+1)*batchsize] = np.eye(end1 - b*batchsize, dtype=float)
-        #         else:
-        #             self.Ky[b * batchsize:(b + 1) * batchsize, :][:, b2 * batchsize:(b2 + 1) * batchsize] = np.zeros(
-        #                 (end1 - b * batchsize, end2 - b2 * batchsize), dtype=float)
-        #
-        # if self.Npeople > self.max_Kw_size:
-        #     self.Ky.flush()
+        self.wy = self._wy()
 
+
+    def _wy(self):
+        if not self.personal_component:
+            return self.w.dot(self.y)
+
+        wy = self.w[:, :self.Nfactors-self.Npeople].dot(self.y[:self.Nfactors-self.Npeople, :])
+
+        peeps = np.zeros((self.N, self.Npeople))
+        for n in range(self.N):
+            uidxs = (self.tpref_v == n) | (self.pref_u == n)
+            uidxs = self.personIDs[uidxs]
+            uidxs = np.unique(uidxs)
+
+            peeps[n, uidxs] = self.w[n:n+1, :].dot(self.y[:, uidxs])
+
+        wy += peeps
+        return wy
 
     def _init_params(self):
         if self.Nfactors is None or self.Npeople < self.Nfactors:  # not enough items or people
@@ -628,7 +611,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
     def _compute_jacobian(self, obs_f=None):
         if obs_f is None:
-            self.obs_f = (self.w.dot(self.y) + self.t)
+            self.obs_f = (self.wy + self.t)
             self.obs_f_flat = self.obs_f.T.reshape(self.N * self.Npeople, 1)
             obs_f = self.obs_f_flat
 
@@ -822,6 +805,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             if diff < self.conv_threshold_G:
                 break
 
+            if update_G:
+                self.wy = self.w.dot(self.y)
+
         if self.verbose:
             logging.debug('Computing w_cov_i')
         Kw_i = self._get_Kw()[self.uw_i, :][:, self.uw_i]
@@ -945,6 +931,9 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             if diff < self.conv_threshold_G:
                 break
 
+            if update_G:
+                self.wy = self.w.dot(self.y)
+
         for f in range(self.Nfactors):
 
             if self.personal_component and f > self.Nfactors-self.Npeople:
@@ -956,6 +945,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             else:
                 self.shape_sy[f], self.rate_sy[f] = expec_output_scale(self.shape_sy0, self.rate_sy0, self.Npeople,
                    np.ones(self.Npeople), self.y_u[f][None, :], np.zeros((self.Npeople, 1)), f_cov=self.yS[f])
+
+        self.wy = self._wy()
 
     def _update_sample_idxs(self, data_obs_idx_i=None, compute_y_var=True):
         # do this in first iteration
