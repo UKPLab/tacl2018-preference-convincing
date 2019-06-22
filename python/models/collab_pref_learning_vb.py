@@ -1090,10 +1090,12 @@ class CollabPrefLearningVB(object):
                 upeople = np.unique(personids)
                 Npeople = len(upeople)
 
-                # reuse the training points
-                y_sub = np.zeros((self.Nfactors, Npeople))
+                Nfactors = self.Nfactors if not self.personal_component else self.Nfactors - self.Npeople
 
-                var_y_sub = np.ones((self.Nfactors, Npeople))
+                # reuse the training points
+                y_sub = np.zeros((Nfactors, Npeople))
+
+                var_y_sub = np.ones((Nfactors, Npeople))
 
                 # for any people IDs we have seen before, we use the posterior mean and variance
                 people_from_training = np.in1d(upeople, self.personIDs)
@@ -1103,16 +1105,23 @@ class CollabPrefLearningVB(object):
                     y_sub[:, people_from_training] = y[:, upeople[people_from_training]]
 
                 if return_cov:
-                    for f in range(self.Nfactors):
+                    for f in range(Nfactors):
                         var_y_sub[f, people_from_training] = var_y[f, upeople[people_from_training]]
 
                 y = y_sub
                 var_y = var_y_sub
+
+                people_from_training = np.argwhere(people_from_training).flatten()
+            else:
+                people_from_training = np.arange(self.Npeople)
         else:
             # Make predictions for new users
             y, cov_y = self._predict_y(person_features, return_cov)
             if return_cov:
                 var_y = cov_y[:, range(y.shape[1]), range(y.shape[1])]
+
+
+            people_from_training = []
 
         if item_features is None:
             # reuse the training points
@@ -1129,7 +1138,7 @@ class CollabPrefLearningVB(object):
         Npeople = y.shape[1]
 
 
-        predicted_f = (self._wy(w, y) + t)
+        predicted_f = (self._wy(w, y, people_from_training) + t)
 
         # we may have reused some people from the training set, plus there may be some new user IDs.
         # The output from predict_f will contain only the people in personids.
@@ -1148,13 +1157,18 @@ class CollabPrefLearningVB(object):
         # covariance of a product of two independent gaussians (product-Gaussian distribution)
         for f in range(self.Nfactors):
             cov_f_f = np.zeros((Npeople, N, N))
-            cov_f_f += var_y[f][:, None, None] * cov_w[f][None, :, :]
 
-            yscaling = y[f, :]**2
-            cov_wf = cov_w[f][None, :, :] * yscaling[:, None, None]
+            if self.personal_component and f >= self.Nfactors - self.Npeople:
+                cov_w_f = cov_w[f][None, :, :]
+                cov_y_f = 0
+            else:
+                cov_f_f += var_y[f][:, None, None] * cov_w[f][None, :, :]
 
-            wscaling = (w[:, f:f + 1].dot(w[:, f:f + 1].T))
-            cov_yf = var_y[f][:, None, None] * wscaling[None, :, :]
+                yscaling = y[f, :]**2
+                cov_wf = cov_w[f][None, :, :] * yscaling[:, None, None]
+
+                wscaling = (w[:, f:f + 1].dot(w[:, f:f + 1].T))
+                cov_yf = var_y[f][:, None, None] * wscaling[None, :, :]
 
             cov_f += cov_f_f + cov_wf + cov_yf
 

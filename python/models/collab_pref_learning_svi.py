@@ -573,7 +573,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         self.wy = self._wy()
 
 
-    def _wy(self, w= None, y=None):
+    def _wy(self, w= None, y=None, peeps=None):
 
         if w is None:
             w = self.w
@@ -585,7 +585,10 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         wy = w[:, :self.Nfactors-self.Npeople].dot(y[:self.Nfactors-self.Npeople, :])
 
-        wy += self.w[:, -self.Npeople:]
+        if peeps is None:
+            wy += self.w[:, -self.Npeople:]
+        else:
+            wy[:, peeps] += self.w[:, peeps + self.Nfactors - self.Npeople]
 
         # peeps = np.zeros((self.N, self.Npeople))
         # for n in range(self.N):
