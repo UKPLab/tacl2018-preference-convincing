@@ -14,21 +14,25 @@
 # ----------------------------------
 
 # enable this if running on lichtenberg
-#module load intel python/3.6.8
-
-# crowd consensus
-
-## crowdBT
-#OMP_NUM_THREADS=8 python3 -u python/analysis/habernal_comparison/personalised_tests.py 9
+module load intel python/3.6.8
 
 ### personalised
-### crowdBT
-#OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/personalised_tests.py 8
-#
-## crowdGPPL consensus
-OMP_NUM_THREADS=8 python3 -u python/analysis/habernal_comparison/personalised_tests.py 1
-## crowdGPPL personalised
-#OMP_NUM_THREADS=36 python3 python/analysis/habernal_comparison/personalised_tests.py 0
-#
-## GPPL consensus
-#OMP_NUM_THREADS=8 python3 -u python/analysis/habernal_comparison/personalised_tests.py 7
+OMP_NUM_THREADS=24 python3 -u python/analysis/habernal_comparison/personalised_tests.py 6 0 1
+
+OMP_NUM_THREADS=24 python3 -u python/analysis/habernal_comparison/personalised_tests.py 6 0 5
+
+OMP_NUM_THREADS=24 python3 -u python/analysis/habernal_comparison/personalised_tests.py 6 0 10
+
+OMP_NUM_THREADS=24 python3 -u python/analysis/habernal_comparison/personalised_tests.py 6 0 12
+
+OMP_NUM_THREADS=24 python3 -u python/analysis/habernal_comparison/personalised_tests.py 6 0 15
+
+OMP_NUM_THREADS=24 python3 -u python/analysis/habernal_comparison/personalised_tests.py 6 0 17
+
+OMP_NUM_THREADS=24 python3 -u python/analysis/habernal_comparison/personalised_tests.py 6 0 20
+
+
+
+
+
+

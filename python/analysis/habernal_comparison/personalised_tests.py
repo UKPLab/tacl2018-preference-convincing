@@ -384,7 +384,7 @@ if __name__ == '__main__':
     else:
         lsm = 1
 
-    test_dir = 'D05-%i_P%i' % (lsm, npairs)  #'rate_s_tests_single'
+    test_dir = 'testD05-%i_P%i' % (lsm, npairs)  #'rate_s_tests_single'
 
     methods = ['SinglePrefGP_noOpt_weaksprior']
     datasets = ['UKPConvArgCrowdSample_evalMACE']
@@ -400,7 +400,7 @@ if __name__ == '__main__':
     runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
                                     dataset_increment)
 
-    max_fold = 32
+    max_fold = 10#32
 
     # PERSONALISED PREDICTION
     if test_to_run == 0:
