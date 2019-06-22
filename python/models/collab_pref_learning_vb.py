@@ -1066,6 +1066,15 @@ class CollabPrefLearningVB(object):
     def _compute_cov_t(self, _, __):
         return self.t_cov
 
+    def _wy(self, w= None, y=None):
+
+        if w is None:
+            w = self.w
+        if y is None:
+            y = self.y
+
+        return w.dot(y)
+
     def predict_f(self, item_features=None, person_features=None, personids=None, return_cov=False, cov_0=None,
                   cov_1=None, return_personids=False):
 
@@ -1119,7 +1128,8 @@ class CollabPrefLearningVB(object):
         N = w.shape[0]
         Npeople = y.shape[1]
 
-        predicted_f = (w.dot(y) + t)
+
+        predicted_f = (self._wy(w, y) + t)
 
         # we may have reused some people from the training set, plus there may be some new user IDs.
         # The output from predict_f will contain only the people in personids.

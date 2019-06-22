@@ -309,7 +309,6 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             self.invKv = np.linalg.inv(self.Kv)
 
             self.w_u = np.concatenate((self.w_u, self.V), axis=1)
-            self.y_u = np.concatenate((self.y_u, np.eye(self.Npeople)), axis=0)
 
         # moments of distributions over inducing points for convenience
         # posterior covariance
@@ -574,11 +573,17 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         self.wy = self._wy()
 
 
-    def _wy(self):
-        if not self.personal_component:
-            return self.w.dot(self.y)
+    def _wy(self, w= None, y=None):
 
-        wy = self.w[:, :self.Nfactors-self.Npeople].dot(self.y[:self.Nfactors-self.Npeople, :])
+        if w is None:
+            w = self.w
+        if y is None:
+            y = self.y
+
+        if not self.personal_component:
+            return w.dot(y)
+
+        wy = w[:, :self.Nfactors-self.Npeople].dot(y[:self.Nfactors-self.Npeople, :])
 
         peeps = np.zeros((self.N, self.Npeople))
         for n in range(self.N):
@@ -586,7 +591,7 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             uidxs = self.personIDs[uidxs]
             uidxs = np.unique(uidxs)
 
-            peeps[n, uidxs] = self.w[n:n+1, :].dot(self.y[:, uidxs])
+            peeps[n, uidxs] = w[n:n+1, uidxs]
 
         wy += peeps
         return wy

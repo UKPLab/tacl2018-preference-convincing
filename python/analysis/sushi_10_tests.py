@@ -493,7 +493,7 @@ def subsample_data(test_number):
         npairs_test = 20
         nusers_unseen = 0
     elif test_number == 0 or test_number == 1: # sushi-A-small
-        nusers_tr = 100
+        nusers_tr = 5000
         npairs_tr = 5
         npairs_test = 25
         nusers_unseen = 0

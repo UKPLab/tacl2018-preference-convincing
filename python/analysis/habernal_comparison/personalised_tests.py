@@ -397,7 +397,7 @@ if __name__ == '__main__':
     datasets = ['UKPConvArgCrowdSample']
     methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
 
-    runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
+    runner = PersonalisedTestRunnels da r(test_dir, datasets, feature_types, embeddings_types, methods,
                                     dataset_increment)
 
     max_fold = 10#32
