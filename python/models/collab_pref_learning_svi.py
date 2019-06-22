@@ -585,15 +585,17 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
 
         wy = w[:, :self.Nfactors-self.Npeople].dot(y[:self.Nfactors-self.Npeople, :])
 
-        peeps = np.zeros((self.N, self.Npeople))
-        for n in range(self.N):
-            uidxs = (self.tpref_v == n) | (self.pref_u == n)
-            uidxs = self.personIDs[uidxs]
-            uidxs = np.unique(uidxs)
+        wy += self.w[:, -self.Npeople:]
 
-            peeps[n, uidxs] = w[n:n+1, uidxs]
-
-        wy += peeps
+        # peeps = np.zeros((self.N, self.Npeople))
+        # for n in range(self.N):
+        #     uidxs = (self.tpref_v == n) | (self.pref_u == n)
+        #     uidxs = self.personIDs[uidxs]
+        #     uidxs = np.unique(uidxs)
+        #
+        #     peeps[n, uidxs] = w[n:n+1, uidxs]
+        #
+        # wy += peeps
         return wy
 
     def _init_params(self):
