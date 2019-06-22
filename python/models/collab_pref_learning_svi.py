@@ -762,6 +762,8 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
                     G = self.G[user_obs, :][:, self.w_idx_i[user_idxs]]
                     Sigma_w_f = covpair_ones.dot(G.T / self.Q[None, user_obs]).dot(G).dot(covpair_ones.T)
 
+
+
                     # need to get invS for current iteration and merge using SVI weighted sum
                     self.winvS[f] = (1-rho_i) * self.prev_winvS[f] + rho_i * (self.invKv*self.shape_sw[f]
                                 / self.rate_sw[f] + w_i * Sigma_w_f)

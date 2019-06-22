@@ -40,7 +40,7 @@ if __name__ == '__main__':
     expt_settings['embeddings_type'] = 'word_mean'
 
     if test_to_run == 0:
-        foldername = 'p3'
+        foldername = 'p4'
 
         # Create a plot for the runtime/accuracy against M + include other methods with ling + Glove features
         methods =  ['SinglePrefGP_noOpt_weaksprior_M2',
@@ -307,7 +307,7 @@ if __name__ == '__main__':
         runtimes_N_uq = np.zeros((len(methods), len(Nvals)))
 
         for n, N in enumerate(Nvals):
-            foldername = 'p2_P%i/' % N
+            foldername = 'p4_P%i/' % N
 
             for m, expt_settings['method'] in enumerate(methods):
                 print("Processing method %s" % expt_settings['method'])
@@ -379,7 +379,7 @@ if __name__ == '__main__':
         ax3.set_xlabel('1000 pairwise training labels')
         ax3.set_ylabel('Runtime (s)')
         ax3.yaxis.grid('on')
-        ax3.set_ylim(-5, 600)
+        ax3.set_ylim(-5, 200)
         #plt.legend(loc='best')
 
         plt.tight_layout()

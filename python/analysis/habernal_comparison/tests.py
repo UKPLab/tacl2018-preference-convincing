@@ -1117,11 +1117,14 @@ class TestRunner:
                     for upeep in np.unique(person_rank_test):
                         idxs = person_rank_test == upeep
 
+                        if np.sum(idxs) < 2:
+                            continue
+
                         tau_p, _ = kendalltau(scores_rank_test[idxs], predicted_f.flatten()[idxs])
 
                         tau.append(tau_p)
 
-                        if np.sum(idxs) >= 40:
+                        if np.sum(person_rank_train == upeep) >= 40:
                             tau_40.append(tau_p)
 
                     tau = np.mean(tau)
@@ -1148,11 +1151,14 @@ class TestRunner:
                     for upeep in np.unique(person_rank_train):
                         idxs = person_rank_train == upeep
 
+                        if np.sum(idxs) < 2:
+                            continue
+
                         tau_p, _ = kendalltau(scores_rank_train[idxs], tr_f.flatten()[idxs])
 
                         tr_tau.append(tau_p)
 
-                        if np.sum(idxs) >= 40:
+                        if np.sum(person_rank_train == upeep) >= 40:
                             tr_tau_40.append(tau_p)
 
                     tr_tau = np.mean(tr_tau)
