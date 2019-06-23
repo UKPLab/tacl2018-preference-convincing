@@ -716,7 +716,7 @@ if __name__ == '__main__':
 
     # Experiment name tag
     if len(sys.argv) > 2:
-        tag = sys.argv[2]
+        tag = '_' + sys.argv[2]
     else:
         tag = datetime.datetime.now().strftime('_%Y-%m-%d-%H-%M-%S')
 
