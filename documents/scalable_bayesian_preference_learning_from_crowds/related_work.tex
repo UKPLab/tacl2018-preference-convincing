@@ -1,4 +1,4 @@
-\section{Related Work}
+\section{Background and Related Work}
 \label{sec:rw}
 
 % Don't think the references really show this, or should necessarily be added: Pairwise comparisons have low cognitive load:
@@ -32,31 +32,63 @@
 % the method scales linearly with no. users. In our case, we model covariance between users, so
 % scaling is poor unless you can use inducing points or diagonal covariance.
 
-\subsection{Aggregating Pairwise Labels from a Crowd} % Learning a Consensus by ...
+% Preference learning with multiple users
+\subsection{Pairwise Preference Learning} % Learning a Consensus by ...
 
 % TODO: do we really care about multiple rankings in this paragraph?
-
-To obtain a ranking from pairwise labels, many preference learning methods model
+%Given a set of items and a set of parwise labels, the goal of preference learning is to 
+%either infer a 
+To obtain a ranking over items given
+a set of pairwise labels, many preference learning methods model
 the user's choices as a random function of the latent utility of the items~\citep{thurstone1927law}.
-An example is the method of ~\citet{herbrich2007trueskill}, which learns the skill of chess players from 
-match outcomes by treating them as noisy pairwise labels.
-Recent work on this type of approach has analyzed bounds on error rates ~\citep{chen2015spectral}, 
-sample complexity~\citep{shah2015estimation}, and joint models for ranking and clustering from pairwise comparisons~\citep{li2018simultaneous}.
-% When all items have a sufficient number of labels, it is possible to estimate the underlying utility using
-% simple counting procedures~\citep{kiritchenko2016capturing}.
-%, but do not propose methods
-%for learning multiple rankings from crowds of users.
-% Most approaches use Bradley-Terry or Thurstone. However some also try Mallows models ~\cite
-% {busa2014preference,raman2015bayesian} to get the uncertainty over the ranking instead of over a 
-% latent score.
-% Other approaches use graph-based ranking measures, e.g. based on Kleinberg's HITS ~\citep{sunahase2017pairwise} or PageRank.
-% extension of chenc2013 to k-ary preferences. han2018robust
-% wang2016blind/Thurstonian Pairwise Preference (TPP): Chen et al. lacks the mechanism to model multiple query domains, (what does this mean? --> better at labeling certain types of items)
-%thus incapable to characterize workers’ domain-dependent expertise and truthfulness. 
-% CROWD BT does not take query difficulty into account either. (do they have a feature-dependent model?)
-% Furthermore, unlike TPP, CROWD BT does not model the generation of rankings (it models generation of pairwise labels directly)
-% Therefore, it simplifies the generation of inconsistent annotations as solely a result from worker accuracy
-% (it treats differences between workers as pure noise).
+\todo{random utility model background from GPPRL paper? Or from later in this paper.
+Go back to intro and see if we can define the task more precisely and clearly. 
+See GPPRL and ACL paper for suggestions on how to introduce GPPL and BWS.
+Have the goals of PL been introduced? They should be in the intro.
+We need to state that it is necessary to account for individual user bias - define the term clearly.
+}
+%Not sure what this stuff really adds, it's not really related enough?
+%Recent work on this type of approach has analysed bounds on error rates ~\citep{chen2015spectral}, 
+%sample complexity~\citep{shah2015estimation}, and joint models for ranking and clustering 
+%items given a set of pairwise comparisons~\citep{li2018simultaneous}.
+
+%METHODS THAT PRODUCE A SINGLE RANKING
+...In contrast, Gaussian processes preference learning (\emph{GPPL})
+uses item features to make predictions for unseen items and
+share information between similar items~\citep{chu2005preference}.
+GPPL was used by \citet{simpson2018finding} to aggregate crowdsourced pairwise labels,
+but assumes the same level of noise for all annotators and ignores the effect of divergent opinions.
+\todo{
+Moreover, please note that the call for papers for ECMLPKDD journal
+track explicitly states the following: "Consequently, journal versions
+of previously published conference papers, or survey papers will not
+be considered for the special issue." This is in contrast to "regular"
+journal submissions, which can be extended versions of previous
+conference papers. The earlier publication you have on this topic was
+presented at ACL 2018. We would thus like you to make sure that the
+revision puts an even stronger emphasises on the new results, to make
+sure that the manuscript solidly goes beyond an "extended conference
+paper".
+}
+To crowdsource sentiment annotations, 
+\citet{kiritchenko2016capturing} propose to use an extension of pairwise comparison
+known as \emph{best-worst scaling}, in which the annotator selects best and worst items from a set.
+They apply a simple counting technique to infer a ranking over the items, which requires 
+each item to have a sufficient number of comparisons.
+A popular method for predicting pairwise labels of new items given their features is 
+\emph{SVM-rank}~\citep{joachims2002optimizing}.
+...however, these approaches assume a single utility function over items,
+so are not suitable for modelling personal preferences 
+and cannot account for the biases of individual users.
+
+
+Pairwise labels may be provided by multiple users who have differing preferences or give labels 
+that conflict with one another. 
+Previous work for handling these differences falls broadly into two camps: (1)
+methods that treat disagreement between users as annotation errors and attempt to infer the true utilities
+and (2) personalised preference models that infer the utilities specific to each user.
+
+(1)
 
 The problem of disagreement between annotators in a crowd was addressed by \citet{chen2013pairwise}
 \todo{
@@ -94,7 +126,7 @@ annotators do not; show the annotator bias according to crowdGPPL, i.e. weights 
 latent features.  
 ]
 Those models are more general and robust to the noisy preferences in crowdsourcing settings.
-In terms of robustness of noise modeling, I do not find the proposed model can be significantly better than the previous works.  There is no experiments comparing with any baselines in crowdsourcing, even Chen's work. 
+In terms of robustness of noise modelling, I do not find the proposed model can be significantly better than the previous works.  There is no experiments comparing with any baselines in crowdsourcing, even Chen's work. 
 }
 and \citet{wang2016blind},
 using Bayesian approaches that learn the individual accuracy of each worker.
@@ -105,66 +137,21 @@ using Bayesian approaches that learn the individual accuracy of each worker.
 %in the pairwise labels. 
 However, they do not %\citet{chen2013pairwise} nor \citet{wang2016blind}
 exploit item features to mitigate data sparsity.
-In contrast, Gaussian processes preference learning (\emph{GPPL})
-uses item features to make predictions for unseen items and
-share information between similar items~\citep{chu2005preference}.
-GPPL was used by \citet{simpson2018finding} to aggregate crowdsourced pairwise labels,
-but assumes the same level of noise for all annotators and ignores the effect of divergent opinions.
-\todo{
-Moreover, please note that the call for papers for ECMLPKDD journal
-track explicitly states the following: "Consequently, journal versions
-of previously published conference papers, or survey papers will not
-be considered for the special issue." This is in contrast to "regular"
-journal submissions, which can be extended versions of previous
-conference papers. The earlier publication you have on this topic was
-presented at ACL 2018. We would thus like you to make sure that the
-revision puts an even stronger emphasises on the new results, to make
-sure that the manuscript solidly goes beyond an "extended conference
-paper".
-}
-To crowdsource sentiment annotations, 
-\citet{kiritchenko2016capturing} propose to use an extension of pairwise comparison
-known as \emph{best-worst scaling}, in which the annotator selects best and worst items from a set.
-They apply a simple counting technique to infer a ranking over the items, which requires 
-each item to have a sufficient number of comparisons.
-% account for the varying quality of pairwise labels obtained from a crowd
-%by learning an individual model of agreement with the true pairwise labels for each worker.  
 
-%  consider the case where different rankings correspond to lists of items
-% provided in response to search queries. 
-% While they model the dependence of annotator accuracy on the domain of a query,
-% their approach was not applied to personal or subjective rankings.
 
-%Say we want to learn a 'ground truth' preference function that may be one user's preference function.
-% One set of pairwise labels may be informative for one subset of items.
-% E.g. music recommendation, two users may have similar jazz preferences but all other genres are different
-% E.g. learning user preferences from webpage clicks, selecting items from a list may be informative in one context and meaningless in another
-A popular method for predicting pairwise labels of new items given their features is 
-\emph{SVM-rank}~\citep{joachims2002optimizing}.
 %predicts only pairwise labels rather than the underlying utilities.
-For crowdsourced data, \citet{fu2016robust} show that performance is improved by identifying outliers in crowdsourced data
+For crowdsourced data, \citet{fu2016robust} show that performance
+of SVM-rank is improved by identifying outliers in crowdsourced data
 that correspond to probable errors.
 \citet{uchida2017entity} extend SVM-rank to account for different levels of confidence in each pairwise annotation expressed
 by the annotators.
-%However, these approaches do not model divergence of opinion between annotators
-%and do not provide a Bayesian solution.
-%Related works have also investigated budget constraints for crowdsourcing pairwise labels~\citep{cai2017pairwise}.
-% Also consider mentioning relevant work on active learning
-% -- finding the most preferred item with minimal labels
-% -- learning a preference function using AL
-% -- learning within a budget constraint
-% Strategy: look at recent works from ML/AI/DM conferences. Must consider annotators with different preferences.
 % A number of studies consider actively selecting pairs of items for
 % comparison to minimize the number of pairwise labels required~\citep{radlinski2007active,qian2015learning,maystre2017just,cai2017pairwise}.
-However, besides modeling labeling noise, 
+However, besides modelling labelling noise, 
 the previous work on crowdsourced preference learning does not 
 account for the effect of divergence of opinion on the inferred preferences.
-% does not 
-% provide a Bayesian approach for aggregating pairwise labels from crowds
-% that can make predictions for new items
-% and model the divergence of opinions between annotators.
 
-\subsection{Bayesian Methods for Inferring Individual Preferences}
+\subsection{Inferring Individual Preferences for Members of a Crowd}
 
 % \citet{tian2012learning} consider crowdsourcing tasks where there may be more than one correct answer.
 % They use a nonparametric Dirichlet process model to infer a variable number of clusters of answers for each task,
@@ -175,13 +162,13 @@ account for the effect of divergence of opinion on the inferred preferences.
 % Rather, we develop a model for aggregating pairwise labels from multiple sources, 
 % which can be used as the basis of active learning methods that exploit the model uncertainty 
 % estimates provided by this Bayesian approach.
-%
-%queries belong to 'domains'. Annotators have different accuracy on each domain. 
-% we don't do that because we assume each annotator has their own ranking and so different noise levels are introduced through the personalized preference function having larger values where the annotator is confident. 
-\todo{
-https://github.com/trungngv/cogp, missing paper?
-}
-\todo{ Section 2.2: Define or give an example of 'input features' when introduced.  }
+
+
+(2) \todo{this should support a Bayesian approach}
+
+An example is the method of ~\citet{herbrich2007trueskill}, which learns the skill of chess players from 
+match outcomes by treating them as noisy pairwise labels.
+
 As well as aggregating preferences from a crowd to identify a consensus,
 we also wish to predict the preferences of individual users.
 \citet{yi_inferring_2013} and \citet{kim2014latent} address this task by learning
@@ -189,7 +176,19 @@ we also wish to predict the preferences of individual users.
 the preference of each user toward those rankings, while 
 \citet{salimans2012collaborative} use Bayesian matrix factorization to identify multiple
 latent rankings.
-However, none of these approaches exploit item features to remedy labeling errors or generalize to new test items.
+A probabilistic matrix factorisation method using GPs to
+was previously applied to  applied to collaborative filtering~\citep{lawrence2009non} and.
+A GP is used to make predictions of a user's ratings for an item that they have not seen before, given the
+item's latent features, but the $\mathcal{O}(N^3)$ time complexity of GP inference was not addressed.
+None of these approaches exploit item or user 
+input features to make predictions over new test items or users. % , nor remedy labelling errors or generalize .
+Input features can be extracted from the content or metadata of each item or user, for example, in text 
+it is common to count occurrences of each unique token or n-gram (sequence of n tokens),
+or more recently, to obtain an \emph{embedding} of a word, sentence or document,
+which represents its content numerically~\citep{mikolov2013distributed,devlin2018bert}.
+Features can be represented as a vector of numerical values corresponding to each item or user
+and can be used to predict the outputs for a test item or user based on observations of others with similar feature values.
+Features can also help to remedy labelling errors when learning from noisy, crowdsourced data~\citep{felt2016semantic,simpson2015language}.
 %crowdranking \citet{yi_inferring_2013} uses the crowd to make up for the fact that a target user has small data -- it's a form of collaborative filtering with pairwise labels using a non-Bayesian inference algorithm.
 % Several other works learn multiple rankings from crowdsourced pairwise labels
 % rather than a single gold-standard ranking, 
@@ -205,6 +204,8 @@ However, none of these approaches exploit item features to remedy labeling error
 %However, these techniques are not directly applicable to 
 %learning from pairwise comparisons 
 %as they assume that the observations are Gaussian-distributed numerical ratings~\citep{shi2017survey}. 
+
+
 In contrast, \citet{guo2010gaussian} propose a joint Gaussian process over the
 space of users and features. Since this scales cubically
 in the number of users, \citet{abbasnejad2013learning} 
@@ -286,12 +287,14 @@ Another claim from the authors is the SVI for large-scale crowdGPPL, which is du
 Li et al,. Hybrid-MST: A Hybrid Active Sampling Strategy for Pairwise Preference Aggregation, NIPS 2018
 Therefore, I don't find any new insight of SVI here.
 }
-\todo{
-Non-linear Matrix Factorization with Gaussian Processes, Neil Lawrence and ? 2009
-}
+Many of the approaches for modelling individual user preferences use matrix factorization 
+to share information between users and items,
+which benefits from a Bayesian treatment to reduce the effects of overfitting or noisy data~\citep{saha2015scalable}.
 Recent work on scalable Bayesian matrix factorization focuses on distributing and parallelizing 
- inference %rather than reducing total costs, 
- but is not directly applicable to Gaussian processes~\citep{ahn2015large,vander2017distributed,chen2018large}. 
+ inference but 
+ these approaches do not make use of input features 
+ and are not directly applicable when Gaussian processes are used to integrate input features
+ ~\citep{ahn2015large,saha2015scalable,vander2017distributed,chen2018large}. 
 %This paper focuses instead on reducing computational and memory costs, 
 %although the method we propose is amenable to parallelization.
 Models that combine Gaussian processes with non-Gaussian likelihoods 
@@ -320,18 +323,25 @@ with observed ratings in future data aggregation settings.
 
 To handle large numbers of pairwise labels, \citet{khan2014scalable}
 develop a variational EM algorithm and sub-sample pairwise data rather than learning from the complete training set.
-An alternative is \emph{Stochastic variational inference (SVI)}~\citep{hoffman2013stochastic}, which updates an approximation using 
- a different random sample at each iteration. 
+An alternative is \emph{Stochastic variational inference (SVI)}~\citep{hoffman2013stochastic}, which updates an approximation to the posterior using 
+ a different random sample of the training data at each iteration. 
  This allows the approximation to make use of all training data over a number of 
  iterations, while limiting training costs per iteration.
 SVI has been successfully applied to Gaussian process regression~\citep{hensman2013gaussian} and classification~\citep{hensman2015scalable},
-and provides a convenient framework for sparse approximation.
- An SVI method was also developed for preference learning,
- which places a GP over items rather than pairs, but does not model multiple users' preferences~\citep{simpson2018finding}.
-This paper provides the first full derivation of this approach, %including showing how to learn the observation noise
-%as part of the variational approach. 
-as well as providing the first application of SVI to Bayesian matrix factorization
-as part of a new model that accounts for individual user preferences.
-%developing the first application of SVI to a matrix factorization approach.
-%As our method includes Bayesian matrix factorization (BMF) as part of the model, 
-%we believe this paper is the first to apply SVI to BMF.
+further improving scalability over existing sparse approximations.
+For multi-output GPs, ~\citet{nguyen2014collaborative} introduce an SVI approach where 
+each output is a weighted combination of shared latent functions plus a latent function specific to that output. 
+They apply their method to capture dependencies between regression tasks,
+treating the weights for the shared latent functions as hyperparameters. 
+In this paper, we also use shared latent functions to capture dependencies between different users' preferences,
+but introduce a Bayesian treatment of the weights using a GP over user features,
+and integrate a non-Gaussian likelihood into the SVI framework to enable learning from pairwise labels.
+
+ An SVI method for preference learning,
+ that places a GP over items rather than pairs, was previously applied by ~\citet{simpson2018finding}.
+ However, the details of the inference approach were not provided and the model does not consider
+ differences between the preferences of individual users.
+In this paper, we provide the first complete derivation of SVI for Gaussian process preference learning,
+then extend the approach to a new multi-user model, 
+incorporating the first application of SVI to Bayesian matrix factorization.
+

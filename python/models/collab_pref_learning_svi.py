@@ -644,11 +644,13 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
         else:
             max_iter_G = self.max_iter_G
             self._update_sample() # only update the sample during normal iterations, not when G has been fixed
-            self.prev_tinvS = self.tinvS
-            self.prev_tinvSm = self.tinvSm
 
         if not self.use_t:
             return
+
+        if update_G:
+            self.prev_tinvS = self.tinvS
+            self.prev_tinvSm = self.tinvSm
 
         N = self.ninducing
 

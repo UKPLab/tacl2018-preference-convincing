@@ -82,7 +82,9 @@ is a similar model that, like crowdGPPL,
  for each user, but uses an inducing point method, \emph{GFITC}, 
  to reduce computational complexity, as described in Section \ref{sec:inf}.
 As collabGP requires more parameters, it has higher memory complexity 
-($\mathcal{O}(P+U)$ in contrast to $\mathcal{O}(|P_i| + M)$).
+($\mathcal{O}(M_{\mathrm{items}}^2 + M_{\mathrm{items}}P + P^2 + M_{\mathrm{users}}^2 + M_{\mathrm{users}}P +U^2)$ 
+in contrast to 
+$\mathcal{O}(CM_{\mathrm{items}}^2 + P_i^2 + M_{\mathrm{items}} P_i + CM_{\mathrm{users}}^2 + M_{\mathrm{users}} P_i$).
 We therefore treat the performance of collabGP as a target for crowdGPPL.
 
 \emph{CrowdBT}~\citep{chen2013pairwise}
@@ -127,7 +129,7 @@ which normalizes features and prevents the average covariance between items or u
 % comparing distributions~\citep{gretton2012optimal}, but has %is a simple heursitic with
 %  no guarantees of optimality. 
 The SVI hyperparameters were set to 
- $r=0.9$, $|P_i|=1000$ and $\epsilon=1$.
+ $r=0.9$, $P_i=1000$ and $\epsilon=1$.
  \todo{ Page 13, line 41: Can you provide some intuition as to how values for r, |P| and epsilon are chosen in general?}
 
 For the first test,
@@ -282,7 +284,8 @@ For $\backslash\bs u$ methods, the user covariance matrix, $\bs K_w$, in the cro
 We set hyperparameters $C=20$ without optimization,
 $\alpha_0=1, \beta_0=100$ using a grid search over values 
 $10^{\{-1,...,3\}}$ on withheld user data from the \emph{Sushi-A} dataset,
-$\epsilon=5$, $|P_i|=200$ for \emph{Sushi-A} and $|P_i|=2000$ for \emph{Sushi-B}. All other hyperparameters are the same 
+\todo{clarify the parameters for sushi and for conv}
+$\epsilon=5$, $P_i=200$ for \emph{Sushi-A} and $P_i=2000$ for \emph{Sushi-B}. All other hyperparameters are the same 
 as for Section \ref{sec:exp_synth}.
 The complete process of subsampling, training and testing, was repeated $25$ times
 for each dataset.
@@ -335,7 +338,7 @@ Method & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ \\
 %\multicolumn{13}{|l|}{\textit{crowdGPPL}} \\
 crowdGPPL & \textbf{.71} & \textbf{.56} & .48 %& 38%
 & .84 & .33 & .79 %& 21
-& .76 & .55 & .45  %& 4724 \\
+& .74 & .58 & . 53 %& .76 & .55 & .45  %& 4724 \\
  \\
 crowdGPPL $\backslash $inducing & .70 & .60 & .45 %& 51 %(14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
 % new results 02.04
@@ -345,14 +348,14 @@ crowdGPPL $\backslash $inducing & .70 & .60 & .45 %& 51 %(14.81) %& .63 (.02) & 
 crowdGPPL $\backslash u$ & .70 & .58 & .46 &  %9  &%(24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
 % new results 02.04:
 \textbf{.85} & \textbf{.31} & \textbf{.80} %& 21
-& \textbf{.78} & .57 & .49 %& 3788 
+& .75 & .52 & .57 %& 3788 
 \\
 %crowdGPPL $\backslash u, C=50$ & .70 & .58 & .46 & .84 & .32 & .80 & 
 %\\
 crowdGPPL $\backslash u \backslash x$ & \textbf{.71} & .57 & \textbf{.49} & % 5 & %(3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
 %new results 02.04: 
 \textbf{.85} & .33 & .80 % & 14
-& .77 & .58 & .48 % & 3363
+& \textbf{.77} & .58 & .48 % & 3363
 \\
 crowdGPPL $\backslash u,\backslash t$ % this is also FITC to emulate Houlsby -- mention it in the text, not here
 & .68 & .60 & .43 % & 291 %(48.62) %& .50 (.00) & .69 (.00) & nan (nan)
@@ -377,7 +380,7 @@ collabGP & .69 & .58 & n/a %& \textbf{2}*
 \\
 collabGP$\backslash u$ & .69 & .59 & n/a & .84 & .33 & n/a & .76 & .50 & n/a
 \\
-GPVU & .70 & .67 & .43 & .72 & .67 & .42 & 
+GPVU & .70 & .67 & .43 & .72 & .67 & .42 & .73 & .60 & .51
 %collabGP$\backslash u, C=50$ & .70 & .58 & n/a & .85 & .33 & n/a & \\
 \\ \bottomrule
 \end{tabular}
@@ -657,22 +660,22 @@ Increasing the number of pairwise labels, $P$, above 1000, however, does not vis
 % SCALABILITY ----------------------------------------------------------
 \begin{figure}
 \captionsetup{justification=centering}
-\subfloat[Varying $M$, using the complete training set]{
+\subfloat[Varying $M$ with complete training set]{
 \label{fig:M}
- \includegraphics[clip=true,trim=10 0 0 0,width=.40\columnwidth]{num_inducing_32310_features}
+ \includegraphics[clip=true,trim=12 0 12 0,width=.47\columnwidth]{num_inducing_32310_features}
 }
-\subfloat[Varying number of items, $N$.]{
+\subfloat[Varying $N$.]{
 \label{fig:Ntr}
-\includegraphics[clip=true,trim=10 0 10 0,width=.314\columnwidth]{num_arguments}
+\includegraphics[clip=true,trim=11 0 11 0,width=.27\columnwidth]{num_arguments}
 }
-\subfloat[Varying no. pairwise training labels, $P$. ]{
+\subfloat[Varying $P$ ]{
 \label{fig:Npairs}
-\includegraphics[clip=true,trim=43.5 0 10 0,width=.26\columnwidth]{num_pairs}
+\includegraphics[clip=true,trim=49 0 10 0,width=.218\columnwidth]{num_pairs}
 }
 \caption{
-    Wall-clock times for training+prediction of consensus function 
-    on UKPConvArgCrowdSample. 300 GloVe features. Means over 32 runs. CrowdGPPL with 5 components.
-    The 
+    Wall-clock times for training+prediction of the consensus utilities 
+    on UKPConvArgCrowdSample. Lines show means over 32 runs,
+    with bands indicating one standard deviation. CrowdGPPL with $C=5$ components.
 }
 \end{figure}
 
@@ -699,7 +702,7 @@ number of latent components would permit.
 \includegraphics[trim=20 5 0 0,clip=true,width=.32\textwidth]{sushi_factor_scales}
 }
 \caption{
-Distribution of latent factor variances, $1/s_c$, for crowdGPPL on UKPConvArgCrowdSample, \emph{Sushi-A} and Sushi-B, averaged over all runs.
+Distribution of latent component variances, $1/s_c$ in crowdGPPL, means over all runs.
 }
 \label{fig:latent_factor_variance}
 \end{figure}

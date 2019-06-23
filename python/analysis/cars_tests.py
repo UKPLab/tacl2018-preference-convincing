@@ -234,28 +234,6 @@ def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test,
     return fpred, rho_pred
 
 
-def run_collab_FITC_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test, use_common_mean=False):
-    Nfactors = ufeats.shape[0]
-    if Nfactors > max_facs:
-        Nfactors = max_facs # this is the maximum
-
-    model = CollabPrefLearningFITC(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                   shape_sy0=1e6, rate_sy0=1e6, ls=None,
-                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
-                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
-                                   use_common_mean_t=use_common_mean, delay=delay,
-                                   exhaustive_train_count=0)
-
-    model.max_Kw_size = max_Kw_size
-    model.max_iter = 500
-    model.fit(u_tr, i1_tr, i2_tr, ifeats, prefs_tr, None, use_median_ls=True)
-
-    fpred = model.predict_f(None, None)
-    rho_pred = model.predict(u_test, i1_test, i2_test, None, None)
-
-    # return predictions of preference scores for training users, new testing users, and pairwise testing labels
-    return fpred, rho_pred
-
 
 def train_test(method_name, u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test, i2_test):
 

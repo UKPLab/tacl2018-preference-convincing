@@ -1,20 +1,23 @@
 \section{Conclusions}
 
 We proposed a novel Bayesian preference learning approach 
-for jointly modeling the individual utilities of members of a crowd 
-and forming a consensus from 
-unreliable annotations, such as those provided by a crowd. % or through implicit user feedback.
-Unlike previous methods, 
-our model learns the latent utilities of items from pairwise comparisons using a combination of Gaussian processes and Bayesian matrix factorization to capture divergences in opinion while inferring a consensus.
-To enable inference at the scale of real-world datasets in fields such as NLP,
-we derived a stochastic variational inference scheme.
+for modelling both the preferences of individual users 
+and the overall consensus of a crowd. 
+Our model learns the latent utilities of items from pairwise comparisons 
+using a combination of Gaussian processes and Bayesian matrix factorization 
+to capture divergences in opinion.
+Unlike previous work, our method can scale to arbitrarily large datasets,
+since its computational and memory complexity  are bounded independently of dataset size
+through the use of stochastic variational inference.
 Our empirical results confirm that our approach scales well with the amount of training data,
-and that jointly modeling the consensus and personal preferences of users can improve the predictions
+and that jointly modelling the consensus and personal preferences of users can improve the predictions
 of both.
-When predicting a consensus from crowdsourced data, our model, CrowdGPPL, improves on the results of \citet{simpson2018finding},
-who used a GPPL method that did not account for personal preferences.
-On a benchmark recommendation dataset, our approach also produces competitive results and showed
-that modeling the consensus function can boost predictions of individual preferences.
+On a benchmark recommendation dataset, our approach performs competitively
+with rival methods with inferior computational and memory complexity,
+despite the approximations required for our stochastic inference method.
+When predicting a consensus from crowdsourced data, our model, CrowdGPPL, improves on 
+the previous state of the art~\citep{simpson2018finding},
+which did not account for personal preferences.
 %far better than previous
 %Gaussian process preference learning methods 
 %without harming  

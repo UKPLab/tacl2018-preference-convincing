@@ -57,8 +57,15 @@ computational costs~\citep{hensman2015scalable}.
 We now derive a more scalable approach for GPPL and crowdGPPL using
 stochastic variational inference (SVI), an iterative scheme that limits the computational and memory costs at
 each iteration~\citep{hoffman2013stochastic}
-and allows training data to be split into mini-batches for parallel processing,
-as we explain below.
+and allows training data to be split into mini-batches for parallel processing.
+As we explain below,
+this allows us to reduce the computational cost of each iteration of the algorithm from 
+$\mathcal{O}(NM^2)$ with GFITC to $\mathcal{O}(P_i M^2 + Pi^2 M + M^3)$,
+where $P_i$ is the mini-batch size, 
+and memory complexity from $\mathcal{O}(NM)$ to
+$\mathcal{O}(P_i M + M^2  + Pi^2)$.
+Neither $P_i$ nor $M$ are dependent on the size of the dataset, meaning that SVI 
+can be run with arbitrarily large datasets.
 First, we define a suitable likelihood approximation to enable the use of SVI.
 
 \subsection{Approximating the Posterior with a Pairwise Likelihood}
@@ -241,7 +248,10 @@ This means that $\mathcal{L}$ can be maximized iteratively by considering a rand
 observations at each iteration~\citep{hensman2013gaussian}.
 %Therefore, the SVI solution replaces Equations \ref{eq:fhat_m} and \ref{eq:S} for computing
 %$\hat{\bs f}_m$ and $\bs S$ over all observations with a sequence of stochastic updates.
-For the $i$th update of $q(\bs f_m)$, we randomly select observations $\bs y_i = \{ y_p \forall p \in \bs P_i \}$, where $\bs P_i$ is random subset of indexes of observations.
+For the $i$th update of $q(\bs f_m)$, we randomly select $P_i$ 
+observations $\bs y_i = \{ y_p \forall p \in \bs P_i \}$, 
+where $\bs P_i$ is a random subset of indexes of observations,
+and $P_i$ is a mini-batch size.
 %Rather than using the complete matrices, 
 We then perform updates using $\bs Q_i$ (rows and columns of $\bs Q$ for observations in $\bs P_i$),
 $\bs K_{im}$ and $\bs A_i$, (rows of $\bs K_{nm}$ and $\bs A$ referred to by $\{y_p \forall p \in \bs P_i\}$),
@@ -268,8 +278,15 @@ natural gradient~\citep{hensman2015scalable}:
 \end{flalign}
 where
 $\rho_i=(i + \epsilon)^{-r}$ is a mixing coefficient that controls the update rate,
-$\pi_i = \frac{P}{|P_i|}$ weights each update according to sample size,
+$\pi_i = \frac{P}{P_i}$ weights each update according to sample size,
  $\epsilon$ is a delay hyperparameter and $r$ is a forgetting rate~\citep{hoffman2013stochastic}.
+
+By performing updates in terms of mini-batches, 
+the computational complexity of Equations \ref{eq:S_stochastic} and
+\ref{eq:fhat_stochastic} has order $\mathcal{O}(M^3)$, and the second term has order $\mathcal{O}(P_i M^2 + P_i^2 M + M^3)$. The $P_i^2$ term arises due to $G_i$, which is an $N_i \times P_i$ matrix, where $N_i \leq 2P_i$ is the number of 
+items referred to by the pairwise labels in the mini-batch.
+Memory complexity is now bounded by $\mathcal{O}(M^2 + P_i^2 + M P_i)$, where each complexity term is due
+to the sizes of $K_{mm}$, $G_i$ and $K_{im}$.
 
 The complete SVI algorithm is summarized in Algorithm \ref{al:singleuser}.
 \begin{algorithm}[h]
@@ -414,6 +431,12 @@ $\bs w_{c,m}$,
  and $\hat{\bs f}_{m,i}$ replaced by $\hat{\bs w}_{m,c,i}$.
 The full definitions
 are given in Appendix \ref{sec:post_params}, Equations \ref{eq:St} and \ref{eq:hatt}.
+The computational and memory complexity are the same as for single-user GPPL, 
+except that we now have $C$ updates, and the number of inducing points for items and users 
+may be different:
+$\mathcal{O}(CM_{\mathrm{items}}^3 + CM_{\mathrm{items}}^2 P_i + CM_{\mathrm{items}} P_i^2 + CM_{\mathrm{users}}^3 + CM_{\mathrm{users}}^2 P_i + CM_{\mathrm{users}} P_i^2 )$.
+Memory complexity for crowdGPPL is
+$\mathcal{O}(CM_{\mathrm{items}}^2 + P_i^2 + M_{\mathrm{items}} P_i + CM_{\mathrm{users}}^2 + M_{\mathrm{users}} P_i$.
 
 The expectations for the inverse scales, $s^{(v)}_1,..,s^{(v)}_c$, $s^{(w)}_1,..,s^{(w)}_c$
  and $s^{(t)}$ can be computed using Equation \ref{eq:qs} by

@@ -103,6 +103,8 @@ that take into account the differences of opinion between annotators and users.
 % assigning numerical ratings.
 % We put pairwise stuff here because it narrows the scope early. One could also talk about collaborative filtering here instead.
 % Here we are searching for the right form of annotation...
+
+%In this paper, we focus on preference learning over items, rather than over labels for a given item (see discussion in \citet{furnkranz2010preference}).
 A preference model can be trained using numerical ratings, yet 
 each annotator may interpret the values differently and may label inconsistently depending on the order in which they annotate items~\citep{ovadia2004ratings,yannakakis2011ranking}: 
 a score of -1, say, from one annotator may be equivalent to a -20 from another. 
@@ -157,45 +159,25 @@ pairwise labels as it is unclear how to parallelize them or constrain their memo
 % to computational and memory complexity is at best linear in the number of items, users and labels.
 %these methods also do not 
 
-In this paper, we propose a scalable Bayesian approach to pairwise preference learning with crowds,
-whose members may be annotators or users. % or sources of implicit annotations.
-Our approach is designed for preference learning over items, rather than over labels (see discussion in \citet{furnkranz2010preference}),
-and jointly models %for aggregating pairwise  labels from multiple sources that
+In this paper, we propose a scalable Bayesian approach to pairwise preference learning with 
+large numbers of users or annotators. % or sources of implicit annotations.
+Our method, \emph{crowdGPPL},
+ jointly models %for aggregating pairwise  labels from multiple sources that
 personal preferences and the consensus of a crowd by combining 
 matrix factorization and Gaussian processes. % preference learning~\citep{chu2005preference}.
-To enable inference at the scale of large, real-world datasets,
-we derive a stochastic variational inference scheme~\citep{hoffman2013stochastic} for our approach.
-%Our method is able to model both the individual preferences of members of the crowd,
-%and to extract a gold-standard consensus from crowdsourced annotations.
-% Structure of related work should also follow these questions:
-% preference learning from crowds (okay); 
-% Bayesian preference learning (where does it fit in these points? Small data/extrapolation to new examples);
-% Bayesian matrix factorization (again, Bayesian part needs to be linked in better; this is about personal preference learning);
-% SVI (okay, fits scalability part; but maybe talk about scalable Bayesian methods in general?);
-% Nothing about hyperparameters (Nickisch, maybe don't separate this point out but make it part of the scalable Bayesian inference method?).
-% % structure below is a little confusing? I think only a list of contributions + one or two questions is correct.
-%  develop methodology to solve the following questions:
-% \begin{enumerate}
-%   \item How can we learn  user preference functions over large sets of items given a large number of pairwise comparisons?
-%   \item How do we account for the different personal preferences of annotators when inferring a consensus preference function?
-%   \item Can we provide a Bayesian approach to account for uncertainty in our learned model and confidence in its predictions? 
-% \end{enumerate}
-% Our technical contributions can be summarized as follows:
-% \begin{enumerate}
-%  \item We propose a model for aggregating pairwise preference labels from multiple sources that
-%  models both personal preferences and the consensus of a crowd;
-%   % using a model of the noise and biases of individual annotators. % say why this is not possible with Dawid and Skene
-%   \item %To enable collaborative preference learning % collaborative preference learning needs to be defined above
-%    %To enable inference on our model at the scale of large, real-world datasets, 
-%    We derive a stochastic variational inference method for Bayesian matrix factorization and Gaussian process preference learning.
-% %  \item To expedite hyper-parameter tuning, we introduce a technique for gradient-based length-scale optimization of Gaussian processes.
-% \end{enumerate}
-By providing a scalable Bayesian approach we open preference learning up to novel applications
-for which annotations are sparse, noisy and biased, and where the number of users, items and pairwise labels is large.
-Our empirical evaluation demonstrates the scalability of our approach,
-and its ability to predict both personal preferences and an objective gold-standard given crowdsourced data.
-We also improve performance over the previous state-of-the-art \citep{simpson2018finding} on a crowdsourced argumentation dataset.
-% TODO how much do we really test data sparsity?
+Previous methods for preference learning with Gaussian processes were limited by scalability,
+as their computational and memory complexity grows at best linearly with the dataset. 
+Here, we propose a 
+\emph{stochastic variational inference (SVI)} scheme~\citep{hoffman2013stochastic}
+that scales to arbitrarily large datasets 
+with computational and memory complexity at each iteration fixed independently of size of the dataset.
+Our new approach opens the door to novel applications involving very large numbers of users, items and pairwise labels,
+that would previously have exceeded computational or memory resources and were difficult to parallelize.
+We evaluate the method empirically on two real-world datasets to demonstrate 
+the scalability of our approach,
+and its ability to predict both personal preferences and an objective gold-standard given 
+preferences from thousands of users.
+Our results improve performance over the previous state-of-the-art \citep{simpson2018finding} on a crowdsourced argumentation dataset, illustrating the potential of the method for NLP applications.
 
 The next section of the paper discusses related work.
 We then develop our model for preference learning from crowds in Section \ref{sec:model},
