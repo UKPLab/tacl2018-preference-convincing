@@ -979,8 +979,8 @@ if __name__ == '__main__':
 
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
-                   #'khan',
-                   'crowd-GPPL',
+                   'khan',
+                   #'crowd-GPPL',
                    # 'crowd-GPPL\\u',
                    #'crowd-BMF',
                    #'crowd-GPPL\\u-noConsensus', # Like Houlsby CP (without user features)
