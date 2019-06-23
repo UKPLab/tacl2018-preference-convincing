@@ -586,6 +586,7 @@ def run_sushi_expt(methods, expt_name, test_to_run):
 
         # save predictions to file
         if os.path.exists(results_path + '/fpred_rep%i.csv' % rep):
+            print('REP %i already completed -- skipping' % rep)
             continue
 
         np.random.seed(seeds[rep])
@@ -979,10 +980,10 @@ if __name__ == '__main__':
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
                    #'khan',
-                   #'crowd-GPPL',
+                   'crowd-GPPL',
                    # 'crowd-GPPL\\u',
-                   'crowd-BMF',
-                   'crowd-GPPL\\u-noConsensus', # Like Houlsby CP (without user features)
+                   #'crowd-BMF',
+                   #'crowd-GPPL\\u-noConsensus', # Like Houlsby CP (without user features)
                    #'GPPL-pooled',
                    #'GPPL-per-user',
         ]
