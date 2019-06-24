@@ -52,9 +52,16 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \title{ 
-Scalable Bayesian Preference Learning for Crowds of Users
+Predicting Preferences for Crowds of Users: a Scalable, Bayesian Approach
+%Scalable Bayesian Preference Learning for Crowds of Users
 % title change to emphasise that this is a personalised model, not all about aggregation
 %Scalable Bayesian Methods for Personalised Preference Learning
+%One source of confusion seems to be the inclusion of features, which is a big distinction.
+% predictive feature-based models.
+% ... with item and user features
+% predictive modelling with input features
+%Learning predictive preference models from crowds of users: a scalable Bayesian method
+% Predicting preferences of crowds of users: a scalable, Bayesian approach
 }
 
 \author{Edwin Simpson 
@@ -74,33 +81,35 @@ Ubiquitous Knowledge Processing Lab, Dept. of Computer Science, Technische Unive
 
 \begin{abstract}
 We propose a scalable Bayesian preference learning method 
-for jointly inferring a consensus from crowdsourced pairwise labels 
-and predicting the preferences of individual annotators.
-%While pairwise comparisons are an effective form of training data for ranking or comparison tasks,
-Annotators in a crowd may have divergent opinions, making it difficult to identify consensus rankings or ratings from
-pairwise labels. Limited, noisy data for each user also presents a challenge when predicting the preferences of individuals. 
+for jointly predicting the preferences of individuals as well as the consensus of a crowd
+ from pairwise labels.
+Peoples' opinions often differ greatly,
+making it difficult to predict their preferences if the amount of data for each user is small.
+These personal biases also make it harder to infer the consensus of the whole crowd
+when there are few labels per item.
 %In applications such as recommendation it is also necessary to predict the preferences of individual annotators or users. 
 %and identify common preferences between users. % use of the latent factors 
 %We address these challenges by combining matrix factorization to model individual preferences with 
 %Gaussian processes to integrate user and item features. By taking a Bayesian approach, our model
 We address these challenges by combining matrix factorization with 
-Gaussian processes in a Bayesian approach that
-accounts for uncertainty arising from sparse data and annotation noise.
-Previous methods for Gaussian process preference learning (GPPL) do not scale to datasets with large numbers
- of users, items or pairwise labels, so we propose an inference method using stochastic variational inference (SVI)
-%that can scale to large numbers of items, users, and pairwise labels 
-that can handle constraints on memory and computational costs.
-Our experiments on a computational argumentation task
-demonstrate the method's scalability and
- show that modeling the preferences of individual annotators in a crowd improves the quality of
-the inferred consensus.
-On a benchmark recommendation task, our method is competitive with previous approaches, 
- while the model is able to scale to far larger datasets.
+Gaussian processes,
+using a Bayesian approach to account for uncertainty arising from sparse data and annotation noise.
+Our method exploiting input features, such as text embeddings, image features or metadata,
+to predict preferences for new items and users with limited or no training data.
+As previous methods for Gaussian process preference learning do not scale to 
+large numbers of users, items or pairwise labels, 
+we propose a stochastic variational inference approach that limits computational and memory costs.
+Our experiments on a benchmark recommendation task show that
+our method is competitive with previous approaches despite our scalable inference approximation.
+We demonstrate the method's scalability empirically
+on a natural language processing task with thousands of users and items.
+On this task, our method improves consensus prediction over the state of the art
+by modelling the preferences of individual members of the crowd.
 %We also show how to  %that robustness to %able to learn the effective number of components required to model the data and
 %choosing more latent components than required,
 %apply gradient-based optimization to length-scale hyper-parameters to improve performance.
-We make our software and documentation publicly available for use in future 
-work\footnote{\url{https://github.com/UKPLab/tacl2018-preference-convincing/tree/crowdGPPL}}.
+We make our software publicly available for future 
+work~\footnote{\url{https://github.com/UKPLab/tacl2018-preference-convincing/tree/crowdGPPL}}.
 %We show how to make collaborative preference learning work at scale and how it can be used to learn
 %a target preference function from crowdsourced data or other noisy preference labels. 
 %The collaborative model captures the reliability of each worker or data source and models their biases and error rates. 

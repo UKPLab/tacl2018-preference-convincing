@@ -90,54 +90,40 @@ and (2) personalised preference models that infer the utilities specific to each
 
 (1)
 
-The problem of disagreement between annotators in a crowd was addressed by \citet{chen2013pairwise}
 \todo{
-How do we make it clear that this is not the case? --
-This paper extended the pairwise ranking model in Xi Chen's work, Pairwise Ranking Aggregation in a Crowdsourced Setting with Gaussian Process.
-The preference learning has well-studied. Particularly, the pairwise label using BT model has been published by Xi Chen's work. Recently, the model has been extended to more general PL model, such as:
-Han et al., Robust Plackett-Luce model for k-ary crowdsourced preferences. Machine Learning 107(4): 675-702 (2018);
-Pan et al., Stagewise learning for noisy k-ary preferences. Machine Learning 107(8-10): 1333-1361 (2018).
-[these two seem to extend the crowd-BT model, so are mainly about de-noising.]
-Hybrid-MST: A Hybrid Active Sampling Strategy forPairwise Preference Aggregation --
-doesn't consider different workers at all, uses only ML learning [make better case
-for Bayesian?]. The active learning strategy they devise based on minimum spanning trees
-could also be used with crowdGPPL or crowdBT. Using a Bayesian method gives
-us a distribution over utilities, which means we can do BALD to estimate EIG much
-quicker. Their method aims at reducing the complexity of selecting pairs for active learning, it doesn't address complexity of learning a feature-based model from pairs.
-Use sushi-A-small to show that crowd-BT and others don't deal with small data well
-if they don't use feature information.
-We should also discuss the learning strategies used in these methods. They are not aimed
-at GPs and matrix factorisation, unlike our model, but could they still be applied here?
-If so, this should be discussed in future work.
-Finally, there may be a nice dataset from one of these that we could use? 
-Important distinction is that we look for subjective tasks, not just denoising the
-pairwise labels. This might need to be justified better by describing tasks
-such as argument mining. Consensus in a subjective task is helpful to learn the personal 
-preferences of new users -- do we show this or describe it? Consensus can also be useful
-if we need to extract a gold standard or objectively correct rating, but annotators
-have different biases, rather than just noise levels. What about settlement rating for
-planet hunters? -- turn into pairs. Some users may ignore certain types of building,
-so images with those features would be biased to low ratings for those people. 
-Biases like this could harm performance if there aren't enough preferences from 
-different users to cancel them out.
-Can we demonstrate this, or just argue it in the intro?
-Yes, find three argument pairs where the crowdGPPL and ground truth agree, but the 
-annotators do not; show the annotator bias according to crowdGPPL, i.e. weights for the 
-latent features.  
-]
-Those models are more general and robust to the noisy preferences in crowdsourcing settings.
-In terms of robustness of noise modelling, I do not find the proposed model can be significantly better than the previous works.  There is no experiments comparing with any baselines in crowdsourcing, even Chen's work. 
+Another claim from the authors is the SVI for large-scale crowdGPPL, which is due to limitation of GP. Indeed, the online strategy has been well-studied in crowdBT,  crowdPL,  the previous works and the following work. 
+Li et al,. Hybrid-MST: A Hybrid Active Sampling Strategy for Pairwise Preference Aggregation, NIPS 2018 --
+doesn't consider different workers at all, uses only ML learning 
+- The active learning strategy they devise based on minimum spanning trees
+could also be used with crowdGPPL or crowdBT, but using a Bayesian method gives us a distribution over utilities, which means we can do BALD to estimate EIG much
+quicker. 
+- Their method aims at reducing the complexity of selecting pairs for active learning, it doesn't address complexity of learning a feature-based model from pairs.
 }
+The problem of disagreement between annotators in a crowd was addressed by \citet{chen2013pairwise}
 and \citet{wang2016blind},
-using Bayesian approaches that learn the individual accuracy of each worker.
-%These methods do not learn the relationship between the workers' individual preferences
-%and the ground truth. 
+using Bayesian approaches that learn the individual labelling accuracy of each worker.
+Recently, \citet{pan2018stagewise,han2018robust}
+introduced scalable methods for learning from noisy \textit{k}-ary preferences,
+which are totally--ordered subsets of $k$ items.
+However, these methods treat disagreements as labelling errors 
+rather than subjective disagreements, and assume that there is a single true utility for each item,
+which we call the \emph{consensus}.
+Therefore, they cannot reflect the different preferences of individuals in the crowd in subjective tasks
+such as recommendation or natural language interpretation.
 %\citet{wang2016blind} improved performance 
 %by modeling the level of noise in the latent utility function for each annotator in a given domain, rather than
 %in the pairwise labels. 
-However, they do not %\citet{chen2013pairwise} nor \citet{wang2016blind}
-exploit item features to mitigate data sparsity.
-
+Such differences of opinion can be seen as labelling \emph{bias}, rather than noise,
+as a labeller will consistently express preferences that are different from others,
+and this difference is not random but depends directly on the items considered.
+With small numbers of labels, such biases may reduce performance when estimating 
+the consensus.
+Furthermore, previous aggregation methods for noisy preferences
+do not consider the input features of items,
+hence cannot make predictions for new test items without obtaining comparisons for those items~\citep{chen2013pairwise,wang2016blind,han2018robust,pan2018stagewise,li2018hybrid}.
+Instead, it would be necessary to use the outputs of the aggregation methods to train 
+another model for prediction. 
+%Including models such as Gaussian process to account for input features brings scalability challenges that are not addressed by these existing methods. --> think this is in the wrong place. First we need to motivate using GPs or nonlinear models in general. Then we can state that this brings scalability problems. In the SVI section, first mention online learning with crowdBT, Han, Pan, but then state that introducing GPs brings new scalability problems. Then go on to SVI as a solution.
 
 %predicts only pairwise labels rather than the underlying utilities.
 For crowdsourced data, \citet{fu2016robust} show that performance
@@ -282,11 +268,7 @@ more scalable inference is needed for datasets containing thousands of items or 
 
 \subsection{Scalable Approximate Bayesian Inference}
 
-\todo{
-Another claim from the authors is the SVI for large-scale crowdGPPL, which is due to limitation of GP. Indeed, the online strategy has been well-studied in crowdBT,  crowdPL,  the previous works and the following work. 
-Li et al,. Hybrid-MST: A Hybrid Active Sampling Strategy for Pairwise Preference Aggregation, NIPS 2018
-Therefore, I don't find any new insight of SVI here.
-}
+
 Many of the approaches for modelling individual user preferences use matrix factorization 
 to share information between users and items,
 which benefits from a Bayesian treatment to reduce the effects of overfitting or noisy data~\citep{saha2015scalable}.
@@ -320,6 +302,11 @@ However, this is not sufficiently scalable
 The GP over pairs also makes it difficult to extract posteriors for latent function values for individual items,
 and prevents mixing pairwise training labels
 with observed ratings in future data aggregation settings.
+
+\citet{li2018hybrid} provide computationally efficient active learning for pairwise labels, but
+do not handle annotator disagreements nor consider input features of items.
+%remember that they are not doing Bayesian inference but ML.
+
 
 To handle large numbers of pairwise labels, \citet{khan2014scalable}
 develop a variational EM algorithm and sub-sample pairwise data rather than learning from the complete training set.
