@@ -380,13 +380,13 @@ class TestRunner:
             
         if '_M' in self.method:
             validx = self.method.find('_M') + 2
-            M = int(self.method[validx:])
+            M = int(self.method[validx:].split('_')[0])
         else:
             M = 500
             
         if '_SS' in self.method:
             validx = self.method.find('_SS') + 3
-            SS = int(self.method[validx:])
+            SS = int(self.method[validx:].split('_')[0])
         else:
             SS = 200        
         

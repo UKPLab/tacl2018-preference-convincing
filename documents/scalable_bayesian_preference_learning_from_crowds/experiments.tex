@@ -78,14 +78,16 @@ is a similar model that, like crowdGPPL,
  assumes Gaussian processes over latent user and item components,
  but does not learn a consensus or the scales of the components to 
  identify active and unneeded components.
- The inference method maintains a set of parameters for each pairwise label and
- for each user, but uses an inducing point method, \emph{GFITC}, 
- to reduce computational complexity, as described in Section \ref{sec:inf}.
-As collabGP requires more parameters, it has higher memory complexity 
-($\mathcal{O}(M_{\mathrm{items}}P + M_{\mathrm{users}}U)$ 
+ The inference method uses an inducing point method, \emph{GFITC}, 
+ to obtain linear time complexity. It
+ maintains a set of parameters for each pairwise label and
+ for each user, so unlike our SVI scheme, its memory complexity 
+grows with the number of pairs in the dataset
+($\mathcal{O}(M_{\mathrm{items}}P + M_{\mathrm{users}}U)$
 in contrast to 
-$\mathcal{O}(C M_{\mathrm{items}} P_i C M_{\mathrm{users}} P_i$).
-We therefore treat the performance of collabGP as a target for crowdGPPL.
+$\mathcal{O}(C M_{\mathrm{items}} P_i + C M_{\mathrm{users}} P_i$).
+We therefore treat the performance of collabGP as a target for the smaller crowdGPPL model,
+which does not retain parameters specific to each user or item in the dataset.
 
 \emph{CrowdBT}~\citep{chen2013pairwise}
 has been shown to be an effective method for learning from crowdsourced preferences.
@@ -101,9 +103,10 @@ as target values for training a Gaussian process regressor,
 and set the observation noise variance of the GP equal to the posterior variance
 of the utilities estimated by crowdBT. 
 This pipeline method, \emph{crowdBT--GP}, 
-allows us to compare predictive performance when using
-crowdBT, which treats annotator differences as noise,
-against crowdGPPL, which models the individual preferences of annotators.
+allows us to test whether it is sufficient to treat annotator differences as noise,
+or whether it is beneficial to use the
+crowdGPPL approach of modelling individual preferences of annotators.
+
 
 \subsection{Simulated Noisy Data}\label{sec:exp_synth}
 
