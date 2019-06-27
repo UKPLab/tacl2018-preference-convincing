@@ -64,7 +64,7 @@ The datasets are summarised in Table \ref{tab:datasets}.
 % these are done at scale, which we can do with our inference method --> *this is a new claim i.e. 
 % new empirical results*. They also test a per-user model.
 
-We compare crowdGPPL against 
+As baselines, we compare crowdGPPL against 
 \emph{GPPL},
 which we train on all users' preference labels to learn a single utility function,
 %and a Gaussian process over the joint feature space of users and items 
@@ -110,68 +110,58 @@ crowdGPPL approach of modelling individual preferences of annotators.
 
 \subsection{Simulated Noisy Data}\label{sec:exp_synth}
 
-First, we test how well crowdGPPL is able to recover an underlying consensus function
-from pairwise labels with varying amounts of noise.
-The consensus for GPPL-per-user is the mean of all users' predicted utilities. 
-For crowdGPPL, we set $C=20$
-and for all models, we set $\alpha_0 = 1$, $\beta_0 = 100$,
+First, we compare crowdGPPL to the baselines to see if it is able to model individual preferences
+with varying amounts of labelling noise. 
+We set $C=20$
+and for all models, we set all the Gamma hyperparameters to 
+$\alpha_0 = 1$, $\beta_0 = 100$,
 and use Mat\'ern 3/2 kernels with length-scales chosen by a median heuristic:
 \begin{flalign}
- l_{d,MH} = \mathrm{median}( \{ |x_{i,d} - x_{j,d}| \forall i=1,..,N, \forall j=1,...,N\} ) D.
+ l_{d,MH} = \sqrt{D} \times \mathrm{median}( \{ ||x_{i,d} - x_{j,d}||, 
+ \forall i=1,..,N, \forall j=1,...,N\} ),
 \end{flalign}
-\todo{is D actually defined? I think the comment below stems from confusion that this is not
-just a median function. But anyway, why not add the refs for using a median?
- Page 13, equation (25): please provide reference for 'Dmedian' function.
-}
-%The motivation is that the median will normalize the feature, so that features
-%are equally weighted regardless of their scaling. By using a median to perform this 
-%normalization, 
-This is a computationally frugal heuristic for choosing the length-scales, 
-which normalizes features and prevents the average covariance between items or users from shrinking as the number of features grows.
+where $D$ is the dimension of the input feature vectors.
+The median heuristic is a computationally frugal heuristic for choosing the length-scales,
+which effectively normalizes the features and has been extensively used
+in various kernel methods (e.g., ~\citet{bors1996median,gretton2012optimal}).
+The kernels for each dimension are multiplied together, so 
+multiplying the length-scales by $\sqrt{D}$ prevents the average covariance between items or users 
+from shrinking as the number of features grows.
 % This heuristic has been shown to work reasonably well for the task of 
-% comparing distributions~\citep{gretton2012optimal}, but has %is a simple heursitic with
+% comparing distributions, but has %is a simple heursitic with
 %  no guarantees of optimality. 
 The SVI hyperparameters were set to 
- $r=0.9$, $P_i=1000$ and $\epsilon=1$.
- \todo{ Page 13, line 41: Can you provide some intuition as to how values for r, |P| and epsilon are chosen in general?}
-
-For the first test,
-we generate data by creating a $20\times 20$ grid of points and choosing $400$ pairs of these points at random,
-which are split into  50\% training and test sets.
+ $\rho=0.9$, $P_i=1000$ and $\epsilon=1$.
+ \citet{hoffman2013stochastic} found that higher values of 
+ $\rho$ gave better final results but slightly slower convergence, recommending
+ $0.9$ as a good balance, and did not find any effect from changing $\epsilon=1$. 
+ They also found that increasing batch size $P_i$ improves performance, 
+ however this is likely to be constrained in practice by the size of the batch that the 
+ computer can process.
+ While $\rho=0.9,\epsilon=1$ are recommended as sensible defaults, 
+ these hyperparameters may need some light tuning to a specific dataset,
+ e.g. using grid search to maximise the lower bound of the log marginal likelihood, $\mathcal{L}$.
+ 
+First, to test prediction of the consensus,
+we generate data by creating a $20\times 20$ grid of points, choosing $400$ pairs of these points at random, and splitting them into  50\% training and test sets.
 For each point, we generate pairwise labels by drawing from crowdGPPL
 with $20$ users, $5$ latent components, and 
-$s=0.001$.
-We vary the precision of the consensus function, $\sigma$, to control the noise in 
-the consensus function. 
-%, and
-%train our models on all pairs involving only points in the training set.
-%We then predict the consensus function
-% and personal utilities for all users 
-%for the points in the test set.
-%We repeat this process, varying the value of $s$ in the generation step, 
-%which controls the precision of a latent preference function: as $s$ is increased, the latent
-%function values have a smaller amplitude and the pairwise labels become noisier.
+$s^{(v)}_c = s^{(w)}_c = 0.001$, for all components.
+We vary the precision of the consensus function, $s^{(t)}$, 
+to control the noise in the consensus function. 
 The complete experiment was repeated $25$ times, including generating new data 
-for each value of $\sigma$.
-%The results of the first test in Figure \ref{fig:simA} show that increasing
-%the noise rate in the pairwise labels causes a near-linear decrease in the
-%rank correlation between the predicted and true preference function values. 
-%Nonetheless, GPPL is able to recover the ranking of points with $\tau > 0.5$ when
-%more than $1/3$ pairwise labels are incorrect.
-%we recover a consensus function
-%from preference labels produced by multiple simulated users with varying differences
-%in their individual preferences. We use the same process as the first simulation, except
-%we now draw the pairwise labels from a crowdGPPL model  latent factors,
-%instead of a single-user model. 
-%We use three methods to recover the consensus function, GPPL-per-user, pooled-%GPPL, 
-%and crowdGPPL with $C=25$ so that there is one factor per user. 
-Figure \ref{fig:simB} shows that the crowdGPPL model is better able to recover the latent consensus
-function than the other methods, even when noise levels are high. 
+for each value of $s^{(t)}$.
+Figure \ref{fig:simB} shows that crowdGPPL is better able to recover the 
+consensus ranking than the other methods, even when noise levels are high. 
 GPPL's predictions may be worsened by biased users whose preferences deviate
- consistently from the consensus. GPPL-per-user relies on separate instances of GPPL, so 
- does not benefit from sharing information between users when training.
+consistently from the consensus. 
+For GPPL-per-user, the consensus is estimated by taking
+the mean of all users' predicted utilities, 
+GPPL-per-user relies on separate instances of GPPL
+and estimates the consensus by taking the mean of all users' predicted utilities, 
+so does not benefit from sharing information between users when training.
 
-The second simulation modifies the previous setup by fixing $\sigma = 10$ and varying $s$
+The second simulation modifies the previous setup by fixing $s^{(t)} = 10$ and varying $s^{(v)}_c,\forall c$
 to evaluate the methods'
 ability to recover the personal preferences of simulated users.
 Results in Figure \ref{fig:simC} show that crowdGPPL is able to make better 
@@ -206,7 +196,7 @@ the noise level increases further.
 We hypothesize that learning a model with a larger number of latent components
 requires more training data.
 %scenario that would require more training data. 
-In the third simulation, we generate data using the same setup as before, but fix $s=0.2$ and $\sigma=1$
+In the third simulation, we generate data using the same setup as before, but fix $s^{(v)}=0.2,\forall c$ and $s^{(t)}=1$
 and vary the number of pairwise training labels 
 and the number of true components through
 $C_{true} \in \{ 1, 3, 10, 20\}$.

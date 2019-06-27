@@ -24,6 +24,7 @@ from collab_pref_learning_test import gen_synthetic_personal_prefs as gen_multi,
     split_dataset as split_multiuser_dataset
 
 markers = ['o', 'x', '+', '>', '<', '*']
+linestyles = [':', '-.', '--', '-']
 
 verbose = True
 
@@ -39,7 +40,8 @@ def plot_result(idx, filename, xlabel, ylabel, linelabel, fig=None, lineidx=0):
 
     # ax1.semilogx(inverse_scales
     plt.plot(mean_results[:, 0], mean_results[:, idx],
-             marker=markers[lineidx], label=linelabel, linewidth=2, markersize=8)
+             marker=markers[lineidx], label=linelabel, linewidth=2, markersize=8, linestyle=linestyles[lineidx])
+    plt.errorbar(mean_results[:, 0], mean_results[:, idx], std_results[:, idx])
 
     plt.ylabel(ylabel)
     # plt.xlabel('inverse function scale, s')
@@ -67,7 +69,7 @@ if __name__ == '__main__':
         np.random.seed(1)
 
     # SETTINGS FOR ALL THE NOISE TESTS
-    nreps = 25
+    nreps = 10 # 25
     nx = 20
     ny = 20
     N = nx * ny
@@ -97,7 +99,7 @@ if __name__ == '__main__':
     if not os.path.exists(figure_save_path):
         os.mkdir(figure_save_path)
 
-    for Nfactors in Nfactor_values:
+    for n, Nfactors in enumerate(Nfactor_values):
 
         Npeople = 20
 
@@ -144,7 +146,7 @@ if __name__ == '__main__':
                 # Create a GPPrefLearning model
                 model = CollabPrefLearningSVI(2, 2, mu0=0, shape_s0=0.1, rate_s0=0.1, ls=None, nfactors=Npeople,
                                               ninducing=ninducing,
-                                              max_update_size=1000, forgetting_rate=0.9, verbose=True, use_lb=True)
+                                              max_update_size=1000, forgetting_rate=0.9, verbose=False, use_lb=True)
 
                 print(("--- Repeating multi user test, rep %i ---" % rep))
 
@@ -218,8 +220,11 @@ if __name__ == '__main__':
         mean_results = np.array(mean_results_m)
         std_results = np.array(std_results_m)
 
+        np.savetxt('./results/synth_latent_mean_results_%i.csv' % Nfactors, mean_results)
+        np.savetxt('./results/synth_latent_std_results_%i.csv' % Nfactors, std_results)
+
         noise_plots[1] = plot_result(1, "num_pairs_r", 'number of pairwise training labels',
-                            "Mean factor correlation (Pearson's r)", 'num_factors=%i' % Nfactors, noise_plots[1])
+                    "Mean factor correlation (Pearson's r)", 'num_factors=%i' % Nfactors, noise_plots[1], lineidx=n)
 
         noise_plots[2] = plot_result(2, "num_pairs_tau_test", 'number of pairwise training labels',
-                            "tau (test data)", 'num_factors=%i' % Nfactors, noise_plots[2])
+                    "tau (test data)", 'num_factors=%i' % Nfactors, noise_plots[2], lineidx=n)

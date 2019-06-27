@@ -28,8 +28,9 @@ from collab_pref_learning_test import gen_synthetic_personal_prefs as gen_multi,
 from per_user_pref_learning import GPPrefPerUser
 
 markers = ['o', 'x', '+', '>', '<', '*']
+linestyles = [':', '-.', '--', '-']
 
-verbose = True
+verbose = False
 
 def plot_result(idx, filename, ylabel, method, fig=None, lineidx=0):
 
@@ -45,7 +46,9 @@ def plot_result(idx, filename, ylabel, method, fig=None, lineidx=0):
 
     new_order = np.argsort(mean_results[:, 0])
     plt.plot(mean_results[new_order, 0], mean_results[new_order, idx],
-              marker=markers[lineidx], label=method, linewidth=2, markersize=8)
+              marker=markers[lineidx], label=method, linewidth=2, markersize=8, linestyle=linestyles[lineidx])
+
+    plt.errorbar(mean_results[new_order, 0], mean_results[new_order, idx], std_results[new_order, idx])
 
     plt.ylabel(ylabel)
     # plt.xlabel('inverse function scale, s')
@@ -87,7 +90,7 @@ if __name__ == '__main__':
     if not os.path.exists(figure_root_path):
         os.mkdir(figure_root_path)
 
-    nreps = 25
+    nreps = 1 #25
     P = 400
 
     nx = 20
@@ -97,15 +100,15 @@ if __name__ == '__main__':
     Npeople = 20
     lsy = [5, 5]
 
-    shape_s0 = 0.1
-    rate_s0 = 0.1
+    shape_s0 = 1 # 0.1
+    rate_s0 = 100 # 0.1
 
     # NOISE TEST, MULTI USER OBSERVATIONS, PREDICTING CONSENSUS, MODELS: GPPL, POOL, crowd-GPPL ----------------------------------
     if test_to_run == 0:
         # we want new plots
         plt.close('all')
 
-        ls = [2, 2]
+        ls = [5, 5] # [2, 2]
         inverse_scales = [0.02, 0.1, 0.2, 0.6, 2]
 
         # make sure the simulation is repeatable
@@ -157,7 +160,7 @@ if __name__ == '__main__':
 
                 # Create a GPPrefLearning model
                 model = CollabPrefLearningSVI(2, 2, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls=None, nfactors=Npeople,
-                                              ninducing=ninducing, max_update_size=1000, forgetting_rate=0.9, verbose=True,
+                                              ninducing=ninducing, max_update_size=1000, forgetting_rate=0.9, verbose=verbose,
                                               use_lb=True, use_common_mean_t=True)
 
                 print(("--- Repeating multi user test, rep %i, s %f ---" % (rep, s)))
@@ -169,7 +172,7 @@ if __name__ == '__main__':
 
                 # Create a GPPrefLearning model
                 model = GPPrefLearning(2, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None, use_svi=True, ninducing=ninducing,
-                                       max_update_size=1000, forgetting_rate=0.9, verbose=True)
+                                       max_update_size=1000, forgetting_rate=0.9, verbose=verbose)
 
                 print(("--- Repeating pooled-GPPL test, rep %i, s %f ---" % (rep, s)))
                 results_s_pool.append(evaluate_singleuser(
@@ -179,7 +182,7 @@ if __name__ == '__main__':
                 ))
 
                 # Create a GPPrefLearning model per person
-                model = GPPrefPerUser(Npeople, max_update_size=1000, shape_s0=shape_s0, rate_s0=rate_s0)
+                model = GPPrefPerUser(Npeople, max_update_size=1000, shape_s0=shape_s0, rate_s0=rate_s0, verbose=verbose)
 
                 print(("--- Repeating separate user test, rep %i, s %f ---" % (rep, s)))
                 results_s.append(evaluate_multiuser_consensus(
@@ -229,7 +232,7 @@ if __name__ == '__main__':
 
             print('noise rate in training data: %f, %f' % (mean_results_s_m[0], std_results_s_m[0]))
             print('tau_obs: %f, %f' % (mean_results_s_m[1], std_results_s_m[1]))
-            print('tau_test: %f, %f' % (mean_results_s_m[2], std_results_s_m[2]))
+            print('tau_test: %f, %f' % (mean_results_s_m[2], std_results_s_m[2]), )
             print('brier: %f, %f' % (mean_results_s_m[3], std_results_s_m[3]))
             print('cee: %f, %f' % (mean_results_s_m[4], std_results_s_m[4]))
             print('f1: %f, %f' % (mean_results_s_m[5], std_results_s_m[5]))
@@ -242,35 +245,35 @@ if __name__ == '__main__':
         mean_results = np.array(mean_results)
         std_results = np.array(std_results)
 
-        noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'GPPL-per-user', noise_plots[0])
-        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'GPPL-per-user', noise_plots[1])
-        noise_plots[2] = plot_result(3, 'brier', 'brier score', 'GPPL-per-user', noise_plots[2])
-        noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'GPPL-per-user', noise_plots[3])
-        noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'GPPL-per-user', noise_plots[4])
-        noise_plots[5] = plot_result(6, 'acc', 'accuracy', 'GPPL-per-user', noise_plots[5])
-        noise_plots[6] = plot_result(7, 'roc', 'area under ROC curve', 'GPPL-per-user', noise_plots[6])
+        # noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'GPPL-per-user', noise_plots[0])
+        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'GPPL-per-user', noise_plots[1], lineidx=2)
+        # noise_plots[2] = plot_result(3, 'brier', 'brier score', 'GPPL-per-user', noise_plots[2])
+        # noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'GPPL-per-user', noise_plots[3])
+        # noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'GPPL-per-user', noise_plots[4])
+        # noise_plots[5] = plot_result(6, 'acc', 'accuracy', 'GPPL-per-user', noise_plots[5])
+        # noise_plots[6] = plot_result(7, 'roc', 'area under ROC curve', 'GPPL-per-user', noise_plots[6])
 
         mean_results = np.array(mean_results_pool)
         std_results = np.array(std_results_pool)
 
-        noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'pooled-GPPL', noise_plots[0])
-        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'pooled-GPPL', noise_plots[1])
-        noise_plots[2] = plot_result(3, 'brier', 'brier score', 'pooled-GPPL', noise_plots[2])
-        noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'pooled-GPPL', noise_plots[3])
-        noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'pooled-GPPL', noise_plots[4])
-        noise_plots[5] = plot_result(6, 'acc', 'accuracy', 'pooled-GPPL', noise_plots[5])
-        noise_plots[6] = plot_result(7, 'roc', 'area under ROC curve', 'pooled-GPPL', noise_plots[6])
+        # noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'pooled-GPPL', noise_plots[0])
+        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'GPPL', noise_plots[1], lineidx=0)
+        # noise_plots[2] = plot_result(3, 'brier', 'brier score', 'pooled-GPPL', noise_plots[2])
+        # noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'pooled-GPPL', noise_plots[3])
+        # noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'pooled-GPPL', noise_plots[4])
+        # noise_plots[5] = plot_result(6, 'acc', 'accuracy', 'pooled-GPPL', noise_plots[5])
+        # noise_plots[6] = plot_result(7, 'roc', 'area under ROC curve', 'pooled-GPPL', noise_plots[6])
 
         mean_results = np.array(mean_results_m)
         std_results = np.array(std_results_m)
 
-        noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'crowd-GPPL', noise_plots[0])
-        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'crowd-GPPL', noise_plots[1])
-        noise_plots[2] = plot_result(3, 'brier', 'brier score', 'crowd-GPPL', noise_plots[2])
-        noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'crowd-GPPL', noise_plots[3])
-        noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'crowd-GPPL', noise_plots[4])
-        noise_plots[5] = plot_result(6, 'acc', 'accuracy', 'crowd-GPPL', noise_plots[5])
-        noise_plots[6] = plot_result(7, 'roc', 'area under ROC curve', 'crowd-GPPL', noise_plots[6])
+        # noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'crowd-GPPL', noise_plots[0])
+        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'crowdGPPL', noise_plots[1], lineidx=1)
+        # noise_plots[2] = plot_result(3, 'brier', 'brier score', 'crowd-GPPL', noise_plots[2])
+        # noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'crowd-GPPL', noise_plots[3])
+        # noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'crowd-GPPL', noise_plots[4])
+        # noise_plots[5] = plot_result(6, 'acc', 'accuracy', 'crowd-GPPL', noise_plots[5])
+        # noise_plots[6] = plot_result(7, 'roc', 'area under ROC curve', 'crowd-GPPL', noise_plots[6])
 
     # NOISE TEST, MULTI USER DATA, PREDICTING PERSONAL PREFS, MODELS: GPPL-per-user, POOL, crowd-GPPL -------------------------------------
     if test_to_run == 1:
@@ -419,32 +422,32 @@ if __name__ == '__main__':
         mean_results = np.array(mean_results)
         std_results = np.array(std_results)
 
-        noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'GPPL-per-user', None)
-        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'GPPL-per-user', None)
-        noise_plots[2] = plot_result(3, 'brier', 'brier score', 'GPPL-per-user', None)
-        noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'GPPL-per-user', None)
-        noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'GPPL-per-user', None)
-        noise_plots[5] = plot_result(6, 'acc', 'accuracy', 'GPPL-per-user', None)
-        noise_plots[6] = plot_result(7, 'roc', 'area under ROC curve', 'GPPL-per-user', None)
+        # noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'GPPL-per-user', None)
+        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'GPPL-per-user', None, lineidx=2)
+        # noise_plots[2] = plot_result(3, 'brier', 'brier score', 'GPPL-per-user', None)
+        # noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'GPPL-per-user', None)
+        # noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'GPPL-per-user', None)
+        # noise_plots[5] = plot_result(6, 'acc', 'accuracy', 'GPPL-per-user', None)
+        # noise_plots[6] = plot_result(7, 'roc', 'area under ROC curve', 'GPPL-per-user', None)
 
         mean_results = np.array(mean_results_pool)
         std_results = np.array(std_results_pool)
 
-        noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'pooled-GPPL', noise_plots[0])
-        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'pooled-GPPL', noise_plots[1])
-        noise_plots[2] = plot_result(3, 'brier', 'brier score', 'pooled-GPPL', noise_plots[2])
-        noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'pooled-GPPL', noise_plots[3])
-        noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'pooled-GPPL', noise_plots[4])
-        noise_plots[5] = plot_result(6, 'acc', 'accuracy', 'pooled-GPPL', noise_plots[5])
-        noise_plots[6] = plot_result(7, 'roc', 'area under ROC curve', 'pooled-GPPL', noise_plots[6])
+        # noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'pooled-GPPL', noise_plots[0])
+        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'GPPL', noise_plots[1], lineidx=0)
+        # noise_plots[2] = plot_result(3, 'brier', 'brier score', 'pooled-GPPL', noise_plots[2])
+        # noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'pooled-GPPL', noise_plots[3])
+        # noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'pooled-GPPL', noise_plots[4])
+        # noise_plots[5] = plot_result(6, 'acc', 'accuracy', 'pooled-GPPL', noise_plots[5])
+        # noise_plots[6] = plot_result(7, 'roc', 'area under ROC curve', 'pooled-GPPL', noise_plots[6])
 
         mean_results = np.array(mean_results_m)
         std_results = np.array(std_results_m)
 
-        plot_result(1, 'tau_obs', 'tau (training set)', 'crowd-GPPL', noise_plots[0])
-        plot_result(2, 'tau_test', 'tau (test set)', 'crowd-GPPL', noise_plots[1])
-        plot_result(3, 'brier', 'brier score', 'crowd-GPPL', noise_plots[2])
-        plot_result(4, 'cee', 'cross entropy error (nats)', 'crowd-GPPL', noise_plots[3])
-        plot_result(5, 'f1', 'F1 score', 'crowd-GPPL', noise_plots[4])
-        plot_result(6, 'acc', 'accuracy', 'crowd-GPPL', noise_plots[5])
-        plot_result(7, 'roc', 'area under ROC curve', 'crowd-GPPL', noise_plots[6])
+        # plot_result(1, 'tau_obs', 'tau (training set)', 'crowd-GPPL', noise_plots[0])
+        plot_result(2, 'tau_test', 'tau (test set)', 'crowdGPPL', noise_plots[1], lineidx=1)
+        # plot_result(3, 'brier', 'brier score', 'crowd-GPPL', noise_plots[2])
+        # plot_result(4, 'cee', 'cross entropy error (nats)', 'crowd-GPPL', noise_plots[3])
+        # plot_result(5, 'f1', 'F1 score', 'crowd-GPPL', noise_plots[4])
+        # plot_result(6, 'acc', 'accuracy', 'crowd-GPPL', noise_plots[5])
+        # plot_result(7, 'roc', 'area under ROC curve', 'crowd-GPPL', noise_plots[6])
