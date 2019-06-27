@@ -166,32 +166,27 @@ For crowdGPPL, our approximate variational lower bound is:
 
 For the latent item components, the posterior precision estimate for $\bs S^{-1}_{v,c}$ at iteration $i$ is given by:
 \begin{flalign}
-\left( \! \bs S^{(v)}_{c,i} \! \right)^{\!-1} \!\!\!\! = (1-\rho_i) \left( \! \bs S^{(v)}_{c,i-1} \! \right)^{\!-1} 
-\!\!\!\! +\! \rho_i\left( \! \bs K^{-1}_{mm}\mathbb{E}\left[ \! s^{(v)}_c \! \right] \!
-+ \! \pi_i \bs A_{v,i}^T \bs G_i^T \textrm{diag}\left(\hat{\bs w}_{c,\bs u}^2 \!\! + \bs\Sigma_{c,\bs u,\bs u}\right)
-\bs Q_i^{-1} \bs G_i \bs A_{v,i}
-\! \right) \!, &&
+\left(  \bs S^{(v)}_{c,i}  \right)^{\!-1} \!\!\! = (1-\rho_i) \left( \! \bs S^{(v)}_{c,i-1} \! \right)^{\!-1} 
+\!\! + \rho_i \bs K^{-1}_{mm}\mathbb{E}\left[ s^{(v)}_c \right] \!
++ \rho_i\pi_i \bs A_{i}^T \bs G_i^T \textrm{diag}\left(\hat{\bs w}_{c,\bs u}^2 \! + \bs\Sigma_{c,\bs u,\bs u} \right) 
+\bs Q_i^{-1} \bs G_i \bs A_{i}
+\!\!, &&
 \label{eq:Sv}
 \end{flalign}
 where $\bs A_{i} = \bs K_{im} \bs K_{mm}^{-1}$, 
 $\hat{\bs w}_{c}$ and $\bs\Sigma_{c}$ are the variational mean and covariance of 
 the $c$th latent user component (defined below in Equations \ref{eq:what} and \ref{eq:Sigma}),
-and ${\bs u} = \{ u_p \forall p \in P_i \}$ is the vector of user indexes in the sample of observations.
+and ${\bs u} = \{ u_p \forall p \in \bs P_i \}$ is the vector of user indexes in the sample of observations.
 %The term $\textrm{diag}(\hat{\bs w}_{c,\bs j}^2 + \bs\Sigma_{c,\bs j})$ 
 %scales the diagonal observation precision, $\bs Q^{-1}$, by the latent user factors.
 We use $\bs S_{v,c}^{-1}$ to compute the means for each row of $\bs V_m$:
 \begin{flalign}
-\hat{\bs v}_{m,c,i} = \bs S^{(v)}_{c,i}\left( 
-(1-\rho_i) \left( \bs S^{(v)}_{c,i-1} \right)^{-1} \hat{\bs v}_{m,c,i-1} + \rho_i \pi_i \bigg(
-\bs S^{(v)}_{c,i} \bs A_{i}^T \bs G_i^T \textrm{diag}(\hat{\bs w}_{c,\bs u}) \bs Q_i^{-1} \right. && \nonumber \\
- \Big(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \sum_{j=1}^U \bs H^{(i)}_{j}(\hat{\bs v}_c^T \hat{\bs w}_{c,j})\Big) \bigg) \bigg), &&
-\label{eq:hatv}
-\end{flalign}
-where $\bs H^{(i)}_{j} \in |P_i| \times N$ contains partial derivatives of the pairwise likelihood
-with respect to $F_{n,j} = \hat{v}_{c,n} \hat{w}_{c,j}$, 
-with elements given by:
-\begin{flalign}
-H^{(i)}_{j,p,n} & = \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p])) (2y_p - 1)( [n = a_p] - [n = b_p]) [j = u_p]. &
+\hat{\bs v}_{m,c,i} = & \; \bs S^{(v)}_{c,i}\left( 
+(1-\rho_i) \left( \bs S^{(v)}_{c,i-1} \right)^{-1} \hat{\bs v}_{m,c,i-1} \right.& \label{eq:hatv} \\
+& \left.
++ \rho_i \pi_i \Big(
+\bs S^{(v)}_{c,i} \bs A_{i}^T \bs G_i^T \textrm{diag}(\hat{\bs w}_{c,\bs u}) \bs Q_i^{-1} \right. 
+ (\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \mathrm{diag}(\hat{\bs w}_{c,\bs u}) \bs G_i \bs A_i \hat{\bs v}_{c,m,i-1}^T) \Big) \bigg). &\nonumber
 \end{flalign}
 
 For the consensus, the precision and mean are updated according to the following:
@@ -210,22 +205,32 @@ For the latent user components, the SVI updates for the parameters are:
 \begin{flalign}
 \bs \Sigma^{-1}_{c,i} = \; & (1-\rho_i)\bs \Sigma^{-1}_{c,i-1}
 + \rho_i\bs L^{-1}_{mm} \mathbb{E} \left[ s_c^{(w)} \right]
-+ \rho_i \pi_i \bs A_{w,i}^T \bigg( \sum_{p \in P_i} \bs H^{(i)T}_{.,p} \textrm{diag}\left(\hat{\bs v}_{c,\bs a}^2 \right. 
-&\nonumber \\
-& \left. + \bs S^{(v)}_{c,\bs a, \bs a} + 
++ \rho_i \pi_i \bs A_{w,i}^T 
+& \label{eq:Sigma} \\
+& \bigg( \bs H_i^T 
+\textrm{diag}\left(\hat{\bs v}_{c,\bs a}^2 
+  + \bs S^{(v)}_{c,\bs a, \bs a} + 
 \hat{\bs v}_{c,\bs b}^2 + \bs S^{(v)}_{c,\bs b, \bs b}  
-- 2\hat{\bs v}_{c,\bs a}\hat{\bs v}_{c,\bs b} - 2\bs S^{(v)}_{c,\bs a, \bs b} \right) \bs Q_i^{-1} \sum_{p \in P_i} \bs H^{(i)}_{.,p} \bigg) \bs A_{w,i} & \label{eq:Sigma} \\
+- 2\hat{\bs v}_{c,\bs a}\hat{\bs v}_{c,\bs b} - 2\bs S^{(v)}_{c,\bs a, \bs b} \right) \bs Q_i^{-1} 
+\bs H_i \bigg) \bs A_{w,i} & \nonumber \\
 %%%%
-\hat{\bs w}_{m,c,i} = & \; \bs \Sigma_{c,i} \bigg( (1 - \rho_i)\bs \Sigma_{c,i-1}\hat{\bs w}_{m,c,i-1} + 
- \rho_i \pi_i \bs A_{w,i}^T \sum_{p \in P_i} \bs H^{(i)}_{.,p}
-\left( \textrm{diag}(\hat{\bs v}_{c,\bs a}) \right. & \nonumber  \\
-& \left. - \textrm{diag}(\hat{\bs v}_{c,\bs b}) \right) \bs Q_i^{-1} 
-\bigg(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \sum_{j=1}^U \bs H^{(i)}_u (\hat{\bs v}_c^T \hat{\bs w}_{c,j})\bigg) \bigg), & \label{eq:what}
+\hat{\bs w}_{m,c,i} = \; & 
+\bs \Sigma_{c,i} \bigg( (1 - \rho_i)\bs \Sigma_{c,i-1}\hat{\bs w}_{m,c,i-1} 
++ \rho_i \pi_i \bs A_{w,i}^T \bs H_i^T \textrm{diag}(\hat{\bs v}_{c,\bs a} - \hat{\bs v}_{c,\bs b})
+\bs Q_i^{-1} 
+& \label{eq:what} \\
+& \Big(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \textrm{diag}(\hat{\bs v}_{c,\bs a} - \hat{\bs v}_{c,\bs b}) \bs H^{(i)}_u \hat{\bs w}_{c,m,i-1}^T\Big) \bigg), & \nonumber
 \end{flalign}
 where the subscripts $\bs a = \{ a_p \forall p \in P_i \}$
 and  $\bs b = \{b_p \forall p \in P_i \}$ are lists of indices to the first and 
-second items in the pairs, respectively, and $\bs A_{w,i} = \bs L_{im} \bs L_{mm}^{-1}$.
-
+second items in the pairs, respectively,
+$\bs A_{w,i} = \bs L_{im} \bs L_{mm}^{-1}$,
+and $\bs H_i \in U_i \times P_i$ indicates which pairs correspond to which user ($U_i$ is the
+number of users referred to by pairs in $\bs P_i$), 
+with elements given by:
+\begin{flalign}
+H_{p,j} = \Phi(\mathbb{E}[z_p])(1 - \Phi(\mathbb{E}[z_p])) (2y_p - 1)[j = u_p]. &
+\end{flalign}
 
 \begin{algorithm}[h]
  \KwIn{ Pairwise labels, $\bs y$, training item features, $\bs x$, training user features $\bs u$, 
@@ -535,8 +540,13 @@ users.
  parameters \\
  $\epsilon$ & delay \\
  $r$ & forgetting rate \\
- $\pi_i$ & weight given to the update at the $i$th iteration using a subsample of the data \\
- $|P_i|$ & number of pairwise labels in the $i$th iteration subsample \\
+ $\pi_i$ & weight given to the update at the $i$th iteration \\
+ $\bs P_i$ & subset of pairwise labels used in the $i$th iteration \\
+ $P_i$ & number of pairwise labels in the $i$th iteration subsample \\
+ $U_i$ & number of users referred to in the $i$th subsample \\
+ $\bs u$ & users in the $i$th subsample \\
+ $\bs a$ & indexes of first items in the pairs in the $i$th subsample \\
+ $\bs b$ & indexes of first items in the pairs in the $i$th subsample \\
  \bottomrule
  \end{tabularx}
  \caption{Table of symbols used to represent variables in this paper (continued from Table \ref{tab:sym1} on previous page).}

@@ -7,7 +7,7 @@ if __name__ == '__main__':
     acc = 1.0
     dataset_increment = 0
 
-    max_no_folds = 32
+    max_no_folds = 10 # 32
 
     if len(sys.argv) > 1:
         test_to_run = int(sys.argv[1])
@@ -33,6 +33,32 @@ if __name__ == '__main__':
                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M300',
                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M400',
                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M500',
+                ]
+        feature_types = ['both'] #, 'embeddings']
+        embeddings_types = ['word_mean']
+
+        runner = TestRunner('p4', datasets, feature_types, embeddings_types, methods,
+                            dataset_increment)
+        runner.run_test_set(min_no_folds=0, max_no_folds=max_no_folds, npairs=0)
+
+    if test_to_run == 5:
+        # number of pairs in subsample
+        datasets = ['UKPConvArgCrowdSample_evalMACE']
+        methods = [
+                   'SinglePrefGP_noOpt_weaksprior_M100_SS2',
+                   'SinglePrefGP_noOpt_weaksprior_M100_SS20',
+                   'SinglePrefGP_noOpt_weaksprior_M100_SS50',
+                   'SinglePrefGP_noOpt_weaksprior_M100_SS100',
+                   'SinglePrefGP_noOpt_weaksprior_M100',
+                   'SinglePrefGP_noOpt_weaksprior_M100_SS300',
+                   'SinglePrefGP_noOpt_weaksprior_M100_SS400',
+                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS2',
+                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS20',
+                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS50',
+                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS100',
+                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100',
+                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS300',
+                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS400',
                 ]
         feature_types = ['both'] #, 'embeddings']
         embeddings_types = ['word_mean']

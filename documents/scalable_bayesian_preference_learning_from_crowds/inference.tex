@@ -251,11 +251,12 @@ For the $i$th update of $q(\bs f_m)$, we randomly select $P_i$
 observations $\bs y_i = \{ y_p \forall p \in \bs P_i \}$, 
 where $\bs P_i$ is a random subset of indexes of observations,
 and $P_i$ is a mini-batch size.
-%Rather than using the complete matrices, 
+The items referred to by the pairs in the subset are 
+$\bs N_i = \{a_p \forall p \in \bs P_i \} \cup \{ b_p \forall p \in \bs P_i\}$.
 We then perform updates using $\bs Q_i$ (rows and columns of $\bs Q$ for observations in $\bs P_i$),
-$\bs K_{im}$ and $\bs A_i$, (rows of $\bs K_{nm}$ and $\bs A$ referred to by $\{y_p \forall p \in \bs P_i\}$),
-$\bs G_i$ (rows of $\bs G$ in $\bs P_i$ and columns referred to by any items $\{a_p \forall p \in \bs P_i \} \cup \{ b_p \forall p \in \bs P_i\}$),
-and $\hat{\bs z}_i = \{ \mathbb{E}[\bs z_p] \forall p \in P_i \}$.
+$\bs K_{im}$ and $\bs A_i$, (rows of $\bs K_{nm}$ and $\bs A$ in $\bs N_i$),
+$\bs G_i$ (rows of $\bs G$ in $\bs P_i$ and columns in $\bs N_i$), and
+$\hat{\bs z}_i = \{ \mathbb{E}[\bs z_p] \forall p \in P_i \}$.
 %All matrices with subscript $_i$ contain only the subset of elements relating to 
 %observations in $\bs P_i$.
 % The linearization matrix $\bs G_i$ is the subset of elements in $\bs G$ relating to observations in $\bs P_i$, 
@@ -268,11 +269,11 @@ natural gradient~\citep{hensman2015scalable}:
 \begin{flalign}
 \bs S^{-1}_i  & = (1 - \rho_i) \bs S^{-1}_{i-1} + \rho_i\left( \mathbb{E}[s]\bs K_{mm}^{-1} + \pi_i\bs A_i^T \bs G^T_{i} \bs Q^{-1}_i \bs G_{i} \bs A_{i} \right)& 
 \label{eq:S_stochastic} \\
-\hat{\bs f}_{m,i}  & = \bs S_i \left( (1 - \rho_i) \bs S^{-1}_{i-1} \hat{\bs f}_{m,i-1}  + 
+\hat{\bs f}_{m,i}  & = \bs S_i \left( \! (1 - \rho_i) \bs S^{-1}_{i-1} \hat{\bs f}_{m,i-1}  + 
 %\right. \nonumber \\
 %& \left.\hspace{1.5cm} 
 \rho_i \pi_i  
-\bs A_{i}^{T} \bs G_{i}^T \bs Q_i^{-1} \left( \bs y_i  - \Phi(\mathbb{E}[\bs z_i]) + \bs G_{i} \bs A_i \hat{\bs f}_{m,i} \right) \right) & 
+\bs A_{i}^{T} \bs G_{i}^T \bs Q_i^{-1}\! \left( \bs y_i  - \Phi(\mathbb{E}[\bs z_i]) + \bs G_{i} \bs A_i \hat{\bs f}_{m,i-1} \! \right) \! \right) & 
 \label{eq:fhat_stochastic}
 \end{flalign}
 where

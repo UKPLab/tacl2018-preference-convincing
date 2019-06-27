@@ -239,8 +239,11 @@ class PersonalisedTestRunner(TestRunner):
         if '_SS' in self.method:
             validx = self.method.find('_SS') + 3
             SS = int(self.method[validx:])
+
+            niter = 200 * (200.0 / float(SS))
         else:
             SS = 200
+            niter = 200
 
         self.model = CollabPrefLearningSVI(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose,
                                            nfactors=F, rate_ls=1.0 / np.mean(self.ls_initial),
@@ -252,7 +255,7 @@ class PersonalisedTestRunner(TestRunner):
                                            delay=delay,
                                            exhaustive_train_count=1)
 
-        self.model.max_iter = 200 # same as for single user GPPL
+        self.model.max_iter = niter # same as for single user GPPL
         self.model.max_Kw_size = max_Kw_size
 
         zero_centered_prefs = np.array(self.prefs_train, dtype=float) - 1

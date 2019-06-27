@@ -82,9 +82,9 @@ is a similar model that, like crowdGPPL,
  for each user, but uses an inducing point method, \emph{GFITC}, 
  to reduce computational complexity, as described in Section \ref{sec:inf}.
 As collabGP requires more parameters, it has higher memory complexity 
-($\mathcal{O}(M_{\mathrm{items}}^2 + M_{\mathrm{items}}P + P^2 + M_{\mathrm{users}}^2 + M_{\mathrm{users}}P +U^2)$ 
+($\mathcal{O}(M_{\mathrm{items}}P + M_{\mathrm{users}}U)$ 
 in contrast to 
-$\mathcal{O}(CM_{\mathrm{items}}^2 + P_i^2 + M_{\mathrm{items}} P_i + CM_{\mathrm{users}}^2 + M_{\mathrm{users}} P_i$).
+$\mathcal{O}(C M_{\mathrm{items}} P_i C M_{\mathrm{users}} P_i$).
 We therefore treat the performance of collabGP as a target for crowdGPPL.
 
 \emph{CrowdBT}~\citep{chen2013pairwise}
@@ -504,6 +504,8 @@ Overall, the current version of this manuscript is not sufficient for machine le
  %GPPL opt. & .76 & .51 & .47 & .70 & .58 &  .30 \\
  crowdGPPL %medi. 
  & \textbf{.78} & \textbf{.50} & \textbf{.53} & \textbf{.73} & .57 & \textbf{.33} & \textbf{.74} & \textbf{.55} & \textbf{.29}  \\ %.71 & .59 & .32 \\ % now showing workers with > 40 training examples
+ crowdGPPL$\backslash \bs u$ & - & - & -
+ & \\
  % new values since Q and various minor bugfixes (Qfix1): 
  % .77 & .67 & .52 & .72 & .60 & .33 \\
  % Qfix3 (nothing changed; main problem is CEE on consensus -- try tuning st separately from sw hyperparameters):
@@ -679,8 +681,10 @@ Increasing the number of pairwise labels, $P$, above 1000, however, does not vis
 }
 \caption{
     Wall-clock times for training+prediction of the consensus utilities 
-    on UKPConvArgCrowdSample. Lines show means over 32 runs,
-    with bands indicating one standard deviation. CrowdGPPL with $C=5$ components.
+    on UKPConvArgCrowdSample. CrowdGPPL was run with $C=5$ components. 
+    Lines show means over 32 runs,
+    with bands indicating one standard deviation. 
+    Bands are narrow due to very little variation between folds. 
 }
 \end{figure}
 
