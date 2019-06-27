@@ -242,10 +242,6 @@ class PersonalisedTestRunner(TestRunner):
         else:
             SS = 200
 
-        # TODO: has it actually learned different values for each factor?
-        # If not, perhaps the initial y sample is too random, so it causes the factors to end up too similar?
-        # So could we avoid it by setting values of one for each factor for each worker, or do we need to start with one factor per worker?
-
         self.model = CollabPrefLearningSVI(nitem_features=self.ndims, ls=self.ls_initial, verbose=self.verbose,
                                            nfactors=F, rate_ls=1.0 / np.mean(self.ls_initial),
                                            use_common_mean_t=common_mean, max_update_size=SS, use_lb=True,
@@ -384,7 +380,7 @@ if __name__ == '__main__':
     else:
         lsm = 1
 
-    test_dir = 'testD05-%i_P%i' % (lsm, npairs)  #'rate_s_tests_single'
+    test_dir = 'D05-%i_P%i' % (lsm, npairs)  #'rate_s_tests_single'
 
     methods = ['SinglePrefGP_noOpt_weaksprior']
     datasets = ['UKPConvArgCrowdSample_evalMACE']
@@ -397,14 +393,20 @@ if __name__ == '__main__':
     datasets = ['UKPConvArgCrowdSample']
     methods = ['PersPrefGP_commonmean_noOpt_weaksprior']
 
-    runner = PersonalisedTestRunnels da r(test_dir, datasets, feature_types, embeddings_types, methods,
+    runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
                                     dataset_increment)
 
-    max_fold = 10#32
+    max_fold = 32
 
     # PERSONALISED PREDICTION
     if test_to_run == 0:
         runner.run_test_set(min_no_folds=0, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
+
+    elif test_to_run == 12:
+        runner.datasets = ['UKPConvArgCrowdSample']
+        runner.methods = ['PersConsensusPrefGP_noOpt_weaksprior']
+        runner.run_test_set(min_no_folds=0, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
+
 
     # CONSENSUS PREDICTION
     elif test_to_run == 1:

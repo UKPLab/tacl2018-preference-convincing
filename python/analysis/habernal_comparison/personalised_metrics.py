@@ -94,7 +94,7 @@ if __name__ == '__main__':
         # Personalised predictions -- multi-user methods
 
         datasets = ['UKPConvArgCrowdSample']
-        methods = ['PersPrefGP_commonmean_noOpt_weakersprior'] # 'SinglePrefGP_noOpt_weaksprior',
+        methods = ['PersPrefGP_commonmean_noOpt_weaksprior'] # 'SinglePrefGP_noOpt_weaksprior',
         feature_types = ['both'] # 'both'
         embeddings_types = ['word_mean']
 

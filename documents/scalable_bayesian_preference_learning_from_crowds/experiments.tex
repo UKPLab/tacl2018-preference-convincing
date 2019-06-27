@@ -503,7 +503,7 @@ Overall, the current version of this manuscript is not sufficient for machine le
  % .78 & .51 & .52 & .72 & .56 & .33
  %GPPL opt. & .76 & .51 & .47 & .70 & .58 &  .30 \\
  crowdGPPL %medi. 
- & \textbf{.78} & \textbf{.50} & \textbf{.53} & \textbf{.73} & .58 & \textbf{.33} & \textbf{.74} & .58 & \textbf{.29}  \\ %.71 & .59 & .32 \\ % now showing workers with > 40 training examples
+ & \textbf{.78} & \textbf{.50} & \textbf{.53} & \textbf{.73} & .57 & \textbf{.33} & \textbf{.74} & \textbf{.55} & \textbf{.29}  \\ %.71 & .59 & .32 \\ % now showing workers with > 40 training examples
  % new values since Q and various minor bugfixes (Qfix1): 
  % .77 & .67 & .52 & .72 & .60 & .33 \\
  % Qfix3 (nothing changed; main problem is CEE on consensus -- try tuning st separately from sw hyperparameters):
@@ -529,6 +529,10 @@ Runtimes on a 12 core, 2.6GHz CPU server were approximately 3 minutes for GPPL a
 \todo{
 Page 15, Table 2: Please provide a definition of 'accuracy'.  Is this the proportion of pairs that
 are correctly ranked? 
+}
+\todo{note that acc goes up but tau goes down: there must be some items that have a bigger mis-ranking (position is shifted a lot), which reduces tau, even though fewer pairs are out of order).}
+\todo{check claim that the consensus helps model the personal preferences is not over-emphasised. 
+We perhaps don't need this claim at all.
 }
  \todo{we should note that differences in performance stem from better selection of 
  samples across more iterations + using the neutral dont know labels}
