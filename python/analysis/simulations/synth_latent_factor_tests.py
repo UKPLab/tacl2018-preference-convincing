@@ -69,7 +69,7 @@ if __name__ == '__main__':
         np.random.seed(1)
 
     # SETTINGS FOR ALL THE NOISE TESTS
-    nreps = 10 # 25
+    nreps = 25
     nx = 20
     ny = 20
     N = nx * ny
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     # MULTI USER OBSERVATIONS, MEASURING CORRELATION BETWEEN DISCOVERED AND TRUE LATENT FACTORS, MODEL: MU
 
     s = 1
-    P_values = [40, 80, 160, 320, 640, 1280, 2560]
+    P_values = [160, 320, 640, 1280, 2560]
 
     # make sure the simulation is repeatable
     if fix_seeds:
@@ -132,7 +132,7 @@ if __name__ == '__main__':
                     P=P,
                     ls=ls,
                     sigma=s,
-                    s=0.2,
+                    s=1,
                     lsy=lsy,
                     Npeoplefeatures=2
                 )
@@ -144,11 +144,13 @@ if __name__ == '__main__':
                 ninducing = 50
 
                 # Create a GPPrefLearning model
-                model = CollabPrefLearningSVI(2, 2, mu0=0, shape_s0=0.1, rate_s0=0.1, ls=None, nfactors=Npeople,
+                model = CollabPrefLearningSVI(2, 2, mu0=0, shape_s0=1, rate_s0=1,
+                                              shape_sy0=100, rate_sy0=100,
+                                              ls=None, nfactors=Npeople,
                                               ninducing=ninducing,
-                                              max_update_size=1000, forgetting_rate=0.9, verbose=False, use_lb=True)
+                                              max_update_size=200, forgetting_rate=0.9, verbose=False, use_lb=True)
 
-                print(("--- Repeating multi user test, rep %i ---" % rep))
+                print(("--- Repeating multi user test, rep %i, nfactors %i ---" % (rep, Nfactors)))
 
                 model.fit(
                     personidxs_tr,

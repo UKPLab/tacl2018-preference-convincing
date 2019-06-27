@@ -1405,13 +1405,13 @@ class CollabPrefLearningSVI(CollabPrefLearningVB):
             y_out[f] = Ky.dot(self.invKy_mm).dot(self.y_u[f])
 
         if return_cov:
-            cov_y = []  # np.zeros((self.Nfactors, Npeople, Npeople))
+            cov_y = np.zeros((self.Nfactors, Npeople, Npeople))
             for f in range(self.Nfactors):
                 if f in self.factors_with_features:
-                    cov_y.append( Ky_starstar * self.rate_sy[f] / self.shape_sy[f] \
-                       + covpair.dot(self.yS[f] - self.Ky_mm / self.shape_sy[f] * self.rate_sy[f]).dot(covpair.T) )
+                    cov_y[f] = Ky_starstar * self.rate_sy[f] / self.shape_sy[f] \
+                       + covpair.dot(self.yS[f] - self.Ky_mm / self.shape_sy[f] * self.rate_sy[f]).dot(covpair.T)
                 else:
-                    cov_y[f].append(self.yS[f])
+                    cov_y[f] = self.yS[f]
         else:
             cov_y = None
 

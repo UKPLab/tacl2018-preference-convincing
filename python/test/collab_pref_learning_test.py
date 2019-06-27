@@ -218,6 +218,9 @@ def gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, sigma, s, 
     Kw = [Kt for _ in range(Nfactors)]
     Kw = block_diag(*Kw)
     w = mvn.rvs(cov=Kw/s).reshape(Nfactors, nx * ny).T
+    #w = np.empty((nx*ny, Nfactors))
+    #for f in range(Nfactors):
+    #    w[:, f] = mvn.rvs(cov=Kt/s)
 
     # person_features = None
     person_features = np.zeros((Npeople, Npeoplefeatures))
@@ -228,6 +231,9 @@ def gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, sigma, s, 
     Ky = [Ky for _ in range(Nfactors)]
     Ky = block_diag(*Ky)
     y = mvn.rvs(cov=Ky).reshape(Nfactors, Npeople)
+    #y = np.empty((Nfactors, Npeople))
+    #for f in range(Nfactors):
+    #    y[f] = mvn.rvs(cov=Ky)
 
     f_all = w.dot(y) + t
 

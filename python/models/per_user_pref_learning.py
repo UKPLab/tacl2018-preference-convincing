@@ -21,14 +21,16 @@ class GPPrefPerUser():
     Runs a separate preference learning model for each user. I.e. multiple users but no collaborative learning.
     '''
 
-    def __init__(self, Npeople, max_update_size, shape_s0, rate_s0, nitem_feats=2, ninducing=50, verbose=True):
+    def __init__(self, Npeople, max_update_size, shape_s0, rate_s0, nitem_feats=2, ninducing=50, verbose=True, delay=1.0):
         self.user_models = []
 
         self.Npeople = Npeople
         for p in range(Npeople):
             model_p = GPPrefLearning(nitem_feats, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None,
                                      use_svi=True, ninducing=ninducing,
-                                     max_update_size=max_update_size, forgetting_rate=0.9, verbose=verbose)
+                                     max_update_size=max_update_size, forgetting_rate=0.9, delay=delay, verbose=verbose)
+
+            model_p.max_iter_VB /= Npeople # allow the same number of iterations in total as other methods.
 
             self.user_models.append(model_p)
 
