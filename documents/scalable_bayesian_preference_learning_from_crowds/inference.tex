@@ -20,7 +20,6 @@ EP would average these modes and produce uninformative predictions over $\bs F$,
 A drawback of EP is that convergence is not guaranteed,
 whereas VB will always converge when distributions are conjugate 
 ~\citep{minka2001expectation}.
-\todo{Do we actually state the complexity of our approach anywhere?}
 %do they also linearise in the same way? -- both linearise. But EP uses a joint over y and f as its approximation to p(y|f), then optimises the parameters iteratively. It's not guaranteed to converge. Variational EGP instead approximates
 % p(y|f) directly with the best fit Gaussian. It's not clear whether this could be updated iteratively but it doesn't
 % seem to work if done simultaneously with the other variables we need to learn (the linearisation), 
@@ -42,7 +41,7 @@ marginal likelihood.
 One such sparse approximation is the \emph{generalized fully independent training conditional} (GFITC)~\citep{NIPS2007_3351}, 
 used by \citet{houlsby2012collaborative} for the collaborative GP,
 which generalizes the fully independent training conditional 
-(FITC)~\cite{snelson2006sparse} method to non-Gaussian likelihoods.
+(FITC)~\citep{snelson2006sparse} method to non-Gaussian likelihoods.
 FITC assumes that each training and test point is independent of all other points
 given the function values at the inducing points.
 However, this may be less appropriate for the pairwise likelihood (Equation \ref{eq:plphi})
@@ -56,8 +55,8 @@ computational costs~\citep{hensman2015scalable}.
 
 We now derive a more scalable approach for GPPL and crowdGPPL using
 stochastic variational inference (SVI), an iterative scheme that limits the computational and memory costs at
-each iteration~\citep{hoffman2013stochastic}
-and allows training data to be split into mini-batches for parallel processing.
+each iteration~\citep{hoffman2013stochastic}.
+%and allows training data to be split into mini-batches for parallel processing.
 As we explain below,
 this allows us to reduce the computational cost of each iteration of the algorithm from 
 $\mathcal{O}(NM^2)$ with GFITC to $\mathcal{O}(P_i M^2 + Pi^2 M + M^3)$,
@@ -287,6 +286,14 @@ the computational complexity of Equations \ref{eq:S_stochastic} and
 items referred to by the pairwise labels in the mini-batch.
 Memory complexity is now bounded by $\mathcal{O}(M^2 + P_i^2 + M P_i)$, where each complexity term is due
 to the sizes of $K_{mm}$, $G_i$ and $K_{im}$.
+Note that the only parameters that must be stored between iterations relate to the 
+inducing points, hence the memory consumption does not grow with the dataset size 
+as in the GFITC approximation used by \citet{houlsby2012collaborative}.
+A further advantage of stochastic updating is that the $s$ parameter (and any other global
+parameters not immediately depending on the data) can be learned
+before the entire dataset has been processed,
+which means that poor initial estimates of $s$ are rapidly improved
+and the algorithm can converge faster.
 
 The complete SVI algorithm is summarized in Algorithm \ref{al:singleuser}.
 \begin{algorithm}[h]
@@ -300,9 +307,9 @@ The complete SVI algorithm is summarized in Algorithm \ref{al:singleuser}.
  \nl Select random sample, $\bs P_i$, of $P$ observations
  \While{$\bs G_i$ not converged}
   {
+  \nl Compute $\mathbb{E}[\bs f_i]$ \;
   \nl Compute $\bs G_i$ given $\mathbb{E}[\bs f_i]$ \;
   \nl Compute $\hat{\bs f}_{m,i}$ and $\bs S_{i}$ \;
-  \nl Compute $\mathbb{E}[\bs f_i]$ \;
   }
  \nl Update $q(s)$ and compute $\mathbb{E}[s]$ and $\mathbb{E}[\ln s]$\;
  }
@@ -317,9 +324,13 @@ posterior over $\bs f^*$ at test points \;
 Using an inner loop to learn $\bs G_i$ avoids the need to store the complete matrix, 
 $\bs G$.
 It is possible to distribute computation in lines 3-6 by selecting multiple random samples
-to be processed in parallel. Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}
-then simply take a sum over the values of $\bs S^{-1}_i$ and $\bs S^{-1}_i\hat{\bs f}_{m,i}$
-computed in each parallel thread, weighted by the amount of data in each thread.
+to be processed in parallel. A global estimate of $\hat{\bs f}_m$ and $\bs S$
+is passed to each compute node, which runs the loop over lines 4 to 6.
+The resulting updated $\hat{\bs f}_m$ and $\bs S$ values are then passed back to a 
+central node that combines them by taking the mean over the values computed by 
+each node, weighted by the size of each batch. 
+This combination step is permitted without modifying Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}, since they already contain a sum weighted by $\pi_i$.
+
 
 Inducing point locations can be learned
 as part of the variational inference procedure ~\citep{hensman2015scalable},

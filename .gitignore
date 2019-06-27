@@ -193,3 +193,4 @@ documents/scalable_bayesian_preference_learning_from_crowds.zip
 ..bfg-report
 *_old.py
 __MACOSX/
+python/test/tmp

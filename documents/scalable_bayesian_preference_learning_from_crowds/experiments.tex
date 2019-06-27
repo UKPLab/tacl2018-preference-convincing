@@ -338,7 +338,7 @@ Method & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ \\
 %\multicolumn{13}{|l|}{\textit{crowdGPPL}} \\
 crowdGPPL & \textbf{.71} & \textbf{.56} & .48 %& 38%
 & .84 & .33 & .79 %& 21
-& .74 & .58 & . 53 %& .76 & .55 & .45  %& 4724 \\
+& .76 & .58 & . 53 %& .76 & .55 & .45  %& 4724 \\
  \\
 crowdGPPL $\backslash $inducing & .70 & .60 & .45 %& 51 %(14.81) %& .63 (.02) & .68 (.00) & .24 (.03)
 % new results 02.04
@@ -348,19 +348,19 @@ crowdGPPL $\backslash $inducing & .70 & .60 & .45 %& 51 %(14.81) %& .63 (.02) & 
 crowdGPPL $\backslash u$ & .70 & .58 & .46 &  %9  &%(24.62) %& .65 (.02) & .64 (.03) & .29 (.03)
 % new results 02.04:
 \textbf{.85} & \textbf{.31} & \textbf{.80} %& 21
-& .75 & .52 & .57 %& 3788 
+& \textbf{.78} & .52 & .57 %& 3788 
 \\
 %crowdGPPL $\backslash u, C=50$ & .70 & .58 & .46 & .84 & .32 & .80 & 
 %\\
 crowdGPPL $\backslash u \backslash x$ & \textbf{.71} & .57 & \textbf{.49} & % 5 & %(3.74) %& .65 (.02) & .63 (.02) & .29 (.03)
 %new results 02.04: 
 \textbf{.85} & .33 & .80 % & 14
-& \textbf{.77} & .58 & .48 % & 3363
+& .77 & .50 & .58 % & 3363
 \\
 crowdGPPL $\backslash u,\backslash t$ % this is also FITC to emulate Houlsby -- mention it in the text, not here
 & .68 & .60 & .43 % & 291 %(48.62) %& .50 (.00) & .69 (.00) & nan (nan)
 & .84 & .33 & .80 % & 230
-& .76 & .61 & .54 % & 12513
+& .76 & .50 & .58 % & 12513
 \\ 
 \midrule 
 GPPL & .65 & .62 & .31 %& \textbf{2} %(.26) %& .65 (.02) & .63 (.02) & .30 (.03)
@@ -380,7 +380,7 @@ collabGP & .69 & .58 & n/a %& \textbf{2}*
 \\
 collabGP$\backslash u$ & .69 & .59 & n/a & .84 & .33 & n/a & .76 & .50 & n/a
 \\
-GPVU & .70 & .67 & .43 & .72 & .67 & .42 & .73 & .60 & .51
+GPVU & .70 & .67 & .43 & .72 & .67 & .42 & .73 & .59 & .52
 %collabGP$\backslash u, C=50$ & .70 & .58 & n/a & .85 & .33 & n/a & \\
 \\ \bottomrule
 \end{tabular}
@@ -633,7 +633,7 @@ and the number of pairwise training labels, $P$, respectively (all other setting
 The runtime increase with $N_{tr}$ for GPPL is almost imperceptible,
 while for crowdGPPL it increases almost linearly as more
 computations over the set of items are required than for GPPL, and the method takes more iterations to converge with more items. 
-However, many of the additional computations can be parallelized
+However, many of the additional computations can be parallelised
 in future implementations.
 Increasing the number of pairwise labels, $P$, above 1000, however, does not visibly affect the runtimes.
 %The methods labeled "no SVI" show runtimes
@@ -658,6 +658,7 @@ Increasing the number of pairwise labels, $P$, above 1000, however, does not vis
 % %%\item not done: performance, computation time vs different initialisation methods for the inducing points; include different initialisations of K-means
 % \end{enumerate}
 % SCALABILITY ----------------------------------------------------------
+\todo{same as figure for inducing points but for pairwise labels in each mini batch?}
 \begin{figure}
 \captionsetup{justification=centering}
 \subfloat[Varying $M$ with complete training set]{

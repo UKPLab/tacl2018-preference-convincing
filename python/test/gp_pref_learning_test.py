@@ -202,6 +202,8 @@ if __name__ == '__main__':
 
     N = 200
 
+    if not os.path.exists('./tmp'):
+        os.mkdir('./tmp')
     pklfile = './tmp/synthdata.pkl'
     if os.path.exists(pklfile):
         with open(pklfile, 'rb') as fh:

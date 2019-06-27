@@ -40,28 +40,20 @@
 % -- maybe save this for future work? Or add a few lines if we can make it fit with the theme of the paper.
 % -- another is to replace the fixed number of clusters with a CRP, then the whole thing can be nonparameteric preference learning with crowds.
 
-\todo{this should be introduced in section 1. \citep{handleycomparative} -- compares BT with TM models}
-For a pair of items, $a$ and $b$, 
-$a \succ b$ indicates that $a$ is preferred to $b$.  
-% %\begin{equation}
-% $y(a, b) = \begin{cases}
-% 1 & a \succ b \\
-% 0 & b \succ a
-% \end{cases}$.
-% %\end{equation} 
-We assume that items have latent \emph{utilities},
-$f(\bs x_a)$ and $f(\bs x_b)$, that represent their value to a user,
-and that the 
-utility $f(\bs x_a) : \mathbb{R}^D \mapsto \mathbb{R}$ 
-is a function of the item's features, where $\bs x_a$ is a vector of length $D$
-containing the features of item $a$.
-Hence if $f(\bs x_a) > f(\bs x_b)$, then $a \succ b$.
-We record the outcome of a comparison between $a$ and $b$ as 
+We assume that a pair of items, $a$ and $b$, have utilities
+$f(\bs x_a)$ and $f(\bs x_b)$, which represent their value to a user,
+and that $f: \mathbb{R}^D \mapsto \mathbb{R}$ 
+is a function of the item's features, where $\bs x_a$ and $\bs x_b$ are vectors 
+of length $D$ containing the features of items $a$ and $b$, respectively.
+If $f(\bs x_a) > f(\bs x_b)$, then $a$ is preferred to $b$ (written as $a \succ b$).
+We record the outcome of each comparison between $a$ and $b$ as 
 a pairwise label, $y(a, b)$.
 Assuming that pairwise labels never contain errors,
 then $y(a, b)=1$ if $a \succ b$ and $0$ otherwise.
+Hence, given knowledge of $f$, we can predict the utilities 
+of items in a test set given their features, and the outcomes of pairwise comparisons.
 
-\citet{thurstone1927law} proposed the \emph{random utility model},
+\citet{thurstone1927law} proposed the random utility model,
 which relaxes the assumption that pairwise labels, $y(a, b)$,
 are always consistent with the ordering of $f(\bs x_a)$ and $f(\bs x_b)$.
 Under the random utility model, the likelihood $p(y(a,b)=1)$ 
@@ -75,12 +67,13 @@ inconsistency in a user's choices at different points in time.
 The uncertainty is lower if the values $f_a$ and $f_b$ are further apart, 
 which reflects greater consistency in a user's choices
 when their preferences are stronger.
- 
+
 The random utility model is defined by a likelihood function that
 maps the utilities to $p(y(a,b))$.
 Two important random utility models for pairwise labels are the Bradley-Terry model ~\citep{bradley1952rank,plackett1975analysis,luce1959possible},
 which assumes a logistic likelihood,
 and the Thurstone-Mosteller model, also known as \emph{Thurstone case V}~\citep{thurstone1927law,mosteller2006remarks}, which assumes a probit likelihood.
+
 %or the Thurstone-Mosteller model.
 %\begin{align}
 %p(y(a, b) | f) & = \frac{1}{1 + \exp( f(\bs x_a) - f(\bs x_b) ) }
@@ -122,11 +115,12 @@ p(y(a,b)| \bs y)
 where $\hat{f}_a$ and $\hat{f}_b$ are the means and
 $\bs C$ is the covariance matrix of the multivariate Gaussian over
 $f(\bs x_a)$ and $f(\bs x_b)$.
-This likelihood model is the basis of Gaussian process preference learning (GPPL)~\citep{chu2005preference}. 
-Due to this mathematical convenience,
-we also assume this pairwise label likelihood for the crowd
-preference learning model proposed in this paper.
-Here, in contrast to \citet{chu2005preference},
+Unlike other choices for the likelihood, such as a sigmoid,
+the probit allows us to compute the posterior over a pairwise label
+without further approximation or numerical integration,
+hence we assume this pairwise label likelihood for our proposed preference learning model.
+This likelihood is also used for Gaussian process preference learning (GPPL)
+by ~\citet{chu2005preference}, but here 
 we simplify the formulation by assuming that $\sigma^2 = 0.5$,
 which leads to $z$ having a denominator of $\sqrt{2 \times 0.5}=1$.
 Instead, we model varying degrees of noise in the pairwise labels
@@ -153,8 +147,7 @@ These functions assign higher covariance to items with similar feature values.
 We use the kernel function $k_{\theta}$ to compute a covariance matrix $K_{\theta}$,
 between a set of $N$ observed items with features $\bs X = \{ \bs x_1, ..., \bs x_N \}$.
 
-The model extends the original definition of
-\emph{Gaussian process preference learning (GPPL)}~\citep{chu2005preference},
+The model extends the original definition of GPPL~\citep{chu2005preference},
 by introducing the inverse scale, $s$. 
 We also assume that $s$ is drawn from a gamma prior, 
 $s \sim \mathcal{G}(\alpha_0, \beta_0)$, with shape $\alpha_0$ and scale $\beta_0$.

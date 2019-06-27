@@ -470,11 +470,19 @@ class GPPrefLearning(GPClassifierSVI):
         out_feats, item_0_idxs, item_1_idxs, mu0_out = get_unique_locations(out_feats, out_1_feats, mu0_out, mu0_out_1)
         return self.predict(out_feats, item_0_idxs, item_1_idxs, mu0_out)
 
+
     def _logpt(self):
+        # logrho, lognotrho, _ = self._post_sample(self.obs_f, None, True, self.K_nm, self.pref_v, self.pref_u)
+
         rho = pref_likelihood(self.obs_f, v=self.pref_v, u=self.pref_u)
         rho = temper_extreme_probs(rho)
+        logrho = np.log(rho)
+        lognotrho = np.log(1 - rho)
 
-        return np.log(rho), np.log(1 - rho)
+        # if we use the Gaussian approximation rather than the true likelihood, there would be a -0.5*tr(CQ^-1) term
+        # to take care of the variance in f. However, I think we have dropped it because computing C is expensive???
+
+        return logrho, lognotrho
 
     def _post_sample(self, f_mean, f_var=None, expectedlog=False, K_star=None, v=None, u=None):
 

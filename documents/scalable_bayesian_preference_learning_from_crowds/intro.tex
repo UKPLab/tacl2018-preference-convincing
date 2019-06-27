@@ -73,41 +73,55 @@ For many preference learning tasks, people have divergent opinions on the correc
 which means that data from different annotators may not agree.
 For example, in argument mining, 
 a sub-field of natural language processing (NLP),
-one goal is to rank arguments in a corpus of documents by their \emph{convincingness}~\citep{habernal2016argument}. 
+one goal is to rank arguments by their \emph{convincingness}~\citep{habernal2016argument}. 
 Whether a particular argument is convincing or not depends on the reader's point of view and prior knowledge~\citep{lukin2017argument}.
-Similarly, personal viewpoints affect recommender systems,
+Similarly, personal preferences affect recommender systems,
 which often perform better if they tailor recommendations
 to a specific user~\citep{resnick1997recommender}.
 Disagreements also occur when training data is acquired from multiple annotators,
 for example, using crowdsourcing,
-Often  these are mitigated by redundant labelling, 
-which increases labelling costs~\citep{snow2008cheap,banerji2010galaxy}.
+and are often mitigated by redundant labelling, 
+which increases costs~\citep{snow2008cheap,banerji2010galaxy}.
 % TODO: Say something about the size of dataset requiring scalable solutions? Maybe covered below.
 %Crowdsourcing is frequently used as a cost-effective source of labelled data, 
 %yet disagreements between annotators must be resolved to obtain a gold-standard
 %training set, typically requiring redundant labelling and increased annotation costs~.
 %should the bias stuff go here to motivate the next line?
 % or should the crowdsourcing stuff go later on? This is just motivation, the above considers solutions already.
-Therefore, we require
-preference learning methods that can account for differences of opinion
-when predicting individual preferences or 
-producing a gold standard from crowdsourced preference annotations.
+Therefore, we require preference learning methods that can account for differences of opinion
+%when predicting individual preferences or 
+%producing a gold standard from crowdsourced preference annotations.
+to solve two tasks:
+(1) predicting \emph{personal} preferences for members of a crowd
+and
+(2) inferring a \emph{consensus} given observations from multiple, disparate users.
 
 As data from a single user is often sparse,
-recommender systems often combine information from different users 
+recommender systems often %combine information from different users 
+predict predict a user's preferences by 
 via \emph{collaborative filtering},  
-which predicts a user's preferences 
-using the observed preferences of similar users~\citep{resnick1997recommender}.
+which combines the observed preferences of similar users~\citep{resnick1997recommender}.
 A typical approach is to represent observed ratings in a user-item matrix,
 then apply \emph{matrix factorization}~\citep{koren2009matrix}
 to decompose a user-item matrix into two low-dimensional matrices.
 Users and items with similar observed ratings have similar row vectors in the low-dimensional
 matrices. By multiplying the low-dimensional representations, we can predict ratings for unseen
 user-item pairs. 
-However, traditional approaches are not able to extrapolate effectively to new users or items,
-as they are unable to exploit the input features of items....
-\todo{importance of input features must be discussed here}
-and require that training data is provided in the form of numerical ratings.
+However, traditional approaches 
+are not able to extrapolate to new users or items,
+as they do not exploit the \emph{input features} of items or users
+that can be extracted from their content or metadata.
+For example, in text it is common to count occurrences of each unique token
+or, more recently, to obtain an \emph{embedding} of a word or document that
+represents its content as a numerical vector~\citep{mikolov2013distributed,devlin2018bert}.
+%Features can be represented as a vector of numerical values corresponding to each item or user
+%and can be used to 
+Input features enable predictions for a test item or user 
+based on observations of others with similar feature values,
+and can help to remedy labelling errors when learning from noisy, crowdsourced data~\citep{felt2016semantic,simpson2015language}.
+Furthermore,
+many established methods for matrix factorisation 
+require that training data is provided in the form of numerical ratings.
 
 A drawback of numerical ratings is that 
 each annotator may interpret the values differently and may label inconsistently depending on the order in which they annotate items~\citep{ovadia2004ratings,yannakakis2011ranking}.
@@ -115,7 +129,8 @@ A score of 4/5, say, from one annotator may be equivalent to 3/5 from another.
 The problem is avoided by \emph{pairwise labelling}, 
 in which the annotator selects their preferred item from a pair.
 Pairwise labelling can also be quicker for annotators than numerical rating,
-and facilitates the total sorting of items, since it avoids two items having the same value~\citep{kendall1948rank,kingsley2010preference,yang2011ranking}.
+and facilitates the total sorting of items, since it avoids two items having the same value~\citep{kendall1948rank,kingsley2010preference,yang2011ranking},
+and can be result in more accurate rankings\citep{kiritchenko2017best}.
 Besides explicit annotations, pairwise labels can be extracted from
 user behaviour logs, such as when a user selects one item from a list in preference
 to others~\citep{joachims2002optimizing}. 
@@ -127,17 +142,15 @@ and could be states or actions as well as objects.
 Pairwise labels provided by a crowd are often noisy~\citep{chen2013pairwise}, 
 as are labels extracted from user logs~\citep{hu2008collaborative}.
 The need to be robust to noise despite limited data per user
-and the desire to aggregate data from multiple users
-motivates a Bayesian approach.
-Bayesian approaches can account for uncertainty in the model,
+and to aggregate data from multiple users
+motivates a Bayesian treatment.
+Bayesian approaches account for uncertainty in the model,
 which has been shown to benefit matrix factorization with sparse data~\citep{salakhutdinov2008bayesian}
 and preference learning with noisy pairwise labels~\citep{chen2013pairwise},
-although this approach does not model individual preferences or make predictions for new users or items.
-\todo{decide whether this belongs in Related Work:
-For crowdsourced classification tasks, \citet{simpson2017bayesian} show that modelling item features using a Gaussian process can improve performance, but this has not yet been adapted for preference learning.
-}
-A Bayesian approach for modelling nonlinear functions of input features is the Gaussian process (GP),
-which has previously been applied for preference learning
+although this previous work does not model individual preferences or make predictions for new users or items.
+A powerful Bayesian approach for prediction is the Gaussian process (GP), 
+which models nonlinear functions of input features
+and has previously been applied to preference learning
 ~\citep{chu2005preference,houlsby2012collaborative,khan2014scalable}.
 However, existing GP-based methods do not scale to very large numbers of items, users, or
 pairwise labels as their computational and memory requirements grow with the size of the dataset.
@@ -152,14 +165,15 @@ that scales to extremely large datasets, as its
 memory complexity and the time complexity of each iteration are 
 fixed independently of size of the dataset.
 Our new approach opens the door to novel applications involving very large numbers of users, items and pairwise labels,
-that would previously have exceeded computational or memory resources and were difficult to parallelize.
+that would previously have exceeded computational or memory resources and were difficult to parallelise.
 We evaluate the method empirically on two real-world datasets to demonstrate 
 the scalability of our approach,
 and its ability to predict both personal preferences and an objective gold-standard given 
 preferences from thousands of users.
 Our results improve performance over the previous state-of-the-art \citep{simpson2018finding} on a crowdsourced argumentation dataset, illustrating the potential of the method for NLP applications.
 
-The next section of the paper discusses related work.
+The next section of the paper provides background on preference learning
+and discusses related work.
 We then develop our model for preference learning from crowds in Section \ref{sec:model},
 followed by our proposed inference method in Section \ref{sec:inf}.
 %and hyper-parameter optimisation technique in Section \ref{sec:ls}.
