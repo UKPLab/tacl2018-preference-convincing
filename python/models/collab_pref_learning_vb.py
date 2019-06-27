@@ -589,12 +589,12 @@ class CollabPrefLearningVB(object):
                 old_w = self.w.copy()
                 old_y = self.y.copy()
 
-            self.vb_iter += 1
-
             if converged:
                 converged_count += 1
             elif converged_count > 0 and np.mod(self.vb_iter, self.conv_check_freq) == 0:  # reset the convergence count as the difference has increased again
                 converged_count = 0
+
+            self.vb_iter += 1
 
             if self.verbose:
                 logging.debug('Converged count = %i' % converged_count)
