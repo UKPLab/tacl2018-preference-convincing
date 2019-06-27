@@ -1118,8 +1118,7 @@ class CollabPrefLearningVB(object):
             # Make predictions for new users
             y, cov_y = self._predict_y(person_features, return_cov)
             if return_cov:
-                var_y = cov_y[:, range(y.shape[1]), range(y.shape[1])]
-
+                var_y = cov_y[:, np.arange(y.shape[1]), np.arange(y.shape[1])]
 
             people_from_training = []
 
