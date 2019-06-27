@@ -45,10 +45,11 @@ def plot_result(idx, filename, ylabel, method, fig=None, lineidx=0):
     # ax1.semilogx(inverse_scales
 
     new_order = np.argsort(mean_results[:, 0])
-    plt.plot(mean_results[new_order, 0], mean_results[new_order, idx],
-              marker=markers[lineidx], label=method, linewidth=2, markersize=8, linestyle=linestyles[lineidx])
+    # plt.plot(mean_results[new_order, 0], mean_results[new_order, idx],
+    #           marker=markers[lineidx], label=method, linewidth=2, markersize=8, linestyle=linestyles[lineidx])
 
-    plt.errorbar(mean_results[new_order, 0], mean_results[new_order, idx], std_results[new_order, idx])
+    plt.errorbar(mean_results[new_order, 0], mean_results[new_order, idx], std_results[new_order, idx],
+             marker=markers[lineidx], label=method, linewidth=2, markersize=8, linestyle=linestyles[lineidx])
 
     plt.ylabel(ylabel)
     # plt.xlabel('inverse function scale, s')

@@ -39,10 +39,10 @@ def plot_result(idx, filename, xlabel, ylabel, linelabel, fig=None, lineidx=0):
         plt.figure(fig.number)
 
     # ax1.semilogx(inverse_scales
-    plt.plot(mean_results[:, 0], mean_results[:, idx],
-             marker=markers[lineidx], label=linelabel, linewidth=2, markersize=8, linestyle=linestyles[lineidx])
-    plt.errorbar(mean_results[:, 0], mean_results[:, idx], std_results[:, idx])
-
+    # plt.plot(mean_results[:, 0], mean_results[:, idx],
+    #          marker=markers[lineidx], label=linelabel, linewidth=2, markersize=8, linestyle=linestyles[lineidx])
+    plt.errorbar(mean_results[:, 0], mean_results[:, idx], std_results[:, idx],
+                marker=markers[lineidx], label=linelabel, linewidth=2, markersize=8, linestyle=linestyles[lineidx])
     plt.ylabel(ylabel)
     # plt.xlabel('inverse function scale, s')
     plt.xlabel(xlabel)
