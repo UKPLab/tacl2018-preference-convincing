@@ -162,7 +162,7 @@ def evaluate_models_common_mean(model, item_features, person_features, f,
 
 def split_dataset(N, F, pair1idxs, pair2idxs, personidxs, prefs):
     # test set size
-    test_size = 0.75
+    test_size = 0.5
 
     # select some data points as test only
     Ntest = int(np.ceil(test_size * N))
