@@ -404,7 +404,7 @@ if __name__ == '__main__':
 
     elif test_to_run == 12:
         runner.datasets = ['UKPConvArgCrowdSample']
-        runner.methods = ['PersConsensusPrefGP_noOpt_weaksprior']
+        runner.methods = ['PersPrefGP_noOpt_weaksprior']
         runner.run_test_set(min_no_folds=0, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
 
 
