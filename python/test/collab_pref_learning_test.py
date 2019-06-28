@@ -215,12 +215,12 @@ def gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, sigma, s, 
     Kt = matern_3_2_from_raw_vals(np.concatenate((xvals.astype(float), yvals.astype(float)), axis=1), ls)
     t = mvn.rvs(cov=Kt/sigma).reshape(nx * ny, 1)
 
-    Kw = [Kt for _ in range(Nfactors)]
-    Kw = block_diag(*Kw)
-    w = mvn.rvs(cov=Kw/s).reshape(Nfactors, nx * ny).T
-    #w = np.empty((nx*ny, Nfactors))
-    #for f in range(Nfactors):
-    #    w[:, f] = mvn.rvs(cov=Kt/s)
+    # Kw = [Kt for _ in range(Nfactors)]
+    # Kw = block_diag(*Kw)
+    # w = mvn.rvs(cov=Kw/s).reshape(Nfactors, nx * ny).T
+    w = np.empty((nx*ny, Nfactors))
+    for f in range(Nfactors):
+       w[:, f] = mvn.rvs(cov=Kt/s)
 
     # person_features = None
     person_features = np.zeros((Npeople, Npeoplefeatures))
@@ -228,12 +228,12 @@ def gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, sigma, s, 
         person_features[:, i] = np.random.choice(10, Npeople, replace=True)
 
     Ky = matern_3_2_from_raw_vals(person_features, lsy)
-    Ky = [Ky for _ in range(Nfactors)]
-    Ky = block_diag(*Ky)
-    y = mvn.rvs(cov=Ky).reshape(Nfactors, Npeople)
-    #y = np.empty((Nfactors, Npeople))
-    #for f in range(Nfactors):
-    #    y[f] = mvn.rvs(cov=Ky)
+    # Ky = [Ky for _ in range(Nfactors)]
+    # Ky = block_diag(*Ky)
+    # y = mvn.rvs(cov=Ky).reshape(Nfactors, Npeople)
+    y = np.empty((Nfactors, Npeople))
+    for f in range(Nfactors):
+       y[f] = mvn.rvs(cov=Ky)
 
     f_all = w.dot(y) + t
 

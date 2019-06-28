@@ -31,6 +31,8 @@ max_Kw_size = 2000
 
 rate_s = 200
 
+delay = 0 # some default will be used depending on the function unless this is set to > 0
+
 class PersonalisedTestRunner(TestRunner):
 
     def run_crowd_bt(self):
@@ -250,7 +252,7 @@ class PersonalisedTestRunner(TestRunner):
                                            use_common_mean_t=common_mean, max_update_size=SS, use_lb=True,
                                            shape_s0=shape_s0, rate_s0=rate_s0,
                                            shape_st0=shape_s0, rate_st0=rate_s0,
-                                           shape_sy0=1, rate_sy0=1,
+                                           shape_sy0=1, rate_sy0=rate_sy0,
                                            ninducing=M, forgetting_rate=0.9,
                                            delay=delay,
                                            exhaustive_train_count=1)
@@ -276,8 +278,9 @@ class PersonalisedTestRunner(TestRunner):
         Make personalised predictions
         :return:
         '''
-
-        self._train_persgppl(delay=10)
+        if delay == 0:
+            delay = 10
+        self._train_persgppl(delay=delay)
 
         if self.vscales is not None:
             self.vscales.append(np.sort((self.model.rate_sw / self.model.shape_sw) *
@@ -328,8 +331,10 @@ class PersonalisedTestRunner(TestRunner):
         #     self._train_persgppl()
 
         print('Training crowdGPPL to predict consensus...')
+        if delay == 0:
+            delay = 1
 
-        self._train_persgppl(delay=1.0)
+        self._train_persgppl(delay=delay)
 
         if self.vscales is not None:
             self.vscales.append(np.sort(self.model.rate_sw / self.model.shape_sw)[::-1])
@@ -401,9 +406,38 @@ if __name__ == '__main__':
 
     max_fold = 32
 
+    rate_sy0 = 1
+
     # PERSONALISED PREDICTION
     if test_to_run == 0:
         runner.run_test_set(min_no_folds=0, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
+
+    elif test_to_run == 13:
+        # tune up on training set accuracy
+
+        rateyvals = [1, 10, 100]
+        delays = [1, 10]
+
+        for ratey in rateyvals:
+            for delay in delays:
+                rate_sy0 = ratey
+
+                test_dir = 'D05-%i_P%i-ratey%i-delay%i' % (lsm, npairs, ratey, delay)  # 'rate_s_tests_single'
+                runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
+                                            dataset_increment)
+                runner.run_test_set(min_no_folds=0, max_no_folds=10, npairs=npairs, ls_factor=lsm)
+
+        for ratey in rateyvals:
+            for delay in delays:
+                rate_sy0 = ratey
+
+                test_dir = 'D05-%i_P%i-ratey%i-delay%i' % (lsm, npairs, ratey, delay)  # 'rate_s_tests_single'
+                runner = PersonalisedTestRunner(test_dir, datasets, feature_types, embeddings_types, methods,
+                                            dataset_increment)
+                runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
+                runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
+                runner.run_test_set(min_no_folds=0, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
+
 
     elif test_to_run == 12:
         runner.datasets = ['UKPConvArgCrowdSample']
