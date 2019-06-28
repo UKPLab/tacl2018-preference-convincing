@@ -1225,7 +1225,7 @@ class TestRunner:
 
                 metrics.append([acc, CEE, tau, tau_40, tr_acc, tr_cee, tr_tau, tr_tau_40])
                 metric_names = ['acc', 'CEE', 'tau', 'tau_40', 'tr_acc', 'tr_CEE', 'tr_tau', 'tr_tau_40']
-                pd.DataFrame(metrics, columns=metric_names).to_csv(results_file, index=False)
+                pd.DataFrame(np.array(metrics), columns=metric_names).to_csv(results_file, index=False)
 
 
                 #with open(modelfile % foldidx, 'w') as fh:
@@ -1239,7 +1239,7 @@ class TestRunner:
             metric_means = np.mean(metrics, axis=0)
             print(metric_means)
             metrics.append(metric_means)
-            pd.DataFrame(metrics, columns=metric_names).to_csv(results_file, index=False)
+            pd.DataFrame(np.array(metrics), columns=metric_names).to_csv(results_file, index=False)
         except:
             print('no metrics file found')
 
