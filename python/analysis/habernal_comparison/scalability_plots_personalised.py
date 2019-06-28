@@ -39,8 +39,10 @@ if __name__ == '__main__':
     max_no_folds = 32
     expt_settings['embeddings_type'] = 'word_mean'
 
+    tag = 'p4'
+
     if test_to_run == 0:
-        foldername = 'p4'
+        foldername = tag
 
         # Create a plot for the runtime/accuracy against M + include other methods with ling + Glove features
         methods =  ['SinglePrefGP_noOpt_weaksprior_M2',
@@ -68,7 +70,7 @@ if __name__ == '__main__':
         which_leg = 'accuracy'
 
     elif test_to_run == 5:
-        foldername = 'p4'
+        foldername = tag
 
         # Create a plot for the runtime/accuracy against M + include other methods with ling + Glove features
         methods =  ['SinglePrefGP_noOpt_weaksprior_M2',
@@ -225,7 +227,7 @@ if __name__ == '__main__':
         runtimes_N_uq = np.zeros((len(methods), len(Nvals)))
 
         for n, N in enumerate(Nvals):
-            foldername = 'p4_P%i/' % N
+            foldername = tag + '_P%i/' % N
 
             for m, expt_settings['method'] in enumerate(methods):
                 print("Processing method %s" % expt_settings['method'])
@@ -316,7 +318,7 @@ if __name__ == '__main__':
         runtimes_N_uq = np.zeros((len(methods), len(Nvals)))
 
         for n, N in enumerate(Nvals):
-            foldername = 'p4_%i/' % N
+            foldername = tag + '_%i/' % N
 
             for m, expt_settings['method'] in enumerate(methods):
                 print("Processing method %s" % expt_settings['method'])

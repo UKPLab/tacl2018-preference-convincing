@@ -146,7 +146,7 @@ First, to test prediction of the consensus,
 we generate data by creating a $20\times 20$ grid of points, choosing $400$ pairs of these points at random, and splitting them into  50\% training and test sets.
 For each point, we generate pairwise labels by drawing from crowdGPPL
 with $20$ users, $5$ latent components, and 
-$s^{(v)}_c = s^{(w)}_c = 0.001$, for all components.
+$s^{(v)}_c = 1,s^{(w)}_c = 1$, for all components.
 We vary the precision of the consensus function, $s^{(t)}$, 
 to control the noise in the consensus function. 
 The complete experiment was repeated $25$ times, including generating new data 
@@ -161,7 +161,7 @@ GPPL-per-user relies on separate instances of GPPL
 and estimates the consensus by taking the mean of all users' predicted utilities, 
 so does not benefit from sharing information between users when training.
 
-The second simulation modifies the previous setup by fixing $s^{(t)} = 10$ and varying $s^{(v)}_c,\forall c$
+The second simulation modifies the previous setup by fixing $s^{(t)} = 1,s^{(w)}_c=1,\forall c$ and varying $s^{(v)}_c,\forall c$
 to evaluate the methods'
 ability to recover the personal preferences of simulated users.
 Results in Figure \ref{fig:simC} show that crowdGPPL is able to make better 
@@ -189,14 +189,15 @@ the noise level increases further.
 }
 \end{figure}
 \todo{
+ADD the updated plots when tests are complete.
  Page 14, Figure 1: include error bars, especially in sub-figure (c).
 }
 %In the final simulation, %we evaluate the effect of the quantity of training data 
 %with different numbers of latent factors in the generating model.
-We hypothesize that learning a model with a larger number of latent components
+We hypothesise that learning a model with a larger number of latent components
 requires more training data.
 %scenario that would require more training data. 
-In the third simulation, we generate data using the same setup as before, but fix $s^{(v)}=0.2,\forall c$ and $s^{(t)}=1$
+In the third simulation, we generate data using the same setup as before, but fix $s^{(v)}_c=s^{(w)}=1,\forall c$ and $s^{(t)}=1$
 and vary the number of pairwise training labels 
 and the number of true components through
 $C_{true} \in \{ 1, 3, 10, 20\}$.
@@ -211,7 +212,7 @@ number of training labels beyond $1000$ leads to only minor increases in correla
 Performance is highest when $C_{true} = 20$,
 possibly because the predictive model has $C = 25$
 and hence is a closer match to the generating model.
-However, for all values of $C_{true}$, performance with $>500$ labels remains above 0.5,
+However, for all values of $C_{true}$, the correlation with $>500$ labels remains above 0.5,
  showing the model is reasonably robust
 to mismatches between $C$ and $C_{true}$.
 % Does this pose a question: does the mismatch affect the performance? If the correlations
@@ -224,7 +225,6 @@ to mismatches between $C$ and $C_{true}$.
 
 \subsection{Sushi Preferences}\label{sec:sushi}
 
-%TODO sushi-A small needs describing or cutting out.
 We use sushi preference data (shown in Table \ref{tab:datasets}),
 to compare GPPL and crowdGPPL with different sets of features
 against the previous benchmark method, \emph{collaborative GP (collabGP)} \citep{houlsby2012collaborative}.
@@ -240,8 +240,9 @@ It also uses an inference scheme based on expectation propagation (EP)
   as it represents every combination of
   (user, item-pair) with a separate set of parameters, rather than working with inducing points,
   which may prevent the use of the model with large datasets due to memory constraints.
-However, as the EP approach of collabGP has been consistently shown to perform well for non-Gaussian likelihoods\citep{?},
+However, as the EP approach of collabGP has been consistently shown to perform well for non-Gaussian likelihoods\citep{nickisch2008approximations},
 we consider its performance as a target for our SVI approach for crowdGPPL.
+\todo{merge this up with other stuff on collabGP}
 
 The sushi datasets contain, for each user, a gold standard preference ranking 
 of $10$ types of sushi,
@@ -267,19 +268,25 @@ excludes the consensus function $\bs t$ from the model as well as the user
 features;
 and  \emph{crowdGPPL$\backslash$induc}, which uses all features but does 
 not use inducing points for a sparse approximation.
-For $\backslash\bs u$ methods, the user covariance matrix, $\bs K_w$, in the crowdGPPL model is replaced by the identity matrix, and for crowdGPPL$\mathbf{\backslash \bs u \backslash \bs x}$, the item covariance matrices, $\bs K_v$ and $\bs K_t$ are also replaced by the identity matrix.
+For $\backslash\bs u$ methods, the user covariance matrix, $\bs L$, 
+in the crowdGPPL model is replaced by the identity matrix, 
+and for crowdGPPL$\mathbf{\backslash \bs u \backslash \bs x}$, 
+the item covariance matrices, $\bs K_v$ and $\bs K_t$ are also replaced by the identity matrix.
 %We evaluate the quality of pairwise predictions using classification accuracy and cross entropy 
 %error (also known as log loss) to gauge the quality of the probabilities that each method outputs.
 %We also evaluate each method's inferred personal preference values
 %against the gold standard rankings by computing Kendall's $\tau$ rank correlation
 %coefficient between the negative rank and the inferred preference function values,
 %for all the items contained in each subsampled user's ranking.
-We set hyperparameters $C=20$ without optimization,
-$\alpha_0=1, \beta_0=100$ using a grid search over values 
+We set hyperparameters $C=20$,
+$\epsilon=5$, $P_i=200$ for \emph{Sushi-A} and $P_i=2000$ for \emph{Sushi-B},
+without optimisation.
+The gamma hyperparameters for all models are $\alpha_0=1, \beta_0=100$, 
+using a grid search over values 
 $10^{\{-1,...,3\}}$ on withheld user data from the \emph{Sushi-A} dataset,
-\todo{clarify the parameters for sushi and for conv}
-$\epsilon=5$, $P_i=200$ for \emph{Sushi-A} and $P_i=2000$ for \emph{Sushi-B}. All other hyperparameters are the same 
-as for Section \ref{sec:exp_synth}.
+except for $\alpha_0^{(w)}=1,\beta_0^{(w)}=1$.
+%All other hyperparameters are the same 
+%as for Section \ref{sec:exp_synth}.
 The complete process of subsampling, training and testing, was repeated $25$ times
 for each dataset.
 
@@ -391,18 +398,20 @@ while GPPL required only one minute.
 % point is that excluding the consensus decreases accuracy. How does it make predictions without a t?
 The results in Table \ref{tab:sushi} 
 %we re-state the previous performance metrics and did not re-implement these methods. 
-illustrate the performance benefit of crowd models over single-user GPPL, and
-the runtimes 
-show the speedup of the sparse approximation of crowdGPPL over crowdGPPL$\backslash$induc.
-GPPL is substantially quicker to train than crowdGPPL, and GPPL-per-user does not scale well to larger numbers
-of users.
+illustrate the performance benefit of crowd models over single-user GPPL.
+%and
+%the runtimes 
+%show the speedup of the sparse approximation of crowdGPPL over crowdGPPL$\backslash$induc.
+%GPPL is substantially quicker to train than crowdGPPL, and GPPL-per-user does not scale well to larger numbers
+%of users.
 % including feature data for items and users leads to faster convergence than crowdGPPL$\backslash \bs u$ and crowd$\backslash \bs u \backslash \bs x$.
 %Likewise, the use of matrix factorization leads to only a small increase in
 % runtimes of these methods over joint-GPPL. 
  %However, the runtimes for crowdGPPL are higher than those of GPPL.
- When using inducing points, the user features decrease the performance of crowdGPPL: 
- crowdGPPL$\backslash$induc
- and crowdGPPL$\backslash\bs u$ both outperform the full crowdGPPL. 
+ When using inducing points, the user features decrease the performance of crowdGPPL
+ compared to CrowdGPPL$\backslash\bs u$ and crowdGPPL$\backslash\bs u\bs x$,
+ except on Sushi-A-small, where they may help with the small amount of training data.
+  both outperform the full crowdGPPL. 
  To use inducing points,
  there must be a strong relationship between neighbouring points, which
  may not to be the case given the features in this dataset, since
