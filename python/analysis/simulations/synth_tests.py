@@ -87,11 +87,11 @@ if __name__ == '__main__':
     if not os.path.exists('./results'):
         os.mkdir('./results')
 
-    figure_root_path = './results/synth'
+    figure_root_path = './results/synth2'
     if not os.path.exists(figure_root_path):
         os.mkdir(figure_root_path)
 
-    nreps = 25
+    nreps = 1 # 25
     P = 400
 
     nx = 20
@@ -103,8 +103,8 @@ if __name__ == '__main__':
 
     SS = 400
 
-    shape_s0 = 1 # 0.1
-    rate_s0 = 1 # 0.1
+    shape_s0 = 1
+    rate_s0 = 1
 
     # NOISE TEST, MULTI USER OBSERVATIONS, PREDICTING CONSENSUS, MODELS: GPPL, POOL, crowd-GPPL ----------------------------------
     if test_to_run == 0:
@@ -289,7 +289,7 @@ if __name__ == '__main__':
             np.random.seed(1)
 
         ls = [5, 5]
-        inverse_scales = [0.02, 0.2, 1, 10.0, 50.0] # [0.0001, 0.001, 0.005, 0.01, 0.02]
+        inverse_scales = [0.02, 0.2, 0.5, 1, 3, 10.0] # [0.0001, 0.001, 0.005, 0.01, 0.02]
 
         mean_results = []
         std_results = []
@@ -325,7 +325,7 @@ if __name__ == '__main__':
                     Npeople=Npeople,
                     P=P,
                     ls=ls,
-                    sigma=1,
+                    sigma=10,
                     s=s,
                     lsy=lsy,
                     Npeoplefeatures=2
@@ -341,7 +341,7 @@ if __name__ == '__main__':
                 model = CollabPrefLearningSVI(2, 2, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
                                               shape_sy0=100, rate_sy0=100,
                                               ls=None, nfactors=Npeople, ninducing=ninducing,
-                                              delay=5.0, max_update_size=SS, forgetting_rate=0.9,
+                                              delay=1.0, max_update_size=SS, forgetting_rate=0.9,
                                               verbose=verbose, use_lb=True)
 
                 print(("--- Repeating multi user test, rep %i, s=%f ---" % (rep, s)))
@@ -353,7 +353,7 @@ if __name__ == '__main__':
 
                 # Create a GPPrefLearning model
                 model = GPPrefLearning(2, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0, ls_initial=None, use_svi=True, ninducing=ninducing,
-                                       delay=5.0, max_update_size=SS, forgetting_rate=0.9, verbose=verbose)
+                                       delay=1.0, max_update_size=SS, forgetting_rate=0.9, verbose=verbose)
 
                 print(("--- Repeating pooled-GPPL test, rep %i ---" % rep))
 
@@ -365,7 +365,7 @@ if __name__ == '__main__':
                 ))
 
                 # Create a GPPrefLearning model per person
-                model = GPPrefPerUser(Npeople, max_update_size=SS, delay=5.0, shape_s0=shape_s0, rate_s0=rate_s0, verbose=verbose)
+                model = GPPrefPerUser(Npeople, max_update_size=SS, delay=1.0, shape_s0=shape_s0, rate_s0=rate_s0, verbose=verbose)
 
                 print(("--- Repeating separate user test, rep %i ---" % rep))
                 results_s.append(evaluate_multiuser_personal(
