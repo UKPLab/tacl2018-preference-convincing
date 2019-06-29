@@ -1112,23 +1112,27 @@ class TestRunner:
                 if predicted_f is not None and predicted_f.size == scores_rank_test.size:
                     # print out the pearson correlation
 
-                    tau = []
-                    tau_40 = []
-                    for upeep in np.unique(person_rank_test):
-                        idxs = person_rank_test == upeep
+                    if person_rank_test is not None and len(person_rank_test):
+                        tau = []
+                        tau_40 = []
+                        for upeep in np.unique(person_rank_test):
+                            idxs = person_rank_test == upeep
 
-                        if np.sum(idxs) < 2:
-                            continue
+                            if np.sum(idxs) < 2 or len(scores_rank_test[idxs]) < 2:
+                                continue
 
-                        tau_p, _ = kendalltau(scores_rank_test[idxs], predicted_f.flatten()[idxs])
+                            tau_p, _ = kendalltau(scores_rank_test[idxs], predicted_f.flatten()[idxs])
 
-                        tau.append(tau_p)
+                            tau.append(tau_p)
 
-                        if np.sum(person_rank_train == upeep) >= 40:
-                            tau_40.append(tau_p)
+                            if np.sum(person_rank_train == upeep) >= 40:
+                                tau_40.append(tau_p)
 
-                    tau = np.mean(tau)
-                    tau_40 = np.mean(tau_40)
+                        tau = np.mean(tau)
+                        tau_40 = np.mean(tau_40)
+                    else:
+                        tau, _ = kendalltau(scores_rank_test, predicted_f.flatten())
+                        tau_40 = tau
 
                     print("Kendall's tau for fold = %f" % tau)
                     print("For worker IDs with at least 40 annotations: Kendall's tau for fold = %f" % tau_40)

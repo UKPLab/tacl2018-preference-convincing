@@ -278,6 +278,7 @@ class PersonalisedTestRunner(TestRunner):
         Make personalised predictions
         :return:
         '''
+        global delay
         if delay == 0:
             delay = 10
         self._train_persgppl(delay=delay)
@@ -331,6 +332,7 @@ class PersonalisedTestRunner(TestRunner):
         #     self._train_persgppl()
 
         print('Training crowdGPPL to predict consensus...')
+        global delay
         if delay == 0:
             delay = 1
 
