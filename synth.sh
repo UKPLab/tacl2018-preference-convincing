@@ -17,11 +17,11 @@
 module load intel python/3.6.8
 
 ### personalised
-OMP_NUM_THREADS=20 python3 -u python/analysis/simulations/synth_tests 0
+OMP_NUM_THREADS=20 python3 -u python/analysis/simulations/synth_tests.py 0
 
 OMP_NUM_THREADS=20 python3 -u python/analysis/simulations/synth_tests.py 1
 
-OMP_NUM_THREADS=20 python3 -u python/analysis/simulations/synth_latent_factor_tests.py
+#OMP_NUM_THREADS=20 python3 -u python/analysis/simulations/synth_latent_factor_tests.py
 
 
 
