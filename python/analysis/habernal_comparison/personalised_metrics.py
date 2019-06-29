@@ -22,6 +22,11 @@ if __name__ == '__main__':
     else:
         lsm = 1
 
+    if len(sys.argv) > 4:
+        turker_filter = int(sys.argv[4])
+    else:
+        turker_filter = 0
+
     expt_root_dir = 'D05-%i_P%i' % (lsm, npairs)
 
     min_fold_no = 0
@@ -47,7 +52,7 @@ if __name__ == '__main__':
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
         = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
                           min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir,
-                          split_by_person=True, compute_tr_performance=eval_training_set)
+                          split_by_person=True, compute_tr_performance=eval_training_set, turker_filter=turker_filter)
         print("Completed compute metrics")
 
     elif test_to_run == 7:
@@ -59,7 +64,8 @@ if __name__ == '__main__':
         results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
         = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                          min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir, compute_tr_performance=eval_training_set)
+                          min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir,
+                          compute_tr_performance=eval_training_set, turker_filter=turker_filter)
         print("Completed compute metrics")
 
     if test_to_run == 4:
@@ -74,7 +80,7 @@ if __name__ == '__main__':
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
             = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
                               min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir, split_by_person=True,
-                              compute_tr_performance=eval_training_set)
+                              compute_tr_performance=eval_training_set, turker_filter=turker_filter)
         print("Completed compute metrics")
 
     elif test_to_run == 5:
@@ -87,7 +93,7 @@ if __name__ == '__main__':
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
             = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
                               min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir,
-                              compute_tr_performance=eval_training_set)
+                              compute_tr_performance=eval_training_set, turker_filter=turker_filter)
         print("Completed compute metrics")
 
     elif test_to_run == 0:
@@ -102,7 +108,7 @@ if __name__ == '__main__':
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
         = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
                           min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir, split_by_person=True,
-                          compute_tr_performance=eval_training_set)
+                          compute_tr_performance=eval_training_set, turker_filter=turker_filter)
 
         print("Completed compute metrics")
 
@@ -118,7 +124,7 @@ if __name__ == '__main__':
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
         = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
                           min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir, split_by_person=True,
-                          compute_tr_performance=eval_training_set)
+                          compute_tr_performance=eval_training_set, turker_filter=turker_filter)
 
         print("Completed compute metrics")
 
@@ -134,7 +140,7 @@ if __name__ == '__main__':
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
         = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
                           min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir,
-                          compute_tr_performance=eval_training_set)
+                          compute_tr_performance=eval_training_set, turker_filter=turker_filter)
 
         print("Completed compute metrics")
 
@@ -150,7 +156,7 @@ if __name__ == '__main__':
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
             = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
                               min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir, split_by_person=True,
-                              compute_tr_performance=eval_training_set)
+                              compute_tr_performance=eval_training_set, turker_filter=turker_filter)
 
         print("Completed compute metrics")
 
@@ -166,7 +172,7 @@ if __name__ == '__main__':
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
             = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
                               min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir,
-                              compute_tr_performance=eval_training_set)
+                              compute_tr_performance=eval_training_set, turker_filter=turker_filter)
 
         print("Completed compute metrics")
 
@@ -185,7 +191,7 @@ if __name__ == '__main__':
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
             = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
                               min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir,
-                              split_by_person=True, compute_tr_performance=eval_training_set)
+                              split_by_person=True, compute_tr_performance=eval_training_set, turker_filter=turker_filter)
 
         print("Completed compute metrics")
 
@@ -204,7 +210,7 @@ if __name__ == '__main__':
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
             = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
                               min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir,
-                              compute_tr_performance=eval_training_set)
+                              compute_tr_performance=eval_training_set, turker_filter=turker_filter)
 
         print("Completed compute metrics")
 
@@ -222,6 +228,6 @@ if __name__ == '__main__':
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
             = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
                               min_fold_no=min_fold_no, max_fold_no=max_fold_no, foldername=expt_root_dir,
-                              compute_tr_performance=eval_training_set)
+                              compute_tr_performance=eval_training_set, turker_filter=turker_filter)
 
         print("Completed compute metrics")

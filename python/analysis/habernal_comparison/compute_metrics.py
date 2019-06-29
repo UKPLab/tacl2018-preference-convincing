@@ -176,7 +176,8 @@ def load_results_data(data_root_dir, resultsfile_template, expt_settings, max_no
 
 def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, accuracy=1.0, di=0, npairs=0,
                     tag='', remove_seen_from_mean=False, max_fold_no=32, min_fold_no=0,
-                    compute_tr_performance=False, flip_labels=[], foldername=expt_root_dir, split_by_person=False):
+                    compute_tr_performance=False, flip_labels=[], foldername=expt_root_dir, split_by_person=False,
+                    turker_filter=turker_filter):
         
     expt_settings['acc'] = accuracy
     expt_settings['di'] = di
@@ -324,7 +325,7 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             tr_turkers = np.array(tr_turkers)
 
                             turker_tr_counts = np.array([np.sum(tr_turkers == tid) for tid in test_turkers])[valididxs]
-                            turker_conf_filter = 0 # 40
+                            turker_conf_filter = turker_filter
                             #conflevel = 0
                             #confidxs = np.argsort(np.abs(pred_prob.flatten() - 0.5))[int(len(pred_prob)*conflevel):].flatten() #
                             confidxs = np.argwhere(turker_tr_counts > turker_conf_filter).flatten()
