@@ -429,6 +429,11 @@ if __name__ == '__main__':
                                             dataset_increment)
                 runner.run_test_set(min_no_folds=0, max_no_folds=10, npairs=npairs, ls_factor=lsm)
 
+    elif test_to_run == 14:
+
+        rateyvals = [1, 10, 100]
+        delays = [1, 10]
+
         for ratey in rateyvals:
             for delay in delays:
                 rate_sy0 = ratey
@@ -438,7 +443,7 @@ if __name__ == '__main__':
                                             dataset_increment)
                 runner.datasets = ['UKPConvArgCrowdSample_evalMACE']
                 runner.methods = ['PersConsensusPrefGP_commonmean_noOpt_weaksprior']
-                runner.run_test_set(min_no_folds=0, max_no_folds=max_fold, npairs=npairs, ls_factor=lsm)
+                runner.run_test_set(min_no_folds=0, max_no_folds=10, npairs=npairs, ls_factor=lsm)
 
 
     elif test_to_run == 12:
