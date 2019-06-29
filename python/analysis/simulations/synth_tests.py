@@ -34,6 +34,8 @@ verbose = False
 
 def plot_result(idx, filename, ylabel, method, fig=None, lineidx=0):
 
+    plt.rcParams.update({'font.size': 14})
+
     if verbose:
         logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
 
@@ -48,8 +50,8 @@ def plot_result(idx, filename, ylabel, method, fig=None, lineidx=0):
     # plt.plot(mean_results[new_order, 0], mean_results[new_order, idx],
     #           marker=markers[lineidx], label=method, linewidth=2, markersize=8, linestyle=linestyles[lineidx])
 
-    plt.errorbar(mean_results[new_order, 0], mean_results[new_order, idx], std_results[new_order, idx],
-             marker=markers[lineidx], label=method, linewidth=2, markersize=8, linestyle=linestyles[lineidx])
+    plt.errorbar(mean_results[new_order, 0] + 0.002 * lineidx, mean_results[new_order, idx], std_results[new_order, idx],
+             marker=markers[lineidx], label=method, linewidth=2, markersize=8, capsize=5, linestyle=linestyles[lineidx])
 
     plt.ylabel(ylabel)
     # plt.xlabel('inverse function scale, s')
@@ -112,7 +114,7 @@ if __name__ == '__main__':
         plt.close('all')
 
         ls = [4, 4]
-        inverse_scales = [0.01, 0.03, 0.05, 0.1, 0.2]
+        inverse_scales = [0.005, 0.015, 0.025, 0.05, 0.1]
 
         # make sure the simulation is repeatable
         if fix_seeds:
@@ -150,7 +152,7 @@ if __name__ == '__main__':
                     P=P,
                     ls=ls,
                     sigma=s, # 10
-                    s=0.5, #
+                    s=[0.1, 1.0, 0.5, 10, 3],
                     lsy=lsy,
                     Npeoplefeatures=2
                 )
@@ -249,8 +251,11 @@ if __name__ == '__main__':
         mean_results = np.array(mean_results)
         std_results = np.array(std_results)
 
-        # noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'GPPL-per-user', noise_plots[0])
-        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'GPPL-per-user', noise_plots[1], lineidx=2)
+        np.savetxt('./results/synth_con_mean_results_%i.csv' % Nfactors, mean_results)
+        np.savetxt('./results/synth_con_std_results_%i.csv' % Nfactors, std_results)
+
+        # noise_plots[0] = plot_result(1, 'tau_obs', '$\\tau$ (training set)', 'GPPL-per-user', noise_plots[0])
+        noise_plots[1] = plot_result(2, 'tau_test', '$\\tau$ (test set)', 'GPPL-per-user', noise_plots[1], lineidx=2)
         # noise_plots[2] = plot_result(3, 'brier', 'brier score', 'GPPL-per-user', noise_plots[2])
         # noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'GPPL-per-user', noise_plots[3])
         # noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'GPPL-per-user', noise_plots[4])
@@ -260,8 +265,8 @@ if __name__ == '__main__':
         mean_results = np.array(mean_results_pool)
         std_results = np.array(std_results_pool)
 
-        # noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'pooled-GPPL', noise_plots[0])
-        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'GPPL', noise_plots[1], lineidx=0)
+        # noise_plots[0] = plot_result(1, 'tau_obs', '$\\tau$ (training set)', 'pooled-GPPL', noise_plots[0])
+        noise_plots[1] = plot_result(2, 'tau_test', '$\\tau$ (test set)', 'GPPL', noise_plots[1], lineidx=0)
         # noise_plots[2] = plot_result(3, 'brier', 'brier score', 'pooled-GPPL', noise_plots[2])
         # noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'pooled-GPPL', noise_plots[3])
         # noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'pooled-GPPL', noise_plots[4])
@@ -271,8 +276,8 @@ if __name__ == '__main__':
         mean_results = np.array(mean_results_m)
         std_results = np.array(std_results_m)
 
-        # noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'crowd-GPPL', noise_plots[0])
-        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'crowdGPPL', noise_plots[1], lineidx=1)
+        # noise_plots[0] = plot_result(1, 'tau_obs', '$\\tau$ (training set)', 'crowd-GPPL', noise_plots[0])
+        noise_plots[1] = plot_result(2, 'tau_test', '$\\tau$ (test set)', 'crowdGPPL', noise_plots[1], lineidx=1)
         # noise_plots[2] = plot_result(3, 'brier', 'brier score', 'crowd-GPPL', noise_plots[2])
         # noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'crowd-GPPL', noise_plots[3])
         # noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'crowd-GPPL', noise_plots[4])
@@ -325,7 +330,7 @@ if __name__ == '__main__':
                     Npeople=Npeople,
                     P=P,
                     ls=ls,
-                    sigma=1,
+                    sigma=5,
                     s=s,
                     lsy=lsy,
                     Npeoplefeatures=2
@@ -429,8 +434,11 @@ if __name__ == '__main__':
         mean_results = np.array(mean_results)
         std_results = np.array(std_results)
 
-        # noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'GPPL-per-user', None)
-        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'GPPL-per-user', None, lineidx=2)
+        np.savetxt('./results/synth_personal_mean_results_%i.csv' % Nfactors, mean_results)
+        np.savetxt('./results/synth_personal_std_results_%i.csv' % Nfactors, std_results)
+
+        # noise_plots[0] = plot_result(1, 'tau_obs', '$\\tau$ (training set)', 'GPPL-per-user', None)
+        noise_plots[1] = plot_result(2, 'tau_test', '$\\tau$ (test set)', 'GPPL-per-user', None, lineidx=2)
         # noise_plots[2] = plot_result(3, 'brier', 'brier score', 'GPPL-per-user', None)
         # noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'GPPL-per-user', None)
         # noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'GPPL-per-user', None)
@@ -440,8 +448,8 @@ if __name__ == '__main__':
         mean_results = np.array(mean_results_pool)
         std_results = np.array(std_results_pool)
 
-        # noise_plots[0] = plot_result(1, 'tau_obs', 'tau (training set)', 'pooled-GPPL', noise_plots[0])
-        noise_plots[1] = plot_result(2, 'tau_test', 'tau (test set)', 'GPPL', noise_plots[1], lineidx=0)
+        # noise_plots[0] = plot_result(1, 'tau_obs', '$\\tau$ (training set)', 'pooled-GPPL', noise_plots[0])
+        noise_plots[1] = plot_result(2, 'tau_test', '$\\tau$ (test set)', 'GPPL', noise_plots[1], lineidx=0)
         # noise_plots[2] = plot_result(3, 'brier', 'brier score', 'pooled-GPPL', noise_plots[2])
         # noise_plots[3] = plot_result(4, 'cee', 'cross entropy error (nats)', 'pooled-GPPL', noise_plots[3])
         # noise_plots[4] = plot_result(5, 'f1', 'F1 score', 'pooled-GPPL', noise_plots[4])
@@ -451,8 +459,8 @@ if __name__ == '__main__':
         mean_results = np.array(mean_results_m)
         std_results = np.array(std_results_m)
 
-        # plot_result(1, 'tau_obs', 'tau (training set)', 'crowd-GPPL', noise_plots[0])
-        plot_result(2, 'tau_test', 'tau (test set)', 'crowdGPPL', noise_plots[1], lineidx=1)
+        # plot_result(1, 'tau_obs', '$\\tau$ (training set)', 'crowd-GPPL', noise_plots[0])
+        plot_result(2, 'tau_test', '$\\tau$ (test set)', 'crowdGPPL', noise_plots[1], lineidx=1)
         # plot_result(3, 'brier', 'brier score', 'crowd-GPPL', noise_plots[2])
         # plot_result(4, 'cee', 'cross entropy error (nats)', 'crowd-GPPL', noise_plots[3])
         # plot_result(5, 'f1', 'F1 score', 'crowd-GPPL', noise_plots[4])

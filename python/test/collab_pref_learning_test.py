@@ -220,12 +220,17 @@ def gen_synthetic_personal_prefs(Nfactors, nx, ny, N, Npeople, P, ls, sigma, s, 
     # w = mvn.rvs(cov=Kw/s).reshape(Nfactors, nx * ny).T
     w = np.empty((nx*ny, Nfactors))
     for f in range(Nfactors):
-       w[:, f] = mvn.rvs(cov=Kt/s)
+        if np.isscalar(s):
+            w[:, f] = mvn.rvs(cov=Kt/s)
+        else:
+            w[:, f] = mvn.rvs(cov=Kt / s[f])
 
     # person_features = None
     person_features = np.zeros((Npeople, Npeoplefeatures))
     for i in range(Npeoplefeatures):
         person_features[:, i] = np.random.choice(10, Npeople, replace=True)
+
+    person_features += np.random.rand(Npeople, Npeoplefeatures) * 0.01
 
     Ky = matern_3_2_from_raw_vals(person_features, lsy)
     # Ky = [Ky for _ in range(Nfactors)]
