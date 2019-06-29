@@ -177,7 +177,7 @@ def load_results_data(data_root_dir, resultsfile_template, expt_settings, max_no
 def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, accuracy=1.0, di=0, npairs=0,
                     tag='', remove_seen_from_mean=False, max_fold_no=32, min_fold_no=0,
                     compute_tr_performance=False, flip_labels=[], foldername=expt_root_dir, split_by_person=False,
-                    turker_filter=turker_filter):
+                    turker_filter=0):
         
     expt_settings['acc'] = accuracy
     expt_settings['di'] = di
