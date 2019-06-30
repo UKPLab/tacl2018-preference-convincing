@@ -472,7 +472,7 @@ def subsample_data(test_number):
         npairs_tr = 20
         npairs_test = 25
         nusers_unseen = 0
-    elif test_number == 4 or test_number == 5: # sushiB
+    elif test_number == 4 or test_number == 5 or test_number == 44: # sushiB
         nusers_tr = 5000
         npairs_tr = 10
         npairs_test = 1
