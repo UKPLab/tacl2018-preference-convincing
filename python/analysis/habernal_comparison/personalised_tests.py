@@ -334,7 +334,7 @@ class PersonalisedTestRunner(TestRunner):
         print('Training crowdGPPL to predict consensus...')
         global delay
         if delay == 0:
-            delay = 1
+            delay = 10
 
         self._train_persgppl(delay=delay)
 
@@ -408,7 +408,7 @@ if __name__ == '__main__':
 
     max_fold = 32
 
-    rate_sy0 = 1
+    rate_sy0 = 10
 
     # PERSONALISED PREDICTION
     if test_to_run == 0:

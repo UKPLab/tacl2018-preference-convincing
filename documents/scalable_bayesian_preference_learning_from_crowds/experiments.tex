@@ -175,11 +175,11 @@ the noise level increases further.
 %}
 \subfloat[Consensus]{
 \label{fig:simB}
-\includegraphics[width=.317\columnwidth,clip=true,trim=15 0 13 0]{tau_test}
+\includegraphics[width=.322\columnwidth,clip=true,trim=15 4 13 0]{tau_test}
 }
 \subfloat[Personal preferences]{
 \label{fig:simC}
-\includegraphics[width=.310\columnwidth,clip=true,trim=22 0 14 0]{tau_test_personal}
+\includegraphics[width=.306\columnwidth,clip=true,trim=30 5 14 0]{tau_test_personal}
 }
 \subfloat[Latent factors]{
 \label{fig:simD}
@@ -506,8 +506,9 @@ Overall, the current version of this manuscript is not sufficient for machine le
  %GPPL opt. & .76 & .51 & .47 & .70 & .58 &  .30 \\
  crowdGPPL %medi. 
  & \textbf{.78} & \textbf{.50} & \textbf{.53} & \textbf{.73} & .57 & \textbf{.33} & \textbf{.74} & \textbf{.55} & \textbf{.29}  \\ %.71 & .59 & .32 \\ % now showing workers with > 40 training examples
- crowdGPPL$\backslash \bs u$ & - & - & -
- & \\
+ crowdGPPL$\backslash \bs t$ & - & - & - &
+.69 & .63 & .23 & .73 & .58 & \textbf{.29} 
+ \\
  % new values since Q and various minor bugfixes (Qfix1): 
  % .77 & .67 & .52 & .72 & .60 & .33 \\
  % Qfix3 (nothing changed; main problem is CEE on consensus -- try tuning st separately from sw hyperparameters):
@@ -534,9 +535,15 @@ Runtimes on a 12 core, 2.6GHz CPU server were approximately 3 minutes for GPPL a
 Page 15, Table 2: Please provide a definition of 'accuracy'.  Is this the proportion of pairs that
 are correctly ranked? 
 }
-\todo{note that acc goes up but tau goes down: there must be some items that have a bigger mis-ranking (position is shifted a lot), which reduces tau, even though fewer pairs are out of order).}
-\todo{check claim that the consensus helps model the personal preferences is not over-emphasised. 
-We perhaps don't need this claim at all.
+\todo{note that acc goes up but tau goes down: there must be some items that have a bigger mis-ranking (position is shifted a lot), which reduces tau, even though fewer pairs are out of order).
+Note that the consensus helps predicting workers with few labels.}
+\todo{Make sure the accuracies for crowdGPPL are correct with optimal setup. Make sure the tau for > 40 is correct.
+Check that GPPL accuracies and tau for personal are correct. 
+What we need: doesn't matter what GPPL is like, as long as the consensus prediction is close to previous work. 
+crowdGPPL should be better than all the others.
+The length-scale multiplier for all methods should be the same, i.e. 20 x D at the moment,
+so ideally we rerun all. The best setup could
+be tested with 10 and 15 for crowdGPPL.
 }
  \todo{we should note that differences in performance stem from better selection of 
  samples across more iterations + using the neutral dont know labels}
