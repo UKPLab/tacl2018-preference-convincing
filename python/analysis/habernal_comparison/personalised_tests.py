@@ -31,6 +31,8 @@ max_Kw_size = 2000
 
 rate_s = 200
 
+rate_sy0 = 10
+
 delay = 0 # some default will be used depending on the function unless this is set to > 0
 
 class PersonalisedTestRunner(TestRunner):
