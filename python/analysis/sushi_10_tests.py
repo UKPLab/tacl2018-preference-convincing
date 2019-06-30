@@ -916,7 +916,7 @@ if __name__ == '__main__':
         vscales = None
 
 
-    if test_to_run == 4 or test_to_run == 5:
+    if test_to_run == 4 or test_to_run == 5 or test_to_run == 44:
         # Reload the full sets of features (previously, we subsampled on the relevant items for Sushi-A ------------------------
 
         item_data = pd.read_csv(item_feat_file, sep='\t', index_col=0, header=None)
