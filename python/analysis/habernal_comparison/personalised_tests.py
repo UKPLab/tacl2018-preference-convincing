@@ -242,7 +242,7 @@ class PersonalisedTestRunner(TestRunner):
             validx = self.method.find('_SS') + 3
             SS = int(self.method[validx:])
 
-            niter = 200 * (200.0 / float(SS))
+            niter = 200 #* (200.0 / float(SS))
         else:
             SS = 200
             niter = 200
