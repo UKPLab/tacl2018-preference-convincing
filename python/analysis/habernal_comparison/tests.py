@@ -1123,6 +1123,9 @@ class TestRunner:
 
                             tau_p, _ = kendalltau(scores_rank_test[idxs], predicted_f.flatten()[idxs])
 
+                            if np.isnan(tau_p):
+                                continue
+
                             tau.append(tau_p)
 
                             if np.sum(person_rank_train == upeep) >= 40:
