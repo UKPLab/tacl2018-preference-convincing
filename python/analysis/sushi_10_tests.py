@@ -112,8 +112,9 @@ def run_crowd_GPPL(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr,
     if ninducing is None:
         ninducing = np.max([ifeats.shape[0], ufeats.shape[0]])
 
-    model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                  shape_sy0=1e2, rate_sy0=1e2, ls=None,
+    model = CollabPrefLearningSVI(ifeats.shape[1], ufeats.shape[1], mu0=0, shape_s0=shape_s0, rate_s0=rate_sw0,
+                                  shape_st0=shape_s0, rate_st0=rate_s0,
+                                  shape_sy0=1, rate_sy0=rate_sy0, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                   use_common_mean_t=use_common_mean, delay=delay)
@@ -274,9 +275,9 @@ def run_crowd_GPPL_without_u(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_tes
     if Nfactors > max_facs:
         Nfactors = max_facs # this is the maximum
 
-    model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
+    model = CollabPrefLearningSVI(ifeats.shape[1], 0, mu0=0, shape_s0=shape_s0, rate_s0=rate_sw0,
                                   shape_st0=shape_s0, rate_st0=rate_s0,
-                                  shape_sy0=1e2, rate_sy0=1e2, ls=None,
+                                  shape_sy0=1, rate_sy0=rate_sy0, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True,
                                   use_common_mean_t=common_mean, delay=delay)
@@ -328,8 +329,9 @@ def run_crowd_BMF(u_tr, i1_tr, i2_tr, ifeats, ufeats, prefs_tr, u_test, i1_test,
     if Nfactors > max_facs:
         Nfactors = max_facs # this is the maximum
 
-    model = CollabPrefLearningSVI(1, 1, mu0=0, shape_s0=shape_s0, rate_s0=rate_s0,
-                                  shape_sy0=1e2, rate_sy0=1e2, ls=None,
+    model = CollabPrefLearningSVI(1, 1, mu0=0, shape_s0=shape_s0, rate_s0=rate_sw0,
+                                  shape_st0=shape_s0, rate_st0=rate_s0,
+                                  shape_sy0=1, rate_sy0=rate_sy0, ls=None,
                                   nfactors=Nfactors, ninducing=ninducing, max_update_size=max_update_size,
                                   forgetting_rate=forgetting_rate, verbose=verbose, use_lb=True, kernel_func='diagonal',
                                   delay=delay)
@@ -970,20 +972,48 @@ if __name__ == '__main__':
         rate_s0 = 100.0  #0.1
         forgetting_rate = 0.9
         max_Kw_size = 5000
-        max_update_size = 2000
-        delay = 5
+        max_update_size = 1000
+        delay = 1
         ninducing = 500 # allow us to handle more users.
+
+    if test_to_run == 44:
+        # SUSHI B dataset, no opt. ---------------------------------------------------------------------------------------------
+
+        nreps = 1
+
+        methods = [
+                   # 'khan',
+                   'crowd-GPPL',
+                   'crowd-GPPL\\u',
+                   'crowd-BMF',
+                   'crowd-GPPL\\u-noConsensus', # Like Houlsby CP (without user features)
+                   #'GPPL-pooled',
+                   #'GPPL-per-user',
+        ]
+
+        # hyperparameters common to most models
+        optimize = False
+        sushiB = True
+        sushiA_small = False
+
+        w_rates = [1, 10, 100, 200]
+        y_rates = [1, 10, 100]
+
+        for rate_sw0 in w_rates:
+            for rate_sy0 in y_rates:
+                tag = 'tuning_%i_%i' % (rate_sw0, rate_sy0)
+                run_sushi_expt(methods, 'sushi_100' + tag, test_to_run)
 
     if test_to_run == 4:
         # SUSHI B dataset, no opt. ---------------------------------------------------------------------------------------------
 
         # Repeat 25 times... Run each method and compute its metrics.
         methods = [
-                   'khan',
-                   #'crowd-GPPL',
-                   # 'crowd-GPPL\\u',
-                   #'crowd-BMF',
-                   #'crowd-GPPL\\u-noConsensus', # Like Houlsby CP (without user features)
+                   # 'khan',
+                   'crowd-GPPL',
+                   'crowd-GPPL\\u',
+                   'crowd-BMF',
+                   'crowd-GPPL\\u-noConsensus', # Like Houlsby CP (without user features)
                    #'GPPL-pooled',
                    #'GPPL-per-user',
         ]
