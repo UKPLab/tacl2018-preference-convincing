@@ -64,13 +64,12 @@
 
 % learing -> infers a function for comparing
 %
-\emph{Preference learning} is the task of learning to compare the values of a set of alternatives
-according to a particular quality~\citep{furnkranz2010preference}. 
-Here, we focus on ranking items by preference 
-and selecting the preferred item from a pair.
 % or \emph{utility} --> leave this until we introduce RUM
-For many preference learning tasks, people have divergent opinions on the correct rankings, % or utilities,
-which means that data from different annotators may not agree.
+
+\emph{Preference learning} 
+involves comparing a set of alternatives
+according to a particular quality~\citep{furnkranz2010preference},
+which often leads to a divergence of opinion between people.
 For example, in argument mining, 
 a sub-field of natural language processing (NLP),
 one goal is to rank arguments by their \emph{convincingness}~\citep{habernal2016argument}. 
@@ -78,7 +77,7 @@ Whether a particular argument is convincing or not depends on the reader's point
 Similarly, personal preferences affect recommender systems,
 which often perform better if they tailor recommendations
 to a specific user~\citep{resnick1997recommender}.
-Disagreements also occur when training data is acquired from multiple annotators,
+Disagreements also occur when pairwise annotations are acquired from multiple annotators,
 for example, using crowdsourcing,
 and are often mitigated by redundant labelling, 
 which increases costs~\citep{snow2008cheap,banerji2010galaxy}.
@@ -88,78 +87,73 @@ which increases costs~\citep{snow2008cheap,banerji2010galaxy}.
 %training set, typically requiring redundant labelling and increased annotation costs~.
 %should the bias stuff go here to motivate the next line?
 % or should the crowdsourcing stuff go later on? This is just motivation, the above considers solutions already.
-Therefore, we require preference learning methods that can account for differences of opinion
+Therefore, we require preference learning methods that can account for differences of opinion to
 %when predicting individual preferences or 
 %producing a gold standard from crowdsourced preference annotations.
-to solve two tasks:
-(1) predicting \emph{personal} preferences for members of a crowd
+%to solve two tasks:
+(1) predict \emph{personal} preferences for members of a crowd
 and
-(2) inferring a \emph{consensus} given observations from multiple, disparate users.
+(2) infer a \emph{consensus} given observations from multiple users.
+For both tasks, our goal is to rank items or choose one item from a pair.
 
-As data from a single user is often sparse,
-recommender systems often %combine information from different users 
-predict predict a user's preferences by 
-via \emph{collaborative filtering},  
-which combines the observed preferences of similar users~\citep{resnick1997recommender}.
-A typical approach is to represent observed ratings in a user-item matrix,
-then apply \emph{matrix factorization}~\citep{koren2009matrix}
-to decompose a user-item matrix into two low-dimensional matrices.
-Users and items with similar observed ratings have similar row vectors in the low-dimensional
-matrices. By multiplying the low-dimensional representations, we can predict ratings for unseen
-user-item pairs. 
-However, traditional approaches 
-are not able to extrapolate to new users or items,
-as they do not exploit the \emph{input features} of items or users
-that can be extracted from their content or metadata.
-For example, in text it is common to count occurrences of each unique token
-or, more recently, to obtain an \emph{embedding} of a word or document that
-represents its content as a numerical vector~\citep{mikolov2013distributed,devlin2018bert}.
-%Features can be represented as a vector of numerical values corresponding to each item or user
-%and can be used to 
-Input features enable predictions for a test item or user 
-based on observations of others with similar feature values,
-and can help to remedy labelling errors when learning from noisy, crowdsourced data~\citep{felt2016semantic,simpson2015language}.
-Furthermore,
-many established methods for matrix factorisation 
-require that training data is provided in the form of numerical ratings.
+Recommender systems often %combine information from different users 
+predict a user's preferences via \emph{collaborative filtering},  
+which overcomes data sparsity by exploiting similarities between the observed preferences of different users~\citep{resnick1997recommender,koren2009matrix}.
+However, traditional methods based on matrix factorisation 
+do not exploit the \emph{input features} of items or users
+that can be extracted from their content or metadata,
+such as \emph{embeddings}~\citep{mikolov2013distributed,devlin2018bert},
+which are commonly used by NLP methods to represent words or documents using a numerical vector.
+Input features allow the model to extrapolate to new users or items % with no training data
+and mitigate labelling errors~\citep{felt2016semantic}. % ,simpson2015language}.
+%Input features
+%% enable predictions for a test item or user with no training annotations
+%%based on observations of others with similar feature values,
+%also help to remedy labelling errors when learning from noisy, crowdsourced data.
 
-A drawback of numerical ratings is that 
-each annotator may interpret the values differently and may label inconsistently depending on the order in which they annotate items~\citep{ovadia2004ratings,yannakakis2011ranking}.
-A score of 4/5, say, from one annotator may be equivalent to 3/5 from another. 
+Many matrix factorisation methods %for matrix factorisation 
+require training data in the form of numerical ratings, 
+which can increase annotator disagreement or inconsistent labelling over time
+~\citep{ovadia2004ratings,yannakakis2011ranking}. Annotators may interpret ratings
+differently: a score of 4/5, say, from one annotator may be equivalent to 3/5 from another. 
 The problem is avoided by \emph{pairwise labelling}, 
-in which the annotator selects their preferred item from a pair.
-Pairwise labelling can also be quicker for annotators than numerical rating,
-and facilitates the total sorting of items, since it avoids two items having the same value~\citep{kendall1948rank,kingsley2010preference,yang2011ranking},
-and can be result in more accurate rankings\citep{kiritchenko2017best}.
-Besides explicit annotations, pairwise labels can be extracted from
-user behaviour logs, such as when a user selects one item from a list in preference
-to others~\citep{joachims2002optimizing}. 
-We therefore focus on preference learning from pairwise labels,
-and henceforth refer to the annotators, users or implicit data sources simply as \emph{users}.
-Likewise, \emph{items} are any type of instance that users may express preferences over,
-and could be states or actions as well as objects.
-
-Pairwise labels provided by a crowd are often noisy~\citep{chen2013pairwise}, 
-as are labels extracted from user logs~\citep{hu2008collaborative}.
-The need to be robust to noise despite limited data per user
-and to aggregate data from multiple users
-motivates a Bayesian treatment.
-Bayesian approaches account for uncertainty in the model,
-which has been shown to benefit matrix factorization with sparse data~\citep{salakhutdinov2008bayesian}
-and preference learning with noisy pairwise labels~\citep{chen2013pairwise},
-although this previous work does not model individual preferences or make predictions for new users or items.
-A powerful Bayesian approach for prediction is the Gaussian process (GP), 
-which models nonlinear functions of input features
-and has previously been applied to preference learning
-~\citep{chu2005preference,houlsby2012collaborative,khan2014scalable}.
-However, existing GP-based methods do not scale to very large numbers of items, users, or
-pairwise labels as their computational and memory requirements grow with the size of the dataset.
+in which the annotator selects their preferred item from a pair,
+which can be quicker~\citep{kendall1948rank,kingsley2010preference,yang2011ranking},
+more accurate~\citep{kiritchenko2017best},
+and facilitates the total sorting of items, as it avoids two items having the same value.
+%Besides explicit annotations, p
+%Pairwise labels can also be extracted from
+%user behaviour logs, such as when a user selects one item from a list in preference
+%to others~\citep{joachims2002optimizing}. 
+%We therefore focus on pairwise labelling,
+%and henceforth refer to the annotators, users or behavioural data sources simply as \emph{users}.
+%Likewise, \emph{items} can be any type of instance that users may express preferences over.
+%and could be states or actions as well as objects.
+Pairwise labels provided by a crowd
+or extracted from user logs~\citep{joachims2002optimizing} are often noisy and sparse,
+%The need to be robust to noise despite limited data per user
+%The need to aggregate limited amounts of noisy data from multiple users
+motivating
+a Bayesian treatment, % to account for uncertainty in the model,
+which has been shown to benefit matrix factorisation
+%with sparse data
+~\citep{salakhutdinov2008bayesian}
+and preference learning% with noisy pairwise labels
+~\citep{chen2013pairwise}.
+%although the latter does not model individual preferences or make predictions for new users or items.
+%Here, we use  to model nonlinear functions of input features in a Bayesian manner.
+However, previous Bayesian methods for preference learning use
+\emph{Gaussian processes (GPs)} to account for input
+features~\citep{chu2005preference,houlsby2012collaborative,khan2014scalable},
+but do not scale to large numbers of items, users, or
+pairwise labels, 
+as their computational and memory requirements grow with the size of the dataset.
 
 In this paper, we propose a scalable Bayesian approach to pairwise preference learning with 
 large numbers of users or annotators. % or sources of implicit annotations.
 Our method, \emph{crowdGPPL},
  jointly models personal preferences and the consensus of a crowd through a combination of
-matrix factorization and Gaussian processes. 
+matrix factorisation and Gaussian processes. 
 We propose a \emph{stochastic variational inference (SVI)} scheme~\citep{hoffman2013stochastic}
 that scales to extremely large datasets, as its
 memory complexity and the time complexity of each iteration are 
@@ -168,15 +162,16 @@ Our new approach opens the door to novel applications involving very large numbe
 that would previously have exceeded computational or memory resources and were difficult to parallelise.
 We evaluate the method empirically on two real-world datasets to demonstrate 
 the scalability of our approach,
-and its ability to predict both personal preferences and an objective gold-standard given 
+and its ability to predict both personal preferences and a consensus given 
 preferences from thousands of users.
-Our results improve performance over the previous state-of-the-art \citep{simpson2018finding} on a crowdsourced argumentation dataset, illustrating the potential of the method for NLP applications.
+Our results improve performance over the previous state-of-the-art \citep{simpson2018finding} on a crowdsourced argumentation dataset,
+and show that modelling personal preferences improves predictions of the consensus, and vice versa.
+% illustrating the potential of the method for NLP applications.
 
-The next section of the paper provides background on preference learning
-and discusses related work.
-We then develop our model for preference learning from crowds in Section \ref{sec:model},
-followed by our proposed inference method in Section \ref{sec:inf}.
-%and hyper-parameter optimisation technique in Section \ref{sec:ls}.
-Then, in Section \ref{sec:expts}, 
-we evaluate our approach empirically, showing its behaviour on synthetic data, 
-its scalability and its predictive performance on real-world datasets.
+%The next section of the paper provides background on preference learning
+%and discusses related work.
+%We then develop our model in Section \ref{sec:model},
+%followed by our proposed inference method in Section \ref{sec:inf}.
+%%and hyper-parameter optimisation technique in Section \ref{sec:ls}.
+%In Section \ref{sec:expts}, 
+%we evaluate our approach empirically, before concluding in Section \ref{sec:conclusion}.

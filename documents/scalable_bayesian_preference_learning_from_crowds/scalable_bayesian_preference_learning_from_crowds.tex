@@ -8,6 +8,7 @@
 \usepackage{graphicx}
 
 %\usepackage{mathptmx} % this causes problems with bold font
+\usepackage{newtxtext,newtxmath}
 
 \usepackage{url}
 \makeatletter
@@ -31,7 +32,7 @@
 \usepackage{xcolor}
 \usepackage{todonotes}
 
-\newcommand{\bs}{\boldsymbol}  
+\newcommand{\bs}{\boldsymbol}
 \newcommand{\wrtd}{\mathrm{d}}
 
 \makeatletter
@@ -40,8 +41,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \title{ 
-Predicting Preferences for Crowds of Users: a Scalable, Bayesian Approach
-%Scalable Bayesian Preference Learning for Crowds of Users
+%Predicting Preferences for Crowds of Users: a Scalable, Bayesian Approach
+Scalable Bayesian Preference Learning for Crowds
 % title change to emphasise that this is a personalised model, not all about aggregation
 %Scalable Bayesian Methods for Personalised Preference Learning
 %One source of confusion seems to be the inclusion of features, which is a big distinction.
@@ -53,11 +54,17 @@ Predicting Preferences for Crowds of Users: a Scalable, Bayesian Approach
 }
 
 \author{Edwin Simpson 
-\and Iryna Gurevych \\
-Ubiquitous Knowledge Processing Lab, Dept. of Computer Science, Technische Universit\"at Darmstadt, Germany\\
+\and Iryna Gurevych
+}
+
+\institute{
+Edwin Simpson \and Iryna Gurevych \at
+Ubiquitous Knowledge Processing Lab, Dept. of Computer Science, Technische Universit\"at Darmstadt.\\
               \email{\{simpson,gurevych\}@ukp.informatik.tu-darmstadt.de}
 }
+
 \date{Received: date}
+
 \begin{document}
 
 \titlerunning{Scalable Bayesian Preference Learning}
@@ -72,27 +79,27 @@ We propose a scalable Bayesian preference learning method
 for jointly predicting the preferences of individuals as well as the consensus of a crowd
  from pairwise labels.
 Peoples' opinions often differ greatly,
-making it difficult to predict their preferences if the amount of data for each user is small.
-These personal biases also make it harder to infer the consensus of the whole crowd
+making it difficult to predict their preferences from small amounts of personal data.
+Individual biases also make it harder to infer the consensus of a crowd
 when there are few labels per item.
 %In applications such as recommendation it is also necessary to predict the preferences of individual annotators or users. 
 %and identify common preferences between users. % use of the latent factors 
 %We address these challenges by combining matrix factorization to model individual preferences with 
 %Gaussian processes to integrate user and item features. By taking a Bayesian approach, our model
-We address these challenges by combining matrix factorization with 
+We address these challenges by combining matrix factorisation with 
 Gaussian processes,
-using a Bayesian approach to account for uncertainty arising from sparse data and annotation noise.
-Our method exploiting input features, such as text embeddings, image features or metadata,
-to predict preferences for new items and users with limited or no training data.
-As previous methods for Gaussian process preference learning do not scale to 
+using a Bayesian approach to account for uncertainty arising from noisy and sparse data.
+Our method exploits input features, such as text embeddings and user metadata,
+to predict preferences for new items and users that are not in the training set.
+As previous solutions based on Gaussian processes do not scale to 
 large numbers of users, items or pairwise labels, 
 we propose a stochastic variational inference approach that limits computational and memory costs.
-Our experiments on a benchmark recommendation task show that
+Our experiments on a recommendation task show that
 our method is competitive with previous approaches despite our scalable inference approximation.
-We demonstrate the method's scalability empirically
-on a natural language processing task with thousands of users and items.
-On this task, our method improves consensus prediction over the state of the art
-by modelling the preferences of individual members of the crowd.
+We demonstrate the method's scalability on a natural language processing task 
+with thousands of users and items, and show 
+improvements over the state of the art on this task.
+%by modelling the preferences of individual members of the crowd.
 %We also show how to  %that robustness to %able to learn the effective number of components required to model the data and
 %choosing more latent components than required,
 %apply gradient-based optimization to length-scale hyper-parameters to improve performance.
@@ -133,7 +140,7 @@ work~\footnote{\url{https://github.com/UKPLab/tacl2018-preference-convincing/tre
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % use section* for acknowledgment
-\section*{Acknowledgments}
+%\section*{Acknowledgments}
 
 \bibliographystyle{spbasic}
 \bibliography{simpson_scalable_bayesian_pref_learning_from_crowds}

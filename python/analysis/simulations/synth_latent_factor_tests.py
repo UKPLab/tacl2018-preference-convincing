@@ -33,6 +33,8 @@ def plot_result(idx, filename, xlabel, ylabel, linelabel, fig=None, lineidx=0):
     if verbose:
         logging.basicConfig(level=logging.WARNING) # matplotlib prints loads of crap to the debug and info outputs
 
+    plt.rcParams.update({'font.size': 14})
+
     if fig is None:
         fig = plt.figure(figsize=(5, 4))
     else:

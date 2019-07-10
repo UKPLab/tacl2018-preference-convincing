@@ -272,7 +272,7 @@ def load_my_data_separate_args(directory, test_split=0.2, nb_words=None, add_rev
 
     # load all data first
     all_loaded_files = dict()
-    for file_name in folds.keys():
+    for file_name in np.sort(list(folds.keys())):
         #print(file_name)
         test_instances_a1, test_instances_a2, test_labels, ids, turkerids, test_a1, test_a2 = \
                                     load_single_file_separate_args(directory, file_name, word_to_indices_map, nb_words)
@@ -280,7 +280,7 @@ def load_my_data_separate_args(directory, test_split=0.2, nb_words=None, add_rev
     print("Loaded", len(all_loaded_files), "files")
 
     # parse each csv file in the directory
-    for file_name in folds.keys():
+    for file_name in np.sort(list(folds.keys())):
         #print("Test fold: ")
         #print(file_name)
 

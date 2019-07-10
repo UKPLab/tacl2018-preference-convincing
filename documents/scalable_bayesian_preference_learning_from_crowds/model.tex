@@ -43,14 +43,14 @@
 We assume that a pair of items, $a$ and $b$, have utilities
 $f(\bs x_a)$ and $f(\bs x_b)$, which represent their value to a user,
 and that $f: \mathbb{R}^D \mapsto \mathbb{R}$ 
-is a function of the item's features, where $\bs x_a$ and $\bs x_b$ are vectors 
+is a function of item features, where $\bs x_a$ and $\bs x_b$ are vectors 
 of length $D$ containing the features of items $a$ and $b$, respectively.
-If $f(\bs x_a) > f(\bs x_b)$, then $a$ is preferred to $b$ (written as $a \succ b$).
-We record the outcome of each comparison between $a$ and $b$ as 
+If $f(\bs x_a) > f(\bs x_b)$, then $a$ is preferred to $b$ (written $a \succ b$).
+The outcome of a comparison between $a$ and $b$ is 
 a pairwise label, $y(a, b)$.
 Assuming that pairwise labels never contain errors,
 then $y(a, b)=1$ if $a \succ b$ and $0$ otherwise.
-Hence, given knowledge of $f$, we can predict the utilities 
+Given knowledge of $f$, we can compute the utilities 
 of items in a test set given their features, and the outcomes of pairwise comparisons.
 
 \citet{thurstone1927law} proposed the random utility model,
@@ -60,50 +60,46 @@ Under the random utility model, the likelihood $p(y(a,b)=1)$
 increases as $f_a - f_b$ increases, i.e.,
 as the utility of item $a$ increases
 relative to the utility of item $b$.
-However, since $0 < p(y(a,b)=1) < 1$, the model 
-is uncertain about the value of $y(a,b)$,
-which accommodates labelling errors or
-inconsistency in a user's choices at different points in time.
-The uncertainty is lower if the values $f_a$ and $f_b$ are further apart, 
-which reflects greater consistency in a user's choices
-when their preferences are stronger.
-
-The random utility model is defined by a likelihood function that
-maps the utilities to $p(y(a,b))$.
-Two important random utility models for pairwise labels are the Bradley-Terry model ~\citep{bradley1952rank,plackett1975analysis,luce1959possible},
-which assumes a logistic likelihood,
-and the Thurstone-Mosteller model, also known as \emph{Thurstone case V}~\citep{thurstone1927law,mosteller2006remarks}, which assumes a probit likelihood.
-
+This reflects the greater consistency in a user's choices
+when their preferences are stronger,
+while accommodating
+%However, since $0 < p(y(a,b)=1) < 1$, the model 
+%is uncertain about the value of $y(a,b)$,
+labelling errors or variations in a user's choices over time.
+%The uncertainty is lower if the values $f_a$ and $f_b$ are further apart, 
+%which 
+%The random utility model is defined by a likelihood function that
+%maps the utilities to $p(y(a,b))$.
 %or the Thurstone-Mosteller model.
 %\begin{align}
 %p(y(a, b) | f) & = \frac{1}{1 + \exp( f(\bs x_a) - f(\bs x_b) ) }
 %\end{align}
-In the Thurstone case V model, 
+In the Thurstone-Mosteller model, % case V model, 
 noise in the observations is explained by a Gaussian-distributed noise term, $\delta \sim \mathcal{N}(0, \sigma^2)$:
-\begin{align}
+\begin{flalign}
  p(y(a, b) | f(\bs x_a) + \delta_{a}, f(\bs x_b) + \delta_{b} )  
  \hspace{0.9cm} & = \begin{cases}
  1 & \text{if }f(\bs x_a) + \delta_{a} \geq f(b) + \delta_{b} \\
  0 & \text{otherwise,}
  \end{cases} &
  \label{eq:thurstone}
-\end{align}
+\end{flalign}
 Integrating out the unknown values of $\delta_a$ and $\delta_b$ gives:
-\begin{align}
-& p( y(a, b) | f(\bs x_a), f(\bs x_b) )  \nonumber\\
-& = \int\!\!\!\! \int p( y(a, b) | f(\bs x_a) + \delta_{a}, f(\bs x_b) + \delta_{b} ) \mathcal{N}(\delta_{a}; 0, \sigma^2)\mathcal{N}(\delta_{b}; 0, \sigma^2) d\delta_{a} d\delta_{b} \nonumber\\
-& = \Phi\left(\frac{f(\bs x_a) - f(\bs x_b)}{\sqrt{2\sigma^2}}\right) = \Phi\left( z \right), 
-\label{eq:plphi}
-\end{align}
+\begin{flalign}
+& p( y(a, b) | f(\bs x_a), f(\bs x_b) )  & \label{eq:plphi}\\
+& = \!\! \int\!\!\!\! \int \!\! p( y(a, b) | f(\bs x_a) + \delta_{a}, f(\bs x_b) + \delta_{b} ) \mathcal{N}(\delta_{a}; 0, \sigma^2)\mathcal{N}(\delta_{b}; 0, \sigma^2) d\delta_{a} d\delta_{b} 
+%= \Phi\left(\frac{f(\bs x_a) - f(\bs x_b)}{\sqrt{2\sigma^2}}\right) 
+= \Phi\left( z \right), & \nonumber
+\end{flalign}
 where $z = \frac{f(\bs x_a) - f(\bs x_b)}{\sqrt{2\sigma^2}}$,
 and $\Phi$ is the cumulative distribution function of the standard normal distribution,
-meaning that $\Phi(z)$ is a probit likelihood. 
-Please note that a full list of symbols is provided for reference in Appendix $\ref{sec:not}$.
+meaning that $\Phi(z)$ is a 
+probit likelihood.\footnote{Please note that a full list of symbols is provided for reference in Appendix $\ref{sec:not}$}
 
 In practice, $f(\bs x_a)$ and $f(\bs x_b)$ must be inferred from
 pairwise training labels, $\bs y$,
-so that we obtain a posterior distribution over their values.
-If we assume that this posterior is a multivariate Gaussian distribution,
+to obtain a posterior distribution over their values.
+If this posterior is a multivariate Gaussian distribution,
 then the probit likelihood allows us to analytically marginalise 
 $f(\bs x_a)$ and $f(\bs x_b)$
 to obtain the probability of a pairwise label:
@@ -113,14 +109,14 @@ p(y(a,b)| \bs y)
 - 2C_{a,b}} }, \label{eq:predict_z}
 \end{align}
 where $\hat{f}_a$ and $\hat{f}_b$ are the means and
-$\bs C$ is the covariance matrix of the multivariate Gaussian over
+$\bs C$ is the posterior covariance matrix of the multivariate Gaussian over
 $f(\bs x_a)$ and $f(\bs x_b)$.
 Unlike other choices for the likelihood, such as a sigmoid,
 the probit allows us to compute the posterior over a pairwise label
-without further approximation or numerical integration,
+without further approximation, %numerical integration
 hence we assume this pairwise label likelihood for our proposed preference learning model.
-This likelihood is also used for Gaussian process preference learning (GPPL)
-by ~\citet{chu2005preference}, but here 
+This likelihood is also used by
+~\citet{chu2005preference} for Gaussian process preference learning (GPPL), but here 
 we simplify the formulation by assuming that $\sigma^2 = 0.5$,
 which leads to $z$ having a denominator of $\sqrt{2 \times 0.5}=1$.
 Instead, we model varying degrees of noise in the pairwise labels
@@ -130,8 +126,8 @@ by scaling $f$ itself, as we describe in the next section.
 %an approximate inference method to address this problem.
 
 
-\subsection{Single User Preference Learning}
-%TODO check use of 'user' versus 'annotator' terminology throughout, especially in the intro. Is it explicit that the term 'user' is abstract and refers to any of these things?
+\subsection{GPPL for Single User Preference Learning}
+
 We can model the preferences of a single user by assuming
 a Gaussian process prior over the user's utility function, 
 %is a function of item features and 
@@ -140,16 +136,16 @@ and $s$ is an inverse scale parameter.
 The kernel function takes numerical item features as inputs and determines the covariance between values of $f$ for different items. 
 The choice of kernel function and its hyperparameters controls the shape and smoothness of the function 
 across the feature space and is often treated as a model selection problem.
-Typical kernel functions include the \emph{squared exponential} 
+Kernel functions suitable for a wide range of tasks include the \emph{squared exponential} 
 and the \emph{Mat\'ern}~\citep{rasmussen_gaussian_2006},
-which both make minimal assumptions and are effective in a wide range of tasks. 
-These functions assign higher covariance to items with similar feature values.
-We use the kernel function $k_{\theta}$ to compute a covariance matrix $K_{\theta}$,
+which both make minimal assumptions but 
+assign higher covariance to items with similar feature values.
+We use $k_{\theta}$ to compute a covariance matrix $\bs K_{\theta}$,
 between a set of $N$ observed items with features $\bs X = \{ \bs x_1, ..., \bs x_N \}$.
 
-The model extends the original definition of GPPL~\citep{chu2005preference},
-by introducing the inverse scale, $s$. 
-We also assume that $s$ is drawn from a gamma prior, 
+Here we extend the original definition of GPPL~\citep{chu2005preference},
+by introducing the inverse scale, $s$,
+which is drawn from a gamma prior, 
 $s \sim \mathcal{G}(\alpha_0, \beta_0)$, with shape $\alpha_0$ and scale $\beta_0$.
 The value of $1/s$ determines the variance of $f$,
 and therefore 
@@ -174,53 +170,49 @@ where
 $\bs f = \{f(\bs {x}_1),...,f(\bs {x}_N)\}$
 is a vector containing the utilities of the $N$ items referred to by $\bs y$,
 and $p( y_p | \bs f ) = \Phi\left( z_p \right)$ is the pairwise likelihood (Equation \ref{eq:plphi}). 
-We henceforth refer to this model simply as \emph{GPPL}.
+%We henceforth refer to this model simply as \emph{GPPL}.
 
 \subsection{Crowd Preference Learning} \label{sec:crowd_model}
 
-% 0. Consider multiple users, each with a set of observed features.
-% 1. imagine augmenting the observed features with a number of latent features (this is kind of what Khan et al. do)
-% 2. imagine that the latent features relate preference function values between items and users using the smallest number of features
-% 3. hence the observed features are not needed given the latent features, but we can create a hierarchical model where the latent features depend on the observed ones if available.
-
-To predict the individual preferences of users in a crowd,
-we could assume an independent GPPL model for each user.
-However, by modelling all users' preferences jointly, we can
-exploit the correlations between different users' interests
+To predict the preferences of individuals in a crowd,
+we could use an independent GPPL model for each user.
+However, by modelling all users jointly, we can
+exploit correlations between their interests
 to improve predictions when preference data is sparse,
-and reduce the cost of storing separate models for all users.
-Groups of users may share common interests over certain subsets of items,
-for example, in a book recommendation task,
-some users may share an interest in one particular genre 
-but otherwise prefer different categories of books.
-Identifying such correlations between users' interests helps to predict 
-the preferences of users for whom we have only observed a small number of preferences.
-This is the core idea of recommendation techniques such as collaborative filtering~\citep{resnick1997recommender} and matrix factorisation~\citep{koren2009matrix}.
+and reduce the memory cost of storing separate models.
+Correlations between users 
+can arise from common interests over certain subsets of items,
+such as in one particular genre in a book recommendation task.
+Identifying such correlations helps to predict 
+ preferences from  fewer observations and is the core idea of collaborative filtering~\citep{resnick1997recommender} and matrix factorisation~\citep{koren2009matrix}.
 
-As well as predicting individual preferences, 
+As well as individual preferences, 
 we wish to predict the consensus by aggregating
 preference labels from multiple users. 
-If we do not account for the individual biases of different users
-when predicting the consensus,
-these biases may affect the consensus predictions,
-particularly when data for certain items is only available from a small subset of users.
-We address this problem by proposing \emph{crowdGPPL}, which jointly models 
+Individual biases of different users may affect consensus predictions,
+particularly when data for certain items comes from a small subset of users.
+The consensus could also help
+predict preferences of users with little or no data
+ by favouring items popular items
+and avoiding generally poor items.
+We therefore propose 
+%address this problem by proposing
+ \emph{crowdGPPL}, which jointly models 
 the preferences of individual users as well as the underlying consensus of the crowd.
 Unlike previous methods for inferring the consensus, 
-such as \emph{CrowdBT}~\citep{chen2013pairwise}, we do not treat differences between individuals as simply the result of labelling errors, 
-but instead assume that differences result from the users' subjective biases
+such as \emph{CrowdBT}~\citep{chen2013pairwise}, we do not treat differences between users as simply the result of labelling errors, 
+but also account for their subjective biases
 towards particular items. 
  
 % is there a better word than 'label sources' for the different sources of implicit feedback or other types of labeling?
 %In a scenario with multiple users or label sources, 
 For crowdGPPL, 
 we represent utilities in a matrix, $\bs{F} \in \mathbb{R}^{N \times U}$,
-with $N$ rows corresponding to items and $U$ columns corresponding to users. %, and entries are preference values.
-We assume that $\bs F$ is the product of two low-dimensional matrices
-plus a vector of consensus utilities, $\bs{t}$, of the $N$ items, as follows:
-\begin{equation}
-\bs{F} = \bs{V}^T \bs{W} + \bs{t},
-\end{equation}
+with %$N$ rows corresponding to items and 
+$U$ columns corresponding to users. %, and entries are preference values.
+We assume that $\bs{F} = \bs{V}^T \bs{W} + \bs{t}$
+ is the product of two low-rank matrices
+plus a vector of consensus utilities, $\bs{t} \in \mathbb{R}^N$, 
 where $\bs{W} \in \mathbb{R}^{C \times U}$ is a latent representation
 of the users,
 $\bs{V} \in \mathbb{R}^{C \times N}$ is a latent representation of the items,
@@ -231,18 +223,7 @@ The column $\bs v_{.,a}$ of $\bs V$, and the column $\bs w_{.,j}$ of $\bs W$,
  respectively.
 %Users with similar values for a certain feature will have similar preferences for 
 %the subset of items with corresponding feature values. 
-Each latent component corresponds to a utility function 
-for certain items, which is shared by a subset of users.
-For example, in the case of book recommendation,
-one component could represent the membership of certain books to a particular
-genre and the interests of certain users in that genre.
-%Besides latent features, we may also observe a number of item features, $\bs x$,
-%and . 
-%There are two ways that observed features can be incorporated into the 
-%model: (1) as additional dimensions of V or W (each feature cannot be a member of %both); (2) as input features on which V and W depend. The advantage of the latter is that 
-%In the single user model, we assumed a single latent utility function, $f$, of the observed item features. 
-
-For crowdGPPL, we assume that each row of $\bs V$, $\bs v_c=\{ 
+Each row of $\bs V$, $\bs v_c=\{ 
 v_c(\bs{x}_1),...,v_c(\bs{x}_N)\}$,  
 contains evaluations of a latent function, 
 $v_c\sim \mathcal{GP}(\bs 0, k_{\theta} /s^{(v)}_c)$,
@@ -251,8 +232,8 @@ where $k$ is a kernel function, $s^{(v)}_c$ is an inverse function scale,
 and $\theta$ are kernel hyperparameters.
 %Since our goal is to infer a consensus from a crowd as well as to model individual 
 %users' preferences, 
-We also assume that $\bs t = \{t(\bs {x}_1),...,t(\bs {x}_N)\}$
-contains evaluations of a consensus utility function over item features,
+The consensus utilities, $\bs t = \{t(\bs {x}_1),...,t(\bs {x}_N)\}$,
+are values of a consensus utility function over item features,
 $t\sim \mathcal{GP}(\bs 0, k_{\theta} /s^{(t)})$, which is shared across all users,
 with inverse scale $s^{(t)}$.
 Similarly, each row of $\bs W$, 
@@ -262,25 +243,33 @@ $w_c \sim \mathcal{GP}(\bs 0, k_{\eta}/s_c^{(w)})$,
 of user features, $\bs u_j$, 
 with inverse scale $s_c^{(w)}$
 and kernel hyperparameters $\eta$.
-Therefore, the utilities in $\bs F$ are evaluations of a joint
-preference function, $f$, which is a weighted sum over the latent functions:
+Therefore, each utility in $\bs F$ can be written as
+a weighted sum over the latent components:
 \begin{flalign}
   f(\bs x_a, \bs u_j) = \sum_{c=1}^C  v_c(\bs x_a) w_c(\bs u_j) + t(\bs x_a),
   \label{eq:vw_plus_t}
 \end{flalign}
 where $\bs u_j$ are the features of user $j$ and $\bs x_a$ are the features of item $a$.
-
-CrowdGPPL therefore combines latent features of items and
-users -- represented by the latent components -- with the
-utilities of the items according to an underlying consensus across users.
-Given the consensus utility for item $a$, $t(\bs x_a)$,
-the individual preferences of user $j$ then deviate from the consensus according
+Each latent component corresponds to a utility function 
+for certain items, which is shared by a subset of users to differing degrees.
+For example, in the case of book recommendation,
+$c$ could relate to science fiction novels, 
+$v_c$ to a ranking over them,
+and $w_c$ to the degree of agreement of users with that ranking.
+%CrowdGPPL therefore combines latent features of items and
+%users -- represented by the latent components -- with the
+%utilities of the items according to an underlying consensus across users.
+%Given the consensus, $t$,
+%utility for item $a$, $t(\bs x_a)$,
+The individual preferences of each user $j$ deviate from a consensus across users, $t$, according
 to $\sum_{c=1}^C  v_c(\bs x_a) w_c(\bs u_j)$. 
-Hence, when inferring the consensus utilities, we can subtract the effect of individual
-biases. The consensus can also help 
-when inferring personal preferences for new users, new items or new combinations of users and items that are
-very different to the combinations in the training data, by
-taking into account any objective quality or widespread appeal that an item may have.
+This allows us to subtract the effect of individual biases when inferring the consensus utilities. 
+The consensus can also help 
+when inferring personal preferences for %new users, 
+%new items or 
+new combinations of users and items that are
+very different to those in the training data by
+ accounting for any objective or widespread appeal that an item may have.
 %We provide a Bayesian treatment to matrix factorization by placing Gaussian process priors over the latent functions.
 %differently for each user and item. For example, the observed user feature 'age' may correlate with some latent interests of users, but certain users will deviate from their peer group. 
 % what happens if two users have identical features (say, the feature representation
@@ -295,29 +284,29 @@ taking into account any objective quality or widespread appeal that an item may 
 % notes about problems with inference.
 
 Although the model assumes a fixed number of components, $C$,
-the GP priors over $\bs w_c$ and $\bs v_c$ have a zero mean, which act as \emph{shrinkage}
+the GP priors over $\bs w_c$ and $\bs v_c$ act as \emph{shrinkage}
 or \emph{ARD priors} that favour values close to zero~\citep{mackay1995probable,psorakis2011overlapping}. 
-Those components that are not required to explain the data will have posterior
-expectations and expected scales $1/s^{(v)}$ and $1/s^{(w)}$ approaching zero.
-Therefore, due to our choice of prior, it is not necessary to optimise the value
-of $C$, providing a sufficiently large number is chosen. 
+Components that are not required to explain the data will have posterior
+expectations and scales $1/s^{(v)}$ and $1/s^{(w)}$ approaching zero.
+Therefore, %due to our choice of prior, 
+it is not necessary to optimise the value of $C$, providing a sufficiently large number is chosen. 
 
-The form of Equation \ref{eq:vw_plus_t} is also used in the 
-\emph{cross-task crowdsourcing} model of ~\citet{mo2013cross}, which 
-uses matrix factorisation to model annotator performance in different tasks.
-In their model, $\bs t$ corresponds to the objective difficulty of a task.
-However, unlike crowdGPPL, they do not use Gaussian processes to model the factors, 
+Equation \ref{eq:vw_plus_t} is similar to
+\emph{cross-task crowdsourcing}~\citep{mo2013cross}, which 
+uses matrix factorisation to model annotator performance in different tasks,
+where $\bs t$ corresponds to the objective difficulty of a task.
+However, unlike crowdGPPL, they do not use GPs to model the factors, 
 nor apply
 the approach to preference learning.
-A similar model for preference learning is proposed by \citet{houlsby2012collaborative},
-but this does not include a consensus, and the values in $\bs v_c$ directly correspond
-to pairs, rather than individual items, which means we cannot easily infer the
-ranking function over items.
-Their model also omits the scale parameters for the
-GPs that are used to encourage shrinkage when $C$ is larger than required.
+For preference learning, collabGP~\citep{houlsby2012collaborative}
+is a related model that 
+excludes the consensus and uses values in $\bs v_c$ to represent pairs
+ rather than individual items, so does not infer item ratings.
+It also omits scale parameters for the GPs that 
+encourage shrinkage when $C$ is larger than required.
  
-We combine the matrix factorization method with the preference likelihood of Equation \ref{eq:plphi}
-to obtain a joint preference model for multiple users, \emph{crowdGPPL}:
+We combine the matrix factorisation method with the preference likelihood of Equation \ref{eq:plphi}
+to obtain the joint preference model for multiple users, \emph{crowdGPPL}:
 %represent a consensus between users,
 %if present, while allowing individual users' preferences to deviate from this value through $\bs V^T \bs W$. 
 %Hence, $\bs t$ can model the underlying ground truth or consensus in crowdsourcing scenarios, or when using
@@ -340,9 +329,8 @@ to obtain a joint preference model for multiple users, \emph{crowdGPPL}:
 \end{flalign}
 where 
 $z_p = \bs v_{.,a_p}^T \bs{w}_{.,u_p} + t_{a_p} - \bs v_{.,b_p}^T \bs{w}_{.,u_p} - t_{b_p}$,
- $s^{(t)}$ is the inverse scale of $t$,
-index $p$ refers to a tuple, $\{u_p, a_p, b_p \}$, which identifies the user and a pair of items,
-$\bs U$ is the set of all feature vectors for all users,
-and $L_{\eta}$ is the prior covariance between user feature vectors computed
-using the kernel function $k_{\eta}$.
+index $p$ refers to a tuple $\{u_p, a_p, b_p \}$ that identifies a user and a pair of items,
+$\bs U$ is the set of feature vectors for all users,
+and $\bs L_{\eta}$ is the prior covariance matrix for the users computed
+using $k_{\eta}$.
 

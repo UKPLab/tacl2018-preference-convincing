@@ -29,6 +29,8 @@ if __name__ == '__main__':
 
     expt_root_dir = 'D05-%i_P%i' % (lsm, npairs)
 
+    print('Loading data from %s' % expt_root_dir)
+
     min_fold_no = 0
     max_fold_no = 32
 

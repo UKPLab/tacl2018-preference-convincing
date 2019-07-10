@@ -9,8 +9,7 @@
 \section{Related Work}
 \label{sec:rw}
 
-\subsection{Pairwise Preference Learning} 
-
+%\paragraph{Pairwise Preference Learning.}
 To obtain a ranking from pairwise labels, 
 many preference learning methods model
 the user's choices as a random function of the latent 
@@ -20,27 +19,34 @@ and predict pairwise labels.
 Many popular instances of this approach, known as a \emph{random utility model}~\citep{thurstone1927law},
 are variants of  
 the Bradley-Terry (BT) model~\citep{bradley1952rank,plackett1975analysis,luce1959possible},
-or the Thurstone-Mosteller model, also known as \emph{Thurstone case V}~\citep{thurstone1927law,mosteller2006remarks}.
-Examples include best-worst scaling~\citet{marley2005some}, which extends the BT model,
-and TrueSkill~\citep{herbrich2007trueskill}, a Thurstone case V model that learns 
-the skill of game players by treating match outcomes as noisy pairwise labels.
-Recent work on the BT model has analysed bounds on error rates~\citep{chen2015spectral}, 
-sample complexity~\citep{shah2015estimation}
-and developed computationally efficient active learning~\citet{li2018hybrid}.
-However, these examples do not consider input features.
+which assumes a logistic likelihood,
+or the Thurstone-Mosteller model
+%, also known as \emph{Thurstone case V}
+~\citep{thurstone1927law,mosteller2006remarks},
+which assumes a probit likelihood.
+%Examples include best-worst scaling~\citep{marley2005some}, which extends the BT model,
+%and TrueSkill~\citep{herbrich2007trueskill}, a Thurstone-Mosteller-based model that learns 
+%the skill of game players by treating match outcomes as noisy pairwise labels.
+Recent work on the BT model has 
+% analysed bounds on error rates~\citep{chen2015spectral}, 
+%sample complexity~\citep{shah2015estimation} and 
+developed computationally efficient active learning, but does not consider input 
+features~\citep{li2018hybrid}.
+%However, these examples do not consider input features.
 Another commonly-used ranking method, SVM-rank~\citep{joachims2002optimizing},
-predicts pairwise labels from input features, but optimises
-pairwise label prediction directly without a random utility model.
+predicts pairwise labels from input features 
+%but optimises pairwise label prediction directly 
+without a random utility model, so cannot predict utilities.
 \emph{Gaussian process preference learning (GPPL)}
 provides a Bayesian treatment of the random utility model,
 using input features to predict the utilities of test items and share information
 between similar items~\citep{chu2005preference}.
-Here, we build on GPPL to provide a scalable approach that can 
-model the preferences of crowds of users.
+As GPPL can only predict the preferences of a single user,  
+we introduce a new, scalable approach to model individuals in a crowd. 
+%the preferences of crowds of users.
 
-\subsection{Annotator Disagreements when Estimating a Consensus}
-
-Much of the previous work on preference learning from crowdsourced data 
+%\paragraph{Annotator Disagreements when Estimating a Consensus.}
+Previous work on preference learning from crowdsourced data 
 treats disagreements as annotation errors and infers only the consensus,
 rather than modelling personal preferences.
 For instance, 
@@ -59,30 +65,32 @@ while \citet{uchida2017entity} extend SVM-rank to account for different levels o
 %individual annotator noise levels in combination with a Gaussian process can improve performance, but this has not yet been adapted for preference learning.
 However, while these approaches differentiate the level of \emph{noise}
 for each annotator,
-personal preferences also introduce labelling \emph{bias}, 
-as the differences between users are not random but depend on the items considered.
-With small numbers of labels, these biases may reduce the accuracy of the estimated
+they ignore labelling \emph{bias} 
+as the differences between users are not random but depend on personal preferences toward particular items.
+With small numbers of labels per item, these biases may reduce the accuracy of the estimated
 consensus.
 Furthermore, previous aggregation methods for crowdsourced preferences
-do not consider the item features,
-so cannot predict the utility of test items with no or very few labels~\citep{chen2013pairwise,wang2016blind,han2018robust,pan2018stagewise,li2018hybrid}.
+do not consider item features,
+so cannot predict the utility of test items~\citep{chen2013pairwise,wang2016blind,han2018robust,pan2018stagewise,li2018hybrid}.
 Our approach goes beyond these methods
 by predicting personal preferences
-and incorporating item features into the model.
+and incorporating input features.
 
-\subsection{Inferring Personal Preferences for Members of a Crowd}
-
-A number of methods use matrix factorisation to predict personal preferences 
-for members of a crowd from pairwise labels,
-including 
+%\paragraph{Inferring Personal Preferences for Members of a Crowd. }
+A number of methods use \emph{matrix factorisation} to predict personal preferences 
+from pairwise labels, including 
 \citet{yi_inferring_2013}, who focus on small numbers of pairs per user,
 and \citet{salimans2012collaborative}, who apply Bayesian matrix factorisation to 
-better handle sparse data.
-In matrix factorisation, each individual's preferences are represented 
-by a mixture of latent functions.
-\citet{kim2014latent} do not apply matrix factorisation, but instead
-assume that pairwise labels depend on one of several latent rankings.
-However, these techniques do not account for any input features for prediction.
+handle sparse data.
+Matrix factorisation represents observed ratings in a user-item matrix,
+which it decomposes into two low-rank matrices, one corresponding to users and one to items.
+Users with similar ratings have similar rows in the user
+matrix, where each entry is a weight over a latent rating.
+By multiplying the low-dimensional representations, we can predict ratings for unseen
+user-item pairs. 
+\citet{kim2014latent} use a simplification that assumes that
+each user's preferences depend on only one latent rankings.
+However, these techniques do not account for input features.
 
 %crowdranking \citet{yi_inferring_2013} uses the crowd to make up for the fact that a target user has small data -- it's a form of collaborative filtering with pairwise labels using a non-Bayesian inference algorithm.
 % Several other works learn multiple rankings from crowdsourced pairwise labels
@@ -100,35 +108,40 @@ However, these techniques do not account for any input features for prediction.
 %learning from pairwise comparisons 
 %as they assume that the observations are Gaussian-distributed numerical ratings~\citep{shi2017survey}. 
 
-A number of other methods use Gaussian processes 
-for personal preference prediction, 
-such as by \citet{guo2010gaussian}, who propose a joint Gaussian process over the
-space of users and features. Since this scales cubically
+GPs were previously used 
+for personal preference prediction
+by \citet{guo2010gaussian}, who propose a GP over the joint feature 
+space of users and items. Since this scales cubically
 in the number of users, \citet{abbasnejad2013learning} 
-propose to cluster the users into behavioural groups.
-However, distinct clusters do not
-allow for collaborative learning between users with partially overlapping preferences, e.g. two users may both like one genre of music, 
-while having different preferences over other genres. 
+propose to cluster users into behavioural groups,
+but distinct clusters do not
+allow for collaborative learning between users whose preferences only partially overlap, 
+e.g. when two users both like one genre of music, 
+but have different preferences over other genres. 
 \citet{khan2014scalable} instead learn a GP for each user,
-then add a matrix factorization term that performs collaborative filtering.
+then add a matrix factorisation term that performs collaborative filtering.
 However, this approach does not model the relationship between
- input features and the latent factors,
- unlike \citet{lawrence2009non} who place GP priors over latent item components.
+ input features and the low-rank matrices,
+ unlike \citet{lawrence2009non} who place GP priors over latent ratings.
  Neither of these last two methods
- give a fully Bayesian treatment to the model, as the the users' latent features
+ are fully Bayesian as the users' weights
  are optimised rather than marginalised.
-An alternative is \emph{Collaborative GP (collabGP)}~\citep{houlsby2012collaborative},
-which uses a latent factor model, where each latent factor has a Gaussian process prior. 
-This allows the model to take advantage of the input features of both
-users and items when learning the latent factors. 
-However, unlike the approach we propose here, 
-none of the methods to date jointly model both consensus 
-and personal preferences in a fully-Bayesian manner,
-which is needed to handle small amounts of data for both users and items
-and account for personal biases when inferring the consensus.
-Furthermore, the existing GP-based approaches
-suffer from scalability issues due to limitations of their inference methods.
+An alternative is the \emph{collaborative GP (collabGP)}~\citep{houlsby2012collaborative},
+which places GP priors over user weights and latent factors,
+thereby exploiting input features for both users and items. 
+However, unlike our approach, collabGP predicts only pairwise labels, not 
+%over pairs also means that it 
+%does not model %output posteriors for 
+the utilities of items, which are useful for rating and ranking,
+and can only be trained using pairwise labels, even if observations of the utilities
+are available.
+Furthermore, existing GP-based approaches
+suffer from scalability issues and 
+none of the previous methods jointly model the consensus as well as personal preferences
+in a fully-Bayesian manner.
 
+%which is needed to handle small amounts of data for both users and items
+%and account for personal biases when inferring the consensus.
  % PCA: Gaussian noise. "The classical PCA converts a set of samples with possibly correlated variables into another   
  % set of samples with linearly uncorrelated variables via an orthogonal transformation [1]. Based on this, PCA
  % is an effective technique widely used in performing dimensionality reduction and extracting features." -- Shi et al 2017. shi2017survey
@@ -143,31 +156,26 @@ suffer from scalability issues due to limitations of their inference methods.
  % NMF: as matrix factorisation but the low-rank matrices are non-negative.
 
 
-\subsection{Scalable Approximate Bayesian Inference}
+%\paragraph{Scalable Approximate Bayesian Inference.}
 
 %Scalability of BMF
-Many of the approaches for modelling individual user preferences use matrix factorization 
-to share information between users and items,
-which benefits from a Bayesian treatment to reduce the effects of overfitting or noisy data~\citep{saha2015scalable}.
-Recent work on scalable Bayesian matrix factorization focuses on distributing and 
-parallelising inference but %these approaches do not make use of input features and 
-are not directly applicable when Gaussian processes are used to integrate input features
- ~\citep{ahn2015large,saha2015scalable,vander2017distributed,chen2018large}. 
-%This paper focuses instead on reducing computational and memory costs, 
-%although the method we propose is amenable to parallelization.
-
-%Scalability of GPs
-Models that combine Gaussian processes with non-Gaussian likelihoods 
-require approximate inference methods that often scale poorly with 
-the amount of training data available. 
-Established methods such as the Laplace approximation 
-and expectation propagation~\citep{rasmussen_gaussian_2006} have
+%Many of the approaches for modelling individual user preferences use matrix factorization 
+%to share information between users and items,
+%which 
+%Matrix factorisation can benefit from a Bayesian treatment to reduce overfitting or 
+%handle noisy data. 
+%Models that combine Gaussian processes with non-Gaussian likelihoods 
+%require approximate inference methods that often scale poorly with 
+%the amount of training data. 
+Established methods for GP inference with non-Gaussian likelihoods,
+such as the Laplace approximation 
+and expectation propagation~\citep{rasmussen_gaussian_2006}, have
 computational complexity $\mathcal{O}(N^3)$ with $N$ data points
  and memory complexity $\mathcal{O}(N^2)$. 
-For collaborative GPPL, \citet{houlsby2012collaborative}
-propose a  kernel for pairwise 
-preference learning and use a sparse
-\emph{generalized fully independent training conditional} (GFITC) 
+For collabGP, \citet{houlsby2012collaborative}
+%propose a  kernel for pairwise 
+%preference learning and 
+use a sparse \emph{generalized fully independent training conditional} (GFITC) 
 approximation~\citep{snelson2006sparse} to reduce the computational complexity to $\mathcal{O}(PM^2 + UM^2)$ and 
 memory complexity to $\mathcal{O}(PM + UM)$,
 where $P$ is the number of pairwise labels, 
@@ -176,8 +184,8 @@ and $U$ is the number of users.
 However, this is not sufficiently scalable
 for very large numbers of users or pairs, 
 due to increasing memory consumption 
-and optimisation steps that cannot be run in parallel on subsets of the data, 
-since the objective function is a not a sum over data points.
+and optimisation steps that cannot be distributed. %run in parallel on subsets of the data, 
+%since the objective function is a not a sum over data points.
 %The marginal likelihood does not factor between data points -- updating for one data point may not 
 % improve the marginal likelihood. If the objective function is a sum of terms, we can do gradient 
 % descent steps on each term independently.  
@@ -185,34 +193,37 @@ since the objective function is a not a sum over data points.
 %-- local objective only.
 % This means they have some sequential dependencies on one another, so I don't know what
 % happens if you do them out of order.
-The GP over pairs also means that it does not output posteriors for 
-the utilities of individual items, which are useful for ranking,
-and can only be trained using pairwise labels, even if observations of the utilities
-are available.
-
+Recent work on distributing and parallelising Bayesian inference 
+for matrix factorisation 
+is not easily applicable to models that incorporate GPs
+ ~\citep{ahn2015large,saha2015scalable,vander2017distributed,chen2018large}. 
+ 
 To handle large numbers of pairwise labels, \citet{khan2014scalable}
-develop a variational EM algorithm and sub-sample pairwise data rather than learning from the complete training set.
+%develop a variational EM algorithm and 
+subsample the data rather than learning from the complete training set.
 An alternative is \emph{stochastic variational inference (SVI)}~\citep{hoffman2013stochastic}, 
-which updates an approximation to the posterior using 
-a different random sample of the training data at each iteration. 
-This allows the approximation to make use of all training data over a number of 
-iterations, while limiting training costs per iteration.
-SVI has been successfully applied to Gaussian process regression~\citep{hensman2013gaussian} and classification~\citep{hensman2015scalable},
-further improving scalability over existing sparse approximations.
-For multi-output GPs, ~\citet{nguyen2014collaborative} introduce an SVI approach where 
-each output is a weighted combination of shared latent functions plus a latent function specific to that output. 
+which optimises a posterior approximation using 
+a different subsample of training data at each iteration, meaning it learns from
+all training data over multiple iterations while limiting costs per iteration.
+SVI has been applied to GP regression~\citep{hensman2013gaussian} and classification~\citep{hensman2015scalable},
+further improving scalability over earlier sparse approximations.
+~\citet{nguyen2014collaborative} introduce SVI for multi-output GPs,
+where each output is a weighted combination of latent functions.
+% plus a latent function specific to that output. 
 They apply their method to capture dependencies between regression tasks,
-treating the weights for the shared latent functions as hyperparameters. 
-In this paper, we also use shared latent functions to capture dependencies between different users' preferences,
-but introduce a Bayesian treatment of the weights using a GP over latent user features,
-and integrate a non-Gaussian likelihood into the SVI framework to enable learning from pairwise labels.
-An SVI method for preference learning that places a GP over items, rather than pairs, 
-was previously applied by ~\citet{simpson2018finding}.
-However, this method, a variant of GPPL,
-did not consider the different preferences of individual users.
-Here, we propose a new SVI method, crowdGPPL, aimed at a different task: 
-jointly modelling personal preferences of users and the crowd consensus
+treating the weights for the latent functions as hyperparameters. 
+In this paper, we 
+%also use shared latent functions to capture dependencies between different users' preferences,
+%but 
+introduce a Bayesian treatment of the weights %using GPs % over latent user features,
+and apply SVI instead to preference learning.
+% with a non-Gaussian likelihood into the SVI framework to enable learning from pairwise labels.
+An SVI method for GPPL
+%preference learning that places a GP over items, rather than pairs, 
+was previously introduced by \citet{simpson2018finding},
+which we detail in Section \ref{sec:inf}.
+%However, this method, a variant of GPPL,
+However, as GPPL does not consider the individual preferences of users in a crowd,
+ we propose a new model, crowdGPPL, which
+jointly models personal preferences and the crowd consensus
 using a combination of Gaussian processes and Bayesian matrix factorisation.
-In Section \ref{sec:inf},
-we provide the full details of the SVI method for 
-both GPPL, as these were not previously published, then extend the scheme to crowdGPPL.

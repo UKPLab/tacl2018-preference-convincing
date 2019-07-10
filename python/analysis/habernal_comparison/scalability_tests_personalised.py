@@ -47,14 +47,14 @@ if __name__ == '__main__':
         # number of pairs in subsample
         datasets = ['UKPConvArgCrowdSample_evalMACE']
         methods = [
-                   'SinglePrefGP_noOpt_weaksprior_M100_SS2',
+                   #'SinglePrefGP_noOpt_weaksprior_M100_SS2',
                    'SinglePrefGP_noOpt_weaksprior_M100_SS20',
                    'SinglePrefGP_noOpt_weaksprior_M100_SS50',
                    'SinglePrefGP_noOpt_weaksprior_M100_SS100',
                    'SinglePrefGP_noOpt_weaksprior_M100',
                    'SinglePrefGP_noOpt_weaksprior_M100_SS300',
                    'SinglePrefGP_noOpt_weaksprior_M100_SS400',
-                   'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS2',
+                   #'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS2',
                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS20',
                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS50',
                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS100',

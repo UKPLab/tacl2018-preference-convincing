@@ -10,9 +10,9 @@ import sys
 import numpy as np
 from compute_metrics import load_results_data, get_fold_data
 import pickle
-from sklearn.metrics.classification import accuracy_score
 import matplotlib.pyplot as plt
-import compute_metrics
+from data_loader import load_train_test_data
+import pandas as pd
 
 figure_save_path = './results/scalability'
 if not os.path.isdir(figure_save_path):
@@ -39,7 +39,9 @@ if __name__ == '__main__':
     max_no_folds = 32
     expt_settings['embeddings_type'] = 'word_mean'
 
-    tag = 'p4'
+    tag = 'p5'
+
+    plt.rcParams.update({'font.size': 14})
 
     if test_to_run == 0:
         foldername = tag
@@ -52,8 +54,6 @@ if __name__ == '__main__':
                     'SinglePrefGP_noOpt_weaksprior_M300',
                     'SinglePrefGP_noOpt_weaksprior_M400',
                     'SinglePrefGP_noOpt_weaksprior_M500',
-                    #'SinglePrefGP_noOpt_weaksprior_M600',
-                    #'SinglePrefGP_noOpt_weaksprior_M700',
                     'PersPrefGP_commonmean_noOpt_weaksprior_F5_M2',
                     'PersPrefGP_commonmean_noOpt_weaksprior_F5_M10',
                     'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100',
@@ -61,41 +61,40 @@ if __name__ == '__main__':
                     'PersPrefGP_commonmean_noOpt_weaksprior_F5_M300',
                     'PersPrefGP_commonmean_noOpt_weaksprior_F5_M400',
                     'PersPrefGP_commonmean_noOpt_weaksprior_F5_M500',
-                    #'PersPrefGP_commonmean_noOpt_weaksprior_F5_M600',
-                    #'PersPrefGP_commonmean_noOpt_weaksprior_F5_M700',
                     ]
+
+        nsteps = 7
 
         xstring = 'Inducing Points, M'
         filename = 'num_inducing_32310_features'
-        which_leg = 'accuracy'
+        which_leg = 'runtimes'
 
     elif test_to_run == 5:
         foldername = tag
 
         # Create a plot for the runtime/accuracy against M + include other methods with ling + Glove features
-        methods =  ['SinglePrefGP_noOpt_weaksprior_M2',
-                    'SinglePrefGP_noOpt_weaksprior_M10',
+        methods =  [
+                    #'SinglePrefGP_noOpt_weaksprior_M100_SS2', # this is too slow and distorts the plot
+                    'SinglePrefGP_noOpt_weaksprior_M100_SS20',
+                    'SinglePrefGP_noOpt_weaksprior_M100_SS50',
+                    'SinglePrefGP_noOpt_weaksprior_M100_SS100',
                     'SinglePrefGP_noOpt_weaksprior_M100',
-                    'SinglePrefGP_noOpt_weaksprior_M200',
-                    'SinglePrefGP_noOpt_weaksprior_M300',
-                    'SinglePrefGP_noOpt_weaksprior_M400',
-                    'SinglePrefGP_noOpt_weaksprior_M500',
-                    #'SinglePrefGP_noOpt_weaksprior_M600',
-                    #'SinglePrefGP_noOpt_weaksprior_M700',
-                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M2',
-                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M10',
+                    'SinglePrefGP_noOpt_weaksprior_M100_SS300',
+                    'SinglePrefGP_noOpt_weaksprior_M100_SS400',
+                    #'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS2',
+                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS20',
+                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS50',
+                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS100',
                     'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100',
-                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M200',
-                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M300',
-                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M400',
-                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M500',
-                    #'PersPrefGP_commonmean_noOpt_weaksprior_F5_M600',
-                    #'PersPrefGP_commonmean_noOpt_weaksprior_F5_M700',
+                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS300',
+                    'PersPrefGP_commonmean_noOpt_weaksprior_F5_M100_SS400',
                     ]
 
-        xstring = 'pairs per iteration, P_i'
+        nsteps = 6
+
+        xstring = 'pairs per iteration, $P_i$'
         filename = 'P_i_32310_features'
-        which_leg = 'runtimes'
+        which_leg = 'accuracy'
 
     if test_to_run == 0 or test_to_run == 5:
 
@@ -114,6 +113,8 @@ if __name__ == '__main__':
 
         acc_both = np.zeros(len(methods))
 
+        _, folds_test, _, _, _, _ = load_train_test_data('UKPConvArgCrowdSample_evalMACE')
+
         for m, expt_settings['method'] in enumerate(methods):
             print("Processing method %s" % expt_settings['method'])
 
@@ -128,7 +129,7 @@ if __name__ == '__main__':
                 if expt_settings['fold_order'] is None: # fall back to the order on the current machine
                     if expt_settings['folds'] is None:
                         continue
-                    fold = list(expt_settings['folds'].keys())[f]
+                    fold = np.sort(list(expt_settings['folds'].keys()))[f]
                 else:
                     fold = expt_settings['fold_order'][f]
                     if fold[-2] == "'" and fold[0] == "'":
@@ -156,61 +157,69 @@ if __name__ == '__main__':
                 gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, \
                             pred_tr_prob, pred_tr_rank, postprocced = get_fold_data(data_f, f, expt_settings)
 
-                acc_m[f] = accuracy_score(gold_disc[gold_disc!=1], pred_disc[gold_disc!=1])
                 runtimes_m[f] = data_f[6]
 
             acc_m = acc_m[acc_m>0]
             runtimes_m = runtimes_m[runtimes_m>0]
 
-            if len(acc_m):
-                acc_both[m] = np.mean(acc_m)
-                runtimes_both[m] = np.mean(runtimes_m)
-                runtimes_both_lq[m] = np.mean(runtimes_m) + np.std(runtimes_m)#np.percentile(runtimes_m, 25)
-                runtimes_both_uq[m] = np.mean(runtimes_m) - np.std(runtimes_m)#np.percentile(runtimes_m, 75)
+            acc_both[m] = pd.read_csv(resultsdir + '/metrics.csv').values[-1,4] #np.mean(acc_m)
+            runtimes_both[m] = np.mean(runtimes_m)
+            runtimes_both_lq[m] = np.mean(runtimes_m) + np.std(runtimes_m)#np.percentile(runtimes_m, 25)
+            runtimes_both_uq[m] = np.mean(runtimes_m) - np.std(runtimes_m)#np.percentile(runtimes_m, 75)
 
-                if expt_settings['method'] in dims_methods:
-                    m_dims = dims_methods == expt_settings['method']
-                    runtimes_dims[m_dims, 3] = runtimes_both[m]
+            if expt_settings['method'] in dims_methods:
+                m_dims = dims_methods == expt_settings['method']
+                runtimes_dims[m_dims, 3] = runtimes_both[m]
 
-
-        fig1, ax1 = plt.subplots(figsize=(5,4))
-        x_gppl = np.array([2, 10, 100, 200, 300, 400, 500])#, 600, 700])
-        h1, = ax1.plot(x_gppl, runtimes_both[0:7], color='blue', marker='o', label='runtime, GPPL',
+        fig1, ax1 = plt.subplots(figsize=(4, 3.6))
+        if test_to_run == 0:
+            x_gppl = np.array([2, 10, 100, 200, 300, 400, 500])#, 600, 700])
+        elif test_to_run == 5:
+            x_gppl = np.array([10, 100, 200, 300, 400, 500])  # , 600, 700])
+        h1, = ax1.plot(x_gppl, runtimes_both[0:nsteps], color='blue', marker='o', label='runtime, GPPL',
                        linewidth=2, markersize=8)
 
-        ax1.fill_between(x_gppl, runtimes_both_lq[0:7], runtimes_both_uq[0:7], alpha=0.2, edgecolor='blue',
+        ax1.fill_between(x_gppl, runtimes_both_lq[0:nsteps], runtimes_both_uq[0:nsteps], alpha=0.2, edgecolor='blue',
                          facecolor='blue')
 
 
-        h2, = ax1.plot(x_gppl, runtimes_both[7:], marker='<', color='green', linestyle='-.', label='runtime, crowdGPPL',
+        h2, = ax1.plot(x_gppl, runtimes_both[nsteps:], marker='<', color='green', linestyle='-.', label='runtime, crowdGPPL',
                        linewidth=2, markersize=8)
 
-        ax1.fill_between(x_gppl, runtimes_both_lq[7:], runtimes_both_uq[7:], alpha=0.2, edgecolor='green',
+        ax1.fill_between(x_gppl, runtimes_both_lq[nsteps:], runtimes_both_uq[nsteps:], alpha=0.2, edgecolor='green',
                          facecolor='green')
 
         ax1.set_ylabel('Runtime (s)')
         plt.xlabel('No. %s' % xstring)
         ax1.grid('on', axis='y')
-        ax1.spines['left'].set_color('blue')
-        ax1.tick_params('y', colors='blue')
-        ax1.yaxis.label.set_color('blue')
+        ax1.spines['left'].set_color('black')
+        ax1.tick_params('y', colors='black')
+        ax1.yaxis.label.set_color('black')
+        plt.yticks([0, 100, 200, 300])
+        plt.ylim((0,370))
 
-        if which_leg == 'runtimes':
-            leg = plt.legend(loc='best')
+        #if which_leg == 'runtimes':
+        #leg = plt.legend(bbox_to_anchor=(-1.5, 1), loc='upper left', ncol=1)
 
         ax1_2 = ax1.twinx()
-        h3, = ax1_2.plot(x_gppl, acc_both[0:7], color='black', marker='x', label='acc., GPPL',
+        h3, = ax1_2.plot(x_gppl, acc_both[0:nsteps], color='red', marker='x', label='GPPL',
                          linewidth=2, markersize=8)
-        h4, = ax1_2.plot(x_gppl, acc_both[7:], color='black', linestyle='--', marker='>', label='acc., crowdGPPL',
+        h4, = ax1_2.plot(x_gppl, acc_both[nsteps:], color='red', linestyle='--', marker='>', label='crowdGPPL',
                          linewidth=2, markersize=8)
+
+        ax1_2.spines['right'].set_color('red')
+        ax1_2.tick_params('y', colors='red')
+        ax1_2.yaxis.label.set_color('red')
 
         ax1_2.set_ylabel('Accuracy')
-        plt.yticks([0.6, 0.65, 0.70, 0.75])
+        plt.yticks([0.6, 0.70, 0.80])
+        plt.ylim((0.6, 0.85))
 
         if which_leg == 'accuracy':
-            leg = plt.legend(loc='best')#handles=[h1, h2], loc='lower right')
+            leg = plt.legend(loc='upper right', bbox_to_anchor=(1, 0.8), ncol=1)
 
         plt.tight_layout()
+
         plt.savefig(figure_save_path + '/%s.pdf' % filename)
 
 

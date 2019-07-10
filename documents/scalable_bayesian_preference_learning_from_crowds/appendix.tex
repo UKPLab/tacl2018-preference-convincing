@@ -36,7 +36,7 @@ Writing out the expectations in terms of the variational parameters, we get:
 % - N \ln 2\pi 
 - \ln |\bs C| - N
  \right\}  \nonumber \\
- & - \Gamma(\alpha_0) + \alpha_0(\ln \beta_0) + (\alpha_0-\alpha)\mathbb{E}[\ln s] + \Gamma(\alpha) + (\beta-\beta_0) \mathbb{E}[s] - \alpha \ln \beta. \\
+ & - \Gamma(\alpha_0) + \alpha_0(\ln \beta_0) + (\alpha_0-\alpha)\mathbb{E}[\ln s] + \Gamma(\alpha) + (\beta-\beta_0) \mathbb{E}[s] - \alpha \ln \beta. 
 \end{flalign}
 The expectation over the likelihood can be computed using numerical integration. 
 %I can no longer follow this... I think that the expectation containing Phi(z) looks dodgy as there should be a term
@@ -102,6 +102,9 @@ where the terms relating to $\mathbb{E}[p(\bs f | \bs f_m) - q(\bs f)]$ cancel.
 % \bs S^{-1} &= \bs K^{-1}_{mm}/\mathbb{E}[s] + \bs A^T \bs G^T \bs Q^{-1} \bs G \bs A, \label{eq:S}\\
 % \hat{\bs f}_m &= \bs S \bs A^T \bs G^T \bs Q^{-1} (\bs y - \Phi(\mathbb{E}[\bs z]) + \bs G \mathbb{E}[\bs f] ). %\label{eq:fhat_m}
 % \end{flalign}
+\section{Variational Lower Bound for crowdGPPL}
+\label{sec:crowdL}
+
 For crowdGPPL, our approximate variational lower bound is:
 \begin{flalign}
 \mathcal{L}_{cr} & = \label{eq:lowerbound_crowd_full}
@@ -166,7 +169,7 @@ For crowdGPPL, our approximate variational lower bound is:
 
 For the latent item components, the posterior precision estimate for $\bs S^{-1}_{v,c}$ at iteration $i$ is given by:
 \begin{flalign}
-\left(  \bs S^{(v)}_{c,i}  \right)^{\!-1} \!\!\! = (1-\rho_i) \left( \! \bs S^{(v)}_{c,i-1} \! \right)^{\!-1} 
+\left(  \bs S^{(v)}_{c,i}  \right)^{\!-1} \!\!\! = (1-\rho_i) \left(  \bs S^{(v)}_{c,i-1} \right)^{\!-1} 
 \!\! + \rho_i \bs K^{-1}_{mm}\mathbb{E}\left[ s^{(v)}_c \right] \!
 + \rho_i\pi_i \bs A_{i}^T \bs G_i^T \textrm{diag}\left(\hat{\bs w}_{c,\bs u}^2 \! + \bs\Sigma_{c,\bs u,\bs u} \right) 
 \bs Q_i^{-1} \bs G_i \bs A_{i}
@@ -184,26 +187,26 @@ We use $\bs S_{v,c}^{-1}$ to compute the means for each row of $\bs V_m$:
 \hat{\bs v}_{m,c,i} = & \; \bs S^{(v)}_{c,i}\left( 
 (1-\rho_i) \left( \bs S^{(v)}_{c,i-1} \right)^{-1} \hat{\bs v}_{m,c,i-1} \right.& \label{eq:hatv} \\
 & \left.
-+ \rho_i \pi_i \Big(
++ \rho_i \pi_i 
 \bs S^{(v)}_{c,i} \bs A_{i}^T \bs G_i^T \textrm{diag}(\hat{\bs w}_{c,\bs u}) \bs Q_i^{-1} \right. 
- (\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \mathrm{diag}(\hat{\bs w}_{c,\bs u}) \bs G_i \bs A_i \hat{\bs v}_{c,m,i-1}^T) \Big) \bigg). &\nonumber
+ \left(\bs y_i - \Phi(\hat{\bs z}_i) + \mathrm{diag}(\hat{\bs w}_{c,\bs u}) \bs G_i \bs A_i \hat{\bs v}_{c,m,i-1}^T\right) \bigg). &\nonumber
 \end{flalign}
 
 For the consensus, the precision and mean are updated according to the following:
 %This is needed to replace $\bs G$ in the single-user model, since the vector of utilities,
 %$\bs f$, has been replaced by the matrix $\bs F$, where each column of $\bs F$ corresponds to a single user.
 \begin{flalign}
-\left( \bs S^{(t)}_i \right)^{-1} = \;\;& (1-\rho_i) \left( \bs S^{(t)}_{i-1} \right) + \rho_i\bs K^{-1}_{mm}\mathbb{E}\left[s^{(t)}\right] 
+\left( \bs S^{(t)}_i \right)^{-1} = & \; (1-\rho_i) \left( \bs S^{(t)}_{i-1} \right) + \rho_i\bs K^{-1}_{mm}\mathbb{E}\left[s^{(t)}\right] 
 + \rho_i \pi_i \bs A_{i}^T \bs G_i^T \bs Q_i^{-1} \bs G_i \bs A_{i} & \label{eq:St}\\
-\hat{\bs t}_{m,i} = \;\;& \bs S^{(t)}_{i}\left(
+\hat{\bs t}_{m,i} = & \; \bs S^{(t)}_{i}\left(
 (1 - \rho_i) \left( \bs S^{(t)}_{i-1} \right)^{-1}\hat{\bs t}_{m,i-1}  
  + \rho_i \pi_i \bs A_{i}^T \bs G_i^T \bs Q_i^{-1}
-\left(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \bs G_i \bs A_{i} \hat{\bs t}_{i} \right) \right). & \label{eq:hatt}
+\left(\bs y_i - \Phi(\hat{\bs z}_i) + \bs G_i \bs A_{i} \hat{\bs t}_{i} \right) \right). & \label{eq:hatt}
 \end{flalign}
 
 For the latent user components, the SVI updates for the parameters are:
 \begin{flalign}
-\bs \Sigma^{-1}_{c,i} = \; & (1-\rho_i)\bs \Sigma^{-1}_{c,i-1}
+\bs \Sigma^{-1}_{c,i} = & \; (1-\rho_i)\bs \Sigma^{-1}_{c,i-1}
 + \rho_i\bs L^{-1}_{mm} \mathbb{E} \left[ s_c^{(w)} \right]
 + \rho_i \pi_i \bs A_{w,i}^T 
 & \label{eq:Sigma} \\
@@ -214,18 +217,18 @@ For the latent user components, the SVI updates for the parameters are:
 - 2\hat{\bs v}_{c,\bs a}\hat{\bs v}_{c,\bs b} - 2\bs S^{(v)}_{c,\bs a, \bs b} \right) \bs Q_i^{-1} 
 \bs H_i \bigg) \bs A_{w,i} & \nonumber \\
 %%%%
-\hat{\bs w}_{m,c,i} = \; & 
+\hat{\bs w}_{m,c,i} = &\; 
 \bs \Sigma_{c,i} \bigg( (1 - \rho_i)\bs \Sigma_{c,i-1}\hat{\bs w}_{m,c,i-1} 
 + \rho_i \pi_i \bs A_{w,i}^T \bs H_i^T \textrm{diag}(\hat{\bs v}_{c,\bs a} - \hat{\bs v}_{c,\bs b})
 \bs Q_i^{-1} 
 & \label{eq:what} \\
-& \Big(\bs y_i - \Phi(\mathbb{E}[\bs z_i]) + \textrm{diag}(\hat{\bs v}_{c,\bs a} - \hat{\bs v}_{c,\bs b}) \bs H^{(i)}_u \hat{\bs w}_{c,m,i-1}^T\Big) \bigg), & \nonumber
+& \Big(\bs y_i - \Phi(\hat{\bs z}_i) + \textrm{diag}(\hat{\bs v}_{c,\bs a} - \hat{\bs v}_{c,\bs b}) \bs H^{(i)}_u \hat{\bs w}_{c,m,i-1}^T\Big) \bigg), & \nonumber
 \end{flalign}
 where the subscripts $\bs a = \{ a_p \forall p \in P_i \}$
 and  $\bs b = \{b_p \forall p \in P_i \}$ are lists of indices to the first and 
 second items in the pairs, respectively,
 $\bs A_{w,i} = \bs L_{im} \bs L_{mm}^{-1}$,
-and $\bs H_i \in U_i \times P_i$ indicates which pairs correspond to which user ($U_i$ is the
+and $\bs H_i \in U_i \times P_i$ contains partial derivatives of the likelihood corresponding to each user ($U_i$ is the
 number of users referred to by pairs in $\bs P_i$), 
 with elements given by:
 \begin{flalign}
@@ -283,15 +286,15 @@ posterior over $\bs F^*$ at test points \;
 The means, item covariances and user variance required for predictions with crowdGPPL (Equation \ref{eq:predict_crowd})
  are defined as follows:
 \begin{flalign}
-\hat{\bs t}^* = \bs K_{*m} \bs K^{-1}_{mm} \hat{\bs t}_{m}, \hspace{1cm} 
-& \bs C^{(t)*} \!= \frac{\bs K_{**}}{\mathbb{E}\left[s^{(t)}\right]} + \bs A_{*m}\left(\bs S^{(t)} \!-\! \bs K_{mm}\right) 
+\hat{\bs t}^* & = \bs K_{*m} \bs K^{-1}_{mm} \hat{\bs t}_{m}, \hspace{1.5cm} 
+\bs C^{(t)*}* = \frac{\bs K_{**}}{\mathbb{E}\left[s^{(t)}\right]} + \bs A_{*m}\left(\bs S^{(t)} \!-\! \bs K_{mm}\right) 
 \bs A_{*m}^T, 
 \label{eq:tstar} & \\
-\hat{\bs v}_{c}^* = \bs K_{*m} \bs K^{-1}_{mm} \hat{\bs v}_{m,c}, \hspace{1cm} 
-& \bs C^{(v)*}_{c} \!= \frac{\bs K_{**}}{\mathbb{E}\left[s^{(v)}_c\right ]} + \bs A_{*m} \left(\bs S^{(v)}_{c} 
+\hat{\bs v}_{c}^* & = \bs K_{*m} \bs K^{-1}_{mm} \hat{\bs v}_{m,c}, \hspace{1.35cm} 
+\bs C^{(v)*}_{c} = \frac{\bs K_{**}}{\mathbb{E}\left[s^{(v)}_c\right ]} + \bs A_{*m} \left(\bs S^{(v)}_{c} 
 \!\!-\! \bs K_{mm} \right) \bs A_{*m}^T  & \\
-\hat{\bs w}_{c}^* = \bs L_{*m} \bs L^{-1}_{mm} \hat{\bs w}_{m,c}, \hspace{1cm}
-& \omega_{c,u}^* = 1/ \mathbb{E}\left[s^{(w)}_c \right] + \bs A^{(w)}_{um}(\bs \Sigma_{w,c} - \bs L_{mm}) \bs A^{(w)T}_{um} & \label{eq:omegastar}
+\hat{\bs w}_{c}^* & = \bs L_{*m} \bs L^{-1}_{mm} \hat{\bs w}_{m,c}, \hspace{1.4cm}
+\omega_{c,u}^* = 1/ \mathbb{E}\left[s^{(w)}_c \right] + \bs A^{(w)}_{um}(\bs \Sigma_{w,c} - \bs L_{mm}) \bs A^{(w)T}_{um} & \label{eq:omegastar}
 \end{flalign}
 where  $\bs A_{*m}=\bs K_{*m}\bs K_{mm}^{-1}$,
 $\bs A^{(w)}_{um}=\bs L_{um}\bs L_{mm}^{-1}$ and $\bs L_{um}$ is the covariance between user $u$ and the inducing 
@@ -532,7 +535,7 @@ users.
  $\bs K_{nm}$ & prior covariance between training and inducing items \\
  $\bs S$ & posterior covariance of the inducing items; in crowdGPPL, a superscript and subscript 
  indicate which variable this is the posterior covariance for \\
- $\bs \Sigma$ & posterior covariance over the latent user components \\
+ $\bs\Sigma$ & posterior covariance over the latent user components \\
  $\bs A$ & $\bs K_{nm} \bs K_{mm}^{-1}$ \\
  $\bs G$ & linearisation term used to approximate the likelihood \\
  $a$ & posterior shape parameter for the Gamma distribution over $s$ \\
