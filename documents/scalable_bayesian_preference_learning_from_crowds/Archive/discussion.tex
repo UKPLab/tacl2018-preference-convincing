@@ -1,0 +1,37 @@
+\section{Conclusions}\label{sec:conclusion}
+
+We proposed a novel Bayesian preference learning approach 
+for modelling both the preferences of individuals 
+and the overall consensus of a crowd. 
+Our model learns the latent utilities of items from pairwise comparisons 
+using a combination of Gaussian processes and Bayesian matrix factorisation 
+to capture differences in  opinion.
+We introduce a stochastic variational inference (SVI) method, that, 
+unlike previous work, can scale to arbitrarily large datasets,
+since its time and memory complexity do not grow with the dataset size.
+Our experiments confirm the method's scalability and
+ show that jointly modelling the consensus and personal
+preferences can improve predictions of both.
+Our approach performs competitively
+against less scalable alternatives
+%despite the approximations required for SVI.
+and improves on 
+the previous state of the art
+for predicting argument convincingness from crowdsourced data~\citep{simpson2018finding}.
+%far better than previous
+%Gaussian process preference learning methods 
+%without harming  
+%performance on individual utility prediction and significantly improving performance
+%on consensus learning.
+
+Future work will investigate learning inducing point locations and
+optimising length-scale hyperparameters by maximising $\mathcal L$ as part of the variational inference method.
+Another important direction will be to generalise the likelihood from pairwise comparisons
+to comparisons involving $k$ items~\citep{pan2018stagewise}
+or best--worst scaling~\citep{kiritchenko2017best}
+to provide scalable Bayesian methods for other forms of comparative preference data.
+%and investigate the possibility of integrating deep generative models 
+%for learning feature representations from input data.
+%the models can readily be adapted to regression or classification tasks by swapping out the preference likelihood, resulting in 
+%different values for $\bs G$ and $\bs H$.
+% Preference elicitation using information theoretic methods.
