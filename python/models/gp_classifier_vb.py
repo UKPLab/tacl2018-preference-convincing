@@ -2,6 +2,7 @@
 
 import numpy as np
 from scipy.linalg import cholesky, solve_triangular
+from scipy.optimize._constraints import Bounds
 from scipy.sparse import coo_matrix, issparse
 from scipy.optimize import minimize
 from scipy.special import gammaln, psi, binom
@@ -563,8 +564,8 @@ class GPClassifierVB(object):
         ravelled_coords = coord_arr_to_1d(obs_coords)
         uravelled_coords, origidxs, idxs = np.unique(ravelled_coords, return_index=True, return_inverse=True)
 
-        grid_obs_counts = coo_matrix((totals, (idxs, np.ones(n_obs)))).toarray()
-        grid_obs_pos_counts = coo_matrix((poscounts, (idxs, np.ones(n_obs)))).toarray()
+        grid_obs_counts = coo_matrix((totals, (idxs, np.ones(n_obs, dtype=int)))).toarray()
+        grid_obs_pos_counts = coo_matrix((poscounts, (idxs, np.ones(n_obs, dtype=int)))).toarray()
         nonzero_idxs = grid_obs_counts.nonzero()[0]  # ravelled coordinates with duplicates removed
         uravelled_coords_nonzero = uravelled_coords[nonzero_idxs]
         origidxs_nonzero = origidxs[nonzero_idxs]
@@ -716,6 +717,10 @@ class GPClassifierVB(object):
             secondterm = [np.sum(secondterm)]
 
         gradient = 0.5 * (firstterm - secondterm)
+
+        # since we pass in the ln(lengthscale), we need to multiply by d l / d ln l = l
+        gradient *= self.ls
+
         return np.array(gradient)
 
     def ln_modelprior(self):
@@ -991,8 +996,9 @@ class GPClassifierVB(object):
             logging.debug("Initial length-scale guess in restart %i: %s" % (r, self.ls))
 
             res = minimize(self.neg_marginal_likelihood, self.initialguess,
-                           args=(-1, use_MAP,), jac=self.nml_jacobian, method='L-BFGS-B',
-                           options={'maxfun': maxfun, 'maxiter' : maxfun, 'ftol' : 1e-3, 'gtol': 10 ** (- self.ninput_features - 1)})
+               args=(-1, use_MAP,), jac=self.nml_jacobian, method='L-BFGS-B',
+               bounds=Bounds(np.log(1e-3*self.ls), np.log(1e3*self.ls)),
+               options={'maxfun':maxfun, 'maxiter':maxfun, 'gtol':10**(-self.ninput_features - 1), 'disp':True})
 
             opt_hyperparams = res['x']
             nlml = res['fun']
