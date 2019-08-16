@@ -66,7 +66,7 @@ import numpy as np
 import pandas as pd
     
 ndebug_features = 10
-verbose = True
+verbose = False
     
 # Lengthscale initialisation -------------------------------------------------------------------------------------------
 # use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.
@@ -1109,12 +1109,13 @@ class TestRunner:
                     print("Accuracy for fold = %f" % acc)
                     print('CEE = %f' % CEE)
 
+                tau = 0
+                tau_40 = 0
+
                 if predicted_f is not None and predicted_f.size == scores_rank_test.size:
                     # print out the pearson correlation
 
                     if person_rank_test is not None and len(person_rank_test):
-                        tau = []
-                        tau_40 = []
                         for upeep in np.unique(person_rank_test):
                             idxs = person_rank_test == upeep
 
@@ -1152,9 +1153,11 @@ class TestRunner:
                     tr_acc = 0
                     tr_cee = 0
 
+                tr_tau = 0
+                tr_tau_40 = 0
+
                 if tr_f is not None:
-                    tr_tau = []
-                    tr_tau_40 = []
+
                     for upeep in np.unique(person_rank_train):
                         idxs = person_rank_train == upeep
 
@@ -1176,8 +1179,6 @@ class TestRunner:
 
                 else:
                     tr_tau = 0
-
-
 
                 # Save the data for later analysis ----------------------------------------------------------------------------
                 if hasattr(self.model, 'ls'):
@@ -1284,20 +1285,20 @@ class TestRunner:
 if __name__ == '__main__':
     dataset_increment = 0
 
-    datasets = ['UKPConvArgCrowdSample_evalMACE']
-    methods = ['dummy']
-    feature_types = ['both']
-    embeddings_types = ['word_mean']
-
-    runner = TestRunner('personalised', datasets, feature_types, embeddings_types, methods,
-                            dataset_increment)
-    runner.run_test_set(min_no_folds=0, max_no_folds=32)
-
-    # datasets = ['UKPConvArgStrict']
-    # methods = ['SinglePrefGP_weaksprior']
+    # datasets = ['UKPConvArgCrowdSample_evalMACE']
+    # methods = ['dummy']
     # feature_types = ['both']
     # embeddings_types = ['word_mean']
     #
-    # runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods,
+    # runner = TestRunner('personalised', datasets, feature_types, embeddings_types, methods,
     #                         dataset_increment)
     # runner.run_test_set(min_no_folds=0, max_no_folds=32)
+
+    datasets = ['UKPConvArgStrict']
+    methods = ['SinglePrefGP_weaksprior_noOpt']
+    feature_types = ['both']
+    embeddings_types = ['word_mean']
+
+    runner = TestRunner('crowdsourcing_argumentation_expts_debug', datasets, feature_types, embeddings_types, methods,
+                            dataset_increment)
+    runner.run_test_set(min_no_folds=9, max_no_folds=32)

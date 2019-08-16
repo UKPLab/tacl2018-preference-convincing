@@ -3,7 +3,7 @@
 import numpy as np
 from scipy.linalg import cholesky, solve_triangular
 from scipy.sparse import coo_matrix, issparse
-from scipy.optimize import minimize
+from scipy.optimize import minimize, Bounds
 from scipy.spatial.distance import pdist, cdist, squareform
 from scipy.special import gammaln, psi, binom
 from scipy.stats import gamma
@@ -1043,14 +1043,15 @@ class GPClassifierVB(object):
                 self.initialguess = self.initialguess[0]
             logging.debug("Initial length-scale guess in restart %i: %s" % (r, self.ls))
 
-            res = minimize(self.neg_marginal_likelihood, self.initialguess,
-                           args=(-1, use_MAP,), method='Nelder-Mead',
-                           options={'maxiter': maxfun, 'fatol': 1e-3,
-                                    'xatol': 1e6})
-
             # res = minimize(self.neg_marginal_likelihood, self.initialguess,
-            #                args=(-1, use_MAP,), jac=self.nml_jacobian, method='L-BFGS-B',
-            #                options={'maxfun': maxfun, 'maxiter' : maxfun, 'ftol' : 1e-3, 'gtol': 10 ** (- self.ninput_features - 1)})
+            #                args=(-1, use_MAP,), method='Nelder-Mead',
+            #                options={'maxiter':maxfun, 'fatol':1,
+            #                         'xatol':1e6, 'disp':True})
+
+            res = minimize(self.neg_marginal_likelihood, self.initialguess,
+                           args=(-1, use_MAP,), jac=self.nml_jacobian, method='L-BFGS-B',
+                           bounds=Bounds(np.log(1e-3*self.ls), np.log(1e3*self.ls)),
+                           options={'maxfun':maxfun, 'maxiter':maxfun, 'gtol':10**(-self.ninput_features), 'disp':True})
 
             opt_hyperparams = res['x']
             nlml = res['fun']

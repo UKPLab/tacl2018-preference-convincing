@@ -310,6 +310,8 @@ class GPClassifierSVI(GPClassifierVB):
                     common_term, self.ls[0], self.inducing_coords[:, dim:dim + 1], self.s)
                 for dim in dims)
 
+        gradient *= self.ls
+
         if self.n_lengthscales == 1:
             # sum the partial derivatives over all the dimensions
             gradient = [np.sum(gradient)]
