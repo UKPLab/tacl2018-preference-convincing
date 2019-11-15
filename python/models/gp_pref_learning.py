@@ -309,14 +309,13 @@ class GPPrefLearning(GPClassifierSVI):
         phi, g_mean_f = self.forward_model(f, return_g_f=True) # first order Taylor series approximation
         J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * np.sqrt(0.5)
 
-        obs_idxs = np.arange(self.n_locs)[None, :]
-
         if data_idx_i is not None and hasattr(self, 'data_obs_idx_i') and len(self.data_obs_idx_i):
-            obs_idxs = obs_idxs[:, data_idx_i]
+            obs_idxs = data_idx_i[None, :]
             J = J[self.data_obs_idx_i, :]
             s = (self.pref_v[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int) -\
                                                     (self.pref_u[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int)
         else:
+            obs_idxs = np.arange(self.n_locs)[None, :]
             s = (self.pref_v[:, np.newaxis]==obs_idxs).astype(int) - (self.pref_u[:, np.newaxis]==obs_idxs).astype(int)
 
         J = J * s
