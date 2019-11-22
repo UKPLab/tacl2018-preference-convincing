@@ -3,6 +3,8 @@ Created on 18 May 2016
 
 @author: simpson
 '''
+from typing import re
+
 import numpy as np
 from scipy.stats import norm, multivariate_normal as mvn
 from scipy.sparse import coo_matrix, issparse, hstack
@@ -410,6 +412,7 @@ class GPPrefLearning(GPClassifierSVI):
         super(GPPrefLearning, self)._update_sample_idxs()
         self.data_idx_i = np.unique([self.pref_v[self.data_obs_idx_i], self.pref_u[self.data_obs_idx_i]])
 
+
     # Prediction methods ---------------------------------------------------------------------------------------------
     def predict(self, out_feats=None, item_0_idxs=None, item_1_idxs=None, K_star=None, K_starstar=None,
                 expectedlog=False, mu0_out=None, reuse_output_kernel=False, return_var=True):
@@ -482,6 +485,7 @@ class GPPrefLearning(GPClassifierSVI):
         # to take care of the variance in f. However, I think we have dropped it because computing C is expensive???
 
         return logrho, lognotrho
+
 
     def _post_sample(self, f_mean, f_var=None, expectedlog=False, K_star=None, v=None, u=None):
 

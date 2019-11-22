@@ -383,13 +383,8 @@ class GPClassifierSVI(GPClassifierVB):
         #                                              overwrite_b=True)
         self.um_minus_mu0 = self.uS.dot(self.u_invSm)
 
-        if self.covpair is None:
-            if self.cov_type == 'diagonal':
-                self.covpair = 1.0
-            else:
-                self.covpair = scipy.linalg.solve(self.Ks_mm, self.Ks_nm.T).T
-
-        self.obs_f, self.obs_v = self._f_given_u(self.covpair, self.mu0, 1.0 / self.s, full_cov=False)
+        self.obs_f[self.data_idx_i], self.obs_v[self.data_idx_i] = self._f_given_u(
+            self.covpair[self.data_idx_i, :], self.mu0[self.data_idx_i], 1.0 / self.s, full_cov=False)
 
 
     def _f_given_u(self, covpair, mu0, Ks_nn=None, full_cov=True):
@@ -471,6 +466,15 @@ class GPClassifierSVI(GPClassifierVB):
         self.prev_u_Lambda = self.u_Lambda
 
         self._update_sample_idxs()
+
+        if self.covpair is None:
+            if self.cov_type == 'diagonal':
+                self.covpair = 1.0
+            else:
+                self.covpair = scipy.linalg.solve(self.Ks_mm, self.Ks_nm.T).T
+
+        self.obs_f[self.data_idx_i], self.obs_v[self.data_idx_i] = \
+            self._f_given_u(self.covpair[self.data_idx_i, :], self.mu0[self.data_idx_i], 1.0 / self.s, full_cov=False)
 
         self.Ks_mm = self.K_mm / self.s
         self.invKs_mm = self.invK_mm * self.s
