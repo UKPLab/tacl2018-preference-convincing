@@ -70,9 +70,9 @@ stochastic variational inference (SVI)~\citep{hoffman2013stochastic}.
 %this allows us to reduce 
 For GPPL, this reduces the time complexity of each iteration %of the algorithm 
 %from $\mathcal{O}(NM^2)$ 
-to $\mathcal{O}(P_i M^2 + Pi^2 M + M^3)$,
+to $\mathcal{O}(P_i M^2 + P_i^2 M + M^3)$,
 and memory complexity %from $\mathcal{O}(NM)$ 
-to $\mathcal{O}(P_i M + M^2  + Pi^2)$,
+to $\mathcal{O}(P_i M + M^2  + P_i^2)$,
 where $P_i$ is a mini-batch size that we choose in advance.
 Neither $P_i$ nor $M$ are dependent on the size of the dataset, meaning that SVI 
 can be run with arbitrarily large datasets, 
@@ -98,7 +98,8 @@ p(\bs f | \bs y, s) & \propto \prod_{p=1}^P p\left(y_p | z_p\right) p\left(\bs f
 \mathcal{N}\left(\bs f; \bs 0, \bs K/s\right)
  = \mathcal{N}\left(\bs y; \Phi(\bs z), \bs Q\right) \mathcal{N}\left(\bs f; \bs 0, \bs K/s\right), &\nonumber 
 \end{flalign}
-where $\bs Q$ is a diagonal noise covariance matrix.
+where $\bs Q$ is a diagonal noise covariance matrix
+and we omit the kernel hyperparameters, $\theta$, to simplify notation.
 For crowdGPPL, we use the same approximation to the likelihood, but
 replace $\bs f$ with $\bs F$.
 % and the priors over $\bs v$, $\bs t$ and $\bs w$
@@ -117,7 +118,7 @@ by moment matching our approximate likelihood with $\Phi(z_p)$,
 which defines a Bernoulli distribution with variance $Q_{p,p} = \Phi(z_p)(1 - \Phi(z_p))$.
 However, this means that $\bs Q$ % the variance of the approximate likelihood
 depends on $\bs z$ and therefore on $\bs f$,
-so the posterior remains intractable.
+so the approximate posterior over $\bs f$ cannot be computed in closed form.
 To resolve this, we approximate $Q_{p,p}$ 
 using an estimated posterior over $\Phi(z_p)$ computed
 independently for each pairwise label, $p$.
@@ -128,10 +129,10 @@ We obtain this estimate
  which is
 a beta distribution with parameters $\gamma$ and $\lambda$.
 We find $\gamma$ and $\lambda$ by 
-matching the moments of the beta prior to the mean and variance of $\Phi(z_p)$
-defined by the Gaussian process prior, 
-$p(\Phi(z_p) | \bs K_{\theta}, \alpha_0, \beta_0)$,  
-estimated using numerical integration. 
+matching the moments of the beta prior to the prior mean and variance of $\Phi(z_p)$,
+estimated using numerical integration.
+The prior over $\Phi(z_p)$ is defined by a GP for single-user GPPL, $p(\Phi(z_p) | \bs K, \alpha_0, \beta_0)$,
+and a non-standard distribution for crowdGPPL. 
 %Assuming a beta prior over $\Phi(z_p)$ means that $y_p$ has a beta-Bernoulli
 %distribution. 
 Given the observed label $y_p$, we estimate the diagonals in $\bs Q$
@@ -139,6 +140,8 @@ as the variance of the posterior beta-Bernoulli:
 \begin{flalign}
 Q_{p,p} & \approx \frac{ (\gamma + y_p)(\lambda + 1 - y_p) }{(\gamma + \lambda + 1)^2}. &
 \end{flalign}
+The covariance $\bs Q$ therefore approximates the expected noise in the observations, 
+hence captures variance due to $\sigma$ in Equation \ref{eq:plphi}.
 This approximation performs well empirically
 for Gaussian process classification~\citep{reece2011determining,simpson2017bayesian} and 
 classification using extended Kalman filters~\citep{lee2010sequential,lowne2010sequential}. 
@@ -150,7 +153,7 @@ about the expectation $\mathbb{E}[\bs f] = \hat{\bs f}$:
 \begin{flalign}
 \Phi(\bs z) &\approx \tilde{\Phi}(\bs z) = \bs G \left(\bs f-\hat{\bs f}\right) 
 + \Phi(\hat{\bs z}), & \\
-G_{p,i} &= \frac{\partial \Phi(\hat{z_p})} {\partial f_i}
+G_{p,i} &= \frac{\partial \Phi(\hat{z}_p)} {\partial f_i}
 = \Phi(\hat{z}_p)\left(1 - \Phi(\hat{z}_p)\right) \left(2y_p - 1\right)\left( [i = a_p] - [i = b_p]\right), &
 \end{flalign}
 %where $\bs G$ is a matrix whose elements 
@@ -158,7 +161,8 @@ G_{p,i} &= \frac{\partial \Phi(\hat{z_p})} {\partial f_i}
 %are the partial derivatives of $\Phi(\hat{z_p})$ %the pairwise likelihood 
 %with respect to $f_i$.
 %of the latent function values, $\bs f$.
-where $\hat{\bs z}$ is the expectation of $\bs z$ computed using Equation \ref{eq:predict_z}.
+where $\hat{\bs z}$ is the expectation of $\bs z$ computed using Equation \ref{eq:predict_z},
+and $[i=a]=1$ if $i=a$ and is $0$ otherwise. 
 There is a circular dependency between $\hat{\bs f}$,
 which is needed to compute $\hat{\bs z}$, and $\bs G$. %the linearization terms in the likelihood,
 We estimate these terms using a variational inference procedure
@@ -432,12 +436,13 @@ $\mathcal{O}(CM_{\mathrm{items}}^2 + P_i^2 + M_{\mathrm{items}} P_i + CM_{\mathr
 %
 The variational factor for the $c$th inducing item component is:
 \begin{flalign}
-\ln q(\bs v_{m,c})  = & 
-\ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right) % \right] 
+\ln q(\bs v_{m,c})  & =  
+\mathbb{E}_{q(\bs t, \bs w_{m,c'}\forall c', \bs v_{m,c'}\forall c'\backslash c) }\left[
+\ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right) \right] 
 + \ln\mathcal{N}\left(\bs v_{\!m,c}; \bs 0, \frac{\bs K_{mm}}{\mathbb{E}[s^{(v)}_c]}\right) 
-+ \textrm{const} %& \nonumber \\
+ +  \textrm{const} & \nonumber \\
 % are the dimensions collapsed to a single MVN?
-= \! \ln \mathcal{N}\left(\bs v_{\!m,c}; \hat{\bs v}_{\!m,c}, \bs S_c^{(v)} \right)\!, &
+& = \ln \mathcal{N}\left(\bs v_{m,c}; \hat{\bs v}_{m,c}, \bs S_c^{(v)} \right), &
 \end{flalign}
 where posterior mean $\hat{\bs v}_{m,c}$ and covariance $\bs S_c^{(v)}$ are computed using 
 equations of the same form as % those of the single user GPPL in 
@@ -446,11 +451,13 @@ Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}, except $\bs Q^{-1}
 and $\hat{\bs f}_{m,i}$ is replaced by $\hat{\bs v}_{m,c,i}$.
 The factor for the inducing points of $\bs t$ follows a similar pattern to $\bs v_{m,c}$:
 \begin{flalign}
-\ln q(\bs t_m) & = %\mathbb{E}_{q(\bs F)}[
-\ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right) %] 
-+ \ln\mathcal{N}\left( \! \bs t_m; \bs 0, \frac{\bs K_{mm}}{\mathbb{E}[s^{(t)}]} \! \right)
-\!+\! \textrm{const} %& \nonumber \\
-= \ln \mathcal{N}\left( \bs t_m; \hat{\bs t}_{m}, \bs S^{(t)} \right), & 
+\ln q(\bs t_m) & = 
+\mathbb{E}_{q(\bs w_{m,c'}\forall c', \bs v_{m,c'}\forall c')}\left[
+\ln \mathcal{N}\left( \bs y; \tilde{\Phi}(\bs z), Q \right) 
+\right]
++ \ln\mathcal{N}\left( \bs t_m; \bs 0, \frac{\bs K_{mm}}{\mathbb{E}[s^{(t)}]} \right)
++ \textrm{const} & \nonumber \\
+& = \ln \mathcal{N}\left( \bs t_m; \hat{\bs t}_{m}, \bs S^{(t)} \right), & 
 \end{flalign}
 where the equations for $\hat{\bs t}$ and $\bs S^{(t)}$ 
 are the same as Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic}, 
@@ -464,11 +471,12 @@ Finally, %require a different linearization matrix, $\bs J \in P \times U$, cont
 %now multiply by V. What about covariances between v?
 the variational distribution for each inducing user's component is:% then as follows:
 \begin{flalign}
-\ln q(\bs w_{\! m,c} )  = & %\mathbb{E}_{q(\bs F)}\left[
-\ln \mathcal{N}\! \left( \bs y; \tilde{\Phi}(\bs z), Q \right) %\right] 
+\ln q(\bs w_{\! m,c} )  = & 
+\mathbb{E}_{q(\bs t,\bs w_{m,c'}\forall c'\backslash c, \bs v_{m,c'}\forall c')}\left[
+\ln \mathcal{N}\! \left( \bs y; \tilde{\Phi}(\bs z), Q \right) \right] 
 + \ln\mathcal{N}\!\left(\bs w_{\! m,c}; \bs 0, \frac{\bs L_{mm}}{\mathbb{E}[s^{(w)}_c]} \right)
-+ \textrm{const} % & \nonumber \\
-= \ln \mathcal{N}\!\left( \bs w_{\! m,c}; \hat{\bs w}_{\!m,c}, \bs \Sigma_c \right)\!, & 
++ \textrm{const} & \nonumber \\
+& = \ln \mathcal{N}\left( \bs w_{m,c}; \hat{\bs w}_{\!m,c}, \bs \Sigma_c \right), & 
 \end{flalign}
 where $\hat{\bs w}_c$ and $\bs \Sigma_{c}$ also follow the pattern of
 Equations \ref{eq:S_stochastic} and \ref{eq:fhat_stochastic},

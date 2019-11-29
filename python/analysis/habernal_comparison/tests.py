@@ -45,9 +45,6 @@ sys.path.append("./python/models")
 sys.path.append("./python/analysis/habernal_comparison")
 svm_python_path = '~/libsvm-3.22/python'
 
-sys.path.append(os.path.expanduser("~/git/HeatMapBCC/python"))
-sys.path.append(os.path.expanduser("~/git/pyIBCC/python"))
-
 sys.path.append(os.path.expanduser("~/data/personalised_argumentation/embeddings/skip-thoughts"))
 sys.path.append(os.path.expanduser("~/data/personalised_argumentation/embeddings/Siamese-CBOW/siamese-cbow"))
 

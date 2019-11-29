@@ -4,26 +4,31 @@
 \centering
 \small
  \setlength{\tabcolsep}{4pt}
-\begin{tabular}{l l l l@{\hskip 0.3cm} l@{\hskip 0.3cm} l l@{\hskip 0.3cm} l l }
+\begin{tabular}{l l l l l l l l l }
 \toprule
-Dataset & \#folds/ & \#users & \#items & train & test & test & \multicolumn{2}{l}{\#features} \\
-              & samples &              &               & \#pairs  & \#pairs & \#scores          & items & users \\
+Dataset & \#folds/ & \#users & total & training set & \multicolumn{2}{c}{test set} & \multicolumn{2}{c}{\#features} \\
+              & samples &              & \#items & \#pairs  & \#pairs & \#items
+               & items & users \\
 \midrule
 Simulation a and b & 25 & 25 & 100 & 900 & 0 & 100 & 2 & 2 \\
 Simulation c & 25 & 25 & 100 & 36--2304 & 0 & 100 & 2 & 2\\
 \midrule
-Sushi A-small & 25 & 100 & 10 & 500 & 2500 & 1000 & 18 & 123 \\
-Sushi A & 25 & 100 & 10 & 2000 & 2500 & 1000 & 18 & 123 \\
-Sushi B & 25 & 5000 & 100 & 50000 & 5000 & $5\times 1e5$ &  18 & 123 \\
+Sushi A-small & 25 & 100 & 10 & 500 & 2500 & 10 & 18 & 123 \\
+Sushi A & 25 & 100 & 10 & 2000 & 2500 & 10 & 18 & 123 \\
+Sushi B & 25 & 5000 & 100 & 50000 & 5000 & 100 &  18 & 123 \\
 \midrule
 UKPConvArgCrowdSample & 32 & 1442 & 1052 & 16398 & 529 & 33 & 32310 & 0
 \\ \bottomrule
 \end{tabular}
-\caption{Summary of datasets showing counts per fold/subsample. 
+\caption{Summary of datasets showing average counts for the training and test sets
+used in each fold/subsample. 
 %For simulations, we generate the subsamples of data independently, 
 %for Sushi we select subsamples independently from the dataset.  
 %Values for UKPConvArgCrowdSample are means per fold, 
 %where the test data in each fold corresponds to a single topic and stance. 
+The test sets all contain gold-standard rankings over items as well as
+pairwise labels, except the simulations, which are not generated as
+ we evaluate using the rankings only.
 Numbers of features are given after categorical labels have been converted to one-hot encoding, counting
 each category as a separate feature.
 }
@@ -296,7 +301,6 @@ For Sushi-B, crowdGPPL, GPPL-per-user and collabGP had runtimes of $~30$ minutes
  }
 \label{tab:sushi}
 \end{table}
-
 %We use the \emph{Sushi} datasets
 %to compare different variants of crowdGPPL against the baselines and rival methods.
 The sushi datasets contain, for each user, a gold standard preference ranking 
@@ -313,14 +317,16 @@ selecting $20$ training $25$ test pairs per user.
 For \emph{Sushi-B}, we use all $5000$ workers, and subsample $10$ training and $1$ test pair per user.
 
 We compare standard crowdGPPL with four other variants: 
-\emph{crowdGPPL$\backslash$inducing}, which does 
-not use the sparse inducing point approximation;
-\emph{crowdGPPL$\mathbf{\backslash \bs u}$}, which ignores the user features;
- \emph{crowdGPPL$\mathbf{\backslash \bs u \backslash \bs x}$}, which ignores both user and item features;
- and
- \emph{crowdGPPL$\mathbf{\backslash \bs u \backslash \bs t}$}, which 
+\begin{itemize}
+\item \emph{crowdGPPL$\backslash$inducing}: does 
+not use the sparse inducing point approximation and instead uses all the original 
+points in the training set;
+\item \emph{crowdGPPL$\mathbf{\backslash \bs u}$}: ignores the user features;
+\item  \emph{crowdGPPL$\mathbf{\backslash \bs u \backslash \bs x}$}: ignores both user and item features;
+\item  \emph{crowdGPPL$\mathbf{\backslash \bs u \backslash \bs t}$}: 
 excludes the consensus function $\bs t$ from the model as well as the user
 features. 
+\end{itemize}
 For methods with $\backslash\bs u$, the user covariance matrix, $\bs L$, 
 is replaced by the identity matrix, 
 and for crowdGPPL$\mathbf{\backslash \bs u \backslash \bs x}$, 
@@ -379,40 +385,6 @@ low memory consumption is required.
 % and by model confidence. Does filtering predictions with low confidence estimates
 % help? Do workers with more data get better predictions?
 
-\begin{table}
- \centering
- \small
- \setlength{\tabcolsep}{4pt}
-\begin{tabular}{ l l l l@{\hskip 1.0cm} l l l@{\hskip 1.0cm} l l l}
-\hline
- & \multicolumn{3}{l}{Consensus} & 
- \multicolumn{3}{l}{Personal: all workers} &\multicolumn{3}{l}{$>$50 training pairs} \\
- Method & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ \\ 
-  \midrule
- %SVM & .70 & .58 & .31 & .63 & .66 & .31 \\
- %Bi-LSTM & .73 &  .55 & .21 & .64 & .64 & .21 \\
- GPPL  & 
- .77 & .51 & .50 & 
- .71 &  \textbf{.56} & .31 & 
- .72 &  \textbf{.55} & .25 \\ % .71 & .56 & .32 \\ % 
- crowdGPPL & 
- \textbf{.79} & \textbf{.52} & \textbf{.53} & 
- \textbf{.72} & .58 & \textbf{.33} & 
- \textbf{.74} & \textbf{.55} & \textbf{.27}  \\ %.71 & .59 & .32 \\ % now showing workers with > 40 training examples
- crowdGPPL$\backslash \bs t$ & - & - & - &
-.68 & .63 & .23 & \textbf{.74} & .57 & \textbf{.27} 
- \\
- crowdBT-GP & .75 & .53 & .45 & .69 & .58 & .30 & .71 & .56 & .23
- \\ \bottomrule
-\end{tabular}
-%}
-\caption{UKPConvArgCrowdSample: predicting consensus, personal preferences for all workers,
-and personal preferences for workers with $>$50 pairs in the training set.
-%Runtimes on a 12 core, 2.6GHz CPU server were approximately 3 minutes for GPPL and crowdBT-GP, 20 minutes for crowdGPPL.
-}
-% wilcoxon signed-rank test: crowdGPPL vs. GPPL --> medi. p = 
-\label{tab:convarg}
-\end{table}
 We evaluate consensus learning, personal preference learning and scalability
 on an NLP task, namely, ranking arguments by \emph{convincingness}. 
 The task requires learning from crowdsourced data, but is not simply an aggregation task as it 
@@ -471,6 +443,40 @@ then training set accuracy of crowdGPPL is used to select
 $\beta^{(w)}_0 \in \left\{1, 10, 100 \right\}$.
 We set $C=50$, $M=500$, $P_i=200$, $\epsilon=10$, and $\rho=0.9$ without optimisation.
 
+\begin{table}
+ \centering
+ \small
+ \setlength{\tabcolsep}{4pt}
+\begin{tabular}{ l l l l@{\hskip 1.0cm} l l l@{\hskip 1.0cm} l l l}
+\hline
+ & \multicolumn{3}{l}{Consensus} & 
+ \multicolumn{3}{l}{Personal: all workers} &\multicolumn{3}{l}{$>$50 training pairs} \\
+ Method & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ & Acc & CEE & $\tau$ \\ 
+  \midrule
+ %SVM & .70 & .58 & .31 & .63 & .66 & .31 \\
+ %Bi-LSTM & .73 &  .55 & .21 & .64 & .64 & .21 \\
+ GPPL  & 
+ .77 & .51 & .50 & 
+ .71 &  \textbf{.56} & .31 & 
+ .72 &  \textbf{.55} & .25 \\ % .71 & .56 & .32 \\ % 
+ crowdGPPL & 
+ \textbf{.79} & \textbf{.52} & \textbf{.53} & 
+ \textbf{.72} & .58 & \textbf{.33} & 
+ \textbf{.74} & \textbf{.55} & \textbf{.27}  \\ %.71 & .59 & .32 \\ % now showing workers with > 40 training examples
+ crowdGPPL$\backslash \bs t$ & - & - & - &
+.68 & .63 & .23 & \textbf{.74} & .57 & \textbf{.27} 
+ \\
+ crowdBT-GP & .75 & .53 & .45 & .69 & .58 & .30 & .71 & .56 & .23
+ \\ \bottomrule
+\end{tabular}
+%}
+\caption{UKPConvArgCrowdSample: predicting consensus, personal preferences for all workers,
+and personal preferences for workers with $>$50 pairs in the training set.
+%Runtimes on a 12 core, 2.6GHz CPU server were approximately 3 minutes for GPPL and crowdBT-GP, 20 minutes for crowdGPPL.
+}
+% wilcoxon signed-rank test: crowdGPPL vs. GPPL --> medi. p = 
+\label{tab:convarg}
+\end{table}
 Table \ref{tab:convarg} shows that 
 crowdGPPL outperforms both GPPL and
 crowdBT--GP 
@@ -499,23 +505,23 @@ annotations (on average 31 per fold)
 deviate further from the consensus, and crowdGPPL does not fully capture
 their preferences given the data available.
 
-\begin{figure}
+\begin{figure}[ht]
 \centering
 \subfloat[Varying $M$]{
 \label{fig:M}
- \includegraphics[clip=true,trim=9 0 55 0,width=.24\columnwidth]{num_inducing_32310_features}
+ \includegraphics[clip=true,trim=9 0 55 0,width=.28\columnwidth]{num_inducing_32310_features}
 }
 \subfloat[Varying $P_i$   \hspace{0.5cm}]{
 \label{fig:P_i}
- \includegraphics[clip=true,trim=60 2 9 0,width=.236\columnwidth]{P_i_32310_features}
-}
+ \includegraphics[clip=true,trim=60 2 9 0,width=.275\columnwidth]{P_i_32310_features}
+}\\
 \subfloat[Varying $N$]{
 \label{fig:Ntr}
-\includegraphics[clip=true,trim=9 0 10 0,width=.24\columnwidth]{num_arguments}
+\includegraphics[clip=true,trim=9 0 10 0,width=.33\columnwidth]{num_arguments}
 }
 \subfloat[Varying $P$ ]{
 \label{fig:Npairs}
-\includegraphics[clip=true,trim=26 0 10 0,width=.22\columnwidth]{num_pairs}
+\includegraphics[clip=true,trim=26 0 10 0,width=.30\columnwidth]{num_pairs}
 }
 \caption{
     Wall-clock times for training+prediction of consensus utilities for arguments 
@@ -549,15 +555,15 @@ In both cases, the increases to runtime are small, despite the growing dataset s
 \subsection{Posterior Variance of Item Components}
 \label{sec:components}
 
-\begin{figure}
+\begin{figure}[t]
 \centering
 \subfloat[\emph{UKPConvArgCrowdSample}]{
-\includegraphics[trim=0 10 0 20,clip=true,width=.24\textwidth]{conv_factor_scales2}
+\includegraphics[trim=0 5 0 20,clip=true,width=.343\textwidth]{conv_factor_scales2}
 \hspace{1cm}
 }
 \subfloat[\emph{Sushi-A}]{
 \hspace{1cm}
-\includegraphics[trim=10 5 0 20,clip=true,width=.23\textwidth]{sushi_factor_scales2}
+\includegraphics[trim=10 0 0 17,clip=true,width=.33\textwidth]{sushi_factor_scales2}
 }
 \caption{
 Latent component variances, $1/(s^{(v)}_c * s^{(w)}_c)$ in crowdGPPL, means over all runs.
@@ -573,5 +579,5 @@ plots the posterior expectations of the inferred scales, $1/(s^{(v)}_c * s^{(w)}
 that many factors have a relatively small variance and therefore do not contribute 
 to many of the model's predictions. This indicates that 
 our Bayesian approach will only make use of components that are supported by the data, 
-even if $C$ is is larger than required.
+even if $C$ is larger than required.
 

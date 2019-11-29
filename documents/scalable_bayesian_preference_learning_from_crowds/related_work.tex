@@ -83,14 +83,24 @@ from pairwise labels, including
 and \citet{salimans2012collaborative}, who apply Bayesian matrix factorisation to 
 handle sparse data.
 Matrix factorisation represents observed ratings in a user-item matrix,
-which it decomposes into two low-rank matrices, one corresponding to users and one to items.
-Users with similar ratings have similar rows in the user
+which it decomposes into two matrices of lower rank than the user-item matrix, 
+one corresponding to users and one to items.
+Users with similar ratings have similar columns in the user
 matrix, where each entry is a weight over a latent rating.
 By multiplying the low-dimensional representations, we can predict ratings for unseen
 user-item pairs. 
 \citet{kim2014latent} use a simplification that assumes that
-each user's preferences depend on only one latent rankings.
-However, these techniques do not account for input features.
+each user's preferences depend on only one latent ranking.
+However, previous works combining matrix factorisation with
+pairwise preference labels do not account for input features.
+This contrasts with work on matrix factorisation with side information
+where the ratings or preferences are directly observed,
+such as recent neural network approaches~\citep{NIPS2017_7081},
+Bayesian approaches that concatenate input feature vectors with the low-dimensional factored representations~\citep{porteous2010bayesian},
+and methods based on Gaussian processes~\citep{adams2010incorporating}. 
+Besides providing a method for learning from pairwise labels, this paper
+also goes beyond previous work to introduce a much more scalable inference method for Gaussian
+process-based methods.
 
 %crowdranking \citet{yi_inferring_2013} uses the crowd to make up for the fact that a target user has small data -- it's a form of collaborative filtering with pairwise labels using a non-Bayesian inference algorithm.
 % Several other works learn multiple rankings from crowdsourced pairwise labels

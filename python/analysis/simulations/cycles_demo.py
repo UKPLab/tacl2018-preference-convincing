@@ -13,8 +13,6 @@ Created on 20 Jul 2017
 '''
 import os, sys
 
-from gp_pref_learning import GPPrefLearning
-
 sys.path.append("./python")
 sys.path.append("./python/analysis")
 sys.path.append("./python/models")
@@ -23,6 +21,7 @@ sys.path.append("./python/analysis/habernal_comparison")
 sys.path.append(os.path.expanduser("~/git/HeatMapBCC/python"))
 sys.path.append(os.path.expanduser("~/git/pyIBCC/python"))
 
+from gp_pref_learning import GPPrefLearning
 import numpy as np
 import matplotlib.pyplot as plt
 from tests import get_noisy_fold_data, load_embeddings, \

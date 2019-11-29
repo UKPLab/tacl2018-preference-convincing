@@ -9,11 +9,6 @@ Current status:
 - since Q has changed, it may mean that shape_s and rate_s values also need to change
 - it may be better to tune hypers for sw, sy, st separately to improve performance on convincingness dataset
 
-TODO Run Sushi A, 25 reps, crowdGPPL with ***no SVI*** and same subsamples as in the paper. Can we reproduce the results with current code?
-TODO Run Sushi A crowdGPPL with SVI, with/without user features, same settings as the paper. Does stochastic sampling cause a problem?
-TODO Run Sushi B as described in the paper.
-TODO Run convincingness consensus. shape/rate may need tuning separately for sw, sy, st.
-TODO Run convincingness personalised. shape/rate may need tuning separately for sw, sy, st.
 '''
 import datetime
 import os

@@ -55,6 +55,13 @@ where $z = \frac{f(\bs x_a) - f(\bs x_b)}{\sqrt{2\sigma^2}}$,
 and $\Phi$ is the cumulative distribution function of the standard normal distribution,
 meaning that $\Phi(z)$ is a 
 probit likelihood.\footnote{Please note that a full list of symbols is provided for reference in Appendix $\ref{sec:not}$}
+This likelihood is also used by
+\citet{chu2005preference} for Gaussian process preference learning (GPPL), but here 
+we simplify the formulation by assuming that $\sigma^2 = 0.5$,
+which leads to $z$ having a denominator of $\sqrt{2 \times 0.5}=1$,
+hence $z = f(\bs x_a) - f(\bs x_b)$.
+Instead, we model varying degrees of noise in the pairwise labels
+by scaling $f$ itself, as we describe in the next section.
 
 In practice, $f(\bs x_a)$ and $f(\bs x_b)$ must be inferred from
 pairwise training labels, $\bs y$,
@@ -65,7 +72,7 @@ $f(\bs x_a)$ and $f(\bs x_b)$
 to obtain the probability of a pairwise label:
 \begin{flalign}
 p(y(a,b)| \bs y) 
-= \Phi(\hat{z}),& & \hat{z} = \frac{\hat{f}_a - \hat{f}_b}{\sqrt{2\sigma^2 + C_{a,a} + C_{b,b} 
+= \Phi(\hat{z}),& & \hat{z} = \frac{\hat{f}_a - \hat{f}_b}{\sqrt{1 + C_{a,a} + C_{b,b} 
 - 2C_{a,b}} }, \label{eq:predict_z} &&
 \end{flalign}
 where $\hat{f}_a$ and $\hat{f}_b$ are the means and
@@ -73,14 +80,10 @@ $\bs C$ is the posterior covariance matrix of the multivariate Gaussian over
 $f(\bs x_a)$ and $f(\bs x_b)$.
 Unlike other choices for the likelihood, such as a sigmoid,
 the probit allows us to compute the posterior over a pairwise label
-without further approximation, %numerical integration
+without further approximation,
+% given this posterior over $f(\bs x_a)$ and $f(\bs x_b)$,
+%numerical integration
 hence we assume this pairwise label likelihood for our proposed preference learning model.
-This likelihood is also used by
-~\citet{chu2005preference} for Gaussian process preference learning (GPPL), but here 
-we simplify the formulation by assuming that $\sigma^2 = 0.5$,
-which leads to $z$ having a denominator of $\sqrt{2 \times 0.5}=1$.
-Instead, we model varying degrees of noise in the pairwise labels
-by scaling $f$ itself, as we describe in the next section.
 %Obtaining the posterior over $f$ is itself challenging, however, 
 %and therefore in Section $\ref{sec:inf}$ we propose 
 %an approximate inference method to address this problem.
@@ -153,7 +156,7 @@ Individual biases of different users may affect consensus predictions,
 particularly when data for certain items comes from a small subset of users.
 The consensus could also help
 predict preferences of users with little or no data
- by favouring items popular items
+ by favouring popular items
 and avoiding generally poor items.
 We therefore propose 
 %address this problem by proposing
@@ -169,15 +172,18 @@ towards particular items.
 For crowdGPPL, 
 we represent utilities in a matrix, $\bs{F} \in \mathbb{R}^{N \times U}$,
 with %$N$ rows corresponding to items and 
-$U$ columns corresponding to users. %, and entries are preference values.
-We assume that $\bs{F} = \bs{V}^T \bs{W} + \bs{t}$
+$U$ columns corresponding to users. 
+Within $\bs F$, each entry $F_{a,j} = f(\bs x_a, \bs u_j)$ is the 
+utility for item $n$ for user $j$ with user features $\bs u_j$.
+We assume that $\bs{F} = \bs{V}^T \bs{W} + \bs{t}\bs{1^T}$
  is the product of two low-rank matrices
 plus a vector of consensus utilities, $\bs{t} \in \mathbb{R}^N$, 
 where $\bs{W} \in \mathbb{R}^{C \times U}$ is a latent representation
 of the users,
 $\bs{V} \in \mathbb{R}^{C \times N}$ is a latent representation of the items,
-and $C$ is the number of latent \emph{components}, i.e., the dimension
-of the latent representations.
+ $C$ is the number of latent \emph{components}, i.e., the dimension
+of the latent representations,
+and $\bs 1$ is a column vector of ones of length $U$. 
 The column $\bs v_{.,a}$ of $\bs V$, and the column $\bs w_{.,j}$ of $\bs W$,
  are latent vector representations of item $a$ and user $j$,
  respectively.
@@ -249,7 +255,8 @@ or \emph{ARD priors} that favour values close to zero~\citep{mackay1995probable,
 Components that are not required to explain the data will have posterior
 expectations and scales $1/s^{(v)}$ and $1/s^{(w)}$ approaching zero.
 Therefore, %due to our choice of prior, 
-it is not necessary to optimise the value of $C$, providing a sufficiently large number is chosen. 
+it is not necessary to optimise the value of $C$ by hand, 
+providing a sufficiently large number is chosen. 
 
 Equation \ref{eq:vw_plus_t} is similar to
 \emph{cross-task crowdsourcing}~\citep{mo2013cross}, which 
