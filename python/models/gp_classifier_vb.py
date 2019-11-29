@@ -68,7 +68,7 @@ def derivfactor_diag_from_raw_vals(vals, vals2, ls_d, operator='*'):
     return 0
 
 
-def diagonal_from_raw_vals(vals, ls, vals2=None, operator='*', vector=False):
+def diagonal_from_raw_vals(vals, ls, vals2=None, operator='*',  n_threads=0, vector=False):
     '''
     No covariance between different locations. Operator is ignored.
     '''

@@ -185,7 +185,7 @@ class GPClassifierSVI(GPClassifierVB):
         # self.u_invSm = np.zeros((self.ninducing, 1), dtype=float)  # theta_1
 
         if self.cov_type == 'diagonal':
-            self.u_invS = self.invK_mm * self.shape_s0 / self.rate_s0
+            self.u_invS = np.ones(self.ninducing) * self.shape_s0 / self.rate_s0
             # self.u_invS = np.zeros((self.ninducing), dtype=float)  # theta_2
             self.u_Lambda = np.zeros((self.ninducing), dtype=float) # observation precision at inducing points
         else:
@@ -393,12 +393,14 @@ class GPClassifierSVI(GPClassifierVB):
         #(self.K_nm / self.s).dot(self.s * self.invK_mm).dot(self.uS).dot(self.u_invSm)
         if self.cov_type == 'diagonal':
             if self.um_minus_mu0.size != mu0.size:
-                logging.error('We cannot make predictions for new test items when using a diagonal covariance -- we '
-                              'need to be able to use the features to make predictions.')
-                if Ks_nn is not None:
-                    return np.zeros(mu0.size), np.diag(np.ones(mu0.size)/self.s)
+                # logging.error('We cannot make predictions for new test items when using a diagonal covariance -- we '
+                #               'need to be able to use the features to make predictions.')
+                if Ks_nn is not None and full_cov:
+                    return np.zeros((mu0.size, 1)), np.diag(np.ones(mu0.size)/self.s)
+                elif Ks_nn is not None and not full_cov:
+                    return np.zeros((mu0.size, 1)), np.ones((mu0.size, 1))/self.s
                 else:
-                    return np.zeros(mu0.size)
+                    return np.zeros((mu0.size, 1))
 
             fhat = self.um_minus_mu0 + mu0
             if Ks_nn is not None and full_cov:
@@ -469,7 +471,7 @@ class GPClassifierSVI(GPClassifierVB):
 
         if self.covpair is None:
             if self.cov_type == 'diagonal':
-                self.covpair = 1.0
+                self.covpair = np.eye(self.ninducing)
             else:
                 self.covpair = scipy.linalg.solve(self.Ks_mm, self.Ks_nm.T).T
 

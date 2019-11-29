@@ -122,19 +122,15 @@ def train_model(embeddings):
     items_feat, n_ling_feats, word_to_indices_map, a1_train, a2_train, prefs_train, ndims \
        = load_train_dataset(training_dataset, embeddings)  # reload only if we use a new dataset
 
-    ls_initial = compute_median_lengthscales(items_feat)
-
-    model = GPPrefLearning(ninput_features=ndims, ls_initial=ls_initial, verbose=False,
-                                shape_s0=2.0, rate_s0=200.0, rate_ls=1.0 / np.mean(ls_initial),
-                                use_svi=True, ninducing=500, max_update_size=200, kernel_combination='*',
-                                forgetting_rate=0.7, delay=1.0)
+    model = GPPrefLearning(ninput_features=ndims, verbose=False, shape_s0=2.0, rate_s0=200.0, use_svi=True,
+                           ninducing=500, max_update_size=200, kernel_combination='*', forgetting_rate=0.7, delay=1.0)
 
     model.max_iter_VB = 2000
 
     print("no. features: %i" % items_feat.shape[1])
 
     model.fit(a1_train, a2_train, items_feat, np.array(prefs_train, dtype=float) - 1, optimize=False,
-              input_type='zero-centered')
+              input_type='zero-centered', use_median_ls=True)
 
     logging.info("**** Completed training GPPL ****")
 
