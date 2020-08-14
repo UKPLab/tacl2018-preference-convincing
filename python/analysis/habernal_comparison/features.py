@@ -25,12 +25,12 @@ if __name__ == '__main__':
     #expt_folder_name = 'crowdsourcing_argumentation_expts/'
 
     dataset = 'UKPConvArgStrict'#'UKPConvArgAll_evalMACE'#
-    methods = ['SinglePrefGP_weaksprior_1104']#'SinglePrefGP_weaksprior_2107', 'SinglePrefGP_weaksprior_0308', 'SinglePrefGP_weaksprior_1004desktop169']
+    methods = ['SinglePrefGP_weaksprior']  # ['SinglePrefGP_weaksprior_1104']  #'SinglePrefGP_weaksprior_2107', 'SinglePrefGP_weaksprior_0308', 'SinglePrefGP_weaksprior_1004desktop169']
     feature_type = 'both'
     embeddings_type = 'word_mean'
     di = 0.00
 
-    selected_folds_all = [[0, 1, 6, 12, 13]]#failed folds for 1104: [9, 10, 16]]
+    selected_folds_all = [[0, 1, 6, 12, 13]]  #failed folds for 1104: [9, 10, 16]]
     # selected_folds_all = [[0, 2, 6, 7, 10, 14, 16, 17, 22, 24, 28, 30],  # for the 2107 dataset
     #                       [5, 9, 12, 13, 21, 25, 27],
     #                       [1, 4, 8, 21, 29]]

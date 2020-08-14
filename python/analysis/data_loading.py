@@ -183,8 +183,8 @@ def load_ling_features(dataset,
 
     print(("Looking for linguistic features in directory %s" % ling_dir))
     print('Loading linguistic features')
-    ling_file = ling_dir + "/%s-libsvm.txt" % dataset
-    argids_file = ling_dir + "/%s-libsvm.txt" % ("argids_%s" % dataset)
+    ling_file = os.path.join(ling_dir, "%s-libsvm.txt" % dataset)
+    argids_file = os.path.join(ling_dir, "%s-libsvm.txt" % ("argids_%s" % dataset))
     if not os.path.isfile(ling_file) or not os.path.isfile(argids_file):
         ling_file, _ , docids = combine_lines_into_one_file(dataset,
                                                             dirname=input_dir,

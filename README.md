@@ -86,10 +86,17 @@ For running the experiments, please see the requirements.txt for further depende
 
 * Python 3
 * virtualenv (to install requirements) 
-* The required packages are listed in requirements.txt. You can install them using pip install -r requirements.txt
+* The required packages for just the core modules are listed in requirements.txt. 
+For the complete set of experiments, you need requirements_expts.txt. 
+You can install them using pip install -r requirements.txt
+or pip install -r requirements_expts.txt.
 * Maven -- check if you have the command line program 'mvn' -- required to extract the linguistic features from our 
 experimental datasets. You can skip this if you are not re-running our experiments or training a model on 
 UKPConvArg*** datasets.
+* Java JDK 1.8. Newer and older versions may cause problems with preprocessing. If you
+have other versions of JDK installed, you need to set the environment 
+variable JAVA_HOME to point to the 1.8 version, 
+e.g. export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_261.jdk/Contents/Home/jre/ .
 
 ## How to run the experiments
 
@@ -103,9 +110,13 @@ By default, the data is provided by this repository at ./data and this path is s
 The data is originally provided by https://github.com/UKPLab/acl2016-convincing-arguments, the copies
 are provided here for convenience.
 
-2. Run experiment 1 by running script python/analysis/cycles_demo.py from the root directory of the project:
+2. Run experiment 1 by running the following script from the root directory of the project:
 
-python ./python/analysis/cycles_demo.py
+    ```
+    python ./python/analysis/cycles_demo.py
+    ```
+   
+Plots are saved to './documents/pref_learning_for_convincingness/figures/cycles_demo2/'.
 
 3. Run experiment 2 (this will take some time):
 

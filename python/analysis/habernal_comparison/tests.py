@@ -44,11 +44,8 @@ sys.path.append("./python/models")
 sys.path.append("./python/analysis/habernal_comparison")
 svm_python_path = '~/libsvm-3.22/python'
 
-sys.path.append(os.path.expanduser("~/git/HeatMapBCC/python"))
-sys.path.append(os.path.expanduser("~/git/pyIBCC/python"))
-
-sys.path.append(os.path.expanduser("~/data/personalised_argumentation/embeddings/skip-thoughts"))
-sys.path.append(os.path.expanduser("~/data/personalised_argumentation/embeddings/Siamese-CBOW/siamese-cbow"))
+# sys.path.append(os.path.expanduser("~/data/personalised_argumentation/embeddings/skip-thoughts"))
+# sys.path.append(os.path.expanduser("~/data/personalised_argumentation/embeddings/Siamese-CBOW/siamese-cbow"))
 
 sys.path.append(os.path.expanduser(svm_python_path))
 
@@ -62,10 +59,12 @@ from sklearn.svm import SVR
 from data_loading import load_train_test_data, load_embeddings, load_ling_features, data_root_dir, \
     load_siamese_cbow_embeddings, load_skipthoughts_embeddings
 import numpy as np
-    
+
+
 ndebug_features = 10
 verbose = False
-    
+
+
 def save_fold_order(resultsdir, folds=None, dataset=None):
     if folds is None and dataset is not None:
         folds, _, _, _, _ = load_train_test_data(dataset)        
@@ -73,7 +72,8 @@ def save_fold_order(resultsdir, folds=None, dataset=None):
         print("Need to provide a dataset label or a set of fold data...")
         return 
     np.savetxt(resultsdir + "/foldorder.txt", np.array(list(folds.keys()))[:, None], fmt="%s")
-    
+
+
 # Lengthscale initialisation -------------------------------------------------------------------------------------------
 # use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.
 # First, grab a sample of points because N^2 could be too large.    
@@ -127,7 +127,8 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
     logging.info('@@@ Selected initial lengthscales in %f seconds' % (endtime - starttime))
     
     return ls_initial     
-    
+
+
 def get_doc_token_seqs(ids, X_list, texts=None):
     '''
     ids -- list of document IDs
@@ -175,13 +176,16 @@ def get_doc_token_seqs(ids, X_list, texts=None):
         return X, uids, utexts
     else:
         return X, uids    
-    
+
+
 def get_mean_embeddings(word_embeddings, X):
     return np.array([np.mean(word_embeddings[Xi, :], axis=0) for Xi in X])    
 
+
 def get_docidxs_from_ids(all_docids, ids_to_map):
-    return np.array([np.argwhere(docid==all_docids)[0][0] for docid in ids_to_map])
-    
+    return np.array([np.argwhere(docid == all_docids)[0][0] for docid in ids_to_map])
+
+
 def get_fold_data(folds, fold, docids):
     #X_train_a1, X_train_a2 are lists of lists of word indexes 
     X_train_a1, X_train_a2, prefs_train, ids_train, person_train, tr_a1, tr_a2 = folds.get(fold)["training"]
@@ -216,7 +220,8 @@ def get_fold_data(folds, fold, docids):
     
     return a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, \
         X, uids, utexts
-        
+
+
 def get_noisy_fold_data(folds, fold, docids, acc, tr_pair_subset=None):
     a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, X, \
     uids, utexts = get_fold_data(folds, fold, docids)

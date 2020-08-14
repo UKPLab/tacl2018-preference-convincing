@@ -1,13 +1,13 @@
 #!/bin/sh
 
 # Job name
-#PBS -N preproc
+#PBS -N scalability
 
 # Output file
-#PBS -o preproc_output.log
+#PBS -o scalability_output.log
 
 # Error file
-#PBS -e preproc_err.log
+#PBS -e scalability_err.log
 
 # request resources and set limits
 #PBS -l walltime=72:00:00
@@ -23,7 +23,7 @@ cd /work/es1595/tacl2018-preference-convincing
 export PYTHONPATH=$PYTHONPATH:"/work/es1595/tacl2018-preference-convincing/python"
 
 #  run the script
-python -u python/analysis/habernal_comparison/run_preprocessing.py
+python -u python/analysis/habernal_comparison/scalability_plots.py
 
 # To submit: qsub <filename>.sh
 # To display the queue: qstat -Q gpu (this is usually where the GPU job ends up)
