@@ -78,17 +78,18 @@ https://github.com/UKPLab/acl2016-convincing-arguments
 
 Dependencies for just using the gp_pref_learning model:
 
-   * scikit-learn==0.18.1
-   * scipy==0.19.0
-   * numpy==1.12.1
+   * scikit-learn>=0.18.1
+   * scipy>=0.19.0
+   * numpy>=1.12.1
 
 For running the experiments, please see the requirements.txt for further dependencies. 
 
 * Python 3
-* virtualenv
+* virtualenv (to install requirements) 
 * The required packages are listed in requirements.txt. You can install them using pip install -r requirements.txt
-* Maven -- check if you have the command line program 'mvn' -- required to extract the linguistic features from our experimental datasets. You can skip 
-this if you are not re-running our experiments or training a model on UKPConvArg*** datasets.
+* Maven -- check if you have the command line program 'mvn' -- required to extract the linguistic features from our 
+experimental datasets. You can skip this if you are not re-running our experiments or training a model on 
+UKPConvArg*** datasets.
 
 ## How to run the experiments
 
