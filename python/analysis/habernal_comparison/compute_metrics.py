@@ -198,12 +198,18 @@ def get_results_dir(data_root_dir, resultsfile_template, expt_settings, folderna
         
     return resultsdir    
 
-def load_results_data(data_root_dir, resultsfile_template, expt_settings, max_no_folds, foldername=expt_root_dir):
+
+def load_results_data(data_root_dir, resultsfile_template, expt_settings, max_no_folds=32, foldername=expt_root_dir):
     # start by loading the old-style data
     resultsfile = data_root_dir + 'outputdata/' + foldername + \
-            resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
-                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
-                expt_settings['di']) + '_test.pkl'
+                    resultsfile_template % (
+                      expt_settings['dataset'],
+                      expt_settings['method'],
+                      expt_settings['feature_type'],
+                      expt_settings['embeddings_type'],
+                      expt_settings['acc'],
+                      expt_settings['di']
+                  ) + '_test.pkl'
     
     resultsdir = get_results_dir(data_root_dir, resultsfile_template, expt_settings, foldername)                       
     

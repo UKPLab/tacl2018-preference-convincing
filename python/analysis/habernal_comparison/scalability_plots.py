@@ -52,8 +52,7 @@ if __name__ == '__main__':
     for m, expt_settings['method'] in enumerate(methods): 
         print("Processing method %s" % expt_settings['method'])
 
-        data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template, 
-                                                                          expt_settings)
+        data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template, expt_settings)
         
         acc_m = np.zeros(nFolds)
         runtimes_m = np.zeros(nFolds)
