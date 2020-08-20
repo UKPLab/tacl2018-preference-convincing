@@ -23,6 +23,7 @@ cd /work/es1595/tacl2018-preference-convincing
 export PYTHONPATH=$PYTHONPATH:"/work/es1595/tacl2018-preference-convincing/python"
 
 #  run the script
+python -u python/analysis/habernal_comparison/scalability_tests.py
 python -u python/analysis/habernal_comparison/scalability_plots.py
 
 # To submit: qsub <filename>.sh
