@@ -934,7 +934,7 @@ class TestRunner:
             # choose the initial dataset 
             if self.fold in self.initial_pair_subset:    
                 pair_subset = self.initial_pair_subset[self.fold]
-            elif  dataset_increment != 0:
+            elif dataset_increment != 0:
                 pair_subset = np.random.choice(len(a1_train), nnew_pairs, replace=False)
             elif subsample_amount > 0:
                 pair_subset = subsample_tr_data(subsample_amount, a1_train, a2_train)                     
