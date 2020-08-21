@@ -569,23 +569,18 @@ class TestRunner:
             predicted_f = None
     
         if self.a1_unseen is not None and len(self.a1_unseen):
-#             testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_unseen], 
-#                                                        self.docids[self.a2_unseen], np.ones(len(self.a1_unseen)), 
-#                                            'unseen', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings,
-#                                            a1=self.a1_unseen, a2=self.a2_unseen, embeddings_only=feature_type=='embeddings')
-#             
-#             problem = svm_read_problem(testfile)
-#             _, _, tr_proba = svm_predict(problem[0], problem[1], self.model, '-b 1')
 
             tr_proba = svc.predict_proba(np.concatenate((self.items_feat[self.a1_unseen], self.items_feat[self.a2_unseen]), axis=1))
 
             # libSVM flips the labels if the first one it sees is positive
             if svc_labels[0] == 1:
                 tr_proba = 1 - np.array(tr_proba)
+
+            tr_proba = tr_proba[:, None]
         else:
             tr_proba = None
     
-        return proba[:, None], predicted_f, tr_proba[:, None] 
+        return proba[:, None], predicted_f, tr_proba
      
     def run_bilstm(self, feature_type):     
         from keras.preprocessing import sequence
