@@ -255,7 +255,7 @@ if __name__ == '__main__':
             print("Processing method %s" % expt_settings['method'])
     
             data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, 
-                                          resultsfile_template, expt_settings, foldername)
+                                          resultsfile_template, expt_settings, foldername=foldername)
 
             runtimes_m = np.zeros(nFolds)
             
