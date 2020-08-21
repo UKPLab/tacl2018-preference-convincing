@@ -553,7 +553,7 @@ class TestRunner:
                                axis=0)
         print("no. features: %i" % trainfeats.shape[1])
         print("no. pairs: %i" % trainfeats.shape[0])
-        svc.fit(trainfeats, svc_labels)
+        svc.fit(trainfeats, svc_labels.astype(int))
         proba = svc.predict_proba(np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1))
 
         # libSVM flips the labels if the first one it sees is positive
