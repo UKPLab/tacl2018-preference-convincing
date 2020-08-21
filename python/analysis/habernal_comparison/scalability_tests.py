@@ -36,16 +36,16 @@ if __name__ == '__main__':
     #     runner.run_test_set(subsample_tr=N)
 
     # Varying number of features
-    methods = ['SinglePrefGP_noOpt_weaksprior_M500', 'SVM', 'BI-LSTM', 'SinglePrefGP_weaksprior']
+    methods = ['SVM', 'SinglePrefGP_noOpt_weaksprior_M500', 'BI-LSTM', 'SinglePrefGP_weaksprior']
     feature_types = ['debug']
     tests.ndebug_features = 30
-    runner = tests.TestRunner('crowdsourcing_argumentation_expts_30feats', datasets, feature_types, embeddings_types, methods,
-                        dataset_increment, )
+    runner = tests.TestRunner('crowdsourcing_argumentation_expts_30feats', datasets, feature_types, embeddings_types,
+                              methods, dataset_increment, )
     runner.run_test_set()
 
     feature_types = ['debug']
     ndebug_features = 3000
-    runner = tests.TestRunner('crowdsourcing_argumentation_expts_3000feats', datasets, feature_types, embeddings_types, methods,
-                        dataset_increment, )
+    runner = tests.TestRunner('crowdsourcing_argumentation_expts_3000feats', datasets, feature_types, embeddings_types,
+                              methods, dataset_increment, )
     runner.run_test_set()
 
