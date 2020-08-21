@@ -1,13 +1,13 @@
 #!/bin/sh
 
 # Job name
-#PBS -N clean
+#PBS -N conval
 
 # Output file
-#PBS -o clean_output.log
+#PBS -o conval_output.log
 
 # Error file
-#PBS -e clean_err.log
+#PBS -e conval_err.log
 
 # request resources and set limits
 #PBS -l walltime=72:00:00

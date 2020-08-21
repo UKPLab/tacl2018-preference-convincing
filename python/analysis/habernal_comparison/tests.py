@@ -414,11 +414,11 @@ class TestRunner:
                     delay=1.0)
             self.model.max_iter_VB = 2000
             new_items_feat = self.items_feat # pass only when initialising
+            print("no. features: %i" % new_items_feat.shape[1])
         else:
             new_items_feat = None
         
-        print("no. features: %i" % new_items_feat.shape[1])
-        self.model.fit(self.a1_train, self.a2_train, new_items_feat, np.array(self.prefs_train, dtype=float)-1, 
+        self.model.fit(self.a1_train, self.a2_train, new_items_feat, np.array(self.prefs_train, dtype=float)-1,
                   optimize=self.optimize_hyper, input_type='zero-centered')            
     
         proba = self.model.predict(None, self.a1_test, self.a2_test, reuse_output_kernel=True, return_var=False)
