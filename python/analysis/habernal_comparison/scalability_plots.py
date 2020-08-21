@@ -59,7 +59,7 @@ if __name__ == '__main__':
         
         for f in range(nFolds):
             print("Processing fold %i" % f)
-            if expt_settings['fold_order'] is None: # fall back to the order on the current machine
+            if expt_settings['fold_order'] is None:  # fall back to the order on the current machine
                 if expt_settings['folds'] is None:
                     continue
                 fold = list(expt_settings['folds'].keys())[f]
@@ -261,12 +261,18 @@ if __name__ == '__main__':
             
             for f in range(nFolds):
                 print("Processing fold %i" % f)
-                fold = expt_settings['fold_order'][f] 
-                if fold[-2] == "'" and fold[0] == "'":
-                    fold = fold[1:-2]
-                elif fold[-1] == "'" and fold[0] == "'":
-                    fold = fold[1:-1]  
-                expt_settings['fold_order'][f] = fold
+                if expt_settings['fold_order'] is None:  # fall back to the order on the current machine
+                    if expt_settings['folds'] is None:
+                        continue
+                    fold = list(expt_settings['folds'].keys())[f]
+                else:
+                    fold = expt_settings['fold_order'][f]
+
+                    if fold[-2] == "'" and fold[0] == "'":
+                        fold = fold[1:-2]
+                    elif fold[-1] == "'" and fold[0] == "'":
+                        fold = fold[1:-1]
+                    expt_settings['fold_order'][f] = fold
                                               
                 # look for new-style data in separate files for each fold. Prefer new-style if both are found.
                 foldfile = resultsdir + '/fold%i.pkl' % f
