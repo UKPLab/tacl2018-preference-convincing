@@ -123,8 +123,7 @@ if __name__ == '__main__':
     for m, expt_settings['method'] in enumerate(methods): 
         print("Processing method %s" % expt_settings['method'])
 
-        data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template, 
-                                                                          expt_settings)
+        data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template, expt_settings)
         
         acc_m = np.zeros(nFolds)
         runtimes_m = np.zeros(nFolds)
@@ -254,8 +253,8 @@ if __name__ == '__main__':
         for m, expt_settings['method'] in enumerate(methods): 
             print("Processing method %s" % expt_settings['method'])
     
-            data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, 
-                                          resultsfile_template, expt_settings, foldername=foldername)
+            data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template,
+                                                                      expt_settings, foldername=foldername)
 
             runtimes_m = np.zeros(nFolds)
             
@@ -342,8 +341,8 @@ if __name__ == '__main__':
                 elif n == 2:
                     expt_settings_tmp['embeddings_type'] = 'skipthoughts'
                 
-                data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, 
-                                          resultsfile_template, expt_settings_tmp, foldername_tmp)
+                data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template,
+                                                                          expt_settings_tmp, foldername=foldername_tmp)
                 print('***********')
                 print(resultsfile)
                 
@@ -352,8 +351,8 @@ if __name__ == '__main__':
             else:                                        
                 if not len(dim):
                     continue
-                data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, 
-                                          resultsfile_template, expt_settings, foldername)
+                data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template,
+                                                                          expt_settings, foldername=foldername)
                 expt_settings_master = expt_settings
             runtimes_m = np.zeros(nFolds)
             print(resultsdir)
