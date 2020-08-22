@@ -904,7 +904,7 @@ class TestRunner:
                     all_target_rankscores[foldidx], _, times[foldidx], final_ls[foldidx], all_tr_proba[foldidx] = \
                                 pickle.load(fh, encoding='latin1')
     
-            # Get data for this fold --------------------------------------------------------------------------------------
+            # Get data for this fold -----------------------------------------------------------------------------------
             print(("Fold name ", self.fold))
             a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test,\
                                 self.X, uids, utexts = get_noisy_fold_data(self.folds, self.fold, self.docids, acc)                            
@@ -914,9 +914,9 @@ class TestRunner:
                                 person_idx_ranktest = get_fold_regression_data(self.folds_r, self.fold, self.docids)
             
             self.load_features(feature_type, embeddings_type, a1_train, a2_train, uids, utexts)
-            #items_feat = items_feat[:, :ndebug_features]     
+            #items_feat = items_feat[:, :ndebug_features]
     
-            # Subsample training data --------------------------------------------------------------------------------------    
+            # Subsample training data ----------------------------------------------------------------------------------
             if npairs == 0:
                 npairs_f = len(a1_train)
             else:

@@ -112,6 +112,7 @@ jupyter_console=6.1.0=py_0
 jupyter_core=4.6.1=py37_0
 jupyterlab=1.2.6=pyhf63ae98_0
 jupyterlab_server=1.0.6=py_0
+Keras==0.3.2
 keyring=21.1.0=py37_0
 kiwisolver=1.1.0=py37h0a44026_0
 krb5=1.17.1=hddcf347_0
