@@ -87,9 +87,7 @@ For running the experiments, please see the requirements.txt for further depende
 * Python 3
 * virtualenv (to install requirements) 
 * The required packages for just the core modules are listed in requirements.txt. 
-For the complete set of experiments, you need requirements_expts.txt. 
-You can install them using pip install -r requirements.txt
-or pip install -r requirements_expts.txt.
+You can install them using pip install -r requirements.txt.
 * Maven -- check if you have the command line program 'mvn' -- required to extract the linguistic features from our 
 experimental datasets. You can skip this if you are not re-running our experiments or training a model on 
 UKPConvArg*** datasets.

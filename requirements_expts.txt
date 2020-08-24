@@ -112,7 +112,6 @@ jupyter_console=6.1.0=py_0
 jupyter_core=4.6.1=py37_0
 jupyterlab=1.2.6=pyhf63ae98_0
 jupyterlab_server=1.0.6=py_0
-Keras==0.3.2
 keyring=21.1.0=py37_0
 kiwisolver=1.1.0=py37h0a44026_0s
 krb5=1.17.1=hddcf347_0
@@ -277,7 +276,6 @@ tbb=2020.0=h04f5b5a_0
 tblib=1.6.0=py_0
 terminado=0.8.3=py37_0
 testpath=0.4.4=py_0
-git+git://github.com/Theano/Theano.git@4e7f550
 tk=8.6.8=ha441bb4_0
 toolz=0.10.0=py_0
 tornado=6.0.3=py37h1de35cc_3
