@@ -3,7 +3,8 @@ Created on Jan 8, 2018
 
 @author: simpson
 '''
-
+import matplotlib as mpl
+mpl.use('Agg')
 import os
 import numpy as np
 from compute_metrics import load_results_data, get_fold_data
