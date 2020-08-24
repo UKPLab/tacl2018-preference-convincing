@@ -17,8 +17,8 @@
 
 #  load required modules
 module load lang/python/anaconda/pytorch
-#conda init bash
-#conda activate convincing
+source /home/es1595/.bashrc
+source activate convincing
 
 # We might need to add the global paths to our code to the pythonpath. Also set the data directories globally.
 cd /work/es1595/tacl2018-preference-convincing
