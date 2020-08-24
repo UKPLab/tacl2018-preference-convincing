@@ -18,6 +18,8 @@
 #  load required modules
 module load lang/python/anaconda/pytorch
 
+conda activate convincing
+
 # We might need to add the global paths to our code to the pythonpath. Also set the data directories globally.
 cd /work/es1595/tacl2018-preference-convincing
 export PYTHONPATH=$PYTHONPATH:"/work/es1595/tacl2018-preference-convincing/python"
