@@ -17,7 +17,7 @@
 
 #  load required modules
 module load lang/python/anaconda/pytorch
-
+conda init bash
 conda activate convincing
 
 # We might need to add the global paths to our code to the pythonpath. Also set the data directories globally.
