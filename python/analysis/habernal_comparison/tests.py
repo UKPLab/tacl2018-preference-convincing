@@ -292,7 +292,8 @@ def subsample_tr_data(subsample_amount, a1_train, a2_train):
     #    pair_subsample_idxs = np.random.choice(len(a1_train), subsample_amount, replace=False)
     
     return pair_subsample_idxs
-    
+
+
 class TestRunner:    
     
     def __init__(self, current_expt_output_dir, datasets, feature_types, embeddings_types, methods, 
@@ -582,7 +583,9 @@ class TestRunner:
     
         return proba[:, None], predicted_f, tr_proba
      
-    def run_bilstm(self, feature_type):     
+    def run_bilstm(self, feature_type):
+        import os
+        os.environ['KERAS_BACKEND'] = 'theano'
         from keras.preprocessing import sequence
         from keras.models import Graph
         from keras.layers.core import Dense, Dropout
@@ -894,7 +897,7 @@ class TestRunner:
                 print(("Already completed maximum no. folds. Skipping fold %i, %s" % (foldidx, self.fold)))
                 continue
             foldresultsfile = results_stem + '/fold%i.pkl' % foldidx
-            if foldidx not in all_proba and os.path.isfile(foldresultsfile): 
+            if foldidx not in all_proba and os.path.isfile(foldresultsfile):
                 if dataset_increment == 0:
                     print(("Skipping fold %i, %s" % (foldidx, self.fold)))
                     continue
@@ -903,7 +906,7 @@ class TestRunner:
                     all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],\
                     all_target_rankscores[foldidx], _, times[foldidx], final_ls[foldidx], all_tr_proba[foldidx] = \
                                 pickle.load(fh, encoding='latin1')
-    
+
             # Get data for this fold -----------------------------------------------------------------------------------
             print(("Fold name ", self.fold))
             a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test,\
