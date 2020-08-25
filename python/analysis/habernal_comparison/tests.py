@@ -904,7 +904,7 @@ class TestRunner:
                 
                 with open(foldresultsfile, 'rb') as fh:
                     all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],\
-                    all_target_rankscores[foldidx], _, times[foldidx], final_ls[foldidx], all_tr_proba[foldidx] = \
+                    all_target_rankscores[foldidx], _, times[foldidx], final_ls[foldidx], all_tr_proba[foldidx], _ = \
                                 pickle.load(fh, encoding='latin1')
 
             # Get data for this fold -----------------------------------------------------------------------------------
