@@ -15,4 +15,4 @@ if __name__ == '__main__':
 
     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods,
                         dataset_increment)
-    runner.run_test_set()
+    runner.run_test_set(npairs=400)
