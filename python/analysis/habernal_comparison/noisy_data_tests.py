@@ -8,8 +8,7 @@ if __name__ == '__main__':
     # Classification and ranking tasks together
 
     datasets = ['UKPConvArgCrowdSample_evalMACE']
-    methods = ['SVM', 'SinglePrefGP_noOpt_weaksprior',
-               'SingleGPC_noOpt_weaksprior', 'GP+SVM']  # 'BI-LSTM',
+    methods = ['SinglePrefGP_noOpt_weaksprior', 'SingleGPC_noOpt_weaksprior', 'GP+SVM']  # 'SVM', 'BI-LSTM',
     feature_types = ['both']
     embeddings_types = ['word_mean']
 

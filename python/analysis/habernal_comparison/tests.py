@@ -519,48 +519,62 @@ class TestRunner:
         return proba, predicted_f, tr_proba      
     
     def run_svm(self, feature_type):
+
+        # # The original TACL paper uses LIBSVM in the commented out section. This is quite inconvenient to get working.
+
         #         from svmutil import svm_train, svm_predict, svm_read_problem
         #
         #         if feature_type == 'embeddings' or feature_type == 'both' or feature_type == 'debug':
         #             embeddings = self.embeddings_items_feat
         #         else:
         #             embeddings = None
-         
-        prefs_train_fl = np.array(self.prefs_train, dtype=float)
-        svc_labels = np.concatenate((prefs_train_fl * 0.5, 1 - prefs_train_fl * 0.5))
         #
         #         filetemplate = os.path.join(data_root_dir, 'libsvmdata/%s-%s-%s-libsvm.txt')
         #         nfeats = self.ling_feat_spmatrix.shape[1]
         #
         #         #if not os.path.isfile(trainfile):
-        #         trainfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_train], self.docids[self.a2_train],
-        #             svc_labels, 'training', self.fold, nfeats, outputfile=filetemplate, reverse_pairs=True, embeddings=embeddings,
-        #             a1=self.a1_train, a2=self.a2_train, embeddings_only=feature_type=='embeddings')
+        #         trainfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_train],
+        #                                                     self.docids[self.a2_train], svc_labels, 'training',
+        #                                                     self.fold, nfeats, outputfile=filetemplate,
+        #                                                     reverse_pairs=True, embeddings=embeddings,
+        #                                                     a1=self.a1_train, a2=self.a2_train,
+        #                                                     embeddings_only=feature_type=='embeddings')
         #
         #         problem = svm_read_problem(trainfile)
         #         self.model = svm_train(problem[0], problem[1], '-b 1')
         #
         #         #if not os.path.isfile(testfile):
-        #         testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_test], self.docids[self.a2_test],
-        #             np.ones(len(self.a1_test)), 'test', self.fold, nfeats, outputfile=filetemplate, embeddings=embeddings,
-        #             a1=self.a1_test, a2=self.a2_test, embeddings_only=feature_type=='embeddings')
+        #         testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_test],
+        #                                                    self.docids[self.a2_test], np.ones(len(self.a1_test)),
+        #                                                    'test', self.fold, nfeats, outputfile=filetemplate,
+        #                                                    embeddings=embeddings, a1=self.a1_test, a2=self.a2_test,
+        #                                                    embeddings_only=feature_type=='embeddings')
         #
         #         problem = svm_read_problem(testfile)
         #         _, _, proba = svm_predict(problem[0], problem[1], self.model, '-b 1')
-
-        svc = SVC(probability=True)
-        trainfeats = np.concatenate((np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1),
-                               np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1)),
-                               axis=0)
-        print("no. features: %i" % trainfeats.shape[1])
-        print("no. pairs: %i" % trainfeats.shape[0])
-        svc.fit(trainfeats, svc_labels.astype(int))
-        proba = svc.predict_proba(np.concatenate((self.items_feat[self.a1_test], self.items_feat[self.a2_test]), axis=1))[:, 1]
-
+        #
         # # libSVM flips the labels if the first one it sees is positive
         # if svc_labels[0] == 1:
         #     proba = 1 - np.array(proba)
-         
+
+        prefs_train_fl = np.array(self.prefs_train, dtype=float)
+        svc_labels = np.concatenate((prefs_train_fl * 0.5, 1 - prefs_train_fl * 0.5)).astype(int)
+
+        # This implementation doesn't seem to produce meaningful probabilities, so we don't bother with those
+        svc = SVC(probability=True)
+        trainfeats = np.concatenate((
+            np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1),
+            np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1)), axis=0)
+        print("no. features: %i" % trainfeats.shape[1])
+        print("no. pairs: %i" % trainfeats.shape[0])
+        svc.fit(trainfeats, svc_labels.astype(int))
+        proba = svc.predict_proba(np.concatenate((self.items_feat[self.a1_test], self.items_feat[self.a2_test]),
+                                                 axis=1))[:, 0]
+        proba = (proba - np.min(proba)) / (np.max(proba) - np.min(proba))
+
+        # labs = svc.predict(np.concatenate((self.items_feat[self.a1_test], self.items_feat[self.a2_test]), axis=1))
+        # first column is probability of class 1, i.e. first label preferred
+
         if self.a_rank_test is not None:
             svr = NuSVR()    
             svr.fit(self.items_feat[self.a_rank_train], self.scores_rank_train)
@@ -1031,7 +1045,7 @@ class TestRunner:
                         
                 # get more data
                 nseen_so_far += nnew_pairs
-                nnew_pairs = dataset_increment#int(np.floor(dataset_increment * npairs_f))
+                nnew_pairs = dataset_increment  # int(np.floor(dataset_increment * npairs_f))
                 if nseen_so_far >= npairs_f:
                     # the last iteration possible
                     nnew_pairs = npairs_f - nseen_so_far
@@ -1040,9 +1054,9 @@ class TestRunner:
                     # don't do this if we have already seen all the data
                     # use predictions at available training points
                     tr_proba = np.array(tr_proba)
-                    uncertainty = tr_proba * np.log(tr_proba) + (1-tr_proba) * np.log(1-tr_proba) # negative shannon entropy
+                    uncertainty = tr_proba * np.log(tr_proba) + (1-tr_proba) * np.log(1-tr_proba)  # -ve shannon entropy
                     ranked_pair_idxs = np.argsort(uncertainty.flatten())
-                    new_pair_subset = ranked_pair_idxs[:nnew_pairs] # active learning (uncertainty sampling) step
+                    new_pair_subset = ranked_pair_idxs[:nnew_pairs]  # active learning (uncertainty sampling) step
                     new_pair_subset = np.argwhere(unseen_subset)[new_pair_subset].flatten()
                     pair_subset = np.concatenate((pair_subset, new_pair_subset))
                     
@@ -1051,25 +1065,27 @@ class TestRunner:
                     tr_proba_complete[unseen_subset] = tr_proba
                     tr_proba = tr_proba_complete
                     
-                logging.info("@@@ Completed running fold %i with method %s, features %s, %i data so far, in %f seconds." % (
-                    foldidx, self.method, feature_type, nseen_so_far, endtime-starttime) )
+                logging.info("@@@ Completed fold %i with method %s, features %s, %i data so far, in %f seconds." % (
+                    foldidx, self.method, feature_type, nseen_so_far, endtime-starttime))
                 logging.info("Accuracy for fold = %f" % (
                         np.sum(prefs_test[prefs_test != 1] == 2 * predictions.flatten()[prefs_test != 1]
-                            ) / float(np.sum(prefs_test != 1))) )
+                            ) / float(np.sum(prefs_test != 1))))
                 
                 if predicted_f is not None:
                     # print out the pearson correlation
-                    logging.info("Pearson correlation for fold = %f" % pearsonr(scores_rank_test, predicted_f.flatten())[0])
+                    logging.info("Pearson correlation for fold = %f" % pearsonr(
+                        scores_rank_test, predicted_f.flatten())[0])
                   
                 if tr_proba is not None:
                     prefs_unseen = prefs_train[unseen_subset]
                     tr_proba_unseen = tr_proba[unseen_subset]
                     logging.info("Unseen data in the training fold, accuracy for fold = %f" % (
-                        np.sum(prefs_unseen[prefs_unseen != 1] == 2 * np.round(tr_proba_unseen).flatten()[prefs_unseen != 1]
-                            ) / float(np.sum(prefs_unseen != 1))) )   
+                        np.sum(prefs_unseen[prefs_unseen != 1] == 2 * np.round(tr_proba_unseen).flatten()[
+                            prefs_unseen != 1]) / float(np.sum(prefs_unseen != 1))))
                                        
-                logging.info("AUC = %f" % roc_auc_score(prefs_test[prefs_test!=1] / 2.0, proba[prefs_test!=1]) )
-                # Save the data for later analysis ----------------------------------------------------------------------------
+                logging.info("AUC = %f" % roc_auc_score(prefs_test[prefs_test != 1] / 2.0, proba[prefs_test != 1]))
+
+                # Save the data for later analysis ---------------------------------------------------------------------
                 if hasattr(self.model, 'ls'):
                     final_ls[foldidx] = self.model.ls
                 else:

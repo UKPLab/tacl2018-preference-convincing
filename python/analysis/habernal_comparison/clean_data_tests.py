@@ -8,7 +8,7 @@ if __name__ == '__main__':
     # Classifications tasks
 
     datasets = ['UKPConvArgStrict']
-    methods = ['SVM', 'SinglePrefGP_noOpt_weaksprior']
+    methods = ['SinglePrefGP_noOpt_weaksprior']  # 'SVM',
     feature_types = ['ling']
     embeddings_types = ['word_mean']
 
@@ -26,8 +26,8 @@ if __name__ == '__main__':
     runner.run_test_set()
 
     datasets = ['UKPConvArgStrict']
-    methods = ['SinglePrefGP_noOpt_weaksprior', 'SVM', 'SinglePrefGP_weaksprior',
-               'SingleGPC_noOpt_weaksprior', 'GP+SVM']  # 'BI-LSTM',
+    methods = ['SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior', 'SingleGPC_noOpt_weaksprior', 'GP+SVM']
+    # 'SVM', 'BI-LSTM',
     feature_types = ['both']
     embeddings_types = ['word_mean']
 
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     # Ranking tasks
 
     datasets = ['UKPConvArgAll']
-    methods = ['SVM', 'SinglePrefGP_noOpt_weaksprior']
+    methods = ['SinglePrefGP_noOpt_weaksprior']  # 'SVM',
     feature_types = ['ling']
     embeddings_types = ['word_mean']
 
@@ -56,8 +56,8 @@ if __name__ == '__main__':
     runner.run_test_set()
 
     datasets = ['UKPConvArgAll']
-    methods = ['SVM', 'SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior',
-               'SingleGPC_noOpt_weaksprior', 'GP+SVM']  # 'BI-LSTM',
+    methods = ['SinglePrefGP_noOpt_weaksprior', 'SinglePrefGP_weaksprior', 'SingleGPC_noOpt_weaksprior', 'GP+SVM']
+    # 'SVM', 'BI-LSTM',
     feature_types = ['both']
     embeddings_types = ['word_mean']
 
