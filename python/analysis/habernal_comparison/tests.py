@@ -505,7 +505,8 @@ class TestRunner:
                   
         self.model.fit(np.arange(len(self.a1_train)), gpc_labels, optimize=self.optimize_hyper, features=gpc_feats)            
         
-        proba, _ = self.model.predict(np.concatenate((self.items_feat[self.a1_test], self.items_feat[self.a2_test]), axis=1))
+        proba = self.model.predict(np.concatenate((self.items_feat[self.a1_test], self.items_feat[self.a2_test]),
+                                                  axis=1))
         if self.a_rank_test is not None:
             predicted_f = np.zeros(len(self.a_rank_test)) # can't easily rank with this method
         else:
