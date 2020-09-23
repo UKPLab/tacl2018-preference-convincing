@@ -11,7 +11,7 @@ import logging
 from joblib import Parallel, delayed
 import multiprocessing
 
-max_no_jobs = 48
+max_no_jobs = 8  # 48
 
 def compute_distance(col, row):
     # create a grid where each element of the row is subtracted from each element of the column
