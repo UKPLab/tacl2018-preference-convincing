@@ -33,10 +33,12 @@ from sklearn.metrics import f1_score, accuracy_score, roc_auc_score, log_loss
 from scipy.stats import pearsonr, spearmanr, kendalltau
 from data_loading import load_train_test_data, load_ling_features, data_root_dir
 import datetime, time
+from data_loading import data_root_dir
 
-data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
+
 resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
 expt_root_dir = 'crowdsourcing_argumentation_opt/'
+
 
 def get_fold_data(data, f, expt_settings, flip_labels=False):
     # discrete labels are 0, 1 or 2
