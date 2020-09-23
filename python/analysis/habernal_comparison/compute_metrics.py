@@ -256,7 +256,9 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
             expt_settings['folds'], expt_settings['folds_regression'], _, _, _ = load_train_test_data(expt_settings['dataset'])
             
         for m, expt_settings['method'] in enumerate(methods):
-        
+
+            print("Computing metrics for %s" % expt_settings['method'])
+
             if d == 0 and m == 0:
                 
                 if expt_settings['di'] == 0:
