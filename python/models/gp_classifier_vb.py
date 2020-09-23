@@ -13,6 +13,7 @@ import multiprocessing
 
 max_no_jobs = 8  # 48
 
+
 def compute_distance(col, row):
     # create a grid where each element of the row is subtracted from each element of the column
     if issparse(col) or issparse(row):
@@ -240,7 +241,7 @@ def _dists_f(items_feat_sample, f):
     else:
         med = 1.0
 
-    if np.isnan(med) or med == 0:
+    if np.isnan(med):  # or med == 0:
         med = 1.0
     return med
 

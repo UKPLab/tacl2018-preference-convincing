@@ -363,8 +363,8 @@ class TestRunner:
         self.items_feat = items_feat
         self.ndims = self.items_feat.shape[1]
         self.valid_feats = valid_feats.astype(bool)
-    
-    # Methods for running the prediction methods --------------------------------------------------------------------------
+
+    # Methods for running the prediction methods -----------------------------------------------------------------------
     def run_gppl(self):
 
         if 'additive' in self.method:
@@ -410,11 +410,11 @@ class TestRunner:
                 use_svi = True
             
             self.model = GPPrefLearning(ninput_features=self.ndims, ls_initial=ls_initial, verbose=self.verbose, 
-                    shape_s0=shape_s0, rate_s0=rate_s0, rate_ls = 1.0 / np.mean(ls_initial), use_svi=use_svi, 
-                    ninducing=M, max_update_size=SS, kernel_combination=kernel_combination, forgetting_rate=0.7, 
-                    delay=1.0)
+                                        shape_s0=shape_s0, rate_s0=rate_s0, rate_ls=1.0 / np.mean(ls_initial),
+                                        use_svi=use_svi, ninducing=M, max_update_size=SS,
+                                        kernel_combination=kernel_combination, forgetting_rate=0.7, delay=1.0)
             self.model.max_iter_VB = 2000
-            new_items_feat = self.items_feat # pass only when initialising
+            new_items_feat = self.items_feat  # pass only when initialising
             print("no. features: %i" % new_items_feat.shape[1])
         else:
             new_items_feat = None
