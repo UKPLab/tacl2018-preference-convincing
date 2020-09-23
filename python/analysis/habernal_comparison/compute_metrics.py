@@ -33,8 +33,6 @@ from sklearn.metrics import f1_score, accuracy_score, roc_auc_score, log_loss
 from scipy.stats import pearsonr, spearmanr, kendalltau
 from data_loading import load_train_test_data, load_ling_features, data_root_dir
 import datetime, time
-from data_loading import data_root_dir
-
 
 resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
 expt_root_dir = 'crowdsourcing_argumentation_opt/'
@@ -181,11 +179,16 @@ def collate_AL_results(AL_rounds, results, combined_labels, label):
         
     return mean_results
 
+
 def get_results_dir(data_root_dir, resultsfile_template, expt_settings, foldername=expt_root_dir):
-    resultsdir = data_root_dir + 'outputdata/%s' % foldername + \
-            resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
-                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
-                expt_settings['di'])
+    resultsdir = os.path.join(
+        data_root_dir,
+        'outputdata',
+        foldername + resultsfile_template % (
+            expt_settings['dataset'], expt_settings['method'], expt_settings['feature_type'],
+            expt_settings['embeddings_type'], expt_settings['acc'], expt_settings['di']
+        )
+    )
             
     print(expt_settings['foldorderfile'])
             
@@ -203,7 +206,7 @@ def get_results_dir(data_root_dir, resultsfile_template, expt_settings, folderna
 
 def load_results_data(data_root_dir, resultsfile_template, expt_settings, max_no_folds=32, foldername=expt_root_dir):
     # start by loading the old-style data
-    resultsfile = data_root_dir + 'outputdata/' + foldername + \
+    resultsfile = os.path.join(data_root_dir, 'outputdata', foldername +
                     resultsfile_template % (
                       expt_settings['dataset'],
                       expt_settings['method'],
@@ -211,9 +214,9 @@ def load_results_data(data_root_dir, resultsfile_template, expt_settings, max_no
                       expt_settings['embeddings_type'],
                       expt_settings['acc'],
                       expt_settings['di']
-                  ) + '_test.pkl'
+                  ) + '_test.pkl')
     
-    resultsdir = get_results_dir(data_root_dir, resultsfile_template, expt_settings, foldername)                       
+    resultsdir = get_results_dir(data_root_dir, resultsfile_template, expt_settings, foldername)
     
     nFolds = max_no_folds
     if os.path.isfile(resultsfile): 
