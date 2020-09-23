@@ -314,6 +314,9 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
 
                         # look for new-style data in separate files for each fold. Prefer new-style if both are found.
                         foldfile = resultsdir + '/fold%i.pkl' % f
+
+                        print('Loading results from %s' % foldfile)
+
                         if os.path.isfile(foldfile):
                             with open(foldfile, 'rb') as fh:
                                 data_f = pickle.load(fh, encoding='latin1')
