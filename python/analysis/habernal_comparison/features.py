@@ -21,19 +21,17 @@ from matplotlib.ticker import MaxNLocator
 
 if __name__ == '__main__':
 
-    expt_folder_name = 'crowdsourcing_argumentation_opt/'
-    #expt_folder_name = 'crowdsourcing_argumentation_expts/'
+    # expt_folder_name = 'crowdsourcing_argumentation_opt/'
+    expt_folder_name = 'crowdsourcing_argumentation_expts/'
 
-    dataset = 'UKPConvArgStrict'#'UKPConvArgAll_evalMACE'#
-    methods = ['SinglePrefGP_weaksprior']  # ['SinglePrefGP_weaksprior_1104']  #'SinglePrefGP_weaksprior_2107', 'SinglePrefGP_weaksprior_0308', 'SinglePrefGP_weaksprior_1004desktop169']
+    dataset = 'UKPConvArgStrict'  # 'UKPConvArgAll_evalMACE'
+    methods = ['SinglePrefGP_weaksprior']  # ['SinglePrefGP_weaksprior_1104']
+
     feature_type = 'both'
     embeddings_type = 'word_mean'
     di = 0.00
 
-    selected_folds_all = [[0, 1, 6, 12, 13]]  #failed folds for 1104: [9, 10, 16]]
-    # selected_folds_all = [[0, 2, 6, 7, 10, 14, 16, 17, 22, 24, 28, 30],  # for the 2107 dataset
-    #                       [5, 9, 12, 13, 21, 25, 27],
-    #                       [1, 4, 8, 21, 29]]
+    selected_folds_all = [[0, 1, 6, 12, 13]]
 
     original_fold_order_file = './results/feature_analysis/foldorder_old.txt'
     o_fold_order = np.genfromtxt(os.path.expanduser(original_fold_order_file), dtype=str)
@@ -79,7 +77,7 @@ if __name__ == '__main__':
         min_folds = 0
 
         # Sort the features by their ID.
-        # If we have discarded some features that were all zeros, the current index will not be the original feature idx.
+        # If we have discarded some features that were all 0s, the current index will not be the original feature idx.
         # How to map them back? Reload the original data and find out which features were discarded.
 
         folds, folds_regression, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map = load_train_test_data(dataset)
