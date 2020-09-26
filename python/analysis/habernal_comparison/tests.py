@@ -575,7 +575,10 @@ class TestRunner:
         svc.fit(trainfeats, svc_labels.astype(int))
         proba = svc.predict_proba(np.concatenate((self.items_feat[self.a1_test], self.items_feat[self.a2_test]),
                                                  axis=1))[:, 0]
-        proba = (proba - np.min(proba)) / (np.max(proba) - np.min(proba)) # sometimes the probability estimates are too
+        maxdiff = np.max(proba) - np.min(proba)
+        if maxdiff == 0:
+            maxdiff = 1
+        proba = (proba - np.min(proba)) / maxdiff  # sometimes the probability estimates are too
         # squashed together... may be as bug in later versions of sklearn
 
         # labs = svc.predict(np.concatenate((self.items_feat[self.a1_test], self.items_feat[self.a2_test]), axis=1))
@@ -591,7 +594,7 @@ class TestRunner:
     
         if self.a1_unseen is not None and len(self.a1_unseen):
 
-            tr_proba = svc.predict_proba(np.concatenate((self.items_feat[self.a1_unseen], self.items_feat[self.a2_unseen]), axis=1))
+            tr_proba = svc.predict_proba(np.concatenate((self.items_feat[self.a1_unseen], self.items_feat[self.a2_unseen]), axis=1))[:, 0]
 
             # libSVM flips the labels if the first one it sees is positive
             if svc_labels[0] == 1:

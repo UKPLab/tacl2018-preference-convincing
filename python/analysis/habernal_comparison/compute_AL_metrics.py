@@ -5,6 +5,8 @@ Created on 20 Jul 2017
 '''
 import os
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 import compute_metrics
