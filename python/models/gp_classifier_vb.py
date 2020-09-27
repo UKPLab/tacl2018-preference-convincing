@@ -241,7 +241,7 @@ def _dists_f(items_feat_sample, f):
     else:
         med = 1.0
 
-    if np.isnan(med):  # or med == 0:
+    if np.isnan(med) or med == 0:
         med = 1.0
     return med
 
