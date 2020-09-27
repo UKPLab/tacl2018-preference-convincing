@@ -471,6 +471,7 @@ class GPPrefLearning(GPClassifierSVI):
 
         return np.log(rho), np.log(1 - rho)
 
+
     def _post_sample(self, f_mean, f_var=None, expectedlog=False, K_star=None, v=None, u=None):
 
         if v is None:
@@ -479,7 +480,10 @@ class GPPrefLearning(GPClassifierSVI):
             u = self.pref_u
 
         if np.isscalar(f_mean):
-            N = 1
+            if K_star is None:
+                N = 1
+            else:
+                N = K_star.shape[0]
         else:
             N = f_mean.shape[0]
 

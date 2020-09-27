@@ -1,3 +1,7 @@
+data/outputdata
+**/.DS_Store
+documents/**/figures/cycles_demo2/*
+
 **/**/*~
 
 *.old

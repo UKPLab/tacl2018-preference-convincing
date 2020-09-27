@@ -9,10 +9,10 @@ if __name__ == '__main__':
     datasets = ['UKPConvArgCrowdSample_evalMACE_noranking']
 
     # Create a plot for the runtime/accuracy against M + include other methods with ling + Glove features
-    methods = ['SinglePrefGP_noOpt_weaksprior', 'SVM', 'BI-LSTM' ]
+    methods = ['SVM', 'SinglePrefGP_noOpt_weaksprior', ]  # 'BI-LSTM'
     feature_types = ['both']
     embeddings_types = ['word_mean']
 
     runner = TestRunner('crowdsourcing_argumentation_expts', datasets, feature_types, embeddings_types, methods,
                         dataset_increment)
-    runner.run_test_set()
+    runner.run_test_set(npairs=400)

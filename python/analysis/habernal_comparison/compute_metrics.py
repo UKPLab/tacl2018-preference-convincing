@@ -34,9 +34,9 @@ from scipy.stats import pearsonr, spearmanr, kendalltau
 from data_loading import load_train_test_data, load_ling_features, data_root_dir
 import datetime, time
 
-data_root_dir = os.path.expanduser("~/data/personalised_argumentation/")
 resultsfile_template = 'habernal_%s_%s_%s_%s_acc%.2f_di%.2f'
-expt_root_dir = 'crowdsourcing_argumentation_opt/'
+expt_root_dir = 'crowdsourcing_argumentation_expts/'
+
 
 def get_fold_data(data, f, expt_settings, flip_labels=False):
     # discrete labels are 0, 1 or 2
@@ -165,6 +165,7 @@ def get_fold_data(data, f, expt_settings, flip_labels=False):
            
     return gold_disc, pred_disc, gold_prob, pred_prob, gold_rank, pred_rank, pred_tr_disc, pred_tr_prob, postprocced
 
+
 def collate_AL_results(AL_rounds, results, combined_labels, label):
     for r, AL_round in enumerate(AL_rounds):
         mean_results_round = pd.DataFrame(results[:, :, -1, r].reshape(1, results.shape[0]*results.shape[1]), 
@@ -175,15 +176,21 @@ def collate_AL_results(AL_rounds, results, combined_labels, label):
             mean_results = mean_results.append(mean_results_round)
             
     print(label)
-    print(mean_results) 
+    for col in mean_results.columns:
+        print(mean_results[col])
         
     return mean_results
 
+
 def get_results_dir(data_root_dir, resultsfile_template, expt_settings, foldername=expt_root_dir):
-    resultsdir = data_root_dir + 'outputdata/%s' % foldername + \
-            resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
-                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
-                expt_settings['di'])
+    resultsdir = os.path.join(
+        data_root_dir,
+        'outputdata',
+        foldername + resultsfile_template % (
+            expt_settings['dataset'], expt_settings['method'], expt_settings['feature_type'],
+            expt_settings['embeddings_type'], expt_settings['acc'], expt_settings['di']
+        )
+    )
             
     print(expt_settings['foldorderfile'])
             
@@ -198,14 +205,20 @@ def get_results_dir(data_root_dir, resultsfile_template, expt_settings, folderna
         
     return resultsdir    
 
-def load_results_data(data_root_dir, resultsfile_template, expt_settings, max_no_folds, foldername=expt_root_dir):
+
+def load_results_data(data_root_dir, resultsfile_template, expt_settings, max_no_folds=32, foldername=expt_root_dir):
     # start by loading the old-style data
-    resultsfile = data_root_dir + 'outputdata/' + foldername + \
-            resultsfile_template % (expt_settings['dataset'], expt_settings['method'], 
-                expt_settings['feature_type'], expt_settings['embeddings_type'], expt_settings['acc'], 
-                expt_settings['di']) + '_test.pkl'
+    resultsfile = os.path.join(data_root_dir, 'outputdata', foldername +
+                    resultsfile_template % (
+                      expt_settings['dataset'],
+                      expt_settings['method'],
+                      expt_settings['feature_type'],
+                      expt_settings['embeddings_type'],
+                      expt_settings['acc'],
+                      expt_settings['di']
+                  ) + '_test.pkl')
     
-    resultsdir = get_results_dir(data_root_dir, resultsfile_template, expt_settings, foldername)                       
+    resultsdir = get_results_dir(data_root_dir, resultsfile_template, expt_settings, foldername)
     
     nFolds = max_no_folds
     if os.path.isfile(resultsfile): 
@@ -250,7 +263,9 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
             expt_settings['folds'], expt_settings['folds_regression'], _, _, _ = load_train_test_data(expt_settings['dataset'])
             
         for m, expt_settings['method'] in enumerate(methods):
-        
+
+            print("Computing metrics for %s" % expt_settings['method'])
+
             if d == 0 and m == 0:
                 
                 if expt_settings['di'] == 0:
@@ -306,6 +321,9 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
 
                         # look for new-style data in separate files for each fold. Prefer new-style if both are found.
                         foldfile = resultsdir + '/fold%i.pkl' % f
+
+                        print('Loading results from %s' % foldfile)
+
                         if os.path.isfile(foldfile):
                             with open(foldfile, 'rb') as fh:
                                 data_f = pickle.load(fh, encoding='latin1')
@@ -432,7 +450,10 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
                             tr_results_acc[row, col, -1, AL_round] = np.mean(tr_results_acc[row, col, foldrange, AL_round], axis=0)
                             tr_results_logloss[row, col, -1, AL_round] = np.mean(tr_results_logloss[row, col, foldrange, AL_round], axis=0)
                             tr_results_auc[row, col, -1, AL_round] = np.mean(tr_results_auc[row, col, foldrange, AL_round], axis=0)
-                        
+
+                    if row == 0 and col == 0:
+                        continue  # we compute the p-values against the first method. Skip if this is the first method
+
                     print('p-values for %s, %s, %s, %s:' % (expt_settings['dataset'], expt_settings['method'],
                                                     expt_settings['feature_type'], expt_settings['embeddings_type']))
                         
@@ -464,31 +485,22 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
             combined_labels.append(str(row) + '_' + str(col))
 
     mean_results = []
-    mean_results.append(collate_AL_results(AL_rounds, results_f1, combined_labels, "Macro-F1 scores for round %i: "))
+    mean_results.append(collate_AL_results(AL_rounds, results_f1, combined_labels, "Macro-F1: "))
     mean_results.append(collate_AL_results(AL_rounds, results_acc, combined_labels, 
-           "Accuracy (excl. don't knows), round %i:")) # for UKPConvArgStrict don't knows are already ommitted)
-    mean_results.append(collate_AL_results(AL_rounds, results_auc, combined_labels, "AUC ROC, round %i:"))
-    #if AUC is higher than accuracy and F1 score, it suggests that decision boundary is not calibrated or that 
-    #accuracy may improve if we exclude data points close to the decision boundary
-    mean_results.append(collate_AL_results(AL_rounds, results_logloss, combined_labels, 
-      "Cross Entropy classification error, round %i: "))
-    #(quality of the probability labels is taken into account)
-    mean_results.append(collate_AL_results(AL_rounds, results_pearson, combined_labels, 
-                                              "Pearson's r for round %i: "))
-    mean_results.append(collate_AL_results(AL_rounds, results_spearman, combined_labels, 
-                                               "Spearman's rho for round %i: "))
-    mean_results.append(collate_AL_results(AL_rounds, results_kendall, combined_labels, 
-                                              "Kendall's tau for round %i: "))
+        "Accuracy (excl. don't knows), round %i:"))  # for UKPConvArgStrict don't knows are already ommitted)
+    mean_results.append(collate_AL_results(AL_rounds, results_auc, combined_labels, "AUC ROC:"))
+    # if AUC is higher than accuracy and F1 score, it suggests that decision boundary is not calibrated or that
+    # accuracy may improve if we exclude data points close to the decision boundary
+    mean_results.append(collate_AL_results(AL_rounds, results_logloss, combined_labels, "Cross Entropy error: "))
+    mean_results.append(collate_AL_results(AL_rounds, results_pearson, combined_labels, "Pearson's r: "))
+    mean_results.append(collate_AL_results(AL_rounds, results_spearman, combined_labels, "Spearman's rho: "))
+    mean_results.append(collate_AL_results(AL_rounds, results_kendall, combined_labels, "Kendall's tau: "))
         
     if np.any(tr_results_acc):
-        mean_results.append(collate_AL_results(AL_rounds, tr_results_f1, combined_labels,
-                                                 "(TR) Macro-F1 scores for round %i: "))
-        mean_results.append(collate_AL_results(AL_rounds, tr_results_acc, combined_labels, 
-            "(TR) Accuracy for round %i: "))
-        mean_results.append(collate_AL_results(AL_rounds, tr_results_auc, combined_labels, 
-            "(TR) AUC ROC for round %i: "))
-        mean_results.append(collate_AL_results(AL_rounds, tr_results_logloss, combined_labels, 
-            "(TR) Cross Entropy Error for round %i: "))
+        mean_results.append(collate_AL_results(AL_rounds, tr_results_f1, combined_labels, "(TR) Macro-F1 scores: "))
+        mean_results.append(collate_AL_results(AL_rounds, tr_results_acc, combined_labels, "(TR) Accuracy: "))
+        mean_results.append(collate_AL_results(AL_rounds, tr_results_auc, combined_labels, "(TR) AUC ROC: "))
+        mean_results.append(collate_AL_results(AL_rounds, tr_results_logloss, combined_labels, "(TR) Cross Entropy: "))
     
 #     metricsfile = data_root_dir + 'outputdata/expt_root_dir' + \
 #                     'metrics_%s.pkl' % (tag)    
@@ -501,7 +513,8 @@ def compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_
     # TODO: Correlations between reasons and latent argument features found using preference components?
     
     return results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall,\
-            tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels
+        tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels
+
 
 if __name__ == '__main__':
     
@@ -525,9 +538,9 @@ if __name__ == '__main__':
     embeddings_types = ['word_mean']#['word_mean', 'skipthoughts', 'siamese-cbow']
 
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
-    tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
-    = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                      max_no_folds=max_no_folds)
+        tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
+        = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
+                          max_no_folds=max_no_folds)
 
     print(results_acc)
 

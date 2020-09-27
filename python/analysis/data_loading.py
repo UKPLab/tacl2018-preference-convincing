@@ -9,7 +9,7 @@ Created on 10 Jun 2017
 '''
 import os, sys
 
-data_root_dir = os.path.abspath(os.path.expanduser("./data/"))
+data_root_dir = os.path.abspath("./data/")
 
 sys.path.append(os.path.abspath('./git/acl2016-convincing-arguments/code/argumentation-convincingness-experiments-python'))
 sys.path.append(os.path.expanduser('~/data/personalised_argumentation/embeddings/Siamese-CBOW/siamese-cbow'))
@@ -183,8 +183,8 @@ def load_ling_features(dataset,
 
     print(("Looking for linguistic features in directory %s" % ling_dir))
     print('Loading linguistic features')
-    ling_file = ling_dir + "/%s-libsvm.txt" % dataset
-    argids_file = ling_dir + "/%s-libsvm.txt" % ("argids_%s" % dataset)
+    ling_file = os.path.join(ling_dir, "%s-libsvm.txt" % dataset)
+    argids_file = os.path.join(ling_dir, "%s-libsvm.txt" % ("argids_%s" % dataset))
     if not os.path.isfile(ling_file) or not os.path.isfile(argids_file):
         ling_file, _ , docids = combine_lines_into_one_file(dataset,
                                                             dirname=input_dir,

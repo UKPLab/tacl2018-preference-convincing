@@ -1,53 +1,14 @@
-The master branch is intended to house the latest version of all the Gaussian process preference learning methods related to this project. To get the state of the repository used for our experiments in the TACL 2018 paper, please use the TACL 2018 branch.
 
-# Finding Convincing Arguments using Scalable Bayesian Preference Learning
+# Gaussian process preference learning (GPPL)
 
 The repository provides an implementation of a Bayesian pairwise preference learning
-method for ranking, scoring items and predicting pairwise labels, 
-namely, Gaussian process preference learning
-using stochastic variational inference.
+method, GPPL, for ranking, scoring items and predicting pairwise labels.
+GPPL is implemented using using stochastic variational inference.
 
-Please cite:
-```
-@article{simpson2018finding,
-  title={Finding convincing arguments using scalable bayesian preference learning},
-  author={Simpson, Edwin and Gurevych, Iryna},
-  journal={Transactions of the Association of Computational Linguistics},
-  volume={6},
-  pages={357--371},
-  year={2018},
-  publisher={MIT Press}
-}
-```
-
-We introduce a scalable Bayesian preference
-learning method for identifying convincing ar-
-guments in the absence of gold-standard rat-
-ings or rankings. In contrast to previous work,
-we avoid the need for separate methods to
-perform quality control on training data, pre-
-dict rankings and perform pairwise classifica-
-tion. Bayesian approaches are an effective so-
-lution when faced with sparse or noisy train-
-ing data, but have not previously been used
-to identify convincing arguments. One issue
-is scalability, which we address by develop-
-ing a stochastic variational inference method
-for Gaussian process (GP) preference learn-
-ing. We show how our method can be ap-
-plied to predict argument convincingness from
-crowdsourced data, outperforming the previ-
-ous state-of-the-art, particularly when trained
-with small amounts of unreliable data. We
-demonstrate how the Bayesian approach en-
-ables more effective active learning, thereby
-reducing the amount of data required to iden-
-tify convincing arguments for new users and
-domains. While word embeddings are princi-
-pally used with neural networks, our results
-show that word embeddings in combination
-with linguistic features also benefit GPs when
-predicting argument convincingness.
+The master branch is intended to house the latest version of the GPPL implementation. 
+There are two associated papers, which each use code in a separate branch:
+1. Finding convincing arguments using scalable bayesian preference learning, Simpson and Gurevych, TACL (2018). Please see tacl2018 branch.
+1. Scalable Bayesian preference learning, Simpson and Gurevych, Machine Learning (2020). Please see crowdGPPL branch.
 
 **Contact person:** Edwin Simpson, simpson@ukp.informatik.tu-darmstadt.de
 
@@ -77,106 +38,27 @@ https://github.com/UKPLab/acl2016-convincing-arguments
 
 Dependencies for just using the gp_pref_learning model:
 
-   * scikit-learn==0.18.1
-   * scipy==0.19.0
-   * numpy==1.12.1
+   * scikit-learn>=0.18.1
+   * scipy>=0.19.0
+   * numpy>=1.12.1
 
 For running the experiments, please see the requirements.txt for further dependencies. 
 
 * Python 3
-* virtualenv
-* The required packages are listed in requirements.txt. You can install them using pip install -r requirements.txt
-* Maven -- check if you have the command line program 'mvn' -- required to extract the linguistic features from our experimental datasets. You can skip 
-this if you are not re-running our experiments or training a model on UKPConvArg*** datasets.
+* virtualenv (to install requirements) 
+* The required packages for just the core modules are listed in requirements.txt. 
+You can install them using pip install -r requirements.txt.
+* Maven -- check if you have the command line program 'mvn' -- required to extract the linguistic features from our 
+experimental datasets. You can skip this if you are not re-running our experiments or training a model on 
+UKPConvArg*** datasets.
+* Java JDK 1.8. Newer and older versions may cause problems with preprocessing. If you
+have other versions of JDK installed, you need to set the environment 
+variable JAVA_HOME to point to the 1.8 version, 
+e.g. export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_261.jdk/Contents/Home/jre/ .
 
 ## How to run the experiments
 
-1. Extract the linguistic features from the data by running:
-
-```
-python ./python/analysis/habernal_comparison/run_preprocessing.py. 
-```
-
-By default, the data is provided by this repository at ./data and this path is set in ./python/analysis/data_loading.py, line 12.
-The data is originally provided by https://github.com/UKPLab/acl2016-convincing-arguments, the copies
-are provided here for convenience.
-
-2. Run experiment 1 by running script python/analysis/cycles_demo.py from the root directory of the project:
-
-python ./python/analysis/cycles_demo.py
-
-3. Run experiment 2 (this will take some time):
-
-   ```
-   python ./python/analysis/habernal_comparison/scalability_tests.py
-   ```
-
-   Generate the plots:
-
-   ```
-   python ./python/analysis/habernal_comparison/scalability_plots.py
-   ```
-
-   The plots will be saved by default to './documents/pref_learning_for_convincingness/figures/scalability'.
-
-4. Run experiment 3 (this will take some time):
-
-   ```
-    python ./python/analysis/habernal_comparison/clean_data_tests.py
-   ```
-
-   This script simply sets some parameters for the test:
-   * the choice of method
-   * dataset
-   * features to use with each method
-
-   Given these settings, the experiments are then implemented by ./python/analysis/habernal_comparison/tests.py.
-
-   Compute the performance metrics:
-
-   ```
-   python ./python/analysis/habernal_comparison/clean_data_metrics.py
-   ```
-
-   This script also just sets some parameters and then calls ./python/analysis/habernal_comparison/compute_metrics.py.
-
-5. Run experiment 4 (this will take some time):
-
-   ```
-   python ./python/analysis/habernal_comparison/noisy_data_tests.py
-   ```
-
-   Compute the performance metrics:
-
-   ```
-   python ./python/analysis/habernal_comparison/noisy_data_metrics.py
-   ```
-
-6. Run experiment 5 (this will take some time) for active learning:
-
-   ```
-   python ./python/analysis/habernal_comparison/active_learning_tests.py
-   ```
-
-   Compute the performance metrics:
-
-   ```
-   python ./python/analysis/habernal_comparison/compute_AL_metrics.py
-   ```
-
-7. Run analysis of the relevant feature determination:
-
-   ```
-   python ./python/analysis/habernal_comparison/features.py
-   ```
-
-   The plots will be saved to ./documents/pref_learning_for_convincingness/figures/features2/
-
-8. Produce the output used for error analysis:
-
-   ```
-   python ./python/analysis/habernal_comparison/error_analysis.py
-   ```
+Please see either the crowdGPPL or tacl2018 branch.
 
 ## Template for running on a new dataset with Ling+Glove feature sets
 

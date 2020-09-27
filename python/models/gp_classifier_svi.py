@@ -262,6 +262,9 @@ class GPClassifierSVI(GPClassifierVB):
                     common_term, self.ls[0], self.inducing_coords[:, dim:dim + 1], self.s)
                 for dim in dims)
 
+        # since we pass in the ln(lengthscale), we need to multiply by d l / d ln l = l
+        gradient *= self.ls
+
         if self.n_lengthscales == 1:
             # sum the partial derivatives over all the dimensions
             gradient = [np.sum(gradient)]
@@ -317,7 +320,7 @@ class GPClassifierSVI(GPClassifierVB):
         # A = solve_triangular(L_u_invS, B, lower=True, trans=True, check_finite=False, overwrite_b=True)
 
         self.uS = scipy.linalg.inv(self.u_invS)
-
+        # self.invKs_mm_uS = self.invKs_mm.dot(self.uS)
         #         self.um_minus_mu0 = solve_triangular(L_u_invS, self.u_invSm, lower=True, check_finite=False)
         #         self.um_minus_mu0 = solve_triangular(L_u_invS, self.um_minus_mu0, lower=True, trans=True, check_finite=False,
         #                                              overwrite_b=True)

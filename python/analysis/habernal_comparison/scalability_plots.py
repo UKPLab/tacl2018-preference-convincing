@@ -3,7 +3,8 @@ Created on Jan 8, 2018
 
 @author: simpson
 '''
-
+import matplotlib as mpl
+mpl.use('Agg')
 import os
 import numpy as np
 from compute_metrics import load_results_data, get_fold_data
@@ -33,7 +34,7 @@ if __name__ == '__main__':
     compute_metrics.max_no_folds = 32
         
     # Create a plot for the runtime/accuracy against M + include other methods with ling + Glove features
-    methods =  ['SinglePrefGP_noOpt_weaksprior_M2', 'SinglePrefGP_noOpt_weaksprior_M10', 
+    methods = ['SinglePrefGP_noOpt_weaksprior_M2', 'SinglePrefGP_noOpt_weaksprior_M10',
                 'SinglePrefGP_noOpt_weaksprior_M100', 'SinglePrefGP_noOpt_weaksprior_M200', 'SinglePrefGP_noOpt_weaksprior_M300',
                 'SinglePrefGP_noOpt_weaksprior_M400', 'SinglePrefGP_noOpt_weaksprior_M500',  
                 'SinglePrefGP_noOpt_weaksprior_M600', 'SinglePrefGP_noOpt_weaksprior_M700', 
@@ -52,15 +53,14 @@ if __name__ == '__main__':
     for m, expt_settings['method'] in enumerate(methods): 
         print("Processing method %s" % expt_settings['method'])
 
-        data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template, 
-                                                                          expt_settings)
+        data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template, expt_settings)
         
         acc_m = np.zeros(nFolds)
         runtimes_m = np.zeros(nFolds)
         
         for f in range(nFolds):
             print("Processing fold %i" % f)
-            if expt_settings['fold_order'] is None: # fall back to the order on the current machine
+            if expt_settings['fold_order'] is None:  # fall back to the order on the current machine
                 if expt_settings['folds'] is None:
                     continue
                 fold = list(expt_settings['folds'].keys())[f]
@@ -124,8 +124,7 @@ if __name__ == '__main__':
     for m, expt_settings['method'] in enumerate(methods): 
         print("Processing method %s" % expt_settings['method'])
 
-        data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template, 
-                                                                          expt_settings)
+        data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template, expt_settings)
         
         acc_m = np.zeros(nFolds)
         runtimes_m = np.zeros(nFolds)
@@ -255,19 +254,25 @@ if __name__ == '__main__':
         for m, expt_settings['method'] in enumerate(methods): 
             print("Processing method %s" % expt_settings['method'])
     
-            data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, 
-                                          resultsfile_template, expt_settings, foldername)
+            data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template,
+                                                                      expt_settings, foldername=foldername)
 
             runtimes_m = np.zeros(nFolds)
             
             for f in range(nFolds):
                 print("Processing fold %i" % f)
-                fold = expt_settings['fold_order'][f] 
-                if fold[-2] == "'" and fold[0] == "'":
-                    fold = fold[1:-2]
-                elif fold[-1] == "'" and fold[0] == "'":
-                    fold = fold[1:-1]  
-                expt_settings['fold_order'][f] = fold
+                if expt_settings['fold_order'] is None:  # fall back to the order on the current machine
+                    if expt_settings['folds'] is None:
+                        continue
+                    fold = list(expt_settings['folds'].keys())[f]
+                else:
+                    fold = expt_settings['fold_order'][f]
+
+                    if fold[-2] == "'" and fold[0] == "'":
+                        fold = fold[1:-2]
+                    elif fold[-1] == "'" and fold[0] == "'":
+                        fold = fold[1:-1]
+                    expt_settings['fold_order'][f] = fold
                                               
                 # look for new-style data in separate files for each fold. Prefer new-style if both are found.
                 foldfile = resultsdir + '/fold%i.pkl' % f
@@ -326,30 +331,32 @@ if __name__ == '__main__':
         for m, expt_settings['method'] in enumerate(dims_methods): 
             print("Processing method %s" % expt_settings['method'])
     
-            if m == 3 and (n == 1 or n==2):
-                foldername_tmp = 'crowdsourcing_argumentation_expts_first_submission/'
-                expt_settings_tmp = dict(expt_settings)
-                expt_settings_tmp['feature_type'] = 'embeddings'
-                expt_settings_tmp['foldorderfile'] = None
-                if n == 1:
-                    
-                    expt_settings_tmp['embeddings_type'] = 'siamese-cbow'
-                elif n == 2:
-                    expt_settings_tmp['embeddings_type'] = 'skipthoughts'
-                
-                data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, 
-                                          resultsfile_template, expt_settings_tmp, foldername_tmp)
-                print('***********')
-                print(resultsfile)
-                
-                expt_settings_master = expt_settings
-                expt_settings = expt_settings_tmp
-            else:                                        
-                if not len(dim):
-                    continue
-                data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, 
-                                          resultsfile_template, expt_settings, foldername)
-                expt_settings_master = expt_settings
+            # if m == 3 and (n == 1 or n==2):
+            #     foldername_tmp = 'crowdsourcing_argumentation_expts_first_submission/'
+            #     expt_settings_tmp = dict(expt_settings)
+            #     expt_settings_tmp['feature_type'] = 'embeddings'
+            #     expt_settings_tmp['foldorderfile'] = None
+            #     if n == 1:
+            #
+            #         expt_settings_tmp['embeddings_type'] = 'siamese-cbow'
+            #     elif n == 2:
+            #         expt_settings_tmp['embeddings_type'] = 'skipthoughts'
+            #
+            #     data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template,
+            #                                                               expt_settings_tmp, foldername=foldername_tmp)
+            #     print('***********')
+            #     print(resultsfile)
+            #
+            #     expt_settings_master = expt_settings
+            #     expt_settings = expt_settings_tmp
+            # else:
+            if not len(dim):
+                continue
+            data, nFolds, resultsdir, resultsfile = load_results_data(data_root_dir, resultsfile_template,
+                                                                      expt_settings, foldername=foldername)
+            expt_settings_master = expt_settings
+
+
             runtimes_m = np.zeros(nFolds)
             print(resultsdir)
             for f in range(nFolds):
@@ -415,8 +422,8 @@ if __name__ == '__main__':
     x_labels = ['3e1', '3e2', '3e3',  '3e4'] # '10e3',
     plt.xticks(x_ticklocs, x_labels)   
     
-    runtimes_dims[1][0] = 397 # the observation in the dataset was wrong, use the times from the console printout
-    runtimes_dims[1][2] = 2851
+    # runtimes_dims[1][0] = 397 # the observation in the dataset was wrong, use the times from the console printout
+    # runtimes_dims[1][2] = 2851
     
     h1, = ax4.plot(x_dims, runtimes_dims[1], label='SVM', marker='>', color='black', 
                    clip_on=False, linewidth=2, markersize=8)
@@ -476,4 +483,4 @@ if __name__ == '__main__':
     #plt.ylabel('Runtime (s) for GPPL, M=500, medi.')
     plt.xticks(x_ticklocs, x_labels)   
 
-    plt.savefig(figure_save_path + '/num_features_gppl.pdf')    
+    plt.savefig(figure_save_path + '/num_features_gppl.pdf')
