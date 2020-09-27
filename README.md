@@ -7,8 +7,8 @@ GPPL is implemented using using stochastic variational inference.
 
 The master branch is intended to house the latest version of the GPPL implementation. 
 There are two associated papers, which each use code in a separate branch:
-1. Finding convincing arguments using scalable bayesian preference learning, Simpson and Gurevych, TACL (2018). Please see tacl2018 branch.
-1. Scalable Bayesian preference learning, Simpson and Gurevych, Machine Learning (2020). Please see crowdGPPL branch.
+1. Finding convincing arguments using scalable bayesian preference learning, Simpson and Gurevych, TACL (2018). Please see [tacl2018](https://github.com/UKPLab/tacl2018-preference-convincing/tree/tacl2018) branch.
+1. Scalable Bayesian preference learning, Simpson and Gurevych, Machine Learning (2020). Please see [crowdGPPL](https://github.com/UKPLab/tacl2018-preference-convincing/tree/crowdGPPL) branch.
 
 **Contact person:** Edwin Simpson, simpson@ukp.informatik.tu-darmstadt.de
 
@@ -58,7 +58,8 @@ e.g. export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_261.jdk/Content
 
 ## How to run the experiments
 
-Please see either the crowdGPPL or tacl2018 branch.
+Please see either the [crowdGPPL](https://github.com/UKPLab/tacl2018-preference-convincing/tree/crowdGPPL)
+ or [tacl2018](https://github.com/UKPLab/tacl2018-preference-convincing/tree/tacl2018) branch.
 
 ## Template for running on a new dataset with Ling+Glove feature sets
 
