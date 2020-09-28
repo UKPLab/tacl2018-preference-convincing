@@ -30,14 +30,12 @@ Created on 20 Mar 2017
 '''
 
 import logging
-from scipy.stats.stats import pearsonr, kendalltau
+from scipy.stats.stats import kendalltau
 from sklearn.metrics import log_loss
 from sklearn.svm.classes import NuSVR, SVC
 logging.basicConfig(level=logging.DEBUG)
-
 import sys
 import os
-from sklearn.metrics.ranking import roc_auc_score
 
 sys.path.append("./python")
 sys.path.append("./python/analysis")

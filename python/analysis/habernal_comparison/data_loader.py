@@ -14,6 +14,8 @@ from sklearn.datasets import load_svmlight_file
 import vocabulary_embeddings_extractor
 from preproc_raw_data import generate_turker_CSV, generate_gold_CSV
 
+data_root_dir = os.path.abspath("./data/")
+
 
 def load_single_file(directory, file_name, word_to_indices_map, nb_words=None):
     """
@@ -323,6 +325,7 @@ def load_my_data_separate_args(directory, test_split=0.2, nb_words=None, add_rev
 
     return output_folds_with_train_test_data, word_index_to_embeddings_map, word_to_indices_map, index_to_word_map
 
+
 def __main__():
     np.random.seed(1337)  # for reproducibility
 
@@ -342,9 +345,6 @@ def __main__():
 
         print("Training instances ", len(training_instances), " training labels ", len(training_labels))
         print("Test instances ", len(test_instances), " test labels ", len(test_labels))
-
-# __main__()
-data_root_dir = os.path.abspath("./data/")
 
 
 def combine_lines_into_one_file(dataset_name, dirname=os.path.join(data_root_dir, 'lingdata/UKPConvArg1-Full-libsvm'),

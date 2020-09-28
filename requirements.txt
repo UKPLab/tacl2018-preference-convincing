@@ -1,5 +1,4 @@
 appdirs==1.4.3
-boto==2.47.0
 bz2file==0.98
 certifi==2017.4.17
 chardet==3.0.4
