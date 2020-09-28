@@ -13,7 +13,7 @@ idna==2.5
 joblib>=0.12.5
 kiwisolver==1.0.1
 matplotlib==2.2.2
-nltk==3.4
+nltk==3.4.5
 numpy==1.15.0
 lxml==3.8.0
 mock==2.0.0
