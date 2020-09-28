@@ -10,6 +10,7 @@ import logging
 from gp_classifier_vb import coord_arr_to_1d, coord_arr_from_1d, temper_extreme_probs
 from gp_classifier_svi import GPClassifierSVI
 
+
 def get_unique_locations(obs_coords_0, obs_coords_1, mu_0=None, mu_1=None):
     if issparse(obs_coords_0) or issparse(obs_coords_1):
         uidxs_0 = []
@@ -73,9 +74,9 @@ def pref_likelihood(fmean, fvar=None, subset_idxs=[], v=[], u=[], return_g_f=Fal
     if len(subset_idxs):
         if len(v) and len(u):
             # keep only the pairs that reference two items in the subet
-            pair_subset = np.in1d(v, subset_idxs) & np.in1d(u, subset_idxs)
-            v = v[pair_subset]
-            u = u[pair_subset]
+            # pair_subset = np.in1d(v, subset_idxs) & np.in1d(u, subset_idxs)
+            v = v[subset_idxs]  #pair_subset]
+            u = u[subset_idxs]  #pair_subset]
         else:
             fmean = fmean[subset_idxs]
 
@@ -91,6 +92,7 @@ def pref_likelihood(fmean, fvar=None, subset_idxs=[], v=[], u=[], return_g_f=Fal
 
     if np.any(fvar < 0):
         logging.warning('There was a negative variance in the pref likelihood! %s' % fvar)
+        fvar[fvar < 0] = 0
 
     if len(v) and len(u):
         g_f = (fmean[v, :] - fmean[u, :]) / np.sqrt(fvar)
@@ -124,7 +126,7 @@ class GPPrefLearning(GPClassifierSVI):
 
     def __init__(self, ninput_features, mu0=0, shape_s0=2, rate_s0=2, shape_ls=10, rate_ls=0.1, ls_initial=None,
         kernel_func='matern_3_2', kernel_combination='*',
-        max_update_size=10000, ninducing=500, use_svi=True, delay=10, forgetting_rate=0.7, verbose=False, fixed_s=False):
+        max_update_size=1000, ninducing=500, use_svi=True, delay=10, forgetting_rate=0.7, verbose=False, fixed_s=False):
 
         # We set the function scale and noise scale to the same value so that we assume apriori that the differences
         # in preferences can be explained by noise in the preference pairs or the latent function. Ordering patterns
@@ -159,18 +161,29 @@ class GPPrefLearning(GPClassifierSVI):
         else:
             mu0 = self.mu0
 
+        # OLD VERSION:
         # I think that we should really sample using the full covariance here, since some values are bound to be close
         # together given the prior covariance. However, in practice this is much slower to sample, so we use a diagonal
         # as an approximation, which may  under-estimate variance, since the resulting Q is a combination of
         # a term with too low observation variance + too high model variance. Hence we exaggerated the amount learned
         # from similar points, reducing the effect of the prior covariance.
-        f_prior_var = self.rate_s0/self.shape_s0
-        m_prior, not_m_prior, v_prior = self._post_sample(mu0, f_prior_var, False, None, self.pref_v, self.pref_u)
+        # f_prior_var = self.rate_s0/self.shape_s0
+        #m_prior, not_m_prior, v_prior = self._post_sample(mu0, f_prior_var, False, None, self.pref_v, self.pref_u)
+        # When we used this version we were coincidentally compensating by adding the variance on mistakenly...
+
+        if not len(self.pref_v):
+            self.nu0 = []
+            return
+
+        # NEW VERSION:
+        m_prior, _, v_prior = self._post_sample(mu0, self.K_mm/self.s, False, self.K_nm, self.pref_v, self.pref_u)
+        if not np.any(np.nonzero(self.mu0)):
+            m_prior = 0.5
 
         # find the beta parameters
-        a_plus_b = 1.0 / (v_prior / (m_prior*not_m_prior)) - 1
+        a_plus_b = 1.0 / (v_prior / (m_prior*(1-m_prior))) - 1
         a = (a_plus_b * m_prior)
-        b = (a_plus_b * not_m_prior)
+        b = (a_plus_b * (1-m_prior))
 
         self.nu0 = np.array([b, a])
         #if self.verbose:
@@ -190,9 +203,13 @@ class GPPrefLearning(GPClassifierSVI):
         if mu0 is None or not len(mu0):
             self.mu0 = np.zeros((self.n_locs, 1)) + self.mu0_default
         else:
-            self.mu0 = mu0
-            self.mu0_1 = self.mu0[self.pref_v, :]
-            self.mu0_2 = self.mu0[self.pref_u, :]
+            self.mu0 = np.array(mu0)
+            if self.mu0.ndim == 1:
+                self.mu0 = self.mu0[:, None]
+
+            if len(self.pref_v):
+                self.mu0_1 = self.mu0[self.pref_v, :]
+                self.mu0_2 = self.mu0[self.pref_u, :]
 
         self.Ntrain = self.pref_u.size
 
@@ -218,6 +235,7 @@ class GPPrefLearning(GPClassifierSVI):
             self.obs_uidxs = np.arange(self.features.shape[0])
             self.pref_v = obs_coords_0.flatten()
             self.pref_u = obs_coords_1.flatten()
+            self.n_obs = len(self.pref_v)
             self.obs_coords = self.features
             return poscounts, totals
         else:
@@ -257,6 +275,7 @@ class GPPrefLearning(GPClassifierSVI):
             # Record the indexes into the list of coordinates for the pairs that were compared
             self.pref_v = pref_vu[:len(nonzero_v)]
             self.pref_u = pref_vu[len(nonzero_v):]
+            self.n_obs = len(self.pref_v)
 
             # Return the counts for each of the observed pairs
             pos_counts = grid_obs_pos_counts[nonzero_v, nonzero_u]
@@ -291,14 +310,13 @@ class GPPrefLearning(GPClassifierSVI):
         phi, g_mean_f = self.forward_model(f, return_g_f=True) # first order Taylor series approximation
         J = 1 / (2*np.pi)**0.5 * np.exp(-g_mean_f**2 / 2.0) * np.sqrt(0.5)
 
-        obs_idxs = np.arange(self.n_locs)[None, :]
-
         if data_idx_i is not None and hasattr(self, 'data_obs_idx_i') and len(self.data_obs_idx_i):
-            obs_idxs = obs_idxs[:, data_idx_i]
+            obs_idxs = data_idx_i[None, :]
             J = J[self.data_obs_idx_i, :]
             s = (self.pref_v[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int) -\
                                                     (self.pref_u[self.data_obs_idx_i, np.newaxis]==obs_idxs).astype(int)
         else:
+            obs_idxs = np.arange(self.n_locs)[None, :]
             s = (self.pref_v[:, np.newaxis]==obs_idxs).astype(int) - (self.pref_u[:, np.newaxis]==obs_idxs).astype(int)
 
         J = J * s
@@ -356,7 +374,7 @@ class GPPrefLearning(GPClassifierSVI):
         elif process_obs and input_type != 'binary':
             raise ValueError('input_type for preference labels must be either "binary" or "zero-centered"')
 
-        #TODO: bug fix: if the same object is reused with different set of items, there is a crash because K_nm is not renewed.
+        # TODO: bug fix: if the same object is reused with different set of items, there is a crash because K_nm is not renewed.
 
         super(GPPrefLearning, self).fit((items1_coords, items2_coords), preferences, totals, process_obs,
                                 mu0=mu0, K=K, optimize=optimize, use_median_ls=use_median_ls, features=item_features)
@@ -390,22 +408,9 @@ class GPPrefLearning(GPClassifierSVI):
                                         mu0=mu0, K=K, init_Q_only=init_Q_only, features=item_features)
 
     def _update_sample_idxs(self):
-        obs_idxs = np.unique([self.pref_v, self.pref_u]) #only consider the points that are really observed
-        nobs = obs_idxs.shape[0]
-        
-        if not self.fixed_sample_idxs:
-            self.data_obs_idx_i = 0
+        super(GPPrefLearning, self)._update_sample_idxs()
+        self.data_idx_i = np.unique([self.pref_v[self.data_obs_idx_i], self.pref_u[self.data_obs_idx_i]])
 
-            while not np.sum(self.data_obs_idx_i): # make sure we don't choose indices that have not been compared
-                if nobs > self.update_size:
-                    self.data_idx_i = np.sort(np.random.choice(nobs, self.update_size, replace=False))
-                else:
-                    self.data_idx_i = np.arange(nobs)
-
-                self.data_idx_i = obs_idxs[self.data_idx_i]
-                self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)
-        else:
-            self.data_obs_idx_i = np.in1d(self.pref_v, self.data_idx_i) & np.in1d(self.pref_u, self.data_idx_i)
 
     # Prediction methods ---------------------------------------------------------------------------------------------
     def predict(self, out_feats=None, item_0_idxs=None, item_1_idxs=None, K_star=None, K_starstar=None,
@@ -428,11 +433,12 @@ class GPPrefLearning(GPClassifierSVI):
         f, C = self.predict_f(out_feats, None, K_star, K_starstar, mu0_out, reuse_output_kernel, full_cov=True)
 
         m_post, not_m_post = self._post_rough(f, C, item_0_idxs, item_1_idxs)
+
         if return_var:
             if self.use_svi:
-                _, _, v_post = self._post_sample(self.mu0_output, K_star=self.K_star, v=item_0_idxs, u=item_1_idxs)
+                _, _, v_post = self._post_sample(self.mu0_output, self.uS, K_star=self.K_star, v=item_0_idxs, u=item_1_idxs)
             else:
-                _, _, v_post = self._post_sample(f, K_star=C, v=item_0_idxs, u=item_1_idxs)
+                _, _, v_post = self._post_sample(f, self.uS, K_star=C, v=item_0_idxs, u=item_1_idxs)
 
         if expectedlog:
             m_post = np.log(m_post)
@@ -465,11 +471,19 @@ class GPPrefLearning(GPClassifierSVI):
         out_feats, item_0_idxs, item_1_idxs, mu0_out = get_unique_locations(out_feats, out_1_feats, mu0_out, mu0_out_1)
         return self.predict(out_feats, item_0_idxs, item_1_idxs, mu0_out)
 
+
     def _logpt(self):
+        # logrho, lognotrho, _ = self._post_sample(self.obs_f, None, True, self.K_nm, self.pref_v, self.pref_u)
+
         rho = pref_likelihood(self.obs_f, v=self.pref_v, u=self.pref_u)
         rho = temper_extreme_probs(rho)
+        logrho = np.log(rho)
+        lognotrho = np.log(1 - rho)
 
-        return np.log(rho), np.log(1 - rho)
+        # if we use the Gaussian approximation rather than the true likelihood, there would be a -0.5*tr(CQ^-1) term
+        # to take care of the variance in f. However, I think we have dropped it because computing C is expensive???
+
+        return logrho, lognotrho
 
 
     def _post_sample(self, f_mean, f_var=None, expectedlog=False, K_star=None, v=None, u=None):
@@ -478,6 +492,10 @@ class GPPrefLearning(GPClassifierSVI):
             v = self.pref_v
         if u is None:
             u = self.pref_u
+
+        if not len(v):
+            # no prefereces passed in for training!
+            return [], [], []
 
         if np.isscalar(f_mean):
             if K_star is None:
@@ -490,7 +508,7 @@ class GPPrefLearning(GPClassifierSVI):
         # since we don't have f_cov
         if K_star is not None and self.use_svi:
             #sample the inducing points because we don't have full covariance matrix. In this case, f_cov should be Ks_nm
-            f_samples = mvn.rvs(mean=self.um_minus_mu0.flatten(), cov=self.uS, size=1000).T
+            f_samples = mvn.rvs(mean=self.um_minus_mu0.flatten(), cov=f_var, size=1000).T
             f_samples = K_star.dot(self.invK_mm).dot(f_samples) + f_mean
         elif K_star is not None:
             f_samples = mvn.rvs(mean=f_mean.flatten(), cov=K_star, size=1000).T

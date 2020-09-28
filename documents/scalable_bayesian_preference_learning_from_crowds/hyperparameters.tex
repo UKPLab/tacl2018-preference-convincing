@@ -1,0 +1,103 @@
+\section{Gradient-based Length-scale Optimization}\label{sec:ls}
+
+In the previous sections, we defined preference learning models that 
+incorporate GP priors over the latent functions.
+The covariances of these GPs are defined by a kernel function $k$, 
+often of the following form:
+\begin{flalign}
+k_{\bs \theta}(\bs x, \bs x') = \prod_{d=1}^D k_d\left(\frac{|x_d - x_d'|}{l_d}, \bs\theta_d \right),
+\label{eq:kernel}
+\end{flalign}
+where $D$ is the number of features, 
+$l_d$ is a length-scale hyper-parameter,
+and $\bs \theta_d$ are additional hyper-parameters for an individual 
+feature kernel, $k_d$.
+%Each $k_d$ is a function of the distance between the $d$th feature values in 
+%feature vectors $\bs x$ and  and $\bs x'$.
+%The product over features in $k$ means that data points have 
+%high covariance only if the kernel functions, $k_d$, for all features are high 
+%(a soft AND operator). 
+It is possible to replace the product with a sum, allowing covariance to increase
+for every feature that is similar (analogous to OR),
+rather than only being high if all dimensions are similar (AND).
+%or other combinations of the individual feature kernels.
+%The choice of combination over features is therefore an additional hyper-parameter.
+% citations? 
+The length-scale controls the smoothness of $k_d$
+across the feature space.
+%and the contribution of each feature to the model. 
+If a feature has a large length-scale,
+its values have less effect on $k_{\bs\theta}(\bs x, \bs x') $
+than if it has a shorter length-scale.
+Hence, it is important to set $l_d$ to correctly capture feature relevance.
+A computationally frugal option is a median heuristic, which effectively normalizes
+the feature but allows extreme values to remain outliers: 
+\begin{flalign}
+ l_{d,MH} = D \mathrm{median}( \{ |x_{i,d} - x_{j,d}| \forall i=1,..,N, \forall j=1,...,N\} ).
+\end{flalign}
+%The motivation is that the median will normalize the feature, so that features
+%are equally weighted regardless of their scaling. By using a median to perform this 
+%normalization, 
+Multiplying the median by the number of features, $D$,
+prevents  the average covariance $k_{\bs \theta}(\bs x, \bs x')$ between items
+from increasing as we add more features using the 
+product kernel in Equation \ref{eq:kernel}.
+This heuristic has been shown to work reasonably well for the task of 
+comparing distributions~\citep{gretton2012optimal}, but has %is a simple heursitic with
+ no guarantees of optimality. 
+
+An alternative for setting $l_d$ is Bayesian model selection using 
+\emph{type II maximum likelihood}, 
+which chooses the value of $l_d$ that 
+maximizes the approximation to the log marginal likelihood, %, $p(\bs y | \bs \theta)$,
+%Since the marginal likelihoods for our models are intractable, we maximize
+%the value of the variational lower bound, 
+$\mathcal{L}$.
+% after convergence of the
+%inference algorithm 
+(Equation \ref{eq:lowerbound} for GPPL and and Equation \ref{eq:lowerbound_crowd} for crowdGPPL). 
+Optimizing kernel length-scales in this manner is known as automatic relevance determination (ARD)~\citep{rasmussen_gaussian_2006}, since the optimal
+value of $l_d$ depends on the relevance of feature $d$.
+% Removing irrelevant features could improve performance, 
+% since it reduces the dimensionality of the space of the preference function.
+%A problem when using text data is that large vocabulary sizes and additional linguistic features 
+%lead to a large number of dimensions, $D$. 
+%The standard maximum likelihood II optimisation requires 
+%$\mathcal{O}(D)$ operations to tune each length-scale.
+%To perform ARD on feature $d$, 
+%we only need to be able to evaluate $\mathcal{L}$ 
+%after variational inference has converged with any given value of $l_d$.
+%However, 
+Computing derivatives of $\mathcal{L}$ 
+with respect to $l_d$ enables the use of
+efficient gradient-based optimization methods
+such as L-BFGS-B~\citep{zhu1997algorithm}.
+%which perform iterative optimization, 
+%using gradients to guide changes for all $D$ length-scales simultaneously.
+For the single user GPPL, the required gradient 
+with respect to the $d$th length-scale, $l_d$, is as follows:
+%Following the derivations in Appendix \ref{sec:vb_eqns}, Equation \ref{eq:gradient_ls},
+\begin{flalign}
+& \nabla_{l_{\! d}} \mathcal{L} =  
+\frac{\partial \mathcal{L}}{\partial \hat{\bs f}_m} \frac{\partial \hat{\bs f}_m}{\partial l_d}
++ \frac{\partial \mathcal{L}}{\partial \bs S^{-1}} \frac{\partial \bs S^{-1}}{\partial l_d}
++ \frac{\partial \mathcal{L}}{\partial a} \frac{\partial a}{\partial l_d}
++ \frac{\partial \mathcal{L}}{\partial b} \frac{\partial b}{\partial l_d}
++ \frac{\partial \mathcal{L}}{\partial \bs K}\frac{\partial \bs K}{\partial l_d}. & 
+\end{flalign}
+The partial derivatives with respect to the variational parameters 
+$\hat{\bs f}_m$, $\bs S$, $a$ and $b$ 
+%arise because they 
+depend indirectly on the length-scale through the expectations 
+in the variational $q$ factors. 
+However, when the variational inference algorithm has converged,
+$\mathcal{L}$ is at a maximum, %$\frac{\partial \mathcal{L}}{\partial \hat{\bs f}_m}$, 
+%$\frac{\partial \mathcal{L}}{\partial \bs S^{-1}}$,
+%$\frac{\partial \mathcal{L}}{\partial a}$ and
+%$\frac{\partial \mathcal{L}}{\partial b}$ 
+these terms % partial derivatives of $\mathcal{L}$ with respect to $\hat{\bs f}_m$, $\bs S$, $a$ and $b$
+are zero, and the derivative is relatively simple to compute (see Appendix \ref{sec:gradients} for the full equations).
+
+% is defined by Equation \ref{eq:kernel_der}.
+% Since we cannot compute $\bs K$ in high dimensions, in practice we substitute $\bs K_{mm}$ for $\bs K$,
+% $\bs S$ for $\bs C$, $\hat{\bs f}_{m}$ for $\hat{\bs f}$ and $\bs\mu_{m}$ for $\bs\mu$ so that 

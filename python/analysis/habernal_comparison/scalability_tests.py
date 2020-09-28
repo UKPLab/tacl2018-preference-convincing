@@ -1,5 +1,4 @@
 from tests import TestRunner
-import tests
 
 if __name__ == '__main__':
 

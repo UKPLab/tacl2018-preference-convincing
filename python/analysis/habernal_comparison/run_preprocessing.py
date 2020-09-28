@@ -99,7 +99,7 @@ if __name__ == '__main__':
         os.mkdir(tmp_data_dir)
 
     input_dir = os.path.join(root_data_dir, 'argument_data/UKPConvArgStrict-new-CSV')
-    output_dir = os.path.join(root_data_dir, 'lingdata')
+    outlibsput_dir = os.path.join(root_data_dir, 'lingdata')
 
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)

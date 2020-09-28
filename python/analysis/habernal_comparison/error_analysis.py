@@ -27,7 +27,7 @@ import pickle
 import numpy as np
 
 from compute_metrics import get_results_dir, get_fold_data
-from data_loading import load_train_test_data, load_ling_features
+from data_loader import load_train_test_data, load_ling_features
 from tests import get_doc_token_seqs, get_docidxs_from_ids, compute_lengthscale_heuristic
 from gp_classifier_vb import matern_3_2_from_raw_vals
 from sklearn.metrics.pairwise import cosine_similarity
@@ -372,12 +372,12 @@ def compute_errors_in_training(expt_settings, method, feature_type, embeddings_t
 
     expt_settings_1 = expt_settings.copy()
     expt_settings_1['dataset'] = 'UKPConvArgCrowdSample_evalMACE'
-    folds_noisy, _, _, _, _ = load_train_test_data(expt_settings_1['dataset'])
+    folds_noisy, _, _, _, _, _ = load_train_test_data(expt_settings_1['dataset'])
     expt_settings_1['folds'] = folds_noisy
 
     expt_settings_2 = expt_settings.copy()
     expt_settings_2['dataset'] = 'UKPConvArgAll'
-    folds_clean, _, _, _, _ = load_train_test_data(expt_settings['dataset'])
+    folds_clean, _, _, _, _, _ = load_train_test_data(expt_settings['dataset'])
 
     expt_settings_1['method'] = method
     expt_settings_1['feature_type'] = feature_type
@@ -547,7 +547,7 @@ if __name__ == '__main__':
 
     expt_settings['dataset'] = 'UKPConvArgStrict'
     expt_settings['method'] = 'SinglePrefGP_noOpt_weaksprior'
-    folds, folds_regression, _, _, _ = load_train_test_data(expt_settings['dataset'])
+    folds, _, folds_regression, _, _, _ = load_train_test_data(expt_settings['dataset'])
     expt_settings['folds'] = folds
     expt_settings['folds_regression'] = folds_regression
 
@@ -567,8 +567,7 @@ if __name__ == '__main__':
     ling_feat_spmatrix, docids = load_ling_features(expt_settings['dataset'])
 
     if 'ls' not in globals():
-        ls = compute_lengthscale_heuristic('ling', '', None, ling_feat_spmatrix, docids, folds, None,
-                                       multiply_heuristic_power=0.5)
+        ls = compute_lengthscale_heuristic('ling', '', None, ling_feat_spmatrix, docids, folds, None)
     items_feat = ling_feat_spmatrix.toarray()
 
     if 'similarity' not in globals():
@@ -588,7 +587,7 @@ if __name__ == '__main__':
     # a. Compute the rankings for GPPL and SVM.
     # b. Compute deviations from gold rank.
     expt_settings['dataset'] = 'UKPConvArgAll'
-    folds, folds_regression, _, _, _ = load_train_test_data(expt_settings['dataset'])
+    folds, _, folds_regression, _, _, _ = load_train_test_data(expt_settings['dataset'])
     expt_settings['folds'] = folds
     expt_settings['folds_regression'] = folds_regression
 

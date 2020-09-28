@@ -30,7 +30,8 @@ Created on 20 Mar 2017
 '''
 
 import logging
-from scipy.stats.stats import pearsonr
+from scipy.stats.stats import pearsonr, kendalltau
+from sklearn.metrics import log_loss
 from sklearn.svm.classes import NuSVR, SVC
 logging.basicConfig(level=logging.DEBUG)
 
@@ -56,29 +57,21 @@ from gp_pref_learning import GPPrefLearning, pref_likelihood
 from gp_classifier_svi import GPClassifierSVI
 from gp_classifier_vb import compute_median_lengthscales
 from sklearn.svm import SVR 
-from data_loading import load_train_test_data, load_embeddings, load_ling_features, data_root_dir, \
-    load_siamese_cbow_embeddings, load_skipthoughts_embeddings
+from embeddings import load_embeddings, load_siamese_cbow_embeddings, load_skipthoughts_embeddings, get_mean_embeddings
+from data_loader import data_root_dir, load_train_test_data, load_ling_features
 import numpy as np
+import pandas as pd
 
 
 ndebug_features = 10
 verbose = False
 
 
-def save_fold_order(resultsdir, folds=None, dataset=None):
-    if folds is None and dataset is not None:
-        folds, _, _, _, _ = load_train_test_data(dataset)        
-    elif folds is None:
-        print("Need to provide a dataset label or a set of fold data...")
-        return 
-    np.savetxt(resultsdir + "/foldorder.txt", np.array(list(folds.keys()))[:, None], fmt="%s")
-
-
 # Lengthscale initialisation -------------------------------------------------------------------------------------------
 # use the median heuristic to find a reasonable initial length-scale. This is the median of the distances.
 # First, grab a sample of points because N^2 could be too large.    
-def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, ling_feat_spmatrix, docids, folds, 
-                                  index_to_word_map, multiply_heuristic_power=1.0):
+def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, ling_feat_spmatrix, docids, folds,
+                                  index_to_word_map):
     # get the embedding values for the test data -- need to find embeddings of the whole piece of text
     if feature_type == 'both' or feature_type == 'embeddings' or feature_type == 'debug':
         
@@ -121,7 +114,7 @@ def compute_lengthscale_heuristic(feature_type, embeddings_type, embeddings, lin
     starttime = time.time()
                                 
     #for f in range(items_feat.shape[1]):  
-    ls_initial = compute_median_lengthscales(items_feat, multiply_heuristic_power, N_max=3000)
+    ls_initial = compute_median_lengthscales(items_feat, N_max=3000)
             
     endtime = time.time()
     logging.info('@@@ Selected initial lengthscales in %f seconds' % (endtime - starttime))
@@ -175,11 +168,7 @@ def get_doc_token_seqs(ids, X_list, texts=None):
         utexts = [utext for utext in utexts]
         return X, uids, utexts
     else:
-        return X, uids    
-
-
-def get_mean_embeddings(word_embeddings, X):
-    return np.array([np.mean(word_embeddings[Xi, :], axis=0) for Xi in X])    
+        return X, uids
 
 
 def get_docidxs_from_ids(all_docids, ids_to_map):
@@ -214,18 +203,21 @@ def get_fold_data(folds, fold, docids):
     person_test = np.array(person_test)  
     
     personIDs = np.concatenate((person_train, person_test))
-    _, personIdxs = np.unique(personIDs, return_inverse=True)
+    upersonIDs, personIdxs = np.unique(personIDs, return_inverse=True)
     person_train = personIdxs[:len(person_train)]
     person_test = personIdxs[len(person_train):]
     
     return a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, \
-        X, uids, utexts
+        X, uids, utexts, upersonIDs
 
 
-def get_noisy_fold_data(folds, fold, docids, acc, tr_pair_subset=None):
-    a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, X, \
-    uids, utexts = get_fold_data(folds, fold, docids)
-    
+def get_noisy_fold_data(folds, folds_test, fold, docids, tr_pair_subset=None):
+    a1_train, a2_train, prefs_train, person_train, _, _, _, _, X, \
+        uids, utexts, upersonIDs = get_fold_data(folds, fold, docids)
+
+    a1_agg, a2_agg, gold_train, person_agg, a1_test, a2_test, prefs_test, person_test, _, \
+        _, _, _ = get_fold_data(folds_test, fold, docids)
+
     # now subsample the training data
     N = len(a1_train)
     if tr_pair_subset is not None:
@@ -235,17 +227,14 @@ def get_noisy_fold_data(folds, fold, docids, acc, tr_pair_subset=None):
         a2_train = a2_train[subidxs]
         prefs_train = prefs_train[subidxs]
         person_train = person_train[subidxs]
+        gold_train = gold_train[subidxs]
     else:
         Nsub = N
 
-    if acc != 1.0:
-        # now we add noise to the training data
-        flip_labels = np.random.rand(Nsub) > acc
-        prefs_train[flip_labels] = 2 - prefs_train[flip_labels] # labels are 0, 1 or 2
-    
     return a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test, \
-        X, uids, utexts   
-    
+        X, uids, utexts, upersonIDs, a1_agg, a2_agg, gold_train, person_agg
+
+
 def get_fold_regression_data(folds_regression, fold, docids):
     if folds_regression is not None:
         _, scores_rank_train, argids_rank_train, person_rank_train, _ = folds_regression.get(fold)["training"] # blank argument is turkIDs_rank_test
@@ -253,7 +242,7 @@ def get_fold_regression_data(folds_regression, fold, docids):
         scores_rank_train = np.array(scores_rank_train)
         argids_rank_train = np.array(argids_rank_train)    
         
-        _, scores_rank_test, argids_rank_test, personIDs_rank_test, _ = folds_regression.get(fold)["test"] # blank argument is turkIDs_rank_test
+        _, scores_rank_test, argids_rank_test, person_rank_test, _ = folds_regression.get(fold)["test"] # blank argument is turkIDs_rank_test
         item_idx_ranktest = np.array([np.argwhere(testid==docids)[0][0] for testid in argids_rank_test])
         scores_rank_test = np.array(scores_rank_test)
         argids_rank_test = np.array(argids_rank_test)
@@ -266,10 +255,10 @@ def get_fold_regression_data(folds_regression, fold, docids):
         item_idx_ranktest = None
         scores_rank_test = None
         argids_rank_test = None
-        personIDs_rank_test = None    
+        person_rank_test = None
 
     return item_idx_ranktrain, scores_rank_train, argids_rank_train, person_rank_train,\
-           item_idx_ranktest, scores_rank_test, argids_rank_test, personIDs_rank_test
+           item_idx_ranktest, scores_rank_test, argids_rank_test, person_rank_test
     
     
 def subsample_tr_data(subsample_amount, a1_train, a2_train):
@@ -310,7 +299,10 @@ class TestRunner:
         self.embeddings_types = embeddings_types
         self.methods = methods
         self.dataset_increment = dataset_increment
-        
+
+        self.vscales = []  # record the latent factor scales
+
+
     def load_features(self, feature_type, embeddings_type, a1_train, a2_train, uids, utexts=None):
         '''
         Load all the features specified by the type into an items_feat object. Remove any features where the values are all
@@ -392,13 +384,13 @@ class TestRunner:
             
         if '_M' in self.method:
             validx = self.method.find('_M') + 2
-            M = int(self.method[validx:])
+            M = int(self.method[validx:].split('_')[0])
         else:
             M = 500
             
         if '_SS' in self.method:
             validx = self.method.find('_SS') + 3
-            SS = int(self.method[validx:])
+            SS = int(self.method[validx:].split('_')[0])
         else:
             SS = 200        
         
@@ -410,16 +402,16 @@ class TestRunner:
                 use_svi = True
             
             self.model = GPPrefLearning(ninput_features=self.ndims, ls_initial=ls_initial, verbose=self.verbose, 
-                                        shape_s0=shape_s0, rate_s0=rate_s0, rate_ls=1.0 / np.mean(ls_initial),
-                                        use_svi=use_svi, ninducing=M, max_update_size=SS,
-                                        kernel_combination=kernel_combination, forgetting_rate=0.7, delay=1.0)
-            self.model.max_iter_VB = 2000
+                    shape_s0=shape_s0, rate_s0=rate_s0, rate_ls = 1.0 / np.mean(ls_initial), use_svi=use_svi, 
+                    ninducing=M, max_update_size=SS, kernel_combination=kernel_combination, forgetting_rate=0.9,
+                    delay=1.0)
+            self.model.max_iter_VB = 200
             new_items_feat = self.items_feat  # pass only when initialising
-            print("no. features: %i" % new_items_feat.shape[1])
         else:
             new_items_feat = None
         
-        self.model.fit(self.a1_train, self.a2_train, new_items_feat, np.array(self.prefs_train, dtype=float)-1,
+        print("no. features: %i" % new_items_feat.shape[1])
+        self.model.fit(self.a1_train, self.a2_train, new_items_feat, np.array(self.prefs_train, dtype=float)-1, 
                   optimize=self.optimize_hyper, input_type='zero-centered')            
     
         proba = self.model.predict(None, self.a1_test, self.a2_test, reuse_output_kernel=True, return_var=False)
@@ -434,7 +426,12 @@ class TestRunner:
         else:
             predicted_f = None
 
-        return proba, predicted_f, tr_proba
+        if self.a_rank_train is not None:
+            tr_f, _ = self.model.predict_f(None, self.a_rank_train)
+        else:
+            tr_f = None
+
+        return proba, predicted_f, tr_proba, tr_f
     
 #     model, _, a1_train, a2_train, self.prefs_train, items_feat, _, _, self.a1_test, self.a2_test, 
 #                   self.a1_unseen, self.a2_unseen, ls_initial, verbose, _, self.a_rank_test=None, _, _, _
@@ -505,8 +502,7 @@ class TestRunner:
                   
         self.model.fit(np.arange(len(self.a1_train)), gpc_labels, optimize=self.optimize_hyper, features=gpc_feats)            
         
-        proba = self.model.predict(np.concatenate((self.items_feat[self.a1_test], self.items_feat[self.a2_test]),
-                                                  axis=1))
+        proba, _ = self.model.predict(np.concatenate((self.items_feat[self.a1_test], self.items_feat[self.a2_test]), axis=1))
         if self.a_rank_test is not None:
             predicted_f = np.zeros(len(self.a_rank_test)) # can't easily rank with this method
         else:
@@ -520,70 +516,40 @@ class TestRunner:
         return proba, predicted_f, tr_proba      
     
     def run_svm(self, feature_type):
-
-        # # The original TACL paper uses LIBSVM in the commented out section. This is quite inconvenient to get working.
-        #
-        # prefs_train_fl = np.array(self.prefs_train, dtype=float)
-        # svc_labels = np.concatenate((prefs_train_fl * 0.5, 1 - prefs_train_fl * 0.5)).astype(int)
-        #
-        # from libsvm.svmutil import svm_train, svm_predict
-        # from libsvm.commonutil import svm_read_problem
-        #
-        # if feature_type == 'embeddings' or feature_type == 'both' or feature_type == 'debug':
-        #     embeddings = self.embeddings_items_feat
-        # else:
-        #     embeddings = None
-        #
-        # filetemplate = os.path.join(data_root_dir, 'libsvmdata/%s-%s-%s-libsvm.txt')
-        # nfeats = self.ling_feat_spmatrix.shape[1]
-        #
-        # #if not os.path.isfile(trainfile):
-        # trainfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_train],
-        #                                             self.docids[self.a2_train], svc_labels, 'training',
-        #                                             self.fold, nfeats, outputfile=filetemplate,
-        #                                             reverse_pairs=True, embeddings=embeddings,
-        #                                             a1=self.a1_train, a2=self.a2_train,
-        #                                             embeddings_only=feature_type=='embeddings')
-        #
-        # problem = svm_read_problem(trainfile)
-        # self.model = svm_train(problem[0], problem[1], '-b 1')
-        #
-        # #if not os.path.isfile(testfile):
-        # testfile, _, _ = combine_into_libsvm_files(self.dataset, self.docids[self.a1_test],
-        #                                            self.docids[self.a2_test], np.ones(len(self.a1_test)),
-        #                                            'test', self.fold, nfeats, outputfile=filetemplate,
-        #                                            embeddings=embeddings, a1=self.a1_test, a2=self.a2_test,
-        #                                            embeddings_only=feature_type=='embeddings')
-        #
-        # problem = svm_read_problem(testfile)
-        # _, _, proba = svm_predict(problem[0], problem[1], self.model, '-b 1')
-        #
-        # # libSVM flips the labels if the first one it sees is positive
-        # if svc_labels[0] == 1:
-        #     proba = 1 - np.array(proba)
-
         prefs_train_fl = np.array(self.prefs_train, dtype=float)
-        svc_labels = np.concatenate((prefs_train_fl * 0.5, 1 - prefs_train_fl * 0.5)).astype(int)
 
-        # This implementation doesn't seem to produce meaningful probabilities, so we don't bother with those
+        # cannot train on uncertain labels
+        idxs = (prefs_train_fl == 0) | (prefs_train_fl == 2)
+        prefs_train_fl = prefs_train_fl[idxs]
+
+        svc_labels = np.concatenate((prefs_train_fl * 0.5, 1 - prefs_train_fl * 0.5))
+
         svc = SVC(probability=True)
         trainfeats = np.concatenate((
-            np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1),
-            np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1)), axis=0)
-        print("no. features: %i" % trainfeats.shape[1])
-        print("no. pairs for SVM: %i" % trainfeats.shape[0])
+                        np.concatenate((
+                            self.items_feat[self.a1_train[idxs]],
+                            self.items_feat[self.a2_train[idxs]]), axis=1),
+                        np.concatenate((
+                            self.items_feat[self.a1_train[idxs]],
+                            self.items_feat[self.a2_train[idxs]]), axis=1)),
+                    axis=0)
+
+        print("SVM classifier: no. features: %i" % trainfeats.shape[1])
+        print("SVM classifier: no. pairs: %i" % trainfeats.shape[0])
         svc.fit(trainfeats, svc_labels.astype(int))
-        proba = svc.predict_proba(np.concatenate((self.items_feat[self.a1_test], self.items_feat[self.a2_test]),
-                                                 axis=1))[:, 0]
+        proba = svc.predict_proba(np.concatenate((self.items_feat[self.a1_train], self.items_feat[self.a2_train]), axis=1))
+
+
         maxdiff = np.max(proba) - np.min(proba)
         if maxdiff == 0:
             maxdiff = 1
         proba = (proba - np.min(proba)) / maxdiff  # sometimes the probability estimates are too
         # squashed together... may be as bug in later versions of sklearn
 
-        # labs = svc.predict(np.concatenate((self.items_feat[self.a1_test], self.items_feat[self.a2_test]), axis=1))
-        # first column is probability of class 1, i.e. first label preferred
-
+        # libSVM flips the labels if the first one it sees is positive
+        if svc_labels[0] == 1:
+            proba = 1 - np.array(proba)
+         
         if self.a_rank_test is not None:
             svr = NuSVR()    
             svr.fit(self.items_feat[self.a_rank_train], self.scores_rank_train)
@@ -776,10 +742,9 @@ class TestRunner:
             tr_proba = np.array(model_predict['output'])
         else:
             tr_proba = None
-    
         
-        return proba, predicted_f, tr_proba           
-       
+        return proba, predicted_f, tr_proba
+
     def _choose_method_fun(self, feature_type):
         if 'SinglePrefGP' in self.method:
             method_runner_fun = self.run_gppl
@@ -793,57 +758,69 @@ class TestRunner:
             if feature_type == 'ling':
                 logging.error("BI-LSTM is not set up to run without using embeddings. Will switch to feature type=both...")
                 feature_type = 'both'            
-            method_runner_fun = lambda: self.run_bilstm(feature_type)    
-            
+            method_runner_fun = lambda: self.run_bilstm(feature_type)
+
         return method_runner_fun
                
-    def _set_resultsfile(self, feature_type, embeddings_type, acc, dataset_increment):
-        # To run the active learning tests, call this function with dataset_increment << 1.0. 
-        # To add artificial noise to the data, run with acc < 1.0.
+    def _set_resultsfile(self, feature_type, embeddings_type, data_inc):
+        # To run the active learning tests, call this function with dataset_increment << 1.0.
         output_data_dir = os.path.join(data_root_dir, 'outputdata/')
         if not os.path.isdir(output_data_dir):
             os.mkdir(output_data_dir)
-            
+
         output_data_dir = os.path.join(output_data_dir, self.expt_output_dir)
         if not os.path.isdir(output_data_dir):
-            os.mkdir(output_data_dir)    
-            
+            os.mkdir(output_data_dir)
+
         # Select output paths for CSV files and final results
         output_filename_template = output_data_dir + '/%s' % self.expt_tag
-        output_filename_template += '_%s_%s_%s_%s_acc%.2f_di%.2f' 
-    
-        results_stem = output_filename_template % (self.dataset, self.method, feature_type, embeddings_type, acc, 
-                                                                  dataset_increment) 
+        output_filename_template += '_%s_%s_%s_%s_di%.2f'
+
+        results_stem = output_filename_template % (self.dataset, self.method, feature_type, embeddings_type, data_inc)
         resultsfile = results_stem + '_test.pkl' # the old results format with everything in one file
     #     modelfile = results_stem + '_model_fold%i.pkl'
-                    
-        logging.info('The output file for the results will be: %s' % resultsfile)    
-        
+
+        logging.info('The output file for the results will be: %s' % resultsfile)
+
         if not os.path.isdir(results_stem):
             os.mkdir(results_stem)
-            
-        return resultsfile, results_stem    
-    
+
+        return resultsfile, results_stem
+
     def _load_dataset(self, dataset):
-        self.folds, self.folds_r, self.word_index_to_embeddings_map, self.word_to_indices_map, self.index_to_word_map = \
-                    load_train_test_data(dataset)
+        self.folds, self.folds_test, self.folds_r, self.word_index_to_embeddings_map, self.word_to_indices_map, \
+            self.index_to_word_map = load_train_test_data(dataset)
+
         self.ling_feat_spmatrix, self.docids = load_ling_features(dataset)
         self.dataset = dataset
             
-    def _init_ls(self, feature_type, embeddings_type):
+    def _init_ls(self, feature_type, embeddings_type, ls_factor=1):
+
+
         if self.dataset in self.default_ls_values and feature_type in self.default_ls_values[self.dataset] and \
                                 embeddings_type in self.default_ls_values[self.dataset][feature_type]:
             self.default_ls = self.default_ls_values[self.dataset][feature_type][embeddings_type]
         elif 'GP' in self.method:
-            self.default_ls = compute_lengthscale_heuristic(feature_type, embeddings_type, self.embeddings,
+
+            ls_file = './data/ls_%s_%s_%s.csv' % (self.dataset, feature_type, embeddings_type)
+            if os.path.exists(ls_file):
+                self.default_ls = np.genfromtxt(ls_file)
+            else:
+                self.default_ls = compute_lengthscale_heuristic(feature_type, embeddings_type, self.embeddings,
                                  self.ling_feat_spmatrix, self.docids, self.folds, self.index_to_word_map)
+                np.savetxt(ls_file, self.default_ls)
+
+            self.default_ls *= ls_factor
+
+            # self.default_ls /= float(len(self.default_ls)) # long lengthscale does strange things with training dataset
+
             if self.dataset not in self.default_ls_values:
                 self.default_ls_values[self.dataset] = {}
             if feature_type not in self.default_ls_values[self.dataset]:
                 self.default_ls_values[self.dataset][feature_type] = {}
             self.default_ls_values[self.dataset][feature_type][embeddings_type] = self.default_ls
         else:
-            self.default_ls = []        
+            self.default_ls = []
 
     def _set_embeddings(self, embeddings_type):
         if 'word_mean' == embeddings_type and not hasattr(self, 'word_embeddings'):
@@ -876,7 +853,8 @@ class TestRunner:
             all_predictions = {}
             all_f = {}
             all_tr_proba = {}
-            
+            all_tr_f = {}
+
             all_target_prefs = {}
             all_target_rankscores = {}
             final_ls = {}
@@ -884,26 +862,30 @@ class TestRunner:
         else:
             with open(resultsfile, 'rb') as fh:
                 all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, _, times, final_ls, \
-                                                                    all_tr_proba = pickle.load(fh, encoding='latin1')
+                                                        all_tr_proba, all_tr_f, _ = pickle.load(fh, encoding='latin1')
             if all_tr_proba is None:
                 all_tr_proba = {}
-                
-        return all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, all_tr_proba
+            if all_tr_f is None:
+                all_tr_f = {}
+
+        return all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, \
+               all_tr_proba, all_tr_f
            
-    def run_test(self, feature_type, embeddings_type=None, dataset_increment=0, acc=1.0, subsample_amount=0, 
-                 min_no_folds=0, max_no_folds=32, npairs=0, test_on_all_training_pairs=False):
+    def run_test(self, feature_type, embeddings_type=None, dataset_increment=0, subsample_amount=0,
+                 min_no_folds=0, max_no_folds=32, npairs=0, test_on_all_training_pairs=False, ls_factor=1):
 
         logging.info("**** Running method %s with features %s, embeddings %s, on dataset %s ****" % (self.method, 
                                                         feature_type, embeddings_type, self.dataset) )
     
         self._set_embeddings(embeddings_type) 
                                                 
-        self._init_ls(feature_type, embeddings_type)
+        self._init_ls(feature_type, embeddings_type, ls_factor)
 
-        resultsfile, results_stem = self._set_resultsfile(feature_type, embeddings_type, acc, dataset_increment)
-                       
-        all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, all_tr_proba = \
-                                                                                self._reload_partial_result(resultsfile)
+        resultsfile, results_stem = self._set_resultsfile(feature_type, embeddings_type, dataset_increment)
+
+        self.results_stem = results_stem
+        all_proba, all_predictions, all_f, all_target_prefs, all_target_rankscores, times, final_ls, all_tr_proba, \
+            all_tr_f = self._reload_partial_result(resultsfile)
                 
         np.random.seed(121) # allows us to get the same initialisation for all methods/feature types/embeddings
 
@@ -911,13 +893,16 @@ class TestRunner:
             fold_keys = np.genfromtxt(os.path.expanduser(results_stem + '/foldorder.txt'), dtype=str)
         else:
             fold_keys = list(self.folds.keys())
+            fold_keys = np.sort(fold_keys)
 
         for foldidx, self.fold in enumerate(fold_keys):
+            self.foldidx = foldidx
             if foldidx in all_proba and dataset_increment==0:
                 print(("Skipping fold %i, %s" % (foldidx, self.fold)))
                 continue
             if foldidx >= max_no_folds or foldidx < min_no_folds:
-                print(("Already completed maximum no. folds. Skipping fold %i, %s" % (foldidx, self.fold)))
+                print(("Already completed maximum no. folds or this fold is below the minimum specified."
+                       " Skipping fold %i, %s" % (foldidx, self.fold)))
                 continue
             foldresultsfile = results_stem + '/fold%i.pkl' % foldidx
             if foldidx not in all_proba and os.path.isfile(foldresultsfile):
@@ -927,22 +912,62 @@ class TestRunner:
                 
                 with open(foldresultsfile, 'rb') as fh:
                     all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],\
-                    all_target_rankscores[foldidx], _, times[foldidx], final_ls[foldidx], all_tr_proba[foldidx], _ = \
+                    all_target_rankscores[foldidx], _, times[foldidx], final_ls[foldidx], all_tr_proba[foldidx], _, _ = \
                                 pickle.load(fh, encoding='latin1')
 
             # Get data for this fold -----------------------------------------------------------------------------------
             print(("Fold name ", self.fold))
             a1_train, a2_train, prefs_train, person_train, a1_test, a2_test, prefs_test, person_test,\
-                                self.X, uids, utexts = get_noisy_fold_data(self.folds, self.fold, self.docids, acc)                            
+                    self.X, uids, utexts, upersonIDs, a1_agg, a2_agg, gold_train, person_agg \
+                = get_noisy_fold_data(self.folds, self.folds_test, self.fold, self.docids)
             
             # ranking folds
             a_rank_train, scores_rank_train, _, person_rank_train, a_rank_test, scores_rank_test, _, \
-                                person_idx_ranktest = get_fold_regression_data(self.folds_r, self.fold, self.docids)
-            
+                                person_rank_test = get_fold_regression_data(self.folds_r, self.fold, self.docids)
+
+            # rand_items = np.random.choice(1052, 200, replace=False)
+            # tridxs = np.in1d(a1_train, rand_items) & np.in1d(a2_train, rand_items)
+            # a1_train = a1_train[tridxs]
+            # a2_train = a2_train[tridxs]
+            # prefs_train = prefs_train[tridxs]
+            # person_train = person_train[tridxs]
+
+            # convert the ranking person IDs to the idxs
+            if person_rank_train is not None and len(person_rank_train):
+                person_rank_train = np.array([np.argwhere(upersonIDs == p.strip())[0][0] if p.strip() in upersonIDs else -1
+                                          for p in person_rank_train])
+
+                a_rank_train = a_rank_train[person_rank_train != -1]
+                scores_rank_train = scores_rank_train[person_rank_train != -1]
+                person_rank_train = person_rank_train[person_rank_train != -1]
+
+            if person_rank_test is not None and len(person_rank_test):
+                # If running personalized predictions, ensure we only test on workers that were seen in training because
+                # we have no worker features to predict preferences of new workers.
+                person_rank_test = np.array([np.argwhere(upersonIDs == p.strip())[0][0] if p.strip() in upersonIDs else -1
+                                         for p in person_rank_test])
+
+                valid_test_idxs = (person_rank_test != -1) & np.in1d(person_rank_test, person_rank_train)
+
+                a_rank_test = a_rank_test[valid_test_idxs]
+                scores_rank_test = scores_rank_test[valid_test_idxs]
+                person_rank_test = person_rank_test[valid_test_idxs]
+
+            if len(person_test) and len(np.unique(person_test)) > 1:
+                # If running personalized predictions, ensure we only test on workers that were seen in training because
+                # we have no worker features to predict preferences of new workers.
+                valid_test_idxs = np.in1d(person_test, person_train)
+                a1_test = a1_test[valid_test_idxs]
+                a2_test = a2_test[valid_test_idxs]
+                person_test = person_test[valid_test_idxs]
+                prefs_test = prefs_test[valid_test_idxs]
+
+            self.prefs_test = prefs_test
+
             self.load_features(feature_type, embeddings_type, a1_train, a2_train, uids, utexts)
-            #items_feat = items_feat[:, :ndebug_features]
-    
-            # Subsample training data ----------------------------------------------------------------------------------
+            #items_feat = items_feat[:, :ndebug_features]     
+
+            # Subsample training data --------------------------------------------------------------------------------------    
             if npairs == 0:
                 npairs_f = len(a1_train)
             else:
@@ -985,7 +1010,7 @@ class TestRunner:
             if '_oneLS' in self.method:
                 self.ls_initial = np.median(self.ls_initial)
                 logging.info("Selecting a single LS for all features: %f" % self.ls_initial)
-            
+
             logging.info("Starting test with method %s..." % (self.method))
             starttime = time.time()        
             
@@ -993,7 +1018,7 @@ class TestRunner:
     
             # Run the chosen method with active learning simulation if required---------------------------------------------
             while nseen_so_far < npairs_f:
-                logging.info('****** Fitting model with %i pairs in fold %i ******' % (len(pair_subset), foldidx))
+                logging.info('****** Fitting model with %i pairs in fold %i, %s ******' % (len(pair_subset), foldidx, self.fold))
                 
                 # get the indexes of data points that are not yet seen        
                 if not test_on_all_training_pairs:
@@ -1005,31 +1030,32 @@ class TestRunner:
                 self.a1_train = a1_train[pair_subset]
                 self.a2_train = a2_train[pair_subset]
                 self.prefs_train = prefs_train[pair_subset]
-                self.person_train = person_train
-                
+                self.person_train = person_train[pair_subset]
+
                 self.a1_test = a1_test
                 self.a2_test = a2_test
                 self.person_test = person_test
                 
-                self.a1_unseen = a1_train[unseen_subset]
-                self.a2_unseen = a2_train[unseen_subset]
+                self.a1_unseen = a1_agg #unseen_subset] change it so we test on train -- test the aggregated labels after combining the crowd
+                self.a2_unseen = a2_agg  #unseen_subset]
+                self.person_unseen = person_agg #unseen_subset]
                 
                 self.a_rank_train = a_rank_train
                 self.scores_rank_train = scores_rank_train
                 self.person_rank_train = person_rank_train
                                 
                 self.a_rank_test = a_rank_test
-                self.person_rank_test = person_idx_ranktest
+                self.person_rank_test = person_rank_test
                 if self.a_rank_test is not None and len(self.person_rank_test) == 0:
                     self.person_rank_test = np.zeros(len(self.a_rank_test)) # if no person IDs, make sure we default to 0
-                
+
                 # run the method with the current data subset
                 method_runner_fun = self._choose_method_fun(feature_type)
-                    
-                proba, predicted_f, tr_proba = method_runner_fun()
+
+                proba, predicted_f, tr_proba, tr_f = method_runner_fun()
             
                 endtime = time.time() 
-                
+
                 # make it the right shape
                 proba = np.array(proba)
                 if proba.ndim == 2 and proba.shape[1] > 1:
@@ -1051,7 +1077,12 @@ class TestRunner:
                         tr_proba = tr_proba[:, 1:2]
                     elif tr_proba.ndim == 1:
                         tr_proba = tr_proba[:, None]
-                        
+
+                if tr_f is not None:
+                    tr_f = np.array(tr_f)
+                    if tr_f.ndim == 1:
+                        tr_f = tr_f[:, None]
+
                 # get more data
                 nseen_so_far += nnew_pairs
                 nnew_pairs = dataset_increment  # int(np.floor(dataset_increment * npairs_f))
@@ -1069,32 +1100,93 @@ class TestRunner:
                     new_pair_subset = np.argwhere(unseen_subset)[new_pair_subset].flatten()
                     pair_subset = np.concatenate((pair_subset, new_pair_subset))
                     
-                if tr_proba is not None:
-                    tr_proba_complete = prefs_train.flatten()[:, np.newaxis] / 2.0
-                    tr_proba_complete[unseen_subset] = tr_proba
-                    tr_proba = tr_proba_complete
+                # if tr_proba is not None:
+                #     tr_proba_complete = prefs_train.flatten()[:, np.newaxis] / 2.0
+                #     tr_proba_complete[unseen_subset] = tr_proba
+                #     tr_proba = tr_proba_complete
                     
-                logging.info("@@@ Completed fold %i with method %s, features %s, %i data so far, in %f seconds." % (
-                    foldidx, self.method, feature_type, nseen_so_far, endtime-starttime))
-                logging.info("Accuracy for fold = %f" % (
-                        np.sum(prefs_test[prefs_test != 1] == 2 * predictions.flatten()[prefs_test != 1]
-                            ) / float(np.sum(prefs_test != 1))))
-                
-                if predicted_f is not None:
-                    # print out the pearson correlation
-                    logging.info("Pearson correlation for fold = %f" % pearsonr(
-                        scores_rank_test, predicted_f.flatten())[0])
-                  
-                if tr_proba is not None:
-                    prefs_unseen = prefs_train[unseen_subset]
-                    tr_proba_unseen = tr_proba[unseen_subset]
-                    logging.info("Unseen data in the training fold, accuracy for fold = %f" % (
-                        np.sum(prefs_unseen[prefs_unseen != 1] == 2 * np.round(tr_proba_unseen).flatten()[
-                            prefs_unseen != 1]) / float(np.sum(prefs_unseen != 1))))
-                                       
-                logging.info("AUC = %f" % roc_auc_score(prefs_test[prefs_test != 1] / 2.0, proba[prefs_test != 1]))
+                logging.info("@@@ Completed running fold %i with method %s, features %s, %i data so far, in %f seconds." % (
+                    foldidx, self.method, feature_type, nseen_so_far, endtime-starttime) )
 
-                # Save the data for later analysis ---------------------------------------------------------------------
+                if predictions.size == prefs_test.size:
+                    acc = np.sum(prefs_test[prefs_test != 1] == 2 * predictions.flatten()[prefs_test != 1]
+                            ) / float(np.sum(prefs_test != 1))
+                    CEE = log_loss(prefs_test[prefs_test != 1] == 2, proba[prefs_test != 1])
+
+                    print("Accuracy for fold = %f" % acc)
+                    print('CEE = %f' % CEE)
+
+                tau = 0
+                tau_40 = 0
+
+                if predicted_f is not None and predicted_f.size == scores_rank_test.size:
+                    # print out the pearson correlation
+
+                    if person_rank_test is not None and len(person_rank_test):
+                        for upeep in np.unique(person_rank_test):
+                            idxs = person_rank_test == upeep
+
+                            if np.sum(idxs) < 2 or len(scores_rank_test[idxs]) < 2:
+                                continue
+
+                            tau_p, _ = kendalltau(scores_rank_test[idxs], predicted_f.flatten()[idxs])
+
+                            if np.isnan(tau_p):
+                                continue
+
+                            tau.append(tau_p)
+
+                            if np.sum(person_rank_train == upeep) >= 40:
+                                tau_40.append(tau_p)
+
+                        tau = np.mean(tau)
+                        tau_40 = np.mean(tau_40)
+                    else:
+                        tau, _ = kendalltau(scores_rank_test, predicted_f.flatten())
+                        tau_40 = tau
+
+                    print("Kendall's tau for fold = %f" % tau)
+                    print("For worker IDs with at least 40 annotations: Kendall's tau for fold = %f" % tau_40)
+
+                if tr_proba is not None:
+                    tr_acc = np.sum(gold_train[gold_train != 1] == 2 * np.round(tr_proba).flatten()[gold_train != 1]
+                            ) / float(np.sum(gold_train != 1))
+
+                    tr_cee = log_loss(gold_train[gold_train != 1]==2, tr_proba[gold_train != 1])
+
+                    print("Unseen data in the training fold, accuracy for fold = %f" % tr_acc )
+                else:
+                    tr_acc = 0
+                    tr_cee = 0
+
+                tr_tau = 0
+                tr_tau_40 = 0
+
+                if tr_f is not None:
+
+                    for upeep in np.unique(person_rank_train):
+                        idxs = person_rank_train == upeep
+
+                        if np.sum(idxs) < 2:
+                            continue
+
+                        tau_p, _ = kendalltau(scores_rank_train[idxs], tr_f.flatten()[idxs])
+
+                        tr_tau.append(tau_p)
+
+                        if np.sum(person_rank_train == upeep) >= 40:
+                            tr_tau_40.append(tau_p)
+
+                    tr_tau = np.mean(tr_tau)
+                    tr_tau_40 = np.mean(tr_tau_40)
+
+                    print("(training set) Kendall's tau for fold = %f" % tr_tau)
+                    print("(training set) For worker IDs with at least 40 annotations: Kendall's tau for fold = %f" % tr_tau_40)
+
+                else:
+                    tr_tau = 0
+
+                # Save the data for later analysis ----------------------------------------------------------------------------
                 if hasattr(self.model, 'ls'):
                     final_ls[foldidx] = self.model.ls
                 else:
@@ -1106,6 +1198,7 @@ class TestRunner:
                     all_predictions[foldidx] = predictions
                     all_f[foldidx] = predicted_f
                     all_tr_proba[foldidx] = tr_proba
+                    all_tr_f[foldidx] = tr_f
                 else:
                     all_proba[foldidx] = np.concatenate((all_proba[foldidx], proba), axis=1)
                     all_predictions[foldidx] = np.concatenate((all_predictions[foldidx], predictions), axis=1)
@@ -1113,7 +1206,9 @@ class TestRunner:
                         all_f[foldidx] = np.concatenate((all_f[foldidx], predicted_f), axis=1)
                     if tr_proba is not None:
                         all_tr_proba[foldidx] = np.concatenate((all_tr_proba[foldidx], tr_proba), axis=1)
-                
+                    if tr_f is not None:
+                        all_tr_f[foldidx] = np.concatenate((all_tr_f[foldidx], tr_f), axis=1)
+
                 # Save the ground truth
                 all_target_prefs[foldidx] = prefs_test
                 if self.folds_r is not None:
@@ -1126,20 +1221,45 @@ class TestRunner:
     
                 results = (all_proba[foldidx], all_predictions[foldidx], all_f[foldidx], all_target_prefs[foldidx],
                    all_target_rankscores[foldidx], self.ls_initial, times[foldidx], final_ls[foldidx], 
-                   all_tr_proba[foldidx], len(self.a1_train))
+                   all_tr_proba[foldidx], all_tr_f[foldidx], len(self.a1_train))
                 with open(foldresultsfile, 'wb') as fh:
                     pickle.dump(results, fh)
-    
+
+                pair_prob_file = results_stem + '/pair_probs_%i.csv' % foldidx
+                pd.DataFrame(proba).to_csv(pair_prob_file)
+
                 if not os.path.isfile(results_stem + "/foldorder.txt"):
-                    save_fold_order(results_stem, self.folds)
-                    
-                #with open(modelfile % foldidx, 'w') as fh:
+                    np.savetxt(results_stem + "/foldorder.txt", fold_keys[:, None], fmt="%s")
+
+                results_file = os.path.join(self.results_stem, 'metrics.csv')
+                try:
+                    metrics = pd.read_csv(results_file).values.tolist()
+                except:
+                    metrics = []
+
+                metrics.append([acc, CEE, tau, tau_40, tr_acc, tr_cee, tr_tau, tr_tau_40])
+                metric_names = ['acc', 'CEE', 'tau', 'tau_40', 'tr_acc', 'tr_CEE', 'tr_tau', 'tr_tau_40']
+                pd.DataFrame(np.array(metrics), columns=metric_names).to_csv(results_file, index=False)
+
+
+                # with open(modelfile % foldidx, 'w') as fh:
                 #        pickle.dump(model, fh)
     
-            del self.model # release the memory before we try to do another iteration         
+            del self.model  # release the memory before we try to do another iteration
 
-    def run_test_set(self, subsample_tr=0, min_no_folds=0, max_no_folds=32, 
-                     npairs=0, test_on_train=False):
+        results_file = os.path.join(self.results_stem, 'metrics.csv')
+        try:
+            metrics = pd.read_csv(results_file).values.tolist()
+            metric_means = np.mean(metrics, axis=0)
+            print(metric_means)
+            metrics.append(metric_means)
+            pd.DataFrame(np.array(metrics), columns=metric_names).to_csv(results_file, index=False)
+        except:
+            print('no metrics file found')
+
+
+    def run_test_set(self, subsample_tr=0, min_no_folds=0, max_no_folds=32,
+                     npairs=0, test_on_train=False, ls_factor=1):
         # keep these variables around in case we are restarting the script with different method settings and same data.
         for dataset in self.datasets:
             
@@ -1162,19 +1282,26 @@ class TestRunner:
                         embeddings_to_use = ['']
                         
                     for embeddings_type in embeddings_to_use:                         
-                        self.run_test(feature_type, embeddings_type, dataset_increment=self.dataset_increment, acc=1.0, 
+                        self.run_test(feature_type, embeddings_type, dataset_increment=self.dataset_increment,
                                 subsample_amount=subsample_tr, min_no_folds=min_no_folds, max_no_folds=max_no_folds, 
-                                npairs=npairs, test_on_all_training_pairs=test_on_train)
+                                npairs=npairs, test_on_all_training_pairs=test_on_train, ls_factor=ls_factor)
                         
                         logging.info("**** Completed: method %s with features %s, embeddings %s ****" % (self.method, feature_type, 
                                                                                embeddings_type) )
 if __name__ == '__main__':
-
-    acc = 1.0
     dataset_increment = 0
-         
+
+    # datasets = ['UKPConvArgCrowdSample_evalMACE']
+    # methods = ['dummy']
+    # feature_types = ['both']
+    # embeddings_types = ['word_mean']
+    #
+    # runner = TestRunner('personalised', datasets, feature_types, embeddings_types, methods,
+    #                         dataset_increment)
+    # runner.run_test_set(min_no_folds=0, max_no_folds=32)
+
     datasets = ['UKPConvArgStrict']
-    methods = ['SinglePrefGP_weaksprior']
+    methods = ['SinglePrefGP_weaksprior_noOpt']
     feature_types = ['both']
     embeddings_types = ['word_mean']
 

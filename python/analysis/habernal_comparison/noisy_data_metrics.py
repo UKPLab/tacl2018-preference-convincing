@@ -29,7 +29,7 @@ if __name__ == '__main__':
     results_f1, results_acc, results_auc, results_logloss, results_pearson, results_spearman, results_kendall, \
         tr_results_f1, tr_results_acc, tr_results_auc, tr_results_logloss, mean_results, combined_labels \
         = compute_metrics(expt_settings, methods, datasets, feature_types, embeddings_types, di=di, npairs=npairs,
-                          max_no_folds=max_no_folds)
+                          max_fold_no=max_no_folds)
 
     print("Completed compute metrics")
 
