@@ -43,7 +43,7 @@ snakeviz==1.0.0
 tabulate==0.7.7
 tensorflow==1.1.0
 tornado==5.1.1
-urllib3==1.21.1
+urllib3==1.26.5
 virtualenv==1.11.6
 Werkzeug==0.12.1
 yolk==0.4.3
