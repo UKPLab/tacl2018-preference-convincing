@@ -22,7 +22,7 @@ packaging==16.8
 pandas==0.23.3
 pbr==3.0.0
 progressbar2==3.32.1
-protobuf==3.3.0
+protobuf==3.15.0
 pydot-ng==1.0.0
 pyparsing==2.2.0
 python-dateutil==2.7.3
