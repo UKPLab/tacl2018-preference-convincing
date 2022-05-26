@@ -41,7 +41,7 @@ ruamel.yaml==0.14.12
 smart-open==1.5.3
 snakeviz==1.0.0
 tabulate==0.7.7
-tensorflow==1.1.0
+tensorflow==2.7.2
 tornado==5.1.1
 urllib3==1.21.1
 virtualenv==1.11.6
