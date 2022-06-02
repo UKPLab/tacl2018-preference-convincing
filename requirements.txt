@@ -8,7 +8,7 @@ cycler==0.10.0
 editdistance==0.3.1
 funcsigs==1.0.2
 gensim==2.2.0
-html5lib==0.999
+html5lib==0.99999999
 idna==2.5
 joblib>=0.12.5
 kiwisolver==1.0.1
