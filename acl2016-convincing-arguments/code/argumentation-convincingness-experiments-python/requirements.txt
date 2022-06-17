@@ -1,5 +1,5 @@
 PyYAML==3.11
-numpy==1.10.2
+numpy==1.21.0
 scipy==0.16.1
 git+git://github.com/Theano/Theano.git@4e7f550
 Keras==0.3.2
