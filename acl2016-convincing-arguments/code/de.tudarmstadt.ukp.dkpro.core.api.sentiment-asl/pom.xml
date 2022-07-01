@@ -21,7 +21,7 @@
 
 	<properties>
 		<uima.version>2.6.0</uima.version>
-		<uimafit.version>2.1.0</uimafit.version>
+		<uimafit.version>2.4.0</uimafit.version>
 		<dkpro.version>1.8.0</dkpro.version>
 	</properties>
 
