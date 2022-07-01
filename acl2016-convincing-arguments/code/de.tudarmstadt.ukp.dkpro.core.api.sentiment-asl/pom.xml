@@ -20,7 +20,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<properties>
-		<uima.version>2.6.0</uima.version>
+		<uima.version>2.10.2</uima.version>
 		<uimafit.version>2.1.0</uimafit.version>
 		<dkpro.version>1.8.0</dkpro.version>
 	</properties>
