@@ -15,7 +15,7 @@ kiwisolver==1.0.1
 matplotlib==2.2.2
 nltk==3.4
 numpy==1.15.0
-lxml==3.8.0
+lxml==4.9.1
 mock==2.0.0
 nltk==3.2.4
 packaging==16.8
